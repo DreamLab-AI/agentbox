@@ -3129,6 +3129,21 @@
         }
       }
     },
+    "voicelink": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "ADR-2151: edge voice controller. Voice runs on the operator's client (DreamLab-AI/agentbox-voicelink) and reaches the container only over the operator's ssh login via /opt/agentbox/bin/voice-paned --stdio (a per-connection process, not a supervisor program). The ADR-044 cockpit and [voice] are unchanged.",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Bake voice-paned (lib/voice-paned.nix) at /opt/agentbox/bin/voice-paned. REBUILD-class. Keep false until the release step pins the derivation (rev, hash, lockfile); an enabled build with the placeholder pin refuses to evaluate."
+        },
+        "record_events": {
+          "type": "boolean",
+          "description": "Register the voice-paned event-spool hooks: Claude Code Stop and Notification (root session and every profile) and the Codex notify program. BOOT-class. Takes effect only when enabled is true; never replaces an existing Codex notify."
+        }
+      }
+    },
     "system_one": {
       "type": "object",
       "additionalProperties": false,

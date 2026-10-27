@@ -480,6 +480,16 @@
       "class": "live",
       "name": "Voice + AoE operator console",
       "summary": "ADR-044: same-origin operator cockpit (Caddy :8444) unifying the web voice loop and AoE session board. The UI/backend sidecar uses ./agentbox.sh voice; shared Nemotron ASR + Pocket TTS follow the core AgentBox lifecycle through docker-compose.speech.yml."
+    },
+    "voicelink": {
+      "class": "rebuild",
+      "name": "Voicelink edge voice controller",
+      "summary": "ADR-2151: client-side voice (DreamLab-AI/agentbox-voicelink) reaches the container only over the operator's ssh login, running /opt/agentbox/bin/voice-paned --stdio per connection (no port, token or supervisor program). [voicelink].enabled bakes voice-paned from lib/voice-paned.nix; REBUILD-class. The ADR-044 cockpit and [voice] are unchanged."
+    },
+    "voicelink.record_events": {
+      "class": "boot",
+      "name": "Voicelink event-spool hooks",
+      "summary": "ADR-2151: with [voicelink].enabled and record_events, Claude Code Stop and Notification hooks (root session and every profile) and the Codex notify program call `voice-paned record`, appending to ~/.local/state/voicelink/events.jsonl. Registered at boot by the entrypoint and agentbox-manifest provision-stacks; fail-open, nothing on stdout. BOOT-class."
     }
   }
 }

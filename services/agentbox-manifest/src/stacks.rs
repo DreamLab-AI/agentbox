@@ -175,6 +175,15 @@ fn str_list(v: &Value) -> Vec<String> {
         .unwrap_or_default()
 }
 
+
+/// Events voicelink's recorder is registered on (ADR-2151).
+const VOICELINK_EVENTS: [&str; 2] = ["Stop", "Notification"];
+/// Canonical recorder command; mirrors the root-session block in
+/// config/entrypoint-unified.sh. Stable /opt path, never /nix/store.
+const VOICELINK_RECORD_COMMAND: &str = "/opt/agentbox/bin/voice-paned record --source claude || true";
+/// Hook timeout in SECONDS.
+const VOICELINK_HOOK_TIMEOUT_S: u64 = 5;
+
 fn build_profile(name: &str, config: &Value, env: &Env, gates: &Gates) -> Result<(), String> {
     let root = env.workspace.join("profiles").join(name);
     let claude_dir = root.join(".claude");
@@ -297,6 +306,21 @@ fn build_profile(name: &str, config: &Value, env: &Env, gates: &Gates) -> Result
                 }]}));
         }
     }
+    // ADR-2151: voicelink's event spool. The profile settings file is rewritten
+    // whole on every projection, so a stale command self-heals by construction.
+    if gates.voicelink_record {
+        for event in VOICELINK_EVENTS {
+            hooks.as_object_mut().unwrap()
+                .entry(event.to_string())
+                .or_insert_with(|| Value::Array(Vec::new()))
+                .as_array_mut().unwrap()
+                .push(serde_json::json!({"hooks": [{
+                    "type": "command",
+                    "command": VOICELINK_RECORD_COMMAND,
+                    "timeout": VOICELINK_HOOK_TIMEOUT_S
+                }]}));
+        }
+    }
     if let Some(sink) = &gates.activity_sink {
         add_activity_sink_hooks(&mut hooks, env, sink, name);
     }
@@ -386,6 +410,7 @@ mod tests {
     fn no_gates() -> Gates {
         Gates {
             floor: false,
+            voicelink_record: false,
             mobile_bridge: false,
             summary_model: String::new(),
             zai_reasoning_effort: String::new(),
@@ -435,6 +460,7 @@ mod tests {
         let tmp = std::env::temp_dir();
         let gates = Gates {
             floor: false,
+            voicelink_record: false,
             mobile_bridge: true,
             summary_model: "glm-5.3".into(),
             zai_reasoning_effort: String::new(),
@@ -466,6 +492,7 @@ mod tests {
         let tmp = std::env::temp_dir();
         let gates = Gates {
             floor: false,
+            voicelink_record: false,
             mobile_bridge: true,
             summary_model: "glm-5.3".into(),
             zai_reasoning_effort: String::new(),
@@ -609,6 +636,59 @@ mod tests {
             }
         }
         std::fs::remove_dir_all(&tmp).ok();
+    }
+
+    #[test]
+    fn voicelink_recorder_follows_both_gates_in_every_profile() {
+        let stacks: Value = serde_json::from_str(STACKS_JSON).unwrap();
+        for (manifest, enabled) in [
+            ("", false),
+            ("[voicelink]\nenabled = true\n", true),
+            ("[voicelink]\nenabled = true\nrecord_events = true\n", true),
+            ("[voicelink]\nenabled = true\nrecord_events = false\n", false),
+            ("[voicelink]\nenabled = false\nrecord_events = true\n", false),
+        ] {
+            let tmp = tempdir();
+            let env = test_env(&tmp);
+            let gates = Gates::from_manifest(&tomlval::parse(manifest).unwrap());
+            build_profile("openrouter", &stacks["openrouter"], &env, &gates).unwrap();
+            let settings = env
+                .workspace
+                .join("profiles/openrouter/.claude/settings.json");
+            let text = std::fs::read_to_string(&settings).unwrap();
+            let data: Value = serde_json::from_str(&text).unwrap();
+            assert!(!text.contains("/nix/store"), "{manifest}");
+            for event in ["Stop", "Notification"] {
+                let found: Vec<_> = crate::hooks::all_timeouts(&data["hooks"])
+                    .into_iter()
+                    .filter(|(e, cmd, _)| e == event && cmd.contains("voice-paned"))
+                    .collect();
+                assert_eq!(found.len(), usize::from(enabled), "{event}: {manifest}");
+                if enabled {
+                    assert_eq!(
+                        found[0].1,
+                        "/opt/agentbox/bin/voice-paned record --source claude || true"
+                    );
+                    assert_eq!(found[0].2, 5.0);
+                }
+            }
+            std::fs::remove_dir_all(&tmp).ok();
+        }
+    }
+
+    #[test]
+    fn voicelink_recorder_hooks_are_governed_by_the_shipped_registry() {
+        let rules = crate::hooks::parse_registry(include_str!(
+            "../../../config/registered-hooks.txt"
+        ))
+        .unwrap();
+        assert!(rules.iter().any(|r| matches!(
+            r,
+            crate::hooks::Rule::Own { marker, events, timeout: Some(5) }
+                if marker == "voice-paned"
+                    && events.iter().any(|e| e == "Stop")
+                    && events.iter().any(|e| e == "Notification")
+        )));
     }
 
     #[test]

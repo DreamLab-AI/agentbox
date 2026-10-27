@@ -2218,6 +2218,27 @@ console_port         = 8444             # operator cockpit origin (self-signed T
 debug_port           = 8443             # web voice debug UI (diagnostics only)
 unmute_build_context = "../voice-stack/unmute"  # external web/backend source checkout; override VOICE_UNMUTE_DIR
 
+# ── Voicelink — edge voice controller (ADR-2151) ─────────────────────────────
+# Voice runs on the operator's CLIENT (DreamLab-AI/agentbox-voicelink) and
+# reaches this container only over the operator's ssh login:
+# `docker exec -i --user 1000 agentbox /opt/agentbox/bin/voice-paned --stdio`.
+# No port, token or supervisor program is added; voice-paned is a
+# per-connection process. The ADR-044 cockpit and [voice] are unchanged.
+[voicelink]
+# enabled: bake voice-paned (lib/voice-paned.nix) at /opt/agentbox/bin/voice-paned
+# and make the hook registration below possible. apply-class: rebuild — the
+# package set is resolved at image composition. KEEP false until the release
+# step pins lib/voice-paned.nix (rev, hash, lockfile): with the placeholder pin
+# an enabled build refuses to evaluate, by design.
+enabled       = false
+# record_events: register the hooks that feed voice-paned's event spool
+# (~/.local/state/voicelink/events.jsonl): Claude Code Stop + Notification in the
+# root session and every profile, and the Codex `notify` program. apply-class:
+# boot — registered by the entrypoint and `agentbox-manifest provision-stacks`
+# on every start, so flipping it needs a restart, not a rebuild. Only takes
+# effect when enabled = true (the binary must exist). Fail-open, silent stdout.
+record_events = true
+
 [toolchains]
 claude = true
 claude_code = true

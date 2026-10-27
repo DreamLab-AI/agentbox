@@ -163,3 +163,12 @@ The meta-controller never orchestrates: it relays spoken intents to the target
 session, summarises what comes back, and reports others read-only. Loop safety:
 gateway/mirror/nostr-send egress all carry client tags and are dropped on
 re-ingress (see nostr-gateway header).
+
+### Voicelink (edge voice, ADR-2151)
+
+A second, client-side voice path for operators who work by ssh into native `claude`/`codex` panes in tmux. Speech, echo cancellation and the concierge model run on the client (`DreamLab-AI/agentbox-voicelink`); only text and control messages cross the wire, over the operator's existing ssh login: `docker exec -i --user 1000 agentbox /opt/agentbox/bin/voice-paned --stdio --session agentbox`. No port, token or supervisor program is added; `voice-paned` is a per-connection process.
+
+- **Gate:** `[voicelink].enabled` bakes `voice-paned` (`lib/voice-paned.nix`, the `sidestr-agent.nix` pattern) and symlinks it at `/opt/agentbox/bin/voice-paned`; REBUILD-class. The derivation carries a placeholder pin that throws on evaluation until the release step pins it, so `enabled` stays `false` until then.
+- **Hooks:** `[voicelink].record_events` (BOOT-class, needs `enabled`) registers `voice-paned record --source claude || true` on `Stop` and `Notification` (timeout 5 s) in the root session (`config/entrypoint-unified.sh`) and every profile (`stacks.rs`), and sets Codex's top-level `notify` in `~/.codex/config.toml`. A `notify` the operator already set is reported, never replaced. Events land in `~/.local/state/voicelink/events.jsonl`, which `voice-paned` tails.
+- **Unchanged:** the ADR-044 cockpit, tab0-bridge and the server speech plane above are untouched and remain the VisionClaw/browser path. A voicelink client may also use them as remote backends through ssh `-L` forwards: Nemotron ASR `127.0.0.1:8897` and Pocket TTS `127.0.0.1:8898` on the host.
+- **Gate test:** `bash tests/config/voicelink-projection.test.sh`.

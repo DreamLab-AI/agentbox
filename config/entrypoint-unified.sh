@@ -879,6 +879,51 @@ elif ! grep -q '^[[:space:]]*sandbox_mode[[:space:]]*=' "$CODEX_CFG"; then
   echo "[bootstrap] Prepended sandbox_mode = danger-full-access to codex config.toml"
 fi
 
+# ── ADR-2151: voicelink — Codex `notify` program ──
+# [voicelink].enabled && .record_events point Codex's top-level `notify` at the
+# baked recorder: Codex appends its JSON payload as the last argv word, and
+# `voice-paned record --source codex` spools it for the client-side daemon.
+# The path is the stable /opt/agentbox/bin symlink, never a /nix/store path.
+# Reconcile, not append: our line is identified by the `# agentbox:voicelink`
+# marker above it and rewritten when it differs from the canonical value. A
+# `notify` the operator set themselves (no marker) is NEVER replaced; it is
+# reported and voice events from Codex are simply not recorded. TOML top-level
+# keys must precede any [section] header, so the line is PREPENDED. Gate off
+# removes only our marked line. Idempotent, fail-open.
+_VL_ENABLED="$(_ab_toml_bool voicelink enabled)"
+_VL_RECORD="$(_ab_toml_val voicelink record_events)"
+[ -n "$_VL_RECORD" ] || _VL_RECORD=true          # absent key ⇒ on (enabled still gates)
+case "$_VL_RECORD" in 1|true|TRUE|True|yes|on) _VL_RECORD=1 ;; *) _VL_RECORD=0 ;; esac
+if [ -f "$CODEX_CFG" ] && command -v node >/dev/null 2>&1; then
+  VL_ON=$([ "$_VL_ENABLED" = "1" ] && [ "$_VL_RECORD" = "1" ] && echo 1 || echo 0) \
+  CODEX_CFG="$CODEX_CFG" node <<'VLCODEXJS' || true
+const fs = require('fs');
+const f = process.env.CODEX_CFG, on = process.env.VL_ON === '1';
+const MARK = '# agentbox:voicelink (ADR-2151) - Codex notify -> voice event spool';
+const LINE = 'notify = ["/opt/agentbox/bin/voice-paned", "record", "--source", "codex"]';
+let orig; try { orig = fs.readFileSync(f, 'utf8'); } catch { process.exit(0); }
+const lines = orig.split('\n');
+let top = lines.findIndex((l) => /^\s*\[/.test(l));
+if (top < 0) top = lines.length;
+const ours = (i) => i > 0 && lines[i - 1].trim() === MARK;
+let at = -1;
+for (let i = 0; i < top; i++) if (/^\s*notify\s*=/.test(lines[i])) { at = i; break; }
+let out = null;
+if (on) {
+  if (at < 0) out = [MARK, LINE, '', ...lines];
+  else if (ours(at)) {
+    if (lines[at] !== LINE) { out = lines.slice(); out[at] = LINE; }
+  } else {
+    console.log('  [voicelink] codex config already sets its own notify - left as is; Codex events will not be recorded');
+  }
+} else if (at >= 0 && ours(at)) {
+  out = lines.slice(); out.splice(at - 1, 2);
+}
+if (out) { fs.writeFileSync(f, out.join('\n')); console.log(on ? '  [voicelink] codex notify -> voice-paned record' : '  [voicelink] removed codex notify (gate off)'); }
+VLCODEXJS
+  chown 1000:1000 "$CODEX_CFG" 2>/dev/null || true
+fi
+
 # i3 window manager config
 mkdir -p "$WORKSPACE/.config/i3" 2>/dev/null || true
 if [ -f /opt/agentbox/config/i3/config ] && [ ! -f "$WORKSPACE/.config/i3/config" ]; then
@@ -2108,6 +2153,50 @@ for (const evt of ['Stop', 'SubagentStop', 'UserPromptSubmit']) {
 }
 if (changed) { fs.writeFileSync(f, JSON.stringify(s, null, 2)); console.log('  [floor] de-registered decline-recorder hooks (gate off)'); }
 DECLUNJS
+fi
+
+# ── ADR-2151: voicelink — Stop + Notification hooks feeding the event spool ──
+# [voicelink].enabled && .record_events register `voice-paned record --source
+# claude` (baked at the stable /opt/agentbox/bin path, never /nix/store) on Stop
+# and Notification. It reads the hook payload on stdin, prints nothing and exits
+# 0; the `|| true` suffix keeps it fail-open and the timeout is SECONDS. A
+# per-event reconcile: an entry already equal to the canonical command and
+# timeout stays where it is, a stale one (old path, old timeout, duplicate) is
+# dropped and rewritten, and the gate off removes every voice-paned entry. The
+# per-profile twin is services/agentbox-manifest/src/stacks.rs.
+_VL_ENABLED="$(_ab_toml_bool voicelink enabled)"
+_VL_RECORD="$(_ab_toml_val voicelink record_events)"
+[ -n "$_VL_RECORD" ] || _VL_RECORD=true
+case "$_VL_RECORD" in 1|true|TRUE|True|yes|on) _VL_RECORD=1 ;; *) _VL_RECORD=0 ;; esac
+if [ -f "$_CLAUDE_SETTINGS" ] || [ "$_VL_ENABLED" = "1" ]; then
+  if command -v node >/dev/null 2>&1; then
+    mkdir -p "$(dirname "$_CLAUDE_SETTINGS")" 2>/dev/null || true
+    VL_ON=$([ "$_VL_ENABLED" = "1" ] && [ "$_VL_RECORD" = "1" ] && echo 1 || echo 0) \
+    SETTINGS="$_CLAUDE_SETTINGS" node <<'VLJS' || true
+const fs = require('fs');
+const f = process.env.SETTINGS, on = process.env.VL_ON === '1';
+const CMD = '/opt/agentbox/bin/voice-paned record --source claude || true';
+const TIMEOUT = 5; // seconds
+let s = {}, origText = ''; try { origText = fs.readFileSync(f, 'utf8'); s = JSON.parse(origText); } catch {}
+if (!on && (!origText || !s.hooks)) process.exit(0);
+s.hooks = s.hooks || {};
+const mine = (g) => (g.hooks || []).some((h) => String(h.command || '').includes('voice-paned'));
+for (const evt of ['Stop', 'Notification']) {
+  const arr = Array.isArray(s.hooks[evt]) ? s.hooks[evt] : [];
+  const have = arr.filter(mine);
+  const canonical = have.length === 1 && have[0].hooks.length === 1
+    && have[0].hooks[0].command === CMD && have[0].hooks[0].timeout === TIMEOUT;
+  if (on && canonical) continue;
+  const kept = arr.filter((g) => !mine(g));
+  if (on) kept.push({ hooks: [{ type: 'command', command: CMD, timeout: TIMEOUT }] });
+  if (kept.length) s.hooks[evt] = kept; else delete s.hooks[evt];
+}
+const nextText = JSON.stringify(s, null, 2);
+if (nextText !== origText) { fs.writeFileSync(f, nextText); console.log(on ? '  [voicelink] registered voice-paned record hooks (Stop/Notification)' : '  [voicelink] de-registered voice-paned record hooks (gate off)'); }
+else if (on) { console.log('  [voicelink] voice-paned record hooks already registered'); }
+VLJS
+    chown 1000:1000 "$_CLAUDE_SETTINGS" 2>/dev/null || true
+  fi
 fi
 
 # ── Dream-inbox surfacing hook (UserPromptSubmit) ──

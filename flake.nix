@@ -1842,6 +1842,12 @@
         # rebuild (its glibc store path is collected); see lib/sidestr-agent.nix.
         sidestrAgentPkg = import ./lib/sidestr-agent.nix { inherit lib; pkgs = rustPkgs; };
         sidechainPackages = lib.optionals sidechainAnyFaucet [ sidestrAgentPkg ];
+        # voice-paned — the container half of voicelink ([voicelink].enabled,
+        # ADR-2151). Imported lazily: with the gate off nothing evaluates
+        # lib/voice-paned.nix, which throws until the release step pins it.
+        voicelinkOn = (agentboxConfig.voicelink or {}).enabled or false;
+        voicePanedPkg = import ./lib/voice-paned.nix { inherit lib; pkgs = rustPkgs; };
+        voicelinkPackages = lib.optionals voicelinkOn [ voicePanedPkg ];
         # The producer's consensus code (spec, schema, blaketestnode) at the
         # commits in upstream-pins, read-only; run-producer.sh runs it by default
         # and a workspace checkout only under SIDESTR_ALLOW_UNPINNED=1 (custody
@@ -2025,6 +2031,7 @@ default_days = ${toString (relayCfg.retention_days or 30)}
           ++ knowledgeToolPackages
           ++ skillToolPackages
           ++ sidechainPackages
+          ++ voicelinkPackages
           ++ pokerCitizenPackages
           ++ factrailPackages
           ++ systemOneProxyPackages
@@ -2111,6 +2118,13 @@ default_days = ${toString (relayCfg.retention_days or 30)}
           # build scripts that cache or record an nvcc location must not hold a
           # /nix/store path. Gated with the local-cuda package set.
           ln -s ${gpuCfg.nvccWrapper}/bin/nvcc $out/opt/agentbox/bin/nvcc
+          ''}
+          ${lib.optionalString voicelinkOn ''
+          # voice-paned (ADR-2151) at a stable path: the operator's client runs
+          # `docker exec -i agentbox /opt/agentbox/bin/voice-paned --stdio`, and the
+          # hooks registered in ~/.claude and ~/.codex record this path, which must
+          # not be a /nix/store path (it dangles at the next rebuild).
+          ln -s ${voicePanedPkg}/bin/voice-paned $out/opt/agentbox/bin/voice-paned
           ''}
           ${lib.optionalString systemOneProxyOn ''
           # system-one-proxy (ADR-2139): a stable path so `./agentbox.sh systemone`

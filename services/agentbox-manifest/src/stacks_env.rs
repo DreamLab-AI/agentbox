@@ -70,6 +70,9 @@ impl Env {
 /// Gates read from the manifest that change what gets written into each profile.
 pub struct Gates {
     pub floor: bool,
+    /// `[voicelink].enabled && [voicelink].record_events` (ADR-2151): register the
+    /// `voice-paned record` hooks on Stop and Notification in every profile.
+    pub voicelink_record: bool,
     pub mobile_bridge: bool,
     pub summary_model: String,
     pub zai_reasoning_effort: String,
@@ -157,6 +160,8 @@ impl Gates {
         let ontology_monitor = tomlval::get_bool(cfg, "ontology_monitor.enabled", false);
         Self {
             floor: tomlval::get_bool(cfg, "claude_code.floor", true),
+            voicelink_record: tomlval::get_bool(cfg, "voicelink.enabled", false)
+                && tomlval::get_bool(cfg, "voicelink.record_events", true),
             mobile_bridge,
             summary_model: if mobile_bridge {
                 as_string(tomlval::get(
