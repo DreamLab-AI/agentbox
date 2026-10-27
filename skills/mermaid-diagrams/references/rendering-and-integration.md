@@ -20,6 +20,9 @@ The wrapper POSTs to `http://browsercontainer:8931/render-mermaid`, which
 renders via the sidecar's Chromium. Output files pass through the shared
 `gui-tools-exchange` volume (agentbox: `/home/devuser/gui-tools`,
 browsercontainer: `/home/devuser/exchange`).
+Custom width, height, background and JSON config require sidecar render
+protocol version 2; an older sidecar produces an explicit error rather than
+silently ignoring those options. Basic renders remain compatible.
 
 ### Alternative: direct HTTP API
 

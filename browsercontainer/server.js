@@ -210,7 +210,7 @@ function renderMermaid(options = {}) {
         log(`mermaid render failed: ${err.message} ${stderr || ''}`.trim());
         return resolve({ ok: false, error: (stderr && stderr.trim()) || err.message });
       }
-      resolve({ ok: true, path: outputPath, filename });
+      resolve({ ok: true, path: outputPath, filename, protocolVersion: 2 });
     });
   });
 }

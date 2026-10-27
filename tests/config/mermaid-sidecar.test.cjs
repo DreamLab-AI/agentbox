@@ -32,6 +32,7 @@ test('mmdc client forwards render options and removes exchange scratch', async t
   fs.writeFileSync(input, 'flowchart TD; A-->B;\n');
   fs.writeFileSync(config, '{"theme":"dark","themeVariables":{"primaryColor":"#123456"}}');
   const requests = [];
+  let protocolVersion = 2;
   const server = http.createServer((req, res) => {
     let body = '';
     req.on('data', chunk => body += chunk);
@@ -42,7 +43,7 @@ test('mmdc client forwards render options and removes exchange scratch', async t
       const filename = `mermaid-123-${String(requests.length).padStart(8, '0')}.${options.format}`;
       fs.writeFileSync(path.join(exchange, filename), '<svg/>');
       res.setHeader('Content-Type', 'application/json');
-      res.end(JSON.stringify({ ok: true, filename }));
+      res.end(JSON.stringify({ ok: true, filename, protocolVersion }));
     });
   });
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
@@ -64,15 +65,25 @@ test('mmdc client forwards render options and removes exchange scratch', async t
     config: { theme: 'dark', themeVariables: { primaryColor: '#123456' } },
   });
 
+  protocolVersion = undefined;
+  const legacy = await run(client, ['-i', input, '-o', output, '-b', 'transparent'], env);
+  assert.equal(legacy.code, 4);
+  assert.match(legacy.stderr, /renderer is too old/);
+  assert.deepEqual(fs.readdirSync(exchange), []);
+  const legacyBasic = await run(client, ['-i', input, '-o', output], env);
+  assert.equal(legacyBasic.code, 0, legacyBasic.stderr);
+  assert.deepEqual(fs.readdirSync(exchange), []);
+  protocolVersion = 2;
+
   const bad = await run(client, ['-i', input, '-o', output, '-w', '0'], env);
   assert.equal(bad.code, 1);
   assert.match(bad.stderr, /between 1 and 6000/);
-  assert.equal(requests.length, 1);
+  assert.equal(requests.length, 3);
 
   const unsupported = await run(client, ['-i', input, '-o', output, '-p', config], env);
   assert.equal(unsupported.code, 1);
   assert.match(unsupported.stderr, /unknown option/);
-  assert.equal(requests.length, 1);
+  assert.equal(requests.length, 3);
 
   const version = await run(client, ['--version'], env);
   assert.equal(version.code, 0);
@@ -90,10 +101,10 @@ test('mmdc client forwards render options and removes exchange scratch', async t
   assert.equal(batchResult.code, 0, batchResult.stderr);
   assert.equal(fs.readFileSync(path.join(outputDir, 'flow.png'), 'utf8'), '<svg/>');
   assert.equal(fs.readFileSync(path.join(outputDir, 'flow.pdf'), 'utf8'), '<svg/>');
-  assert.equal(requests[1].theme, 'default');
-  assert.equal(requests[1].config.theme, 'default');
-  assert.equal(requests[1].width, 2000);
-  assert.equal(requests[1].height, 1200);
+  assert.equal(requests[3].theme, 'default');
+  assert.equal(requests[3].config.theme, 'default');
+  assert.equal(requests[3].width, 2000);
+  assert.equal(requests[3].height, 1200);
   assert.deepEqual(fs.readdirSync(exchange), []);
 });
 
@@ -134,6 +145,7 @@ fs.writeFileSync(args[args.indexOf('-o') + 1], '<svg/>');
     format: 'svg', theme: 'forest', width: 1234, height: 876,
     background: 'transparent', config: { theme: 'forest' } });
   assert.equal(result.ok, true, result.error);
+  assert.equal(result.protocolVersion, 2);
   assert.equal(fs.readFileSync(result.path, 'utf8'), '<svg/>');
   const call = JSON.parse(fs.readFileSync(argsFile, 'utf8'));
   const { args } = call;

@@ -220,6 +220,19 @@ esac
 
 EXCHANGE_FILE="$EXCHANGE_DIR/$FILENAME"
 
+cleanup() {
+    rm -f "$EXCHANGE_FILE" 2>/dev/null || true
+}
+trap cleanup EXIT INT TERM
+
+# Older sidecars silently ignore these options. Basic renders still work with
+# them, but never report success for an option they could not have honoured.
+if [ "$WIDTH" -ne 800 ] || [ "$HEIGHT" -ne 600 ] || [ "$BACKGROUND" != white ] || [ -n "$CONFIG_FILE" ]; then
+    if ! printf '%s' "$RESP" | jq -e '.protocolVersion | numbers | select(. >= 2)' >/dev/null; then
+        die 4 "browsercontainer renderer is too old for width, height, background or config; update the sidecar"
+    fi
+fi
+
 # The sidecar writes asynchronously across a shared volume; allow a brief
 # window for the file to appear before giving up.
 _tries=0
@@ -228,11 +241,6 @@ while [ ! -f "$EXCHANGE_FILE" ] && [ "$_tries" -lt 50 ]; do
     sleep 0.1
 done
 [ -f "$EXCHANGE_FILE" ] || die 5 "rendered file not found on exchange volume: $EXCHANGE_FILE"
-
-cleanup() {
-    rm -f "$EXCHANGE_FILE" 2>/dev/null || true
-}
-trap cleanup EXIT INT TERM
 
 OUT_DIR="$(dirname "$OUTPUT")"
 [ -d "$OUT_DIR" ] || mkdir -p "$OUT_DIR" || die 5 "cannot create output dir: $OUT_DIR"

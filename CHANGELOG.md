@@ -12,6 +12,8 @@ All notable changes to agentbox are documented here. Format inspired by [Keep a 
 - The client and sidecar renderer pass width, height, background and Mermaid
   JSON config through, with argument validation and bounded requests. The
   batch renderer uses `-c` for JSON config rather than `-C` for CSS.
+- The client refuses extended options with an older sidecar that would silently
+  ignore them; basic renders remain backward compatible.
 - Browsercontainer pins Mermaid CLI 11.17.0 and Chrome DevTools MCP 1.12.0;
   sidecar replacement and Agentbox activation remain separate operations.
 

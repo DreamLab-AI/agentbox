@@ -13,6 +13,9 @@ the sidecar's **separate headless system Chromium**, not the persistent GPU
 Chrome Beta/CDP profile. Updating or building this sidecar does not require
 another Chromium in Agentbox. Keep `browsercontainer-profile` intact and do
 not restart the sidecar merely to prepare an Agentbox image (ADR-2152).
+Older sidecars can still handle basic renders, but the client rejects custom
+viewport, background and JSON config options unless the renderer responds with
+protocol version 2, so an old sidecar cannot silently ignore them.
 
 ## Architecture
 
