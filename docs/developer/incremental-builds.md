@@ -15,8 +15,8 @@ Preparation does not invoke `compose up`, `down`, `stop`, `restart`, credential
 sync, or the candidate entrypoint. The offline smoke container has no network,
 production volumes or credentials. The running container's ID and start time
 must remain unchanged. Nix builds budget at most 60% of the CPUs available to
-the host process, with up to four cores per job. For 72 available CPUs this is
-10 jobs × 4 cores, leaving headroom for ongoing work. These Nix settings guide
+the host process, with up to 21 cores per job. For 72 available CPUs this is
+2 jobs × 21 cores, leaving headroom for ongoing work. These Nix settings guide
 build parallelism; they are not a hard cgroup CPU or memory cap. The main
 `agentbox.sh` build routes, security-report builds and the setup wizard use the
 same budget. Direct `nix build` calls outside these entry points remain under
