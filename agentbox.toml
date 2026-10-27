@@ -2227,10 +2227,8 @@ unmute_build_context = "../voice-stack/unmute"  # external web/backend source ch
 [voicelink]
 # enabled: bake voice-paned (lib/voice-paned.nix) at /opt/agentbox/bin/voice-paned
 # and make the hook registration below possible. apply-class: rebuild — the
-# package set is resolved at image composition. NOTE: lib/voice-paned.nix still
-# carries a placeholder pin, so an image build with this on refuses to evaluate
-# (by design, with a message) until the release step pins rev, hash and the
-# lockfile. Set false to build without voicelink in the meantime.
+# package set is resolved at image composition. The pinned revision, source
+# hash and matching lockfile are maintained in lib/voice-paned.nix.
 enabled       = true
 # record_events: register the hooks that feed voice-paned's event spool
 # (~/.local/state/voicelink/events.jsonl): Claude Code Stop + Notification in the

@@ -1843,8 +1843,8 @@
         sidestrAgentPkg = import ./lib/sidestr-agent.nix { inherit lib; pkgs = rustPkgs; };
         sidechainPackages = lib.optionals sidechainAnyFaucet [ sidestrAgentPkg ];
         # voice-paned — the container half of voicelink ([voicelink].enabled,
-        # ADR-2151). Imported lazily: with the gate off nothing evaluates
-        # lib/voice-paned.nix, which throws until the release step pins it.
+        # ADR-2151). Imported lazily: with the gate off nothing evaluates the
+        # pinned derivation in lib/voice-paned.nix.
         voicelinkOn = (agentboxConfig.voicelink or {}).enabled or false;
         voicePanedPkg = import ./lib/voice-paned.nix { inherit lib; pkgs = rustPkgs; };
         voicelinkPackages = lib.optionals voicelinkOn [ voicePanedPkg ];
