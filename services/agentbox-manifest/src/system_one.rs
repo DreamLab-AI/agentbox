@@ -84,17 +84,6 @@ pub struct Projection {
 }
 
 impl Projection {
-    /// The active backend.
-    #[must_use]
-    pub fn selected(&self) -> &Backend {
-        &self
-            .backends
-            .iter()
-            .find(|(n, _)| *n == self.active)
-            .expect("resolve() guarantees the active backend exists")
-            .1
-    }
-
     /// The URL every consumer is pointed at.
     #[must_use]
     pub fn endpoint(&self) -> String {

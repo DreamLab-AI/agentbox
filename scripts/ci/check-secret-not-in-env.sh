@@ -12,16 +12,24 @@ fail() { echo "FAIL (check-secret-not-in-env): $1" >&2; exit 1; }
 
 [ -f "$FILE" ] || fail "missing $FILE"
 
-# Strip comments to assert on live code only.
+# Strip comments to assert on live code only. The checks read it from a
+# here-document, not a pipe: grep -q exits on its first match, and printf
+# writing into the closed pipe would report an I/O error.
 code="$(sed -e 's/[[:space:]]*#.*$//' "$FILE")"
 
 # 1. The key file write to /run/secrets/nostr.key must exist.
-if ! printf '%s\n' "$code" | grep -Eq '/run/secrets/nostr\.key'; then
+if ! grep -Eq '/run/secrets/nostr\.key' <<CODE
+$code
+CODE
+then
   fail "no write of the bridge key to /run/secrets/nostr.key found"
 fi
 
 # 2. AGENTBOX_BRIDGE_SK must be explicitly unset.
-if ! printf '%s\n' "$code" | grep -Eq '^[[:space:]]*unset[[:space:]]+AGENTBOX_BRIDGE_SK([[:space:]]|$)'; then
+if ! grep -Eq '^[[:space:]]*unset[[:space:]]+AGENTBOX_BRIDGE_SK([[:space:]]|$)' <<CODE
+$code
+CODE
+then
   fail "AGENTBOX_BRIDGE_SK is never 'unset' in the entrypoint"
 fi
 

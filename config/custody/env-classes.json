@@ -925,7 +925,16 @@
         "_VAULT_VER",
         "_WSR",
         "_WS_AGENTS",
-        "__GLX_VENDOR_LIBRARY_NAME"
+        "__GLX_VENDOR_LIBRARY_NAME",
+        "AGENTBOX_APP_ROOT",
+        "AGENTBOX_JEV_APPROVAL_ADDRESSED_AT",
+        "AGENTBOX_JEV_APPROVAL_TIMEOUT_MS",
+        "AGENTBOX_JEV_HEADROOM_MIN_CONFIDENCE",
+        "AGENTBOX_JEV_VOICE_TIMEOUT_MS",
+        "AGENTBOX_JEV_VOICE_UNCLEAR_AT",
+        "AGENTBOX_JEV_VOICE_VETO_BELOW",
+        "_VL_ENABLED",
+        "_VL_RECORD"
       ],
       "patterns": []
     }

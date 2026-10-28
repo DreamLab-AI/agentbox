@@ -76,6 +76,12 @@ const BASELINE = [
       // writes reflect candidates, never knowledge units, and is inert when the
       // parent is off.
       'skills.colloquy.reflect_candidates',
+      // AB-08-S1-01 knob under the catalogued `features.jev_checkpoints` gate:
+      // it only ever adds a done line to a checkpoint the parent already runs.
+      'features.jev_checkpoints.claim_check',
+      // AB-23-S1-01 Jev triage option under the catalogued dream_machine gate;
+      // flake.nix bakes it only when the System One proxy is also on.
+      'dream_machine.jev_triage',
       // ADR-2093 starting position of the /jev-compact switch, under the
       // catalogued `features.jev_compaction` gate that installs the plugin.
       'features.jev_compaction.enabled_by_default',
