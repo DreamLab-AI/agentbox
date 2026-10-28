@@ -287,12 +287,11 @@ function listTabs() {
   return '🖥 tabs\n' + (lines.join('\n') || '(none)');
 }
 // Codex reads text and Enter arriving in one burst as a paste and keeps the
-// Enter as a newline, so the prompt is never submitted; pause before Enter.
-const SUBMIT_PAUSE = new Int32Array(new SharedArrayBuffer(4));
+// Enter as a newline, so the prompt is never submitted. The Enter is scheduled
+// rather than slept for, so a broadcast never stalls the relay socket.
 function sendKeys(idx, text) {
   sh('tmux', ['send-keys', '-t', idx, '-l', text]);
-  Atomics.wait(SUBMIT_PAUSE, 0, 0, 1500);
-  sh('tmux', ['send-keys', '-t', idx, 'Enter']);
+  setTimeout(() => sh('tmux', ['send-keys', '-t', idx, 'Enter']), 1500);
 }
 
 // ── crypto: reply on the live authed socket ─────────────────────────────────

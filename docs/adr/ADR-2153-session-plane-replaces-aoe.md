@@ -78,8 +78,11 @@ The OpenCode template was verified working: `OPENCODE_CONFIG_CONTENT='{"model":"
 - `zai` is blocked on the trust prompt;
 - `openrouter` and `router` pass.
 
-With `AGENTBOX_LAUNCH_DIR=~/workspace/project/agentbox`, which checks the CLI contract without prepared directories, `codex`, `deepseek`, `loom-raw` and `router` launch clean. The remaining failures are real:
-- `antigravity` is blocked on sign-in;
-- `openrouter` and `zai` are blocked on profile trust.
+With `AGENTBOX_LAUNCH_DIR=~/workspace/project/agentbox`, which checks the CLI contract without prepared directories, the 2026-10-28 runs show:
+- **Round trip passes:** `codex`, `zai`, `deepseek` and `loom-raw` each answer the canned prompt. This is after `trust-seed.cjs` began seeding the wrapper profile stores, and after the send path started pausing before Enter. Codex treats text and Enter in one burst as a paste.
+- **Launches clean:** `router`, which is excluded from the round trip.
+- **Fails on a credential:** `openrouter` returns `401 User not found`. Its key is invalid; this is not a launch problem.
+- **Fails on sign-in:** `antigravity` stays blocked until signed in.
+- **Known flake:** `zai` timed out once and passed on the next two runs. The wrapper kind has no `ready` pattern, so the prompt is sent after a fixed settle time.
 
 A mutation check that restores the old OpenCode `-m` argv fails both the static tier and the live tier (`pane died: Unrecognized flag: -m in command opencode`).
