@@ -762,6 +762,35 @@ function reapOrphanWorktrees(existing) {
     log(`orphan reaper: removed ${dir} (branch ${branch}: clean, no commits beyond ${mainBranch}, no session).`);
   }
   if (reaped) log(`orphan reaper: ${reaped} worktree(s) reaped under ${root}.`);
+  pruneStaleOrphanAsides(root, slugs);
+}
+
+/**
+ * Delete `<slug>.orphan-<iso>` asides older than ORPHAN_ASIDE_MAX_DAYS. An
+ * aside is a dead directory (not a git worktree) that the reaper above moved
+ * out of the way so a seed could be created; nothing refers to it afterwards,
+ * so without this pass they accumulate for ever. Only exact
+ * `<slug>.orphan-<timestamp>` names for a worktree seed are touched, and only
+ * when the directory has no `.git` entry (a repository would be a human's).
+ */
+const ORPHAN_ASIDE_MAX_DAYS = 14;
+function pruneStaleOrphanAsides(root, slugs) {
+  const cutoff = Date.now() - ORPHAN_ASIDE_MAX_DAYS * 86_400_000;
+  let pruned = 0;
+  for (const entry of fs.readdirSync(root, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+    const m = /^(.+)\.orphan-\d{4}-\d{2}-\d{2}T[\d-]+Z$/.exec(entry.name);
+    if (!m || !slugs.includes(m[1].replace(/-\d+$/, ''))) continue;
+    const dir = path.resolve(root, entry.name);
+    try {
+      if (fs.existsSync(path.join(dir, '.git')) || fs.statSync(dir).mtimeMs > cutoff) continue;
+      fs.rmSync(dir, { recursive: true, force: true });
+      pruned += 1;
+    } catch (e) {
+      warn(`orphan reaper: could not prune aside ${dir}: ${e.message}`);
+    }
+  }
+  if (pruned) log(`orphan reaper: pruned ${pruned} orphan aside(s) older than ${ORPHAN_ASIDE_MAX_DAYS} days under ${root}.`);
 }
 
 async function reconcileSessions(sessionTools) {
