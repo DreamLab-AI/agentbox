@@ -1,11 +1,12 @@
 ---
 title: Agentbox Ingress & Identity
 doc_id: AB-INGRESS
-version: 0.2.2
+version: 0.2.3
 status: draft-for-ratification
 verified_commit: 
 date: 2026-09-05
 changelog:
+  - "0.2.3 (2026-10-28): ADR-2153 (proposed, none, inactive) - AoE is to be replaced by an owned session plane on a unix socket with no TCP listener; at cut-over the :9095 door row and Invariant 1 retire and :9096 narrows to /mgmt/* and its other named routes. Recorded as a proposed note on Invariant 1; the live compliance surface is unchanged."
   - "0.2.2 (2026-10-02): invariant 11 — pod origination signs as the sovereign identity the boot mints, or fails closed (ADR-2078, owner decision SC3); `sign_requests = true` in both manifests."
   - "0.2.1 (2026-09-26): item 10 — JunkieJarvis in end-to-end encrypted forum zones (forum ADR-2016): zone-key grants are stored in a 0600 key file and never read as messages; zk-tagged messages are decrypted before reading and undecryptable ones never reach the LLM; replies into an encrypted zone are encrypted or withheld."
   - "0.2.0 (2026-09-21): PROPOSED, not ratified. ADR-2098/2101 (PRD-024 sovereign settlement): three domain-separated keys where the identity key k_id never spends and never seals blocks, kind 38420 sidestr-account-binding, a second Multikey in the DID document that amends ADR-033 D2'/D3' with I1 intact, ADR-2012's scope narrowed to identity ingress with chain ingress authenticated by consensus, and NIP-98 selecting the spend key on /v1/wallet/*. Recorded in a clearly marked proposed section plus a proposed scope note on Invariant 6; the live compliance surface is unchanged."
@@ -256,6 +257,8 @@ JunkieJarvis signer and the existing authenticated `NostrBridge`.
    sole *identity* ingress, and every direct loopback consumer (gateway, tab0-bridge,
    seed script, `aoe-curl.sh`) must present the daemon token — a tokenless request to
    `:9095` must always 401.
+   *Proposed (ADR-2153, not live):* when the session plane replaces AoE this invariant
+   retires with `:9095`; the replacement exposes only a 0600 unix socket and no TCP listener.
 2. Identity is verified before any route is consulted; `X-Agentbox-Pubkey` is always
    proxy-injected, never trusted inbound.
 3. For *named governance upstreams*, `Authorization` injection is gated on

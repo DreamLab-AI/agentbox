@@ -1,0 +1,46 @@
+{
+  "$comment": "ADR-2153 launch contract: how each seed tool is started. {slug}, {model} and {wrapper} are substituted per seed. model_argv is appended only when the seed names a model; model_env is how a tool that has no model flag receives one. blockers are pane texts that mean the session is waiting on a human; ready, where present, is pane text that means the agent can take a prompt. Verified by tests/cli/session-launch-contract.test.mjs against the pinned CLI versions.",
+  "worktree_root": "~/workspace/wt",
+  "worktree_prefix": "aoe-",
+  "settle_seconds": 20,
+  "common_blockers": [
+    "Unrecognized flag",
+    "unknown option",
+    "command not found",
+    "No such file or directory"
+  ],
+  "tools": {
+    "wrapper": {
+      "$comment": "A seed whose slug has config/harness-wrappers/<slug>.sh (openrouter, zai, router). The wrapper owns env, profile and model.",
+      "argv": ["{wrapper}"],
+      "trust": ["claude-profile"],
+      "blockers": ["Yes, I trust this folder", "Select login method"]
+    },
+    "claude": {
+      "argv": ["env", "AGENTBOX_PROFILE={slug}", "claude"],
+      "model_argv": ["--model", "{model}"],
+      "trust": ["claude-root"],
+      "blockers": ["Yes, I trust this folder"]
+    },
+    "codex": {
+      "argv": ["env", "AGENTBOX_PROFILE={slug}", "codex"],
+      "model_argv": ["--model", "{model}"],
+      "trust": ["codex"],
+      "blockers": ["Trust this folder?", "Sign in with ChatGPT"]
+    },
+    "antigravity": {
+      "argv": ["env", "AGENTBOX_PROFILE={slug}", "agy"],
+      "model_argv": ["--model", "{model}"],
+      "trust": [],
+      "blockers": ["You are currently not signed in", "Select login method"]
+    },
+    "opencode": {
+      "$comment": "OpenCode v2 removed the TUI model flag (2.0.32: -m and --model are 'Unrecognized flag'). The model rides OPENCODE_CONFIG_CONTENT; --standalone keeps each session off the shared background service so per-session models cannot collide.",
+      "argv": ["opencode", "--standalone"],
+      "model_env": { "OPENCODE_CONFIG_CONTENT": "{\"model\":\"{model}\"}" },
+      "trust": [],
+      "blockers": [],
+      "ready": "Ask anything"
+    }
+  }
+}

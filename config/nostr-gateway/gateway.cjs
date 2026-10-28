@@ -286,7 +286,14 @@ function listTabs() {
   });
   return '🖥 tabs\n' + (lines.join('\n') || '(none)');
 }
-function sendKeys(idx, text) { sh('tmux', ['send-keys', '-t', idx, '-l', text]); sh('tmux', ['send-keys', '-t', idx, 'Enter']); }
+// Codex reads text and Enter arriving in one burst as a paste and keeps the
+// Enter as a newline, so the prompt is never submitted; pause before Enter.
+const SUBMIT_PAUSE = new Int32Array(new SharedArrayBuffer(4));
+function sendKeys(idx, text) {
+  sh('tmux', ['send-keys', '-t', idx, '-l', text]);
+  Atomics.wait(SUBMIT_PAUSE, 0, 0, 1500);
+  sh('tmux', ['send-keys', '-t', idx, 'Enter']);
+}
 
 // ── crypto: reply on the live authed socket ─────────────────────────────────
 function buildWrap(text) {

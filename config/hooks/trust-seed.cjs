@@ -6,7 +6,11 @@
 // a prompt nobody is watching. Observed 2026-09-02: ten Opus worker panes sat
 // dead for an hour behind the trust gate.
 //
-// Trust is recorded per absolute path under `projects.<path>` in ~/.claude.json.
+// Trust is recorded per absolute path under `projects.<path>` in a Claude config
+// store: ~/.claude.json, and for each harness-wrapper profile (zai, openrouter…)
+// the profile's own $WORKSPACE/profiles/<slug>/.claude/.claude.json, which is its
+// CLAUDE_CONFIG_DIR and so the only store that profile reads. Every existing
+// store is written; a profile that has never run has no store and is skipped.
 // This script marks:
 //   * the workspace root (WORKSPACE, default /home/devuser/workspace)
 //   * every git checkout or worktree under it, to a bounded depth
@@ -71,12 +75,30 @@ function findRepos(root, depth, acc) {
   return acc;
 }
 
+function profileStores() {
+  const root = path.join(WORKSPACE, 'profiles');
+  let entries;
+  try { entries = fs.readdirSync(root, { withFileTypes: true }); } catch { return []; }
+  return entries
+    .filter((e) => e.isDirectory())
+    .map((e) => path.join(root, e.name, '.claude', '.claude.json'))
+    .filter((f) => fs.existsSync(f));
+}
+
 function main() {
   const args = parseArgs(process.argv.slice(2));
   const targets = new Set([WORKSPACE, ...findRepos(WORKSPACE, args.depth, []), ...args.extra.map((p) => path.resolve(p))]);
+  for (const store of [CONFIG, ...profileStores()]) {
+    try { seedStore(store, targets, args); } catch (err) {
+      process.stderr.write(`[trust-seed] ${store} failed open: ${err.message}\n`);
+    }
+  }
+}
+
+function seedStore(store, targets, args) {
   let cfg = {};
-  try { cfg = JSON.parse(fs.readFileSync(CONFIG, 'utf8')); } catch (err) {
-    if (err.code !== 'ENOENT') { process.stderr.write(`[trust-seed] ${CONFIG} unreadable: ${err.message}\n`); return; }
+  try { cfg = JSON.parse(fs.readFileSync(store, 'utf8')); } catch (err) {
+    if (err.code !== 'ENOENT') { process.stderr.write(`[trust-seed] ${store} unreadable: ${err.message}\n`); return; }
   }
   if (typeof cfg !== 'object' || cfg === null) cfg = {};
   cfg.projects = cfg.projects && typeof cfg.projects === 'object' ? cfg.projects : {};
@@ -88,19 +110,20 @@ function main() {
     added += 1;
   }
   if (args.dryRun || added === 0) {
-    process.stderr.write(`[trust-seed] ${targets.size} path(s) checked, ${added} newly trusted${args.dryRun ? ' (dry run)' : ''}\n`);
+    process.stderr.write(`[trust-seed] ${store}: ${targets.size} path(s) checked, ${added} newly trusted${args.dryRun ? ' (dry run)' : ''}\n`);
     return;
   }
   // ~/.claude.json is a bind-mounted file inside a read-only $HOME, so a
   // sibling temp file + rename is impossible; write in place, keeping a
   // backup of the previous content under the workspace.
   try {
-    const bak = path.join(WORKSPACE, '.agentbox', 'claude.json.pre-trust-seed');
+    const name = store === CONFIG ? 'claude.json' : `${path.basename(path.dirname(path.dirname(store)))}.claude.json`;
+    const bak = path.join(WORKSPACE, '.agentbox', `${name}.pre-trust-seed`);
     fs.mkdirSync(path.dirname(bak), { recursive: true });
-    fs.copyFileSync(CONFIG, bak);
+    fs.copyFileSync(store, bak);
   } catch { /* best effort */ }
-  fs.writeFileSync(CONFIG, JSON.stringify(cfg, null, 2) + '\n');
-  process.stderr.write(`[trust-seed] ${targets.size} path(s) checked, ${added} newly trusted\n`);
+  fs.writeFileSync(store, JSON.stringify(cfg, null, 2) + '\n');
+  process.stderr.write(`[trust-seed] ${store}: ${targets.size} path(s) checked, ${added} newly trusted\n`);
 }
 
 try { main(); } catch (err) { process.stderr.write(`[trust-seed] failed open: ${err.message}\n`); }

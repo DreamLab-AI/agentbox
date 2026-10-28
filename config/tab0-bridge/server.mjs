@@ -283,6 +283,9 @@ async function sendToTab0(text, source = 'voice') {
     via = 'tmux';
     console.error('[sendToTab0] AoE unreachable, falling back to tmux send-keys:', err.message);
     tmux(['send-keys', '-t', TAB0, '-l', clean]);
+    // A TUI may read text and Enter in one burst as a paste and keep the Enter
+    // as a newline (Codex does); pause so the Enter submits.
+    await new Promise((r) => setTimeout(r, 1500));
     tmux(['send-keys', '-t', TAB0, 'Enter']);
   }
   pushTurn(source === 'nostr' ? 'nostr-inject' : 'voice-inject', clean, { via });

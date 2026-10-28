@@ -2173,13 +2173,6 @@ worktree      = true
 eager_mandate = false
 
 [[interaction_plane.session_seeds]]
-slug          = "loom"                # AoE first-class OpenCode connector → Loom façade (scaffolded, for knowledge work)
-tool          = "opencode"
-model         = "loom-lan/qwen3.8-27B"
-worktree      = true
-eager_mandate = false
-
-[[interaction_plane.session_seeds]]
 slug          = "loom-raw"            # Model-agnostic Loom passthrough; legacy slug preserves sessions
 tool          = "opencode"
 model         = "loom-agent/current"

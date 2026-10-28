@@ -2,11 +2,11 @@
 id: ADR-2079
 title: Examine AoE as the dispatch plane of a fleet model router — the routing policy lives outside the session manager, and privacy is its first axis
 date: 2026-09-06
-decision_status: proposed
+decision_status: superseded
 implementation_status: none
 activation_status: inactive
 supersedes: []
-superseded_by: []
+superseded_by: [ADR-2153]
 verified_commit: cda60e7a0d04a1436d2cdd83779c49745a4efb96
 verified_paths: []
 owner: jjohare

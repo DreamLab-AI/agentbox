@@ -1,10 +1,11 @@
 ---
 title: Agentbox Capability Governance
 doc_id: AB-GOVERNANCE
-version: 0.6.9
+version: 0.6.10
 status: draft-for-ratification
 verified_commit: 
 changelog:
+  - "0.6.10 (2026-10-28): ADR-2153 (proposed) supersedes ADR-2079: AoE is no longer examined as the fleet dispatch plane, because AoE itself is being replaced by an owned session plane. ADR-2080's router console becomes an ordinary seed on the new plane with its public-only scope unchanged."
   - "0.6.9 (2026-10-23): ADR-2150 (proposed, partial, staged) - video productions are directed through the existing media sidecars and their job clients under one evidence discipline, with a deterministic Rust toolkit (skills/video-production/runtime/), not a parallel orchestration engine. The Invariants compliance surface gains the reciprocal when-not and no-advertised-absent-runtime rule, tagged proposed until ADR-2150 is accepted."
   - "0.6.8 (2026-10-17): ADR-2143 (accepted, complete, staged for rebuild) - source supply is plumbing: the dream engine feeds the previous night's 'Sources wanted next night' and path-shaped scans to dream-core 0.2.0's requested-source read (first, capped at half the slots and bytes, lapsing once met or after three nights); supply asks never reach the governance panel. Every operator question is four plain-English fields (Decision / Why / If approved / If not); an 'If approved' that promises a merge is rewritten. Pin moved to dream-core/dream-gate =0.2.0."
   - "0.6.7 (2026-10-15): ADR-2141 (accepted, partially implemented, staged) - the dream engine consumes the extracted permissive dream-core and dream-gate crates; services/dream-engine stays the AGPL adapter (pinned to the published crates.io 0.1.0 releases, 2026-10-16). A protected-path patch is now a REJECT before it is applied, config drift under a night is BLOCKED-ENV, the dry streak counts REJECT (it used to reset), and a repeating harness failure raises HarnessStuck."

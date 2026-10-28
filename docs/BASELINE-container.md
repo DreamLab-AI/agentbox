@@ -1,10 +1,11 @@
 ---
 title: Agentbox Container Baseline
 doc_id: AB-BASELINE
-version: 0.5.10
+version: 0.5.11
 status: draft-for-ratification
 verified_commit: 
 changelog:
+  - "0.5.11 (2026-10-28): ADR-2153 (proposed, none, inactive). Agent of Empires (aoe-serve, the aoe flake input, the aoe-profiles volume, scripts/aoe-*) is to be replaced by services/agentbox-sessions: a tmux-backed daemon that reconciles [[interaction_plane.session_seeds]] at boot and on a timer, recreates dead, blocked or drifted sessions unless their worktree is dirty, keeps worktrees under ~/workspace/wt/aoe-<slug>, and serves list/create/send/status on a unix socket. The launch contract (config/session-plane/launch.json) is verified by tests/cli/session-launch-contract.test.mjs. Scaffolded `loom` seed dropped. Services table and invariants unchanged until cut-over."
   - "0.5.10 (2026-10-27): ADR-2152 (proposed, partial, staged). Mermaid rendering moves to browsercontainer's separate headless Chromium; Agentbox carries only the mmdc sidecar client, eliminating a third browser from the Nix closure. Agentbox and browsercontainer activation remain separate."
   - "0.5.9 (2026-10-26): ADR-2082 amendment. Ruflo plugin source pins an inspected main commit with security and ruRE, aligned with the published 3.63.1 CLI closure. The running manifest enables ruflo-rure and advertises the rure MCP category through the existing governed proxy; protected memory and hook prefixes remain denied. Staged pending image build and activation."
   - "0.5.8 (2026-10-23): ADR-2150 (proposed, partial, staged). Media-sidecar clients reconcile after an observation timeout, never resubmit blindly, and cancel only per job or report cancellation unsupported; no provider-global interrupt on a shared instance. Added under Proposed invariants until ADR-2150 is accepted, with one known divergence: Blender and ComfyUI cancellation are confirmed at request level, not at termination (the live ComfyUI build honours prompt-scoped interrupt)."
