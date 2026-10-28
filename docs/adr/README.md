@@ -59,7 +59,7 @@ detect changes to files it already lists — it is structurally blind to **addit
 is exactly how a new crate landed unlicensed under ADR-2030 while the record still read as
 verified and its `review_trigger` ("any new crate under `services/`") sat unactioned.
 
-_138 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
+_141 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
 
 | ID | Title | Domain | Date | Decision | Impl | Activation | Supersedes | Superseded by | Owner | Repo |
 |----|-------|--------|------|----------|------|------------|------------|---------------|-------|------|
@@ -135,7 +135,7 @@ _138 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
 | [ADR-2076](ADR-2076-benchmark-the-agent-retrieval-path.md) | Benchmark the agent retrieval path (/loom/search + /loom/sparql) on its own terms, with a frozen recall band | LEARNING-memory | 2026-09-05 | proposed | none | inactive | — | — | jjohare | agentbox |
 | [ADR-2077](ADR-2077-byte-identical-when-off-rebuild-proof.md) | Prove byte-identical-when-off with an actual image rebuild — the procedure, the commands and the receipts | GOVERNANCE-capabilities | 2026-09-05 | proposed | none | inactive | — | — | jjohare | agentbox |
 | [ADR-2078](ADR-2078-provision-pods-signer-from-sovereign-identity.md) | Provision the pods signer from the sovereign identity the boot already mints | INGRESS-identity | 2026-09-05 | accepted | complete | staged | — | — | jjohare | agentbox |
-| [ADR-2079](ADR-2079-aoe-is-the-dispatch-plane-of-a-fleet-model-router.md) | Examine AoE as the dispatch plane of a fleet model router — the routing policy lives outside the session manager, and privacy is its first axis | GOVERNANCE-capabilities | 2026-09-06 | proposed | none | inactive | — | — | jjohare | agentbox |
+| [ADR-2079](ADR-2079-aoe-is-the-dispatch-plane-of-a-fleet-model-router.md) | Examine AoE as the dispatch plane of a fleet model router — the routing policy lives outside the session manager, and privacy is its first axis | GOVERNANCE-capabilities | 2026-09-06 | superseded | none | inactive | — | ADR-2153 | jjohare | agentbox |
 | [ADR-2080](ADR-2080-metaharness-router-console-under-aoe.md) | Run the metaharness cost-optimal router as a dedicated AoE session for public day-to-day dev — artefacts vendored, embedding done offline, scoped to that session | GOVERNANCE-capabilities | 2026-09-06 | accepted | partial | staged | — | — | jjohare | agentbox |
 | [ADR-2081](ADR-2081-annexe-depth-law-and-honest-evaluator-receipts.md) | Annexe mirrors workspace depth; evaluator receipts carry the producer's exit code; a no-patch ACCEPT is unproven, not a harness fault | — | 2026-09-07 | accepted | complete | staged | — | — | jjohare | agentbox |
 | [ADR-2082](ADR-2082-orchestration-proxy-behind-governed-memory-server.md) | The governed server projects one pinned Ruflo capability; memory never crosses | LEARNING-memory | 2026-09-07 | accepted | complete | staged | — | — | jjohare | agentbox |
@@ -201,3 +201,6 @@ _138 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
 | [ADR-2148](ADR-2148-remote-media-control-planes.md) | Typed remote media control planes alongside existing bridges | BASELINE-container | 2026-10-21 | accepted | complete | live | — | — | jjohare | agentbox |
 | [ADR-2149](ADR-2149-isaac-sim-sidecar.md) | Isaac Sim runs as an opt-in headless sidecar behind a typed job API | BASELINE-container | 2026-10-22 | proposed | partial | staged | — | — | jjohare | agentbox |
 | [ADR-2150](ADR-2150-video-production-skill.md) | Video productions are directed through existing media sidecars under one evidence discipline, with a Rust toolkit for the deterministic halves | GOVERNANCE-capabilities | 2026-10-23 | proposed | partial | staged | — | — | jjohare | agentbox |
+| [ADR-2151](ADR-2151-voicelink-edge-voice.md) | Run voice at the client edge and drive native CLI panes over the ssh attach chain | — | 2026-10-27 | proposed | none | inactive | — | — | jjohare | agentbox |
+| [ADR-2152](ADR-2152-render-mermaid-in-browsercontainer.md) | Render Mermaid in browsercontainer without an Agentbox Chromium closure | BASELINE-container | 2026-10-27 | proposed | partial | staged | — | — | jjohare | agentbox |
+| [ADR-2153](ADR-2153-session-plane-replaces-aoe.md) | Replace Agent of Empires with an owned, tmux-backed session plane that reconciles to the manifest | — | 2026-10-28 | proposed | none | inactive | ADR-2079 | — | jjohare | agentbox |

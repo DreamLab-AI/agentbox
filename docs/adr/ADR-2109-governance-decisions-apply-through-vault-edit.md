@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: cca7ea3b151be3ea44907581d40271c714b07dd0
+verified_commit: 21769a881315a246afaa6e9d0b39daf4ec39b5bc
 verified_paths: [management-api/lib/ontology-apply.js, management-api/lib/ontology-propose.js, management-api/lib/kg-proposal-extractor.js, management-api/lib/elevation-publisher.js, management-api/routes/kg-elevation.js, management-api/adapters/orchestrator/local-process-manager.js, management-api/tests/ontology-apply.test.js, management-api/tests/ontology-propose-vault.test.js]
 owner: jjohare
 review_trigger: the `vault` binary landing on PATH (VisionClaw WS-C), or Loom deploying `/loom/attest` (WS-H)

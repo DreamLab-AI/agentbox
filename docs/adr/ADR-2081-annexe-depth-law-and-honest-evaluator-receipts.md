@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 96a9a925dec7b19b8b75ecb891cce7a0a24d09e4
+verified_commit: 21769a881315a246afaa6e9d0b39daf4ec39b5bc
 verified_paths: [services/dream-engine/src/engine.rs, services/dream-engine/src/runner.rs, services/dream-engine/src/dispatch.rs, services/dream-engine/src/candidate_flow.rs]
 owner: jjohare
 review_trigger: next dream-engine image rebuild (activation of the supervised loop), or any change to annexe layout or receipt classification

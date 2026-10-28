@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: b680a7aeef604276af73e00e1eb5156f379530ae
+verified_commit: 21769a881315a246afaa6e9d0b39daf4ec39b5bc
 verified_paths: [mcp/servers/lib/ontology-retrieval.js, tests/integration/loom-served-identity.test.mjs, tests/integration/ontology-retrieval-cache.test.mjs]
 owner: jjohare
 review_trigger: a Loom generation rebuild or model swap, a cache-poisoning or stale-answer incident, or ADR-2023's generation-identity Remaining item being taken up
