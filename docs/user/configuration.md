@@ -267,10 +267,10 @@ report_builder = true
 enabled = true    # vault OWL2 DL ontology skills; visionclaw_api_url set via [skills.ontology]
 ```
 
-With `mermaid = true`, Agentbox installs an `mmdc` compatibility client. Rendering
-requires the separately managed `browsercontainer` sidecar and its shared
-`gui-tools-exchange` volume; no Chromium or Puppeteer is baked into Agentbox.
-See [browsercontainer operations](../../browsercontainer/README.md).
+With `mermaid = true`, Agentbox installs `pele-render` (the pinned Pele renderer,
+Mermaid 12.1 grammar, in-process, no browser) and an `mmdc` compatibility shim
+onto it for existing skills and validators (ADR-2154, superseding ADR-2152).
+No Chromium, Puppeteer or sidecar is involved.
 
 ## `[toolchains]`
 

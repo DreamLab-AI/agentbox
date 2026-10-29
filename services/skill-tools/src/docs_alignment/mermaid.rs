@@ -1,8 +1,9 @@
 //! Port of `check_mermaid.py`'s `MermaidValidator`: fenced-block extraction
 //! (via `pulldown-cmark` instead of the Python regex, per the port brief),
-//! syntax heuristics, and — when `mmdc` is on `PATH` — real validation by
-//! shelling out to `mmdc` exactly as the Python did (`mmdc -i <tmp> -o
-//! /dev/null --quiet`), with the same 5s/10s timeouts via `tokio::time::timeout`.
+//! syntax heuristics, and — when `pele-render` is on `PATH` — real validation by
+//! shelling out to it (`pele-render --check --quiet -i <tmp>`, ADR-2154), with the
+//! same 5s/10s timeouts via `tokio::time::timeout`. The `has_mmdc` /
+//! `mmdc_available` names are kept because they are part of the report's JSON shape.
 
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::path::{Path, PathBuf};
@@ -295,7 +296,7 @@ impl MermaidValidator {
 
     pub async fn run(&self) -> MermaidReport {
         println!("Scanning {} for mermaid diagrams...", self.root.display());
-        println!("Mermaid CLI (mmdc) available: {}", self.has_mmdc);
+        println!("Mermaid renderer (pele-render) available: {}", self.has_mmdc);
 
         let md_files: Vec<PathBuf> = WalkDir::new(&self.root)
             .into_iter()
@@ -328,7 +329,7 @@ impl MermaidValidator {
         let mut suggestions = Vec::new();
         if !self.has_mmdc {
             suggestions.push(
-                "Install mermaid-cli for full syntax validation: npm install -g @mermaid-js/mermaid-cli".to_string(),
+                "Enable [skills.docs].mermaid in agentbox.toml (bakes pele-render) for full syntax validation".to_string(),
             );
         }
         let unknown_types = diagrams
@@ -366,7 +367,7 @@ impl MermaidValidator {
 async fn check_mmdc_available() -> bool {
     let result = tokio::time::timeout(
         Duration::from_secs(5),
-        tokio::process::Command::new("mmdc")
+        tokio::process::Command::new("pele-render")
             .arg("--version")
             .output(),
     )
@@ -379,18 +380,17 @@ async fn run_mmdc_validation(content: &str) -> (bool, Option<String>, Vec<String
     let tmp_path = unique_temp_mmd_path();
 
     if let Err(e) = std::fs::write(&tmp_path, content) {
-        warnings.push(format!("Could not run mmdc: {e}"));
+        warnings.push(format!("Could not run pele-render: {e}"));
         return (true, None, warnings);
     }
 
     let result = tokio::time::timeout(
         Duration::from_secs(10),
-        tokio::process::Command::new("mmdc")
+        tokio::process::Command::new("pele-render")
+            .arg("--check")
+            .arg("--quiet")
             .arg("-i")
             .arg(&tmp_path)
-            .arg("-o")
-            .arg("/dev/null")
-            .arg("--quiet")
             .output(),
     )
     .await;
@@ -410,7 +410,7 @@ async fn run_mmdc_validation(content: &str) -> (bool, Option<String>, Vec<String
                 return (false, Some(truncated), warnings);
             }
         }
-        Ok(Err(e)) => warnings.push(format!("Could not run mmdc: {e}")),
+        Ok(Err(e)) => warnings.push(format!("Could not run pele-render: {e}")),
         Err(_) => warnings.push("Validation timeout - diagram may be too complex".to_string()),
     }
 

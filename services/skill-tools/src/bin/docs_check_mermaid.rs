@@ -2,7 +2,7 @@
 //!
 //! Same flags, same defaults, same JSON shape, same exit-code convention
 //! (exit 1 iff any invalid diagrams were found). Async (`tokio`) because the
-//! `mmdc` availability probe and full-syntax validation both shell out with
+//! `pele-render` availability probe and full-syntax validation both shell out with
 //! the same timeouts the Python used (`subprocess.run(..., timeout=5|10)`).
 
 use std::path::PathBuf;

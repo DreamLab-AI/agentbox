@@ -74,11 +74,6 @@ const [RED, GREEN, YELLOW] = [31, 32, 33];
 
 // Versions at or above `below` are never proposed. Record why.
 const HOLDS = {
-  '@mermaid-js/mermaid-cli': {
-    below: '12.0.0',
-    reason: 'mermaid 12 pins chevrotain ~11.1.2 -> lodash-es 4.17.23 (GHSA-r5fr-rjxr-66jc, high); ' +
-            'v12 drops -w/-H/--pdfFit used by skills/mermaid-diagrams/scripts/render.sh',
-  },
 };
 
 // ---- semver (release versions only) --------------------------------------

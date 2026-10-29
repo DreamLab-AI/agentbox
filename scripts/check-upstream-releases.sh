@@ -118,7 +118,6 @@ for entry in \
   "codebase-memory-mcp|codebase-memory-mcp" \
   "agent-browser|agent-browser" \
   "playwright|playwright" \
-  "@mermaid-js/mermaid-cli|@mermaid-js/mermaid-cli" \
 ; do
   pkg="${entry%|*}"
   npm_pkg="${entry#*|}"

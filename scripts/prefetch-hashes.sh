@@ -418,7 +418,7 @@ PY
 patch_npm_cli_tarball_hash() {
   local fod_name="$1" hash="$2"
   local file="${REPO_ROOT}/flake.nix"
-  # fod_name is like "cli-3.6.12.tgz", "ruvector-0.2.25.tgz", "mermaid-cli-11.14.0.tgz".
+  # fod_name is like "cli-3.6.12.tgz", "ruvector-0.2.25.tgz", "codebase-memory-mcp-0.12.1.tgz".
   # Extract the version (semver-like suffix before .tgz) and the basename.
   # Strategy: version = last segment matching [0-9]+\.[0-9]+ prefix after last '-'.
   python3 - "$file" "$fod_name" "$hash" <<'PY'
@@ -433,7 +433,7 @@ if not m:
     print(f"  tarball-hash: cannot parse version from '{fod_name}' — skipping")
     sys.exit(0)
 version = m.group(1)
-basename = stem[:m.start()]   # e.g. "cli", "ruvector", "mermaid-cli"
+basename = stem[:m.start()]   # e.g. "cli", "ruvector", "codebase-memory-mcp"
 
 src = pathlib.Path(file).read_text()
 lines = src.splitlines(keepends=True)

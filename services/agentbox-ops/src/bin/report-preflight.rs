@@ -216,9 +216,9 @@ fn main() {
     println!("\n{BOLD}Diagram Tools (OPTIONAL){RESET}");
     s.budget(2);
     s.check(
-        "Mermaid CLI (mmdc)",
-        cmd_exists("mmdc"),
-        "npm install -g @mermaid-js/mermaid-cli",
+        "Mermaid renderer (pele-render)",
+        cmd_exists("pele-render"),
+        "enable [skills.docs].mermaid in agentbox.toml (bakes pele-render and the mmdc shim)",
     );
     s.check("seaborn", python_pkg("seaborn"), "pip install seaborn");
 
