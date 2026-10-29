@@ -136,6 +136,33 @@ test('every wrapper the contract resolves exists and is executable', () => {
   }
 });
 
+// The session-plane daemon (services/agentbox-sessions) resolves seeds with the
+// same rules as this file. If the two disagreed, a seed that passes here would
+// launch differently under the daemon, so the daemon's own resolution is
+// compared field by field. Skipped when the binary is not built.
+test('the daemon resolves every seed exactly as this test does', (t) => {
+  let bin = process.env.AGENTBOX_SESSIONS_BIN;
+  if (!bin) {
+    try { bin = execFileSync('sh', ['-c', 'command -v agentbox-sessions'], { encoding: 'utf8' }).trim(); } catch { /* not on PATH */ }
+  }
+  if (!bin) return t.skip('agentbox-sessions is not built (set AGENTBOX_SESSIONS_BIN)');
+  const rows = JSON.parse(execFileSync(bin, ['resolve', '--json'], { env: { ...process.env, AGENTBOX_ROOT: ROOT }, encoding: 'utf8' }));
+  assert.deepEqual(rows.map((r) => r.slug), seeds.map((s) => s.slug), 'the daemon sees a different roster');
+  for (const [i, seed] of seeds.entries()) {
+    const want = resolveLaunch(seed);
+    const got = rows[i];
+    assert.equal(got.kind, want.kind, seed.slug);
+    assert.deepEqual(got.argv, want.argv, seed.slug);
+    assert.deepEqual(got.env, want.env, seed.slug);
+    assert.deepEqual(got.blockers, want.blockers, seed.slug);
+    assert.equal(got.ready ?? undefined, want.ready, seed.slug);
+    // A shared (non-worktree) seed runs in the project checkout, which the daemon
+    // falls back from when WORKSPACE/project does not exist; only worktrees have
+    // one answer everywhere.
+    if (seed.worktree) assert.equal(got.dir, sessionDir(seed, { override: false }), seed.slug);
+  }
+});
+
 // ── live tiers ──────────────────────────────────────────────────────────────
 
 const LIVE = process.env.AGENTBOX_LIVE_LAUNCH === '1' || process.env.AGENTBOX_LIVE_ROUNDTRIP === '1';

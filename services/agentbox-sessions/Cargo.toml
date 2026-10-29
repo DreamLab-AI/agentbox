@@ -1,0 +1,37 @@
+[workspace]
+
+[package]
+name = "agentbox-sessions"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.85"
+license = "MIT OR Apache-2.0"
+description = "Agentbox session plane (ADR-2153): a tmux-backed daemon and CLI that reconciles the manifest's session seeds, replacing Agent of Empires."
+repository = "https://github.com/DreamLab-AI/agentbox"
+readme = "README.md"
+
+[lib]
+name = "agentbox_sessions"
+path = "src/lib.rs"
+
+[[bin]]
+name = "agentbox-sessions"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1"
+clap = { version = "4", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["preserve_order"] }
+toml = "1"
+sha2 = "0.11"
+hex = "0.4"
+rustix = { version = "1", features = ["net"] }
+
+[dev-dependencies]
+tempfile = "3"
+
+[profile.release]
+opt-level = "s"
+lto = true
+strip = true
