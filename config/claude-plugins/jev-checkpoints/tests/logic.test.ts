@@ -146,6 +146,17 @@ describe('fingerprint', () => {
     expect(fingerprint('mcp__ci__run_tests', run1)).not.toBe(fingerprint('Bash', run1))
   })
 
+  test('a silent failure is told apart by its command, not its bare exit status', () => {
+    // grep finding nothing exits 1 with no output; two different searches are not the same failure.
+    const silent = 'Exit code 1\nShell cwd was reset to /home/u/project'
+    expect(fingerprint('Bash', silent)).toBeNull()
+    expect(fingerprint('Bash', silent, "grep -n 'foo' a.ts")).not.toBe(fingerprint('Bash', silent, "grep -n 'bar' b.ts"))
+    // The same silent command failing again is still a repeat.
+    expect(fingerprint('Bash', silent, "grep -n 'foo' a.ts")).toBe(fingerprint('Bash', 'Exit code 1', "grep -n 'foo' a.ts"))
+    // A failure with its own error text keeps its text fingerprint, whatever the command.
+    expect(fingerprint('Bash', run1, 'cargo test')).toBe(fingerprint('Bash', run1, 'cargo test -q'))
+  })
+
   test('normalisation and error-line selection', () => {
     expect(normaliseLine('at foo (src/a.ts:12:4) took 15ms')).toBe('at foo (src/a.ts:<n>) took <dur>')
     expect(normaliseLine('error on line 42, col 7 at 12:01:02')).toBe('error on line <n> at <ts>')

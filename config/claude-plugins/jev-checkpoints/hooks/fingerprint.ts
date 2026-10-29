@@ -73,9 +73,24 @@ export function fnv1a64(text: string): string {
   return h.toString(16).padStart(16, '0')
 }
 
-/** The failure's fingerprint, or null when there is nothing to fingerprint. */
-export function fingerprint(tool: string, text: string): string | null {
+/** A line that says only that the call failed (its exit status) or is harness chatter, not what failed. */
+const STATUS_ONLY = /^(?:exit code \d+|shell cwd was reset to .*)$/
+
+/**
+ * The failure's fingerprint, or null when there is nothing to fingerprint.
+ *
+ * A silent failure (grep finding nothing, `test` false, a quiet non-zero exit)
+ * carries no text of its own, so its exit status alone would make every such
+ * failure look the same. It is identified by its command instead, and is not
+ * fingerprinted at all when the command is unknown.
+ */
+export function fingerprint(tool: string, text: string, command?: string): string | null {
   const lines = errorLines(text)
   if (lines.length === 0) return null
+  if (lines.every(l => STATUS_ONLY.test(l))) {
+    const cmd = command === undefined ? '' : normaliseLine(command)
+    if (cmd === '') return null
+    return `${tool}:${fnv1a64([...lines.filter(l => !l.startsWith('shell cwd')), cmd].join('\n'))}`
+  }
   return `${tool}:${fnv1a64(lines.join('\n'))}`
 }

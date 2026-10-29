@@ -328,7 +328,7 @@ async function afterTool<R extends { context?: readonly string[] }>(
   }
   if (!opts.repeatCheck || !isError || !watchesTool(tool)) return result
   if (!(await isOn($, id))) return result
-  const fp = fingerprint(tool, text)
+  const fp = fingerprint(tool, text, typeof input['command'] === 'string' ? input['command'] : undefined)
   if (!fp) return result
   // One fingerprint, one line, for the whole session: the main loop and every
   // subagent count the same failure together, and share the one-per-prompt cap.
