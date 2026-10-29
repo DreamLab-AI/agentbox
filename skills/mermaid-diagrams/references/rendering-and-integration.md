@@ -2,77 +2,56 @@
 
 ## Rendering Architecture
 
-Mermaid rendering routes through the **browsercontainer sidecar**, which has
-Chromium + Puppeteer. The agentbox image carries only an `mmdc` compatibility
-client in the Nix store. It has no local browser; a successful `mmdc --help`
-probe does not prove the sidecar can render.
-
-### Preferred: `mmdc` sidecar client
-
-```bash
-# Supported mmdc options delegate to browsercontainer over HTTP
-mmdc -i diagram.mmd -o diagram.png
-mmdc -i diagram.mmd -o diagram.svg -t dark
-mmdc -i diagram.mmd -o diagram.pdf
-```
-
-The wrapper POSTs to `http://browsercontainer:8931/render-mermaid`, which
-renders via the sidecar's Chromium. Output files pass through the shared
-`gui-tools-exchange` volume (agentbox: `/home/devuser/gui-tools`,
-browsercontainer: `/home/devuser/exchange`).
-Custom width, height, background and JSON config require sidecar render
-protocol version 2; an older sidecar produces an explicit error rather than
-silently ignoring those options. Basic renders remain compatible.
-
-### Alternative: direct HTTP API
+Mermaid renders with **Pele** (obsidianmd/pele, pinned 1.12.0, MIT, no
+dependencies) in-process in Node: no browser, Puppeteer or sidecar (ADR-2154).
+`pele-render` is the CLI; `mmdc` stays as a compatibility shim onto it. Mermaid
+remains the source syntax (Mermaid 12.1 grammar). Layout and style are Pele's
+own, so output differs from GitHub's native Mermaid rendering.
 
 ```bash
-curl -s -X POST http://browsercontainer:8931/render-mermaid \
-  -H 'Content-Type: application/json' \
-  -d '{"definition":"flowchart LR; A-->B-->C","format":"svg","theme":"default"}' \
-| jq -r '.filename'
-# Output file appears at /home/devuser/gui-tools/<filename>
+mmdc -i diagram.mmd -o diagram.svg            # SVG, every Pele CSS variable flattened
+mmdc -i diagram.mmd -o diagram.png -t dark    # PNG needs ImageMagick (baked)
+pele-render --check diagram.mmd notes.md      # parse only; file:line errors, exit 4
+pele-render notes.md -o figs/                 # every ```mermaid block of a .md
 ```
 
-### Prerequisites
-
-- `browsercontainer` sidecar running (`agentbox.sh browsercontainer up`)
-- Shared `gui-tools-exchange` volume mounted in both containers
+PDF: render the SVG, then `magick diagram.svg diagram.pdf` (raster-embedded).
 
 ---
 
 ## Rendering Options
 
-### Sidecar wrapper flags
+### Flags (`mmdc` shim)
 
 ```bash
-/opt/agentbox/scripts/mmdc-sidecar.sh -i <input.mmd> -o <output.png|svg|pdf>
-    -e <format>           # svg | png | pdf (inferred from -o extension if omitted)
-    -t <theme>            # dark | default | forest | neutral
-    -w <pixels> -H <pixels> # viewport width and height
+mmdc -i <input.mmd> -o <output.svg|png>
+    -e <format>           # svg | png (inferred from -o extension if omitted)
+    -t <theme>            # default | dark
+    -w <pixels>           # scale the SVG to this width
     -b <colour>           # background, e.g. transparent
-    -c <file>             # Mermaid JSON config
     -q                    # quiet
     --help                # Usage information
 ```
+
+Refused with exit 1 (no Pele equivalent): `-H`, `-s`, `-c`, `-C`, `-I`, `-p`,
+`-f`, themes `forest` and `neutral`, and `-e pdf`. `pele-render` has the same
+renderer with `--check`, several inputs and `.md` support.
 
 ### Batch rendering
 
 ```bash
 # Render all .mmd files in a directory
 for f in diagrams/*.mmd; do
-    /opt/agentbox/scripts/mmdc-sidecar.sh -i "$f" -o "${f%.mmd}.png" -t dark
+    mmdc -i "$f" -o "${f%.mmd}.png" -t dark
 done
 ```
 
 ### For LaTeX inclusion
 
 ```bash
-# Render as PDF for vector quality in LaTeX
-/opt/agentbox/scripts/mmdc-sidecar.sh -i diagram.mmd -o diagram.pdf
-
-# Or render as SVG and convert
-/opt/agentbox/scripts/mmdc-sidecar.sh -i diagram.mmd -o diagram.svg
+# SVG from Pele, then a PDF (raster-embedded) with ImageMagick
+mmdc -i diagram.mmd -o diagram.svg
+magick diagram.svg diagram.pdf
 ```
 
 Then in LaTeX:
@@ -106,19 +85,10 @@ This skill is called by the **report-builder** skill during Phase 4 (VISUALISE):
 
 ## Troubleshooting
 
-### Sidecar not reachable
-```bash
-# Ensure browsercontainer is running
-agentbox.sh browsercontainer up
-# Check health
-curl -s http://browsercontainer:8931/health | jq .
-```
-
 ### Rendering returns an error
-The sidecar logs show mmdc stderr. Check with:
-```bash
-agentbox.sh browsercontainer logs | tail -20
-```
+Errors read `file:line: pele syntax at mermaid line N: ...` with a caret
+snippet. A bare `;` in sequence-diagram text is rejected by Pele and by
+Mermaid 11 alike: use `#59;` or reword.
 
 ### Text truncated in nodes
 Wrap long labels in quotes: `A["Long label that needs wrapping"]`

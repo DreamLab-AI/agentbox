@@ -16,14 +16,14 @@ cd <agentbox>/skills/docs-alignment
 pip install -r requirements.txt
 ```
 
-#### Mermaid CLI Not Available
+#### Mermaid Renderer Not Available
 
-**Symptoms**: Warning about `mmdc` not found
+**Symptoms**: Warning about `pele-render` not found
 
 **Solution**:
 ```bash
-npm install -g @mermaid-js/mermaid-cli
-mmdc --help  # Verifies client installation only; render a small diagram to test the sidecar
+# mmdc is the Pele compatibility shim baked with [skills.docs].mermaid; no npm install.
+printf 'flowchart LR\n  A-->B\n' > /tmp/probe.mmd && pele-render --check /tmp/probe.mmd
 ```
 
 ### Validation Errors
@@ -50,13 +50,13 @@ docs-validate-links --root /path/to/project --docs-dir docs
 **Symptoms**: All mermaid diagrams reported as invalid
 
 **Causes**:
-1. Mermaid CLI not installed
+1. `pele-render` not on PATH ([skills.docs].mermaid off)
 2. Using outdated mermaid syntax
 
 **Solution**:
 ```bash
-# Install mermaid CLI
-npm install -g @mermaid-js/mermaid-cli
+# Enable [skills.docs].mermaid in agentbox.toml and rebuild; check with:
+pele-render --check diagram.mmd
 
 # Check for syntax updates
 # Old: graph TD

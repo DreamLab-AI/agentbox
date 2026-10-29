@@ -110,7 +110,7 @@ numbering is per-topic and sequential — renumber when you insert.
 - a low-density diagram kind: `mindmap`, `pie`, `quadrantChart`, `journey`
 - a dark `rect` fill (luminance < 140) — the message text stops being readable
 - an unterminated code fence
-- with `--render`: any mmdc parse error, or any render wider than 4500 px
+- with `--render`: any Pele parse error, or any render wider than 4500 px
 
 ## Conventions the checker cannot see
 

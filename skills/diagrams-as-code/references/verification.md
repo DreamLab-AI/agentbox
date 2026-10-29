@@ -160,7 +160,7 @@ than silently downgraded.
 ## Rendering is a separate gate
 
 `--check` cannot see Mermaid grammar, so a corpus that checks clean can still be
-unreadable. `--render` parses every block through `mmdc` and fails any render
+unreadable. `--render` renders every block with Pele (vendored, pinned) and fails any render
 wider than 4500 px. Re-render after every edit, including a one-line note in a
 diagram; `--only <substr>` keeps the loop fast while you are working on one
 topic, and the full render is the gate before you call the corpus done.

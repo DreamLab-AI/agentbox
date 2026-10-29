@@ -138,7 +138,7 @@ python3 -c "import fitz; doc=fitz.open('diagram.pdf'); doc[0].get_pixmap(dpi=200
 ### Mermaid Diagrams
 ```bash
 # Render via browsercontainer sidecar
-/opt/agentbox/scripts/mmdc-sidecar.sh -i diagram.mmd -o diagram.png
+mmdc -i diagram.mmd -o diagram.png
 ```
 
 ### Nano Banana Infographic Upgrade

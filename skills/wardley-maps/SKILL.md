@@ -109,7 +109,7 @@ See [references/data-mapper.md](references/data-mapper.md)
 
 ### Mermaid `wardley-beta` (default)
 
-Emit `.mmd` text; render via the browsercontainer sidecar (see `mermaid-diagrams` skill).
+Emit `.mmd` text; render with Pele through `mmdc` (see `mermaid-diagrams` skill).
 
 ```
 wardley-beta
@@ -140,9 +140,9 @@ evolve "Eval / Guardrails" 0.40
 Render:
 
 ```bash
-/opt/agentbox/scripts/mmdc-sidecar.sh -i map.mmd -o map.svg                     # vector
-/opt/agentbox/scripts/mmdc-sidecar.sh -i map.mmd -o map.png -e png              # raster
-/opt/agentbox/scripts/mmdc-sidecar.sh -i map.mmd -o map.pdf                     # LaTeX inclusion
+mmdc -i map.mmd -o map.svg                     # vector
+mmdc -i map.mmd -o map.png -e png              # raster
+mmdc -i map.mmd -o map.svg && magick map.svg map.pdf   # LaTeX inclusion (raster-embedded PDF)
 ```
 
 Grammar reference (Mermaid 11.15.0): https://mermaid.js.org/syntax/wardleyMap.html
@@ -226,7 +226,7 @@ wardley-quick-map
 
 ## LaTeX Integration
 
-Same `.mmd` -> `/opt/agentbox/scripts/mmdc-sidecar.sh` -> `\includegraphics` workflow as the Mermaid
+Same `.mmd` -> `mmdc` -> `\includegraphics` workflow as the Mermaid
 example above. For a full worked example (creative-industries positioning, the
 render command, and the LaTeX `\includegraphics` block) see
 [references/latex-integration.md](references/latex-integration.md).

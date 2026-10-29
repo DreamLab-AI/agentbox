@@ -6,11 +6,12 @@
  * reporter. Walk a corpus tree (conventionally `docs/diagrams`), parse each
  * topic file's YAML frontmatter, validate every fenced ```mermaid block and the
  * narrative sections around it, resolve every `path:line` citation against the
- * revision the topic declares, render through `mmdc`, and (re)generate the
+ * revision the topic declares, render with Pele, and (re)generate the
  * machine-readable indexes.
  *
- * Zero dependencies. Node >= 18. Optional: `mmdc` (Mermaid CLI) for --render,
- * `git` for citation resolution at a declared revision.
+ * Zero dependencies. Node >= 18. Rendering uses the vendored, sha256-pinned Pele
+ * build (scripts/vendor/pele, no install) and `git` for citation resolution at a
+ * declared revision.
  *
  * Usage:  node diagram-index-gen.cjs <corpus-dir> [flags]
  *
@@ -42,11 +43,11 @@
  *                        hosted CI checkout has no sibling repositories);
  *                        --cite-check is meaningless with it and --strict-
  *                        citations is refused with it.
- *   --render             render every mermaid block through `mmdc` into
+ *   --render             render every mermaid block with Pele into
  *                        <corpus>/rendered/<topic>/<id>.svg; any parse error
  *                        fails the run, and any render wider than 4500px fails
  *                        as illegible.
- *   --jobs N             render concurrency (default 6).
+ *   --jobs N             accepted for compatibility; Pele renders synchronously.
  *   --only S             restrict to topic files whose relative path contains S.
  *   --report <path>      write a JSON report of the whole corpus (topics,
  *                        diagrams, citation results, register counts, totals).
@@ -119,7 +120,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { spawn, execFileSync } = require('child_process');
+const { execFileSync } = require('child_process');
 
 const DEFAULT_SKIP_DIRS = ['rendered', 'tools', 'scripts', 'hero', 'archive', 'src', 'assets', 'node_modules'];
 const SKIP_FILES = new Set(['README.md', 'COVERAGE.md', 'REGISTER.md', 'DECISIONS-TIMELINE.md', 'CONTRIBUTING.md']);
@@ -665,51 +666,39 @@ function symbolCheck(topics) {
 }
 
 // ---------------------------------------------------------------- render
+// Pele (scripts/vendor/pele, sha256-pinned) renders in-process: no browser, no
+// mmdc, no Puppeteer. Widths are measured on Pele's own layout with its Node
+// text-width table, so they are not comparable with numbers from earlier
+// mmdc/Chromium renders. The SVG written to rendered/ is flattened to concrete
+// colours so it stays legible outside a page that defines --pele-* variables.
+const peleStatic = require('./lib/pele-static.cjs');
 function renderedDir(t) { return path.join(root, 'rendered', t.rel.replace(/\.md$/, '')); }
-function renderOne(topic, d, outDir) {
-  return new Promise((resolve) => {
-    const mmd = path.join(outDir, `${d.id}.mmd`);
-    const svg = path.join(outDir, `${d.id}.svg`);
-    fs.writeFileSync(mmd, d.src + '\n');
-    const child = spawn('mmdc', ['-i', mmd, '-o', svg, '-q'], { stdio: ['ignore', 'pipe', 'pipe'] });
-    let err = '';
-    child.stderr.on('data', (c) => { err += c.toString(); });
-    child.stdout.on('data', (c) => { err += c.toString(); });
-    child.on('error', (e) => resolve(`${topic.rel}:${d.id} - cannot spawn mmdc (${e.message}); install the Mermaid CLI or skip --render`));
-    child.on('close', (code) => {
-      if (code === 0) {
-        try {
-          const svgText = fs.readFileSync(svg, 'utf8');
-          const vb = svgText.match(/viewBox="[\d.\-]+ [\d.\-]+ ([\d.]+) ([\d.]+)"/);
-          const w = vb ? Math.round(+vb[1]) : 0;
-          if (w > MAX_WIDTH) return resolve(`${topic.rel}:${d.id} (md line ${d.line}) - rendered ${w}px wide (max ${MAX_WIDTH}); wrap long Notes with <br/> or split the diagram`);
-        } catch (e) { /* ignore census failure */ }
-        return resolve(null);
-      }
-      const m = err.match(/Parse error on line (\d+):[\s\S]*?\n([\s\S]*?)(?:\n\s+at |$)/);
-      const detail = m ? `mermaid line ${m[1]}: ${m[2].split('\n').slice(0, 3).join(' | ')}` : err.split('\n').filter((l) => l.trim() && !/^\s+at /.test(l)).slice(0, 3).join(' | ');
-      resolve(`${topic.rel}:${d.id} (md line ${d.line}) - ${detail}`);
-    });
-  });
+function renderOne(pele, topic, d, outDir) {
+  fs.writeFileSync(path.join(outDir, `${d.id}.mmd`), d.src + '\n');
+  let r;
+  try {
+    r = peleStatic.renderStatic(pele, d.src);
+  } catch (e) {
+    return `${topic.rel}:${d.id} (md line ${d.line}) - ${peleStatic.describeError(e)}`;
+  }
+  fs.writeFileSync(path.join(outDir, `${d.id}.svg`), r.svg);
+  if (r.width > MAX_WIDTH) return `${topic.rel}:${d.id} (md line ${d.line}) - rendered ${r.width}px wide (max ${MAX_WIDTH}); wrap long Notes with <br/>, cap them at ~90 chars, or split the diagram`;
+  return null;
 }
 async function renderAll(topics) {
-  const jobs = [];
+  const pele = await peleStatic.loadPele();
+  const errors = [];
+  let count = 0;
   for (const t of topics) {
     const outDir = renderedDir(t);
     fs.mkdirSync(outDir, { recursive: true });
-    for (const d of t.diagrams) jobs.push(() => renderOne(t, d, outDir));
-  }
-  const errors = [];
-  let next = 0;
-  async function worker() {
-    while (next < jobs.length) {
-      const j = jobs[next++];
-      const e = await j();
+    for (const d of t.diagrams) {
+      count++;
+      const e = renderOne(pele, t, d, outDir);
       if (e) errors.push(e);
     }
   }
-  await Promise.all(Array.from({ length: Math.min(flags.jobs, jobs.length) }, worker));
-  return { errors, count: jobs.length };
+  return { errors, count };
 }
 
 // ---------------------------------------------------------------- coverage of source tree
@@ -947,7 +936,7 @@ function writeReport(topics, outPath) {
   }
   if (flags.render) {
     const { errors: rerr, count } = await renderAll(topics);
-    console.log(`rendered ${count - rerr.length}/${count} diagrams via mmdc`);
+    console.log(`rendered ${count - rerr.length}/${count} diagrams via Pele`);
     errors.push(...rerr);
   }
   if (flags.report) {

@@ -6,7 +6,7 @@ description: >-
   drawn from as path:line, every topic stamped with the revision it was verified
   against, and every tension, debt item, doc drift, open question and invariant
   marked in place and collected into a register. Ships the generator that gates it
-  — structure, citations at the declared revision, mmdc grammar, 4500px
+  — structure, citations at the declared revision, Pele grammar, 4500px
   legibility, generated indexes and a JSON report. Use whenever someone wants a
   repository or estate mapped, catalogued or cartographed in diagrams, asks for
   "diagrams as code", an architecture diagram set, a diagram corpus or a
@@ -41,7 +41,7 @@ product repository, 71 topics / 841 diagrams across a ten-repository estate.
 - **Extend** one: a new subsystem, a new area, more diagrams on a thin topic.
 - **Verify** one against HEAD: which topics' cited sources have moved, which
   citations no longer resolve, what has to be re-read and re-stamped.
-- **Render** one: `mmdc` grammar plus the legibility ceiling.
+- **Render** one: Pele grammar plus the legibility ceiling.
 - **Report** on one for another consumer (the `explainer` skill's diagrams pack).
 
 **When NOT to use:** one standalone diagram for a document or a chat answer
@@ -61,7 +61,7 @@ docs/diagrams/
   DECISIONS-TIMELINE.md  hand-written: decisions and their reversals in time order
   diagrams.config.json   optional: pins areas/order, coverage roots, ADR dir
   <area>/NN-slug.md      the topic files — the only hand-written diagram content
-  rendered/              mmdc output; gitignored, regenerable
+  rendered/              Pele output (flattened SVG); gitignored, regenerable
   tools/                 a copy of, or a shim onto, the generator
 ```
 
@@ -171,8 +171,9 @@ batch procedure and version-skew traps are in [references/verification.md](refer
 
 ## The render rule
 
-`--render` parses every block through `mmdc` and **fails any render wider than
-4500 px** — wider is illegible at any zoom, which is the same as absent.
+`--render` renders every block with **Pele** (vendored `scripts/vendor/pele`,
+sha256-pinned, in-process, no browser) and **fails any render wider than
+4500 px**, measured on Pele's own layout — wider is illegible at any zoom, which is the same as absent.
 Re-render after every edit, including a one-line note: the structural checker
 cannot see Mermaid grammar. Dark `rect` fills (luminance < 140) and the
 low-density kinds (`mindmap`, `pie`, `quadrantChart`, `journey`) are refused
@@ -195,15 +196,16 @@ outright.
 
 ## The generator
 
-`scripts/diagram-index-gen.cjs` — zero dependencies, Node ≥ 18, `mmdc` optional.
-Copy it to `<corpus>/tools/` (or a repo `scripts/`) so the corpus is
+`scripts/diagram-index-gen.cjs` — zero dependencies, Node ≥ 18; `--render` needs no install
+(Pele is vendored in `scripts/vendor/pele` with `scripts/lib/pele-static.cjs`).
+Copy it **with those two directories** to `<corpus>/tools/` (or a repo `scripts/`) so the corpus is
 self-checking without this skill present.
 
 ```bash
 G=scripts/diagram-index-gen.cjs                     # or docs/diagrams/tools/...
 node $G docs/diagrams --check                        # structure only
 node $G docs/diagrams --check --cite-check           # + citations (warns)
-node $G docs/diagrams --check --render               # + mmdc grammar and width
+node $G docs/diagrams --check --render               # + Pele grammar and width
 node $G docs/diagrams --check --cite-check --strict-citations   # CI gate
 node $G docs/diagrams --check --cite-check --worktree-citations # dirty tree
 node $G docs/diagrams --check --no-source-paths      # CI without sibling repos
@@ -240,7 +242,7 @@ Each of these cost a render cycle on a live corpus.
 
 | Breaks | Where | Do instead |
 |---|---|---|
-| bare `;`, HTML entities (`&lt;`) | sequence message text, `Note over X:` | commas, `<br/>`, plain prose |
+| bare `;`, HTML entities (`&lt;`) | sequence message text, `Note over X:` | commas, `<br/>`, plain prose; a bare `;` is rejected by Pele and by Mermaid 11 alike |
 | `::` or a quote | stateDiagram-v2 transition labels | `Foo.bar`, no quotes |
 | `{ }` in a member line | classDiagram | drop the braces |
 | a `path:line` in a relation label | classDiagram | colon-free prose on the relation; citation in a member line or `note for X "..."` |

@@ -79,5 +79,5 @@ evolve "LLM API" 0.80
 Render:
 
 ```bash
-/opt/agentbox/scripts/mmdc-sidecar.sh -i wardley.mmd -o wardley.svg
+mmdc -i wardley.mmd -o wardley.svg
 ```

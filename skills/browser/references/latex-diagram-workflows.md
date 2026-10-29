@@ -1,44 +1,19 @@
 # LaTeX and Diagram Workflows (browser sidecar)
 
-On-demand cookbook for using the `browsercontainer` sidecar to render diagrams
+On-demand cookbook for using the `browsercontainer` sidecar to inspect diagrams
 and spot-check LaTeX/PDF output. Canonical connection details live in the
 parent `SKILL.md`.
 
 ## Mermaid Rendering
 
-The Agentbox `mmdc` command delegates to browsercontainer; it does not need
-local Chromium. Prefer `mmdc -i map.mmd -o map.svg`. The browser automation
-recipe below is for interactive inspection, not routine diagram rendering:
-
-```python
-mmd_content = pathlib.Path("map.mmd").read_text()
-html = f"""<!DOCTYPE html>
-<html><head>
-<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
-<script>mermaid.initialize({{startOnLoad:true,theme:'default'}});</script>
-</head><body style="background:white;margin:0;padding:20px">
-<div class="mermaid">{mmd_content}</div>
-</body></html>"""
-
-html_path = "/tmp/mermaid_render.html"
-pathlib.Path(html_path).write_text(html)
-```
-
-Then in the browser sidecar:
+Mermaid is rendered by Pele, not by a browser (ADR-2154): use
+`mmdc -i map.mmd -o map.svg` (or `pele-render`). Do not load Mermaid from a CDN
+in a page to render diagrams. To inspect a rendered SVG visually, open the file
+in the sidecar and screenshot it:
 
 ```javascript
-navigate_page({ type: "url", url: `file://${html_path}` })
-// Wait for Mermaid to render (evaluate or snapshot to verify)
-evaluate_script({ function: "() => document.querySelector('.mermaid svg') !== null" })
+navigate_page({ type: "url", url: "file:///path/to/map.svg" })
 take_screenshot({ filePath: "/tmp/wardley_map.png" })
-// For high-DPI: use viewport scaling or take at larger viewport width
-```
-
-For 2x resolution, set a wider viewport before screenshotting:
-
-```javascript
-evaluate_script({ function: "() => document.body.style.zoom='200%'" })
-take_screenshot({ filePath: "/tmp/wardley_map_2x.png" })
 ```
 
 ## PDF Preview During LaTeX Builds

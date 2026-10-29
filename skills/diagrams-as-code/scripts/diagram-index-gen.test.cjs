@@ -315,3 +315,20 @@ test('a worded range that wraps a line is one range', () => {
   assert.ok(at(w, 'WRAP-RANGE-BACK').some((x) => /src\/b\.ts:4-2 is a backwards range/.test(x)), w.join('\n'));
   assert.equal(w.filter((x) => /src\/b\.ts:5 is blank/.test(x)).length, 1, w.join('\n'));
 });
+
+test('--render renders with the vendored Pele, writes a flattened SVG and never calls mmdc', () => {
+  const r = run('--check', '--render');
+  assert.ok(!/mmdc/.test(r.out), r.out);
+  assert.match(r.out, /rendered 1\/1 diagrams via Pele/, r.out);
+  const svg = fs.readFileSync(path.join(corpus, 'rendered', 'alpha', '01-topic', 'AA-01.1.svg'), 'utf8');
+  assert.match(svg, /^<svg\b/);
+  assert.ok(!svg.includes('var(--'), 'every Pele CSS variable is flattened');
+});
+
+test('--render reports a Pele parse error with the topic, diagram and md line', () => {
+  const bad = path.join(repo, 'bad', 'diagrams');
+  write('bad/diagrams/alpha/01-topic.md', TOPIC(sha).replace('flowchart LR', 'sequenceDiagram\n  A->>B: one; two\nflowchart LR'));
+  const r = runAt(bad, '--check', '--render');
+  assert.notEqual(r.code, 0, r.out);
+  assert.match(r.out, /alpha\/01-topic\.md:AA-01\.1 \(md line \d+\) - pele syntax at mermaid line/);
+});

@@ -5,7 +5,7 @@ description: >
   self-contained HTML/SVG diagrams with 28 visual types, branded design system, semantic
   patterns, draw.io/Mermaid import, dark/light/terminal variants, animation, and
   accessible SVG. Preferred for any diagram that will be presented, published, or shared.
-  (2) Mermaid — fast code-first .mmd diagrams rendered to PNG/SVG/PDF via browsercontainer.
+  (2) Mermaid — fast code-first .mmd diagrams rendered to SVG/PNG via Pele (PDF via ImageMagick).
   Preferred for version-controlled technical diagrams embedded in docs or reports.
 triggers:
   - /diagram
@@ -38,7 +38,7 @@ Two engines for two jobs. **Pick the right one before drawing.**
 |------|--------|-----|
 | Presentation, blog, slide, social card, editorial output | **diagram-design** | Branded HTML with editorial typography, semantic patterns, accessible SVG |
 | Mermaid/draw.io source to redraw at publication quality | **diagram-design** | Has dedicated import workflows for both formats |
-| Quick technical diagram committed alongside code | **Mermaid** | Plain-text `.mmd`, diffable, renders via sidecar |
+| Quick technical diagram committed alongside code | **Mermaid** | Plain-text `.mmd`, diffable, renders with Pele |
 | Diagram inside a markdown report or LaTeX doc | **Mermaid** | PNG/SVG/PDF export, embeds cleanly |
 | Rapid iteration on structure before polish | **Mermaid** | Faster cycle; convert to diagram-design later |
 
@@ -78,7 +78,7 @@ Follow its §0 style-guide gate on first use in a project.
 
 ## Engine 2: Mermaid (code-first .mmd)
 
-25 diagram types rendered via the **browsercontainer sidecar** (Chromium + puppeteer).
+Rendered by **Pele** (pinned, in-process, no browser) through the `mmdc` compatibility command; Mermaid stays the source syntax (ADR-2154).
 
 ### Quick start
 
@@ -91,18 +91,19 @@ flowchart TD
     C --> E[Return Response]
 EOF
 
-/opt/agentbox/scripts/mmdc-sidecar.sh -i diagram.mmd -o diagram.png
-/opt/agentbox/scripts/mmdc-sidecar.sh -i diagram.mmd -o diagram.svg -t dark
-/opt/agentbox/scripts/mmdc-sidecar.sh -i diagram.mmd -o diagram.pdf
+mmdc -i diagram.mmd -o diagram.png
+mmdc -i diagram.mmd -o diagram.svg -t dark
+magick diagram.svg diagram.pdf     # PDF: convert the SVG with ImageMagick (raster-embedded)
+pele-render --check diagram.mmd    # parse only; errors read file:line
 ```
 
-Prerequisite: `browsercontainer` sidecar running.
+No sidecar or browser is needed.
 
 ### Reference (load on demand)
 
 - **[references/diagram-types.md](references/diagram-types.md)** — 25 Mermaid types
 - **[references/styling-and-templates.md](references/styling-and-templates.md)** — themes, classDef, templates
-- **[references/rendering-and-integration.md](references/rendering-and-integration.md)** — sidecar, HTTP API, batch, LaTeX
+- **[references/rendering-and-integration.md](references/rendering-and-integration.md)** — Pele, flags, batch, LaTeX
 
 ### Best practices
 

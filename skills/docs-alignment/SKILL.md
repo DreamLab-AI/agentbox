@@ -45,8 +45,7 @@ AI-tell removal undone.
 Binary path — run the whole alignment in one command:
 
 ```bash
-npm install -g @mermaid-js/mermaid-cli
-
+# Mermaid validation uses pele-render (baked with [skills.docs].mermaid); nothing to install.
 docs-alignment \
   --project-root /path/to/project \
   --docs-dir ./docs \

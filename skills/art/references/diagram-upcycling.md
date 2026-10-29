@@ -16,8 +16,8 @@ image-in / image-out editing that the CLI does not expose.
 pdflatex -interaction=nonstopmode diagram.tex
 convert -density 300 diagram.pdf -quality 95 diagram_base.png
 
-# Mermaid via browsercontainer sidecar
-/opt/agentbox/scripts/mmdc-sidecar.sh -i diagram.mmd -o diagram_base.png
+# Mermaid via Pele (mmdc shim)
+mmdc -i diagram.mmd -o diagram_base.png
 
 # matplotlib
 plt.savefig("chart_base.png", dpi=150, bbox_inches="tight")

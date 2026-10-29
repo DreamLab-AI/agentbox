@@ -31,8 +31,8 @@ for f in "$INPUT_DIR"/*.mmd "$INPUT_DIR"/*.mermaid; do
 
   echo -n "  Rendering $BASENAME... "
 
-  ARGS=(-i "$f" -o "$OUTPUT_DIR/${BASENAME}.png" -w 2000 -H 1200 -t "$MERMAID_THEME")
-  [ -n "$CONFIG" ] && [ -f "$CONFIG" ] && ARGS+=(-c "$CONFIG")
+  ARGS=(-i "$f" -o "$OUTPUT_DIR/${BASENAME}.png" -w 2000 -t "$MERMAID_THEME")
+  # Pele has no JSON theme config (-c) or viewport height (-H); light/dark are its two palettes.
   [ "$THEME" = "dark" ] && ARGS+=(-b '#0B2545')
 
   if mmdc "${ARGS[@]}"; then
@@ -44,10 +44,13 @@ for f in "$INPUT_DIR"/*.mmd "$INPUT_DIR"/*.mermaid; do
     ERRORS=$((ERRORS + 1))
   fi
 
-  # Also render PDF for LaTeX
-  PDF_ARGS=(-i "$f" -o "$OUTPUT_DIR/${BASENAME}.pdf" -w 2000 -H 1200 -t "$MERMAID_THEME")
-  [ -n "$CONFIG" ] && [ -f "$CONFIG" ] && PDF_ARGS+=(-c "$CONFIG")
-  mmdc "${PDF_ARGS[@]}" >/dev/null || echo "  PDF render failed for $BASENAME" >&2
+  # Also render PDF for LaTeX: SVG from Pele, then ImageMagick (raster-embedded).
+  SVG_TMP="$(mktemp --suffix=.svg)"
+  if mmdc -i "$f" -o "$SVG_TMP" -w 2000 -t "$MERMAID_THEME" -q >/dev/null \
+     && magick "$SVG_TMP" "$OUTPUT_DIR/${BASENAME}.pdf" 2>/dev/null; then :; else
+    echo "  PDF render failed for $BASENAME" >&2
+  fi
+  rm -f "$SVG_TMP"
 done
 
 echo ""

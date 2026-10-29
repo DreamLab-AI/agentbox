@@ -1,7 +1,7 @@
 # LaTeX Integration — worked example
 
 Full workflow for including a Wardley map in a LaTeX document: write the `.mmd` file,
-render it via the browsercontainer sidecar (`/opt/agentbox/scripts/mmdc-sidecar.sh`, same as the main
+render it with Pele (`mmdc`, same as the main
 `wardley-beta` example in `../SKILL.md`), then `\includegraphics` the result.
 
 ## Step 1 — Write the `.mmd` file
@@ -43,9 +43,9 @@ audience -> "Distribution"
 ## Step 2 — Render via browsercontainer sidecar
 
 ```bash
-/opt/agentbox/scripts/mmdc-sidecar.sh -i map.mmd -o figures/wardley/creative_industries.png
+mmdc -i map.mmd -o figures/wardley/creative_industries.png
 # Or for vector output:
-/opt/agentbox/scripts/mmdc-sidecar.sh -i map.mmd -o figures/wardley/creative_industries.svg
+mmdc -i map.mmd -o figures/wardley/creative_industries.svg
 ```
 
 ## Step 3 — Include in LaTeX
