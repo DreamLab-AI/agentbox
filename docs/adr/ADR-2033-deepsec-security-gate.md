@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 21769a881315a246afaa6e9d0b39daf4ec39b5bc
+verified_commit: d1dd896f4a790762b150d81a94a03b268b04c543
 verified_paths: [flake.nix, agentbox.toml, schema/agentbox.toml.schema.json, scripts/agentbox-config-validate.js, management-api/lib/system-manifest.js, skills/build-with-quality/scripts, skills/build-with-quality/references/deepsec-security-gate.md, .github/workflows/deepsec.yml]
 owner: jjohare
 review_trigger: a deepsec major version, a change to its CLI exit-code contract or model-route schema, any new model route, or the first paid full-repo run
@@ -411,3 +411,7 @@ Sidecar image activation is tracked separately in the host deployment receipt.
 Re-verified 2026-10-22 at `0382cc4b5e34f75a62184bf350f865533010dc52`: reviewed the delta adding an independent, opt-in Isaac Sim lifecycle and live-class service catalogue entry, the 130th routed skill, pinned regional ComfyUI nodes/model metadata, and Blender background Python failure propagation. Existing ingress, role isolation, instruction projection, durable adapters, retrieval geometry, System One selection and image evidence boundaries are unchanged. Isaac runner/contract (15), GPU picker, launcher selection, Blender bridge (19), role supervisor (25), skill lint and catalogue checks pass. Isaac vendor-image and fixture verification remains staged until executed.
 
 Re-verified 2026-10-23 at `951ada931e235ad45b61b2bef90b7e5c76f8d76c`: flake.nix delta since 0382cc4 (cacert override, NODE_OPTIONS=--use-openssl-ca, agentic-qe, wrangler, rufloConsole pins) touches no deepsec wiring. Re-read at HEAD: `deepsecPkg` is `mkNpmCli` exact pin 2.3.10 (flake.nix:761-765), gated by `toolchainCfg.deepsec` (flake.nix:798), `ENABLE_DEEPSEC` projected (flake.nix:4462). The deepsec gate is a fake-CLI fixture suite with no TLS path, so the CA bundle change cannot reach it. `node --test skills/build-with-quality/scripts/deepsec-gate.test.mjs` passes 10/10 in a detached worktree at HEAD. No paid scan run.
+
+### Re-verification — 2026-10-29 (ADR-2154 Pele renderer)
+
+`21769a881..d1dd896f4`: `flake.nix` replaces the `mermaidSidecarCliPkg` shell wrapper with `lib/pele.nix` (`pele-render` and an `mmdc` shim, still gated by `[skills.docs].mermaid`) and puts the two commands in `npmCliGatedPackages` in its place; no other gate, pin or supervisor text changes. Nothing ADR-2033 governs changes meaning. The decision holds. Re-verified by reading `git diff 21769a881..d1dd896f4 -- flake.nix` (new hunks only). Nix was not evaluated here; the image is unverified until the host rebuild.

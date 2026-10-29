@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 21769a881315a246afaa6e9d0b39daf4ec39b5bc
+verified_commit: d1dd896f4a790762b150d81a94a03b268b04c543
 verified_paths: [scripts/ci/check-ports-loopback.sh, .github/workflows/invariants.yml, flake.nix, docker-compose.yml]
 owner: jjohare
 review_trigger: Any new entry on the SANCTIONED list, or a new compose overlay file
@@ -435,3 +435,7 @@ Tripped by `flake.nix` alone (every other governed path is unchanged since `3953
 Claims re-read at HEAD: `docker-compose.yml:47` `"9096:9096"` is the single LAN exception, declared in `flake.nix:2941` and defaulted by `interactionPlaneProxyPort` at `:414`; `:3548` states `:9095` is never published; the gate, the workflow and `docker-compose.yml` are unchanged since `395380f71`. No hunk adds a publish, a listener or a SANCTIONED entry. Commands: `sh scripts/ci/check-ports-loopback.sh` (PASS, 14 compose files, 11 ports blocks, all loopback-only or sanctioned; the listener audit reports only the existing sanctioned jupyter-lab, wayvnc and code-server binds), `node --test tests/security/check-listeners.test.mjs` (15 pass, 0 fail). The decision holds.
 
 Review trigger fired and was actioned: `docker-compose.isaac-sim.yml` is a new overlay since `395380f71` (ADR-2149, `git diff --name-status 395380f71..HEAD | grep -i compose`). It declares no `ports:` block (`git show HEAD:docker-compose.isaac-sim.yml | grep -n ports` finds only comments saying so), `scripts/ci/check-ports-loopback.mjs` is unchanged so the SANCTIONED list gained no entry, and the gate above sweeps it with the other compose files. The invariant holds for the new overlay.
+
+### Re-verification — 2026-10-29 (ADR-2154 Pele renderer)
+
+`21769a881..d1dd896f4`: `flake.nix` replaces the `mermaidSidecarCliPkg` shell wrapper with `lib/pele.nix` (`pele-render` and an `mmdc` shim, still gated by `[skills.docs].mermaid`) and puts the two commands in `npmCliGatedPackages` in its place; no other gate, pin or supervisor text changes. Nothing ADR-2013 governs changes meaning. The decision holds. Re-verified by reading `git diff 21769a881..d1dd896f4 -- flake.nix` (new hunks only). Nix was not evaluated here; the image is unverified until the host rebuild.

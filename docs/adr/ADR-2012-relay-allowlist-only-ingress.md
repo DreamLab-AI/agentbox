@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 21769a881315a246afaa6e9d0b39daf4ec39b5bc
+verified_commit: d1dd896f4a790762b150d81a94a03b268b04c543
 verified_paths: [agentbox.toml, flake.nix]
 owner: jjohare
 review_trigger: ingress_policy changes from allowlist, or the ADR-040 D3 governance-publisher key-split lands
@@ -449,3 +449,7 @@ Sidecar image activation is tracked separately in the host deployment receipt.
 Tripped by `flake.nix` alone (every other governed path is unchanged since `395380f71`: `git diff 395380f71..HEAD -- <other verified_paths>` is empty). The flake hunks are the eMudhra `cacert` override, the `agenticQePkg` (3.15.10) and `wranglerPkg` (4.151.3) pins, the `rufloConsole` pin move and its `rufloConsolePlugins` name, and `NODE_OPTIONS=--use-openssl-ca` in the container env list. Checked against committed `HEAD` in a detached worktree, not the working tree.
 
 Claims re-read at HEAD: `flake.nix:1898` `relayAllowedPubkeysCsv`, `:1909` explicit empty `pubkey_whitelist = [ ]`, `:1919` NIP-42 on for every policy but `open`, `:4522` `AGENTBOX_RELAY_POLICY` defaulting to `allowlist`; `agentbox.toml:150` `ingress_policy = "allowlist"`, `:156` `allowed_pubkeys`, `:186` `agent_event_auth = "nip98"` (agentbox.toml unchanged since `395380f71`); `services/nostr-pod-bridge/src/admission.rs:93` `DenyAllEmptyAllowlist`. No hunk is in the relay generator. The ADR-040 D3 key split is still pending, so `partial` stands. Commands: `grep -nE "relayAllowedPubkeysCsv|pubkey_whitelist|ingress_policy" flake.nix`, `grep -nE "ingress_policy|agent_event_auth" agentbox.toml`. The decision holds. Not run: the Rust admission tests (cargo writes target/); static check only, consistent with the record being `partial`.
+
+### Re-verification — 2026-10-29 (ADR-2154 Pele renderer)
+
+`21769a881..d1dd896f4`: `flake.nix` replaces the `mermaidSidecarCliPkg` shell wrapper with `lib/pele.nix` (`pele-render` and an `mmdc` shim, still gated by `[skills.docs].mermaid`) and puts the two commands in `npmCliGatedPackages` in its place; no other gate, pin or supervisor text changes. Nothing ADR-2012 governs changes meaning. The decision holds. Re-verified by reading `git diff 21769a881..d1dd896f4 -- flake.nix` (new hunks only). Nix was not evaluated here; the image is unverified until the host rebuild.

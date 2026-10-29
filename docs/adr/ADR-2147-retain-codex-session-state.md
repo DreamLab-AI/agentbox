@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 21769a881315a246afaa6e9d0b39daf4ec39b5bc
+verified_commit: d1dd896f4a790762b150d81a94a03b268b04c543
 verified_paths: [flake.nix, docker-compose.yml, docker-compose.override.yml, scripts/migrate-codex-home.sh, tests/config/compose-persistence.test.cjs]
 owner: jjohare
 review_trigger: changes to Codex home mounts, session retention, or the migration procedure
@@ -67,3 +67,7 @@ role-supervisor checks pass (25), skills lint and loopback-port checks pass.
 Sidecar image activation is tracked separately in the host deployment receipt.
 
 Re-verified 2026-10-23 at `951ada931e235ad45b61b2bef90b7e5c76f8d76c`: flake.nix delta does not touch Codex state. Re-read at HEAD: `codex-home:/home/devuser/.codex` (flake.nix:3893) and `codex-packages` (flake.nix:3895), no `.codex` tmpfs entry, `CODEX_HOME` (flake.nix:4476). `node tests/config/compose-persistence.test.cjs` passes (17 volume identities, no home tmpfs) in a detached worktree at HEAD. The migration script was read, not run.
+
+### Re-verification — 2026-10-29 (ADR-2154 Pele renderer)
+
+`21769a881..d1dd896f4`: `flake.nix` replaces the `mermaidSidecarCliPkg` shell wrapper with `lib/pele.nix` (`pele-render` and an `mmdc` shim, still gated by `[skills.docs].mermaid`) and puts the two commands in `npmCliGatedPackages` in its place; no other gate, pin or supervisor text changes. Nothing ADR-2147 governs changes meaning. The decision holds. Re-verified by reading `git diff 21769a881..d1dd896f4 -- flake.nix` (new hunks only). Nix was not evaluated here; the image is unverified until the host rebuild.

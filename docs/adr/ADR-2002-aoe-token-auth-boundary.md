@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 21769a881315a246afaa6e9d0b39daf4ec39b5bc
+verified_commit: d1dd896f4a790762b150d81a94a03b268b04c543
 verified_paths: [config/nip98-proxy/proxy.mjs, scripts/aoe-curl.sh, flake.nix]
 owner: jjohare
 review_trigger: next image rebuild (activation), or any new consumer of :9095, or per-process isolation becoming available
@@ -354,3 +354,7 @@ Sidecar image activation is tracked separately in the host deployment receipt.
 Tripped by `flake.nix` alone (every other governed path is unchanged since `395380f71`: `git diff 395380f71..HEAD -- <other verified_paths>` is empty). The flake hunks are the eMudhra `cacert` override, the `agenticQePkg` (3.15.10) and `wranglerPkg` (4.151.3) pins, the `rufloConsole` pin move and its `rufloConsolePlugins` name, and `NODE_OPTIONS=--use-openssl-ca` in the container env list. Checked against committed `HEAD` in a detached worktree, not the working tree.
 
 Claims re-read at HEAD: `flake.nix:2921` still generates `aoe serve --auth token --behind-proxy --allowed-host 127.0.0.1 --host 127.0.0.1 --port ${interactionPlanePort}` and `flake.nix:3548` still states `:9095` is NEVER published; `proxy.mjs` and `scripts/aoe-curl.sh` are unchanged since `395380f71`. None of the hunks touches the AoE daemon, the proxy or the token path, and the Node flag only changes which CA bundle outbound TLS trusts. Commands: `grep -nE "aoe serve|NEVER published" flake.nix`, `NODE_PATH=management-api/node_modules node config/nip98-proxy/selftest.mjs` (OK, 0 failures, 0 skips), `sh scripts/ci/check-ports-loopback.sh` (PASS, 14 compose files, 11 ports blocks; aoe-serve --host and --allowed-host listed loopback). The decision holds. Not checked: tokenless denial against a live daemon (already a stated deployment check).
+
+### Re-verification — 2026-10-29 (ADR-2154 Pele renderer)
+
+`21769a881..d1dd896f4`: `flake.nix` replaces the `mermaidSidecarCliPkg` shell wrapper with `lib/pele.nix` (`pele-render` and an `mmdc` shim, still gated by `[skills.docs].mermaid`) and puts the two commands in `npmCliGatedPackages` in its place; no other gate, pin or supervisor text changes. Nothing ADR-2002 governs changes meaning. The decision holds. Re-verified by reading `git diff 21769a881..d1dd896f4 -- flake.nix` (new hunks only). Nix was not evaluated here; the image is unverified until the host rebuild.

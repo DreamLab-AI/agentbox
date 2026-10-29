@@ -2,12 +2,12 @@
 id: ADR-2152
 title: Render Mermaid in browsercontainer without an Agentbox Chromium closure
 date: 2026-10-27
-decision_status: proposed
+decision_status: superseded
 implementation_status: partial
 activation_status: staged
 supersedes: []
-superseded_by: []
-verified_commit:
+superseded_by: [ADR-2154]
+verified_commit: d1dd896f4a790762b150d81a94a03b268b04c543
 verified_paths: []
 owner: jjohare
 review_trigger: a change to Mermaid CLI, the mmdc client, browsercontainer's renderer, or their shared-volume topology

@@ -59,7 +59,7 @@ detect changes to files it already lists — it is structurally blind to **addit
 is exactly how a new crate landed unlicensed under ADR-2030 while the record still read as
 verified and its `review_trigger` ("any new crate under `services/`") sat unactioned.
 
-_141 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
+_142 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
 
 | ID | Title | Domain | Date | Decision | Impl | Activation | Supersedes | Superseded by | Owner | Repo |
 |----|-------|--------|------|----------|------|------------|------------|---------------|-------|------|
@@ -202,5 +202,6 @@ _141 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
 | [ADR-2149](ADR-2149-isaac-sim-sidecar.md) | Isaac Sim runs as an opt-in headless sidecar behind a typed job API | BASELINE-container | 2026-10-22 | proposed | partial | staged | — | — | jjohare | agentbox |
 | [ADR-2150](ADR-2150-video-production-skill.md) | Video productions are directed through existing media sidecars under one evidence discipline, with a Rust toolkit for the deterministic halves | GOVERNANCE-capabilities | 2026-10-23 | proposed | partial | staged | — | — | jjohare | agentbox |
 | [ADR-2151](ADR-2151-voicelink-edge-voice.md) | Run voice at the client edge and drive native CLI panes over the ssh attach chain | — | 2026-10-27 | proposed | none | inactive | — | — | jjohare | agentbox |
-| [ADR-2152](ADR-2152-render-mermaid-in-browsercontainer.md) | Render Mermaid in browsercontainer without an Agentbox Chromium closure | BASELINE-container | 2026-10-27 | proposed | partial | staged | — | — | jjohare | agentbox |
+| [ADR-2152](ADR-2152-render-mermaid-in-browsercontainer.md) | Render Mermaid in browsercontainer without an Agentbox Chromium closure | BASELINE-container | 2026-10-27 | superseded | partial | staged | — | ADR-2154 | jjohare | agentbox |
 | [ADR-2153](ADR-2153-session-plane-replaces-aoe.md) | Replace Agent of Empires with an owned, tmux-backed session plane that reconciles to the manifest | — | 2026-10-28 | proposed | none | inactive | ADR-2079 | — | jjohare | agentbox |
+| [ADR-2154](ADR-2154-pele-renders-mermaid-in-the-image.md) | Render Mermaid in the image with a pinned Pele, replacing the browsercontainer renderer | BASELINE-container | 2026-10-29 | accepted | partial | staged | ADR-2152 | — | jjohare | agentbox |

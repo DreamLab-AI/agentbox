@@ -1,10 +1,11 @@
 ---
 title: Agentbox Container Baseline
 doc_id: AB-BASELINE
-version: 0.5.11
+version: 0.5.12
 status: draft-for-ratification
 verified_commit: 
 changelog:
+  - "0.5.12 (2026-10-29): ADR-2154 (accepted, partial, staged; supersedes ADR-2152). Mermaid renders in the image with a pinned Pele 1.12.0 (`pele-render`, with `mmdc` kept as a compatibility shim); browsercontainer no longer carries mermaid-cli or `/render-mermaid`. No new port, adapter or sidecar; browsercontainer change lands at its next rebuild."
   - "0.5.11 (2026-10-28): ADR-2153 (proposed, none, inactive). Agent of Empires (aoe-serve, the aoe flake input, the aoe-profiles volume, scripts/aoe-*) is to be replaced by services/agentbox-sessions: a tmux-backed daemon that reconciles [[interaction_plane.session_seeds]] at boot and on a timer, recreates dead, blocked or drifted sessions unless their worktree is dirty, keeps worktrees under ~/workspace/wt/aoe-<slug>, and serves list/create/send/status on a unix socket. The launch contract (config/session-plane/launch.json) is verified by tests/cli/session-launch-contract.test.mjs. Scaffolded `loom` seed dropped. Services table and invariants unchanged until cut-over."
   - "0.5.10 (2026-10-27): ADR-2152 (proposed, partial, staged). Mermaid rendering moves to browsercontainer's separate headless Chromium; Agentbox carries only the mmdc sidecar client, eliminating a third browser from the Nix closure. Agentbox and browsercontainer activation remain separate."
   - "0.5.9 (2026-10-26): ADR-2082 amendment. Ruflo plugin source pins an inspected main commit with security and ruRE, aligned with the published 3.63.1 CLI closure. The running manifest enables ruflo-rure and advertises the rure MCP category through the existing governed proxy; protected memory and hook prefixes remain denied. Staged pending image build and activation."
@@ -132,7 +133,7 @@ Applied only when `gpu.backend == "local-cuda"` (`flake.nix:170`); on `backend=n
 
 Not supervised inside the box — external compose services on `visionclaw_network`, managed via `./agentbox.sh <name>`:
 
-- **browsercontainer** — GPU Chrome, chrome-devtools-mcp at `:8931/sse` (`system-manifest.js:154`, apply-class `live`). Mermaid is rendered by this sidecar's separate system Chromium through `/render-mermaid`; Agentbox carries only an `mmdc` HTTP client, not a third browser (ADR-2152). `[program:podkey-loader]` loads the pinned Podkey extension over CDP once per Chrome process. Its vault, holding K_browser, persists on the `browsercontainer-profile` volume; the owner mints and unlocks it (`./agentbox.sh browsercontainer podkey status|pubkey|unlock`, `browsercontainer/README.md`).
+- **browsercontainer** — GPU Chrome, chrome-devtools-mcp at `:8931/sse` (`system-manifest.js:154`, apply-class `live`). It no longer renders Mermaid: Agentbox renders in-process with Pele (ADR-2154, superseding ADR-2152). `[program:podkey-loader]` loads the pinned Podkey extension over CDP once per Chrome process. Its vault, holding K_browser, persists on the `browsercontainer-profile` volume; the owner mints and unlocks it (`./agentbox.sh browsercontainer podkey status|pubkey|unlock`, `browsercontainer/README.md`).
 - **gui-tools-service** — FHS GPU sidecar for BlenderMCP `:9876` and QGIS `:9877` under `vglrun` (`:157`).
 - **isaac-sim** — opt-in headless Isaac Sim physics sidecar (ADR-2149): no published port, control API on `isaac-sim:9890` (container network), GPU pinned by `ISAAC_SIM_GPU_UUID`, results on the gui-tools exchange volume under `isaac/`, apply-class `live`. Health is four levels; only smoke jobs that succeeded raise the last three. Staged until its first pinned-image smoke run. See [Isaac Sim operations](developer/isaac-sim.md).
 - **voice-console** — ADR-044 Caddy origin `:8444`, Unmute voice loop + AoE board; external build context (`:160`).
@@ -258,7 +259,7 @@ gate. See [the VEX guide](developer/vex.md).
 ## Invariants (must not silently change)
 
 - Image preparation never stops/recreates the running runtime or sidecars, attaches runtime data to a candidate smoke container, or runs garbage collection. Activation is a separate operation using merged Compose and a verified candidate receipt; the host build registry is loopback-only (ADR-2132).
-- Mermaid's Nix package is only the `mmdc` sidecar client; Puppeteer and Chromium remain in the independently deployed browsercontainer, and a client probe does not claim rendering health (ADR-2152).
+- Mermaid renders only with the pinned Pele (`pele-render`; `mmdc` is a shim onto it): no browser, Puppeteer or sidecar is in the render path, and the artifact probe parses a trivial diagram (ADR-2154).
 - Five adapter slots, three implementation classes, one contract per slot — no client-only or standalone-only durable-state feature (ADR-005, CLAUDE.md).
 - Every adapter dispatch wrapped observability → privacy redaction, in that order (`index.js:131`, `observability/metrics.js:125`). JSON-LD encoding is a per-surface gated stage invoked by the owning route, and its ordering is enforced by the privacy marker via `assertPrivacyFilterApplied` — not by wrap position (ADR-2036).
 - Orchestrator connect failure is FATAL — on rejection, timeout and quarantine alike; other slots are quarantined and then swapped to the `off` impl, or left `unavailable` if that replacement cannot be built (`adapters/lifecycle.js:73`, `:274`, `:276-281`, `:292-299`) (ADR-2035).

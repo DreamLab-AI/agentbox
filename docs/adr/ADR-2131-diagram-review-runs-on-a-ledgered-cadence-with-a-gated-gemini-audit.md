@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 21769a881315a246afaa6e9d0b39daf4ec39b5bc
+verified_commit: d1dd896f4a790762b150d81a94a03b268b04c543
 verified_paths: [skills/sealmap-review/scripts/review-cadence.cjs, skills/sealmap-review/run-cron.sh, skills/sealmap-review/crontab, schema/agentbox.toml.schema.json]
 owner: jjohare
 review_trigger: the first month of real Gemini spend (compare ledger cost with the estimate); a change to Gemini or Z.AI pricing; a GLM model change behind [consultants.zai]; a second corpus joining repos
@@ -26,7 +26,7 @@ lineage: ADR-2130 (external review is a transport outside [model_routing]; seal 
 
 A manifest section `[diagram_review]` gates `[program:diagram-review-cron]`. The shipped `agentbox.toml` sets `enabled = true` (owner decision 2026-10-06), so the program is baked at the next rebuild; the flake's default for a manifest without the section is off: supercronic over `skills/sealmap-review/crontab`, a template that `run-cron.sh` renders at boot from the manifest schedules into `/run/agentbox`. When disabled the flake emits no program block. The runner is `skills/sealmap-review/scripts/review-cadence.cjs`:
 
-- **Repos are discovered, never named in the manifest.** `repos = []` means scan `$WORKSPACE` to depth 3 for `docs/diagrams/<area>/NN-*.md`, skipping `.tmp`, `node_modules`, `target` and dot-directories, one entry per realpath. The manifest is public and the corpora are private, so extra and excluded paths live in the gitignored `config/diagram-review.local`.
+- **Repos are discovered, never named in the manifest.** `repos = []` means scan `$WORKSPACE` to depth 3 for `docs/diagrams/<area>/NN-*.md`, skipping `.tmp`, `node_modules`, `target`, dot-directories and linked git worktrees (a `.git` file pointing into `…/worktrees/…`; submodules are still found), one entry per realpath. The manifest is public and the corpora are private, so extra and excluded paths live in the gitignored `config/diagram-review.local`.
 - **Change is detected per source repository.** Each cited path is resolved from the corpus root by realpath (a workspace symlink and the real path are one file) and attributed to the innermost git toplevel that owns it (a nested submodule is its own repository, not a gitlink bump in its parent). The ledger keeps a map of last-seen commits per repository. A missing sibling or a dangling link is a logged skip.
 - **Reviews are sharded by area** (large areas split at 150k tokens). The pack-hash skip, the change thresholds, the interval and the budget apply per shard; the Gemini gate takes changed shards most-changed first, within budget.
 
@@ -104,3 +104,7 @@ Checked at `218dc12c3` by reading each claim against the code, not by the stalen
 Re-verified 2026-10-17 against `f33c4fc030d199ce957f7ba274d428bc6475c159`: the governed-path delta from the flat-vault amendment is the DeepSeek model/default and MCP metadata refresh plus ownership reconciliation for the OpenCode state directory. The reviewed change preserves this record’s capability, identity, memory, vault and isolation invariants; status axes are unchanged.
 
 Re-verified 2026-10-20 at `653b8b6387470eaa3be6c20e6dbd2208e538a985`: reviewed the merged activity-sink registration in the root entrypoint and profile projector, its default-off manifest gate, schema and boot-class catalogue entry. The hook remains inactive; no sink URL, token or new prompt egress is configured. The independent managed floor remains on. Claude Code 2.1.304 and Codex 0.163.0 change pinned CLI resources, not the Jev/factrail hook protocol; their existing replay mechanisms are unchanged. Activity-sink and hook-registration tests pass (50), the Rust projector suite passes (196), manifest validation and all 95 catalogue gates pass, and the generated egress register is in sync. No changed ingress binding, mount, role isolation, retrieval geometry or adapter dispatch. Build and activation checks remain pending. Existing status axes are retained.
+
+### Re-verification — 2026-10-29 (linked-worktree skip)
+
+`21769a881..d1dd896f4`: `review-cadence.cjs` gains `isLinkedWorktree()`, and discovery skips a directory whose `.git` file points into `…/worktrees/…` (a second checkout of a repo already reviewed; one run had reviewed and written into an unfinished task branch). Submodules (`.git` file into `…/modules/…`) are still found. The discovery rule in the Decision now reads "skipping … and linked git worktrees". Everything else in the record stands. Re-verified by `node --test` in `skills/sealmap-review/scripts` (a new case covers a linked worktree and a submodule) and `git diff 21769a881..d1dd896f4 -- skills/sealmap-review/scripts/review-cadence.cjs`.

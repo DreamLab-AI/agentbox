@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 21769a881315a246afaa6e9d0b39daf4ec39b5bc
+verified_commit: d1dd896f4a790762b150d81a94a03b268b04c543
 verified_paths: [flake.nix, lib/rune.nix, config/tmux-autostart.sh, config/tmux.conf, agentbox.toml, setup/agentbox.default.toml, schema/agentbox.toml.schema.json]
 owner: jjohare
 review_trigger: a Rune release that changes its CLI (`-w`), its keyboard-protocol requirement, or its licence; or the AoE plane absorbing note editing
@@ -368,3 +368,7 @@ Sidecar image activation is tracked separately in the host deployment receipt.
 Tripped by `flake.nix` alone (every other governed path is unchanged since `395380f71`: `git diff 395380f71..HEAD -- <other verified_paths>` is empty). The flake hunks are the eMudhra `cacert` override, the `agenticQePkg` (3.15.10) and `wranglerPkg` (4.151.3) pins, the `rufloConsole` pin move and its `rufloConsolePlugins` name, and `NODE_OPTIONS=--use-openssl-ca` in the container env list. Checked against committed `HEAD` in a detached worktree, not the working tree.
 
 Claims re-read at HEAD: `flake.nix:941-952` gates `runePkg` on `[vault].tui = "rune"` and `:2043-2044` adds `runePackages` to the package list; `lib/rune.nix` (unchanged since `395380f71`; builds the jjohare fork `v1.5.0-dreamlab.1` per the 2026-09-25 amendment, which supersedes Decision 1's pin to `v1.4.0`, with `-p rune-cli` and `doCheck = false`); `config/tmux.conf:26-27` `allow-passthrough on` and `extended-keys on`; `config/tmux-autostart.sh` window 9 Notes. No hunk touches the rune gate. Commands: `grep -nE "rune" flake.nix`, `bash tests/tui/notes-launcher.test.sh` (17 passed, 0 failed). The decision holds.
+
+### Re-verification — 2026-10-29 (ADR-2154 Pele renderer)
+
+`21769a881..d1dd896f4`: `flake.nix` replaces the `mermaidSidecarCliPkg` shell wrapper with `lib/pele.nix` (`pele-render` and an `mmdc` shim, still gated by `[skills.docs].mermaid`) and puts the two commands in `npmCliGatedPackages` in its place; no other gate, pin or supervisor text changes. Nothing ADR-2029 governs changes meaning. The decision holds. Re-verified by reading `git diff 21769a881..d1dd896f4 -- flake.nix` (new hunks only). Nix was not evaluated here; the image is unverified until the host rebuild.

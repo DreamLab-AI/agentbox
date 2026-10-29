@@ -81,7 +81,7 @@ The interaction plane uses Agent of Empires behind the configured identity ingre
 | Area | What the configuration selects | Boundary |
 |---|---|---|
 | Agent development | Agent CLIs, toolchains, registered skills and commands | Registrations and actual baked versions come from the selected build |
-| Browser/media/spatial tools | Browser, Mermaid, ComfyUI, Blender, QGIS and related tooling | Many execute in sidecars or on configured hosts; Agentbox's `mmdc` is a client of browsercontainer, not a local browser |
+| Browser/media/spatial tools | Browser, Mermaid, ComfyUI, Blender, QGIS and related tooling | Many execute in sidecars or on configured hosts; Mermaid renders in-process with a pinned Pele (`pele-render`, `mmdc` shim), with no browser |
 | Durable memory | MCP access to the RuVector/Postgres sidecar | The mandatory memory service has no in-process SQLite fallback |
 | Pods and identity | Native Solid pod service, bridges and configured signing paths | Feature gates, credential custody and receipts determine authority |
 | Knowledge work | Released Ontomark corpus tools plus `vault` governance/query surfaces and Loom integration | Retrieval does not authorise a mutation or validate every agent assertion |

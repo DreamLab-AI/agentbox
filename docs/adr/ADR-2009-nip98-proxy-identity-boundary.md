@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 21769a881315a246afaa6e9d0b39daf4ec39b5bc
+verified_commit: d1dd896f4a790762b150d81a94a03b268b04c543
 verified_paths: [config/nip98-proxy/proxy.mjs, flake.nix, docs/INGRESS-identity.md]
 owner: jjohare
 review_trigger: A second identity ingress is proposed, or aoe serve stops binding loopback
@@ -360,3 +360,7 @@ Sidecar image activation is tracked separately in the host deployment receipt.
 Tripped by `flake.nix` alone (every other governed path is unchanged since `395380f71`: `git diff 395380f71..HEAD -- <other verified_paths>` is empty). The flake hunks are the eMudhra `cacert` override, the `agenticQePkg` (3.15.10) and `wranglerPkg` (4.151.3) pins, the `rufloConsole` pin move and its `rufloConsolePlugins` name, and `NODE_OPTIONS=--use-openssl-ca` in the container env list. Checked against committed `HEAD` in a detached worktree, not the working tree.
 
 Claims re-read at HEAD: `flake.nix:2914` ("only IDENTITY ingress") and `:2921` (`aoe serve ... --behind-proxy --host 127.0.0.1 --port 9095`), `[program:nip98-proxy]` at `:2942`, and the 9096 publish note at `:2941`; `config/nip98-proxy/proxy.mjs` and `docs/INGRESS-identity.md` are unchanged since `395380f71`, so the header strip and re-injection, `nip98_verifier_unavailable` and boot-fatal config citations are unaltered. No hunk touches the proxy program or its environment. Commands: `grep -nE "only IDENTITY ingress|aoe serve|program:nip98-proxy" flake.nix`, `NODE_PATH=management-api/node_modules node config/nip98-proxy/selftest.mjs` (OK, 0 failures, 0 skips; covers spoofed headers, absent verifier, removed allowlist entries). The decision holds. Not checked: live door inventory (already a stated gap).
+
+### Re-verification — 2026-10-29 (ADR-2154 Pele renderer)
+
+`21769a881..d1dd896f4`: `flake.nix` replaces the `mermaidSidecarCliPkg` shell wrapper with `lib/pele.nix` (`pele-render` and an `mmdc` shim, still gated by `[skills.docs].mermaid`) and puts the two commands in `npmCliGatedPackages` in its place; no other gate, pin or supervisor text changes. Nothing ADR-2009 governs changes meaning. The decision holds. Re-verified by reading `git diff 21769a881..d1dd896f4 -- flake.nix` (new hunks only). Nix was not evaluated here; the image is unverified until the host rebuild.
