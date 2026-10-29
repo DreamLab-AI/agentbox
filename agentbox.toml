@@ -889,7 +889,7 @@ usd_per_mtok_in = 0.042          # input price used for the /jev-checkpoints cos
 #                   off-LAN url), W076 (active vendor).
 enabled = true
 local_backend = "laya"           # keyless LAN route for private-data consumers
-backend = "subq"                 # typesafe | subq | laya | kev | any [system_one.backends.<name>]
+backend = "typesafe"               # typesafe | subq | laya | kev | any [system_one.backends.<name>]
 bind = "127.0.0.1:8094"          # loopback only; consumers run in this container
 log = "/home/devuser/.local/share/system-one-proxy/requests.jsonl"  # one line per request: backend, status, ms, tokens — never content
 
