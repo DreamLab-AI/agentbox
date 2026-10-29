@@ -50,14 +50,14 @@ let
   forumHash = "sha256-9HooIa4vyu0Iw47VPr7RkMDyKrEazcElR2xPIe0njvE=";
 
   # solid-pod-rs → crates/solid-pod-rs-nostr (relay substrate) + crates/solid-pod-rs
-  # (the [patch.crates-io] target). Pinned to the v0.5.0-alpha.17 tag commit
+  # (the [patch.crates-io] target). Pinned to alpha.17 plus the Jev integration
   # 45c73aa (2026-10-25, Jev server; library substrate unchanged), the same revision lib/solid-pod-rs.nix builds the
   # standalone server from, so the bridge and the server compile one upstream
   # snapshot (register G-20 closed). services/nostr-pod-bridge/Cargo.lock
   # resolves the local solid-pod-rs and solid-pod-rs-nostr at alpha.17.
   # The older forum dependency retains its exact core-only registry library;
   # it does not compile the affected server or Git service.
-  # Bump both files together; the hash is the SRI of the tag tarball
+  # Bump both files together; the hash is the SRI of the pinned commit archive
   # (procedure above / lib/solid-pod-rs.nix).
   solidRev  = "45c73aa86d062b55055c5e779d74ae856522b10f";
   solidHash = "sha256-sgbEBtmmBZWKbsc/qsmT0FPwzbuxVPWCxO2J3QlM3qI="; # v0.5.0-alpha.17
