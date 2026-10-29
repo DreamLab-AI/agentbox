@@ -1,0 +1,6 @@
+pele 1.12.0
+source   https://registry.npmjs.org/pele/-/pele-1.12.0.tgz
+integrity sha512-3OdOK6rvkaTB569R4/I8U0H82MqPRxj7vfkbowa2rRhgSBPFhvWlfFy5eae0jP+2A6hE8abE17nsdyxJz2VBiQ==
+repository https://github.com/obsidianmd/pele (npm pele 1.0.0 is an unrelated 2020 package)
+file     dist/pele.js
+sha256   111172ef3cfe3ab8fd58cba28f69e2c23f1d9f08c63db306fb9eb654a77de20b

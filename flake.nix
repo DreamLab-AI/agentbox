@@ -701,12 +701,10 @@
         #       automation routes through the external browsercontainer sidecar
         #       (chrome-devtools-mcp at browsercontainer:8931/sse).
 
-        # Mermaid renders in browsercontainer. Keep the mmdc command name for
-        # existing skills and validators, but ship only this sidecar client in
-        # Agentbox. No local Puppeteer or Chromium belongs in the image.
-        mermaidSidecarCliPkg = pkgs.writeShellScriptBin "mmdc" ''
-          exec /opt/agentbox/scripts/mmdc-sidecar.sh "$@"
-        '';
+        # Mermaid renders with Pele (ADR-2154, estate ADR-2020): `pele-render`
+        # plus an `mmdc` compatibility shim for existing skills and validators.
+        # No browser, Puppeteer or sidecar is involved.
+        peleLib = import ./lib/pele.nix { inherit lib pkgs; };
 
         # wrangler — Cloudflare Workers/D1/secrets CLI. Always included for
         # operator ops (`wrangler d1 execute --remote`, `wrangler secret put`,
@@ -785,7 +783,7 @@
           ++ lib.optionals (toolchainCfg.agentic_qe or false)      [ agenticQePkg ]
           ++ lib.optionals (toolchainCfg.codebase_memory or false)  [ codebaseMemoryPkg ]
           ++ lib.optionals (toolchainCfg.deepsec or false)          [ deepsecPkg ]
-          ++ lib.optionals (docsCfg.mermaid or false)              [ mermaidSidecarCliPkg ];
+          ++ lib.optionals (docsCfg.mermaid or false)              [ peleLib.peleRender peleLib.mmdcShim ];
 
         # 3DGS stack — gated by gaussian_splatting + local-cuda (E006).
         gs3dLib = import ./lib/3dgs-stack.nix { inherit lib pkgs; };

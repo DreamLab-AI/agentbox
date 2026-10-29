@@ -1,6 +1,7 @@
 #!/bin/bash
-# Probe: Agentbox's mmdc compatibility client (browsercontainer renderer)
+# Probe: Pele renderer (pele-render CLI and its mmdc compatibility shim, ADR-2154)
 # Gate: skills.docs.mermaid / ENABLE_MERMAID
+# Parses a tiny diagram, so a broken pin or loader fails here, not just a missing binary.
 
 set -euo pipefail
 
@@ -9,15 +10,25 @@ if [ "${ENABLE_MERMAID:-false}" != "true" ]; then
   exit 77
 fi
 
-if ! command -v mmdc &>/dev/null; then
-  echo "FAIL: mmdc not found in PATH"
+for tool in pele-render mmdc; do
+  if ! command -v "$tool" &>/dev/null; then
+    echo "FAIL: $tool not found in PATH"
+    exit 1
+  fi
+done
+
+if ! printf 'flowchart LR\n  A[probe] --> B\n' | pele-render --check --quiet -; then
+  echo "FAIL: pele-render --check rejected a trivial flowchart"
   exit 1
 fi
 
-if ! mmdc --help >/dev/null 2>&1; then
-  echo "FAIL: mmdc sidecar client --help exited non-zero"
+tmp="$(mktemp -d)"
+trap 'rm -rf "$tmp"' EXIT
+printf 'flowchart LR\n  A[probe] --> B\n' > "$tmp/p.mmd"
+if ! mmdc -q -i "$tmp/p.mmd" -o "$tmp/p.svg" || ! grep -q '<svg' "$tmp/p.svg"; then
+  echo "FAIL: mmdc shim did not render a trivial flowchart"
   exit 1
 fi
 
-echo "PASS: mmdc sidecar client present (rendering tested separately)"
+echo "PASS: pele-render and the mmdc shim render a trivial diagram"
 exit 0

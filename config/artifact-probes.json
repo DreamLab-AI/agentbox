@@ -72,10 +72,10 @@
     "probe_command": "codebase-memory-mcp --version"
   },
   {
-    "capability_id": "mermaid-cli",
-    "entrypoint_path": "@NIX_STORE_BIN@/mmdc",
+    "capability_id": "pele-render",
+    "entrypoint_path": "@NIX_STORE_BIN@/pele-render",
     "required_for_readiness": false,
-    "probe_command": "mmdc --help"
+    "probe_command": "printf 'flowchart LR\\n  A[probe] --> B\\n' | pele-render --check --quiet -"
   },
   {
     "capability_id": "code-interpreter-mcp",
