@@ -122,6 +122,24 @@ Compare candidate receipts' `report.layers`, `report.changedBytes` and `seconds`
 Measure application-only edits separately from CLI and toolchain upgrades;
 never infer incremental speed from the cold first import. Gates:
 
+### Observed layer costs
+
+These are measurements, not build-time guarantees. Layer bytes below are the
+uncompressed sizes in the receipt; the receipt does **not** time individual
+layers, and changed bytes do not by themselves predict transfer time.
+
+| Run | Platform | Toolchains | Agent CLIs | Services | Final root | Timings and context |
+| --- | ---: | ---: | ---: | ---: | ---: | --- |
+| 2026-10-27, daemon delivery, source `bd68a8d4e` (dirty) | 25.60 GB | 1.55 GB | 4.28 GB | 2.11 GB | 1.07 GB | Nix build 16.9 s with prior outputs cached; cold full-image stream 1,149.7 s (~19 min); smoke 0.6 s. All 34.61 GB was reported changed against that delivery baseline. |
+
+For each future run, record the source and dirty state, delivery mode, cache
+state, changed layer names and sizes, and the receipt's aggregate build,
+transfer, pull and smoke timings. Do not attribute aggregate elapsed time to a
+specific layer without separate instrumentation. Updating a CLI can change the
+agent-CLI layer and downstream image chain even when its own archive is small;
+updating nixpkgs can invalidate much more. Prefer an application-only build
+when speed matters, and check the dry-run derivations before widening pins.
+
 ```sh
 node --test tests/config/runtime-delivery.test.cjs
 ```
