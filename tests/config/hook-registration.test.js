@@ -140,7 +140,9 @@ describe('hook runtime behaviour', () => {
     });
     expect(r.status).toBe(0);
     expect(r.stdout).toBe('');
-    expect(r.stderr).toMatch(/\[trust-seed\] \d+ path\(s\) checked, 2 newly trusted/);
+    // One summary line per Claude config store (the root store here; wrapper
+    // profile stores are seeded too when they exist).
+    expect(r.stderr).toMatch(/\[trust-seed\] \S*\.claude\.json: \d+ path\(s\) checked, 2 newly trusted/);
     const cfg = JSON.parse(fs.readFileSync(path.join(home, '.claude.json'), 'utf8'));
     expect(cfg.projects[path.join(home, 'workspace/repo')].hasTrustDialogAccepted).toBe(true);
   });
