@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: staged
 supersedes: [ADR-2152]
 superseded_by: []
-verified_commit: d1dd896f4a790762b150d81a94a03b268b04c543
+verified_commit: 1fa08ba74
 verified_paths: ["lib/pele.nix", "scripts/pele-render.cjs", "scripts/mmdc-pele.cjs", "skills/diagrams-as-code/scripts/vendor/pele"]
 owner: jjohare
 review_trigger: a Pele release we adopt, a diagram Mermaid 11 accepts and Pele rejects, or any surface in this repo that renders Mermaid through a browser, a sidecar or a CDN script
