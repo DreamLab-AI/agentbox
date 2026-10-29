@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 7d8c3b2dfe165f4ab3f8a5e4f62b8294ea7b155d
+verified_commit: 3b498088e5a35e78158a9eb8d6f0266996d31f82
 verified_paths: [config/hooks/lib/skill-route.cjs, config/hooks/skill-route.cjs, skills/skill-router/scripts/route.mjs, config/entrypoint-unified.sh, tests/config/skill-route.test.js]
 owner: jjohare
 review_trigger: the first project that needs a per-project routing bypass (ADR-2090), a Jev model change, or a measured runtime-path accuracy below 85% on the 40-item set
@@ -15,6 +15,19 @@ repo: agentbox
 ---
 
 # ADR-2091 — Route each turn to a skill with one typed judgement, failing open to the table
+
+## Re-verification — 2026-10-29 at 3b498088e (ADR-2153 cutover)
+
+Reviewed the governed-path diff from this record's previous verification to
+`3b498088e5a35e78158a9eb8d6f0266996d31f82`. Shared manifest, schema, supervisor and bootstrap changes
+are scoped to the owned session plane: AoE and its token consumers retire,
+provider provisioning moves, and session status hooks are added. Other named
+capability sections and their status axes retain their existing claims.
+Validation: session-plane tests (44 unit, 15 integration), manifest projector
+suite and Clippy for both crates, proxy selftest (zero failures/skips), hook
+registration (12), role-supervisor isolation (25), boot projection (13), and
+manifest catalogue/declared-state checks pass locally. This does not claim new
+runtime acceptance of this record's unrelated capabilities.
 
 ## Re-verification — 2026-10-02 at caab741c6 (factrail landing, ADR-2121)
 

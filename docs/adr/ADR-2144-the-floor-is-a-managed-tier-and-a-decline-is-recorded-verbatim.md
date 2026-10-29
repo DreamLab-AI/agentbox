@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 0e3d98b181f4bd546ca84ff96eb8ab71c5ad53f2
+verified_commit: 3b498088e5a35e78158a9eb8d6f0266996d31f82
 verified_paths: [config/instructions/floor.md, config/hooks/decline-recorder.cjs, services/agentbox-manifest/src/instructions.rs, config/registered-hooks.txt, tests/config/decline-recorder.test.mjs, tests/config/instructions-layers.test.sh, services/agentbox-manifest/src/stacks.rs, services/agentbox-manifest/src/stacks_env.rs, flake.nix]
 owner: jjohare
 review_trigger: a Stop/SubagentStop hook that can halt a task (upgrade the exit clause to "halts the task"); a Claude Code release that changes managed CLAUDE.md, omitClaudeMd or last_assistant_message semantics; a second operator (the single-operator premise behind "the operator reads them")
@@ -15,6 +15,19 @@ repo: agentbox
 ---
 
 # ADR-2144 — The floor is a managed instruction tier, and a decline is recorded verbatim
+
+## Re-verification — 2026-10-29 at 3b498088e (ADR-2153 cutover)
+
+Reviewed the governed-path diff from this record's previous verification to
+`3b498088e5a35e78158a9eb8d6f0266996d31f82`. Shared manifest, schema, supervisor and bootstrap changes
+are scoped to the owned session plane: AoE and its token consumers retire,
+provider provisioning moves, and session status hooks are added. Other named
+capability sections and their status axes retain their existing claims.
+Validation: session-plane tests (44 unit, 15 integration), manifest projector
+suite and Clippy for both crates, proxy selftest (zero failures/skips), hook
+registration (12), role-supervisor isolation (25), boot projection (13), and
+manifest catalogue/declared-state checks pass locally. This does not claim new
+runtime acceptance of this record's unrelated capabilities.
 
 ## Context
 The operator and the agents working in this container agreed a short collaboration and welfare

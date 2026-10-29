@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 0e3d98b181f4bd546ca84ff96eb8ab71c5ad53f2
+verified_commit: 3b498088e5a35e78158a9eb8d6f0266996d31f82
 verified_paths: [flake.nix, lib/sbomnix.nix, lib/sbomnix-python.nix, lib/agentbox-vex.nix, lib/vex-evidence.nix, services/agentbox-vex, scripts/security-scan.sh, scripts/runtime-delivery.cjs, agentbox.sh, tests/security, tests/config/runtime-delivery.test.cjs, .github/workflows/build-multi-arch.yml, .github/workflows/image-scan.yml, .github/workflows/release.yml, .github/workflows/security-vex.yml, .github/workflows/flake-check.yml]
 owner: jjohare
 review_trigger: image inventory, VEX predicates, scanner matching or release artefact selection changes
@@ -16,6 +16,19 @@ domain: BASELINE-container
 ---
 
 # ADR-2137 — Image-scoped vulnerability evidence
+
+## Re-verification — 2026-10-29 at 3b498088e (ADR-2153 cutover)
+
+Reviewed the governed-path diff from this record's previous verification to
+`3b498088e5a35e78158a9eb8d6f0266996d31f82`. Shared manifest, schema, supervisor and bootstrap changes
+are scoped to the owned session plane: AoE and its token consumers retire,
+provider provisioning moves, and session status hooks are added. Other named
+capability sections and their status axes retain their existing claims.
+Validation: session-plane tests (44 unit, 15 integration), manifest projector
+suite and Clippy for both crates, proxy selftest (zero failures/skips), hook
+registration (12), role-supervisor isolation (25), boot projection (13), and
+manifest catalogue/declared-state checks pass locally. This does not claim new
+runtime acceptance of this record's unrelated capabilities.
 
 ## Re-verification — 2026-10-15
 

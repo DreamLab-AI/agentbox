@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 0e3d98b181f4bd546ca84ff96eb8ab71c5ad53f2
+verified_commit: 3b498088e5a35e78158a9eb8d6f0266996d31f82
 verified_paths: [lib/solid-pod-rs.nix, lib/solid-pod-rs.cargo-lock, flake.nix, agentbox.toml, scripts/ci/check-manifest-catalogue.js]
 owner: jjohare
 review_trigger: the first image rebuilt with this pin; any change to the forge block defaults (open_edit, allow_mainnet, mirror_follow); a solid-pod-rs release that changes the forge feature names; a second operator
@@ -15,6 +15,19 @@ repo: agentbox
 ---
 
 # ADR-2145 — The solid-pod forge and mirror are compiled into the native pod and inert until relays and follows are named
+
+## Re-verification — 2026-10-29 at 3b498088e (ADR-2153 cutover)
+
+Reviewed the governed-path diff from this record's previous verification to
+`3b498088e5a35e78158a9eb8d6f0266996d31f82`. Shared manifest, schema, supervisor and bootstrap changes
+are scoped to the owned session plane: AoE and its token consumers retire,
+provider provisioning moves, and session status hooks are added. Other named
+capability sections and their status axes retain their existing claims.
+Validation: session-plane tests (44 unit, 15 integration), manifest projector
+suite and Clippy for both crates, proxy selftest (zero failures/skips), hook
+registration (12), role-supervisor isolation (25), boot projection (13), and
+manifest catalogue/declared-state checks pass locally. This does not claim new
+runtime acceptance of this record's unrelated capabilities.
 
 ## Context
 - VisionFlow ADR-2019 decided that shipped agentbox pods run the solid-pod-rs forge and the kind-30618 mirror, with open edit, mainnet and any external follow list staying opt-in. solid-pod-rs ADR-2010 records the implementation and its hardening.

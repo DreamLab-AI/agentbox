@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: cca7ea3b151be3ea44907581d40271c714b07dd0
+verified_commit: 3b498088e5a35e78158a9eb8d6f0266996d31f82
 verified_paths: [config/harness-wrappers/zai.sh, config/harness-wrappers/openrouter.sh, config/harness-wrappers/_provider-url.sh, tests/security/provider-url-validation.test.sh]
 owner: jjohare
 review_trigger: A proposal to reintroduce Linux pseudo-user isolation as the primary model, or a harness wrapper omitting the redirect assertion
@@ -17,6 +17,19 @@ lineage: legacy ADR-025 (multi-harness tmux architecture), supersedes ADR-028 (p
 ---
 
 # ADR-2007 — Runtime isolation is profile-based (per-profile HOME + CLAUDE_CONFIG_DIR), not Linux pseudo-users
+
+## Re-verification — 2026-10-29 at 3b498088e (ADR-2153 cutover)
+
+Reviewed the governed-path diff from this record's previous verification to
+`3b498088e5a35e78158a9eb8d6f0266996d31f82`. Shared manifest, schema, supervisor and bootstrap changes
+are scoped to the owned session plane: AoE and its token consumers retire,
+provider provisioning moves, and session status hooks are added. Other named
+capability sections and their status axes retain their existing claims.
+Validation: session-plane tests (44 unit, 15 integration), manifest projector
+suite and Clippy for both crates, proxy selftest (zero failures/skips), hook
+registration (12), role-supervisor isolation (25), boot projection (13), and
+manifest catalogue/declared-state checks pass locally. This does not claim new
+runtime acceptance of this record's unrelated capabilities.
 
 ## Context
 Multiple harnesses (different providers/subscriptions) share one container and must not read each

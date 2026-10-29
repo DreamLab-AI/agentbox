@@ -2,12 +2,12 @@
 id: ADR-2063
 title: The MCP hub waits for its config, AoE session records persist on a volume, and the seeder reaps only its own clean orphans
 date: 2026-09-05
-decision_status: accepted
+decision_status: superseded
 implementation_status: complete
-activation_status: staged
+activation_status: inactive
 supersedes: []
-superseded_by: []
-verified_commit: 08e817f394a908264c378745193bf7a0bbf6ec0e
+superseded_by: [ADR-2153]
+verified_commit: 3b498088e5a35e78158a9eb8d6f0266996d31f82
 verified_paths: []
 owner: jjohare
 review_trigger: an AoE upgrade that changes the sessions API fields or persists extra_args for native agents, a change to supervisor priorities, or a second worktree-root layout
@@ -78,3 +78,11 @@ the four live (clean, minutes-old) worktrees; the fail-closed path guard and the
 regression test exist because of it. `docker compose config -q` and
 `scripts/ci/check-ports-loopback.sh` pass with the new volume. The hub wait and
 the volume activate at the next image rebuild (activation_status: staged).
+
+## Retirement — 2026-10-29 (ADR-2153)
+
+The AoE record/seeder clauses retire with the package and daemon. Session-plane
+ownership, dirty-work protection and conservative legacy reaping replace them.
+The old profile volume stays mounted unused for recovery, as ADR-2153 now states.
+The bounded MCP-hub projection wait is retained in BASELINE-container and the
+ADR-2104 implementation; no hub timing or failure behavior changes here.

@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: 7d8c3b2dfe165f4ab3f8a5e4f62b8294ea7b155d
+verified_commit: 3b498088e5a35e78158a9eb8d6f0266996d31f82
 verified_paths: [config/hooks/activity-sink.cjs, config/entrypoint-unified.sh, services/agentbox-manifest/src/stacks.rs, services/agentbox-manifest/src/stacks_env.rs, tests/config/activity-sink.test.js, config/egress-policy.json]
 owner: jjohare
 review_trigger: a second consumer of the sink, a change to the wire body, a new event or tool class, moving the token under role isolation (ADR-2122), or any change to the ADR-2026 redactor
@@ -16,6 +16,19 @@ domain: GOVERNANCE-capabilities
 ---
 
 # ADR-2146 — Agent activity leaves through one generic, manifest-gated, fail-open sink hook
+
+## Re-verification — 2026-10-29 at 3b498088e (ADR-2153 cutover)
+
+Reviewed the governed-path diff from this record's previous verification to
+`3b498088e5a35e78158a9eb8d6f0266996d31f82`. Shared manifest, schema, supervisor and bootstrap changes
+are scoped to the owned session plane: AoE and its token consumers retire,
+provider provisioning moves, and session status hooks are added. Other named
+capability sections and their status axes retain their existing claims.
+Validation: session-plane tests (44 unit, 15 integration), manifest projector
+suite and Clippy for both crates, proxy selftest (zero failures/skips), hook
+registration (12), role-supervisor isolation (25), boot projection (13), and
+manifest catalogue/declared-state checks pass locally. This does not claim new
+runtime acceptance of this record's unrelated capabilities.
 
 ## Context
 External consumers want live agent activity: which files an agent is touching, what it was asked, and what it answered. The first consumer is a host-side code-visualisation service (Codescape), which draws agents as presences on the code graph and listens on a compose-network-only ingest port (for example `http://codescape:4101/ingest/v1/activity`). Two existing seams were considered and rejected (see Alternatives). Hooks have two registration sites, the root session (`config/entrypoint-unified.sh`) and per-profile settings (`services/agentbox-manifest/src/stacks.rs`), and a new hook has to be wired in both (ADR-2068). Prompt and answer text leaving the container is egress under ADR-2026.

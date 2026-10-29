@@ -4,17 +4,30 @@ title: Replace Agent of Empires with an owned, tmux-backed session plane that re
 date: 2026-10-28
 decision_status: accepted
 implementation_status: partial
-activation_status: staged
-supersedes: [ADR-2079]
+activation_status: live
+supersedes: [ADR-2002, ADR-2063, ADR-2079]
 superseded_by: []
-verified_commit: 4b8f56352a4a824ed0bf55658662175c249c87b1
-verified_paths: [services/agentbox-sessions, config/session-plane/launch.json, lib/agentbox-sessions.nix, config/role-accounts.json, config/custody/session-plane-acl.json, tests/cli/session-launch-contract.test.mjs]
+verified_commit: 3b498088e5a35e78158a9eb8d6f0266996d31f82
+verified_paths: [services/agentbox-sessions, config/session-plane, lib/agentbox-sessions.nix, flake.nix, flake.lock, agentbox.toml, config/entrypoint-unified.sh, config/role-accounts.json, config/custody/session-plane-acl.json, config/tab0-bridge, config/nostr-gateway/gateway.cjs, config/nip98-proxy, config/tmux-autostart.sh, config/hooks/session-state.cjs, config/registered-hooks.txt, scripts/session-provision.mjs, scripts/session-control.cjs, scripts/activation/session-plane-cutover.mjs, scripts/activation/session-plane-acceptance.mjs, management-api/lib/system-manifest.js, schema/agentbox.toml.schema.json, services/agentbox-manifest/src/stacks.rs, services/agentbox-manifest/src/stacks_env.rs, tests/cli/session-launch-contract.test.mjs, tests/cli/session-control.test.cjs, tests/config/session-plane-notify.test.sh]
 owner: jjohare
 review_trigger: the session-plane daemon lands, or any AoE consumer below is found to have been missed
 repo: agentbox
 ---
 
 # ADR-2153 — Replace Agent of Empires with an owned, tmux-backed session plane that reconciles to the manifest
+
+## Re-verification — 2026-10-29 at 3b498088e (ADR-2153 cutover)
+
+Reviewed the governed-path diff from this record's previous verification to
+`3b498088e5a35e78158a9eb8d6f0266996d31f82`. Shared manifest, schema, supervisor and bootstrap changes
+are scoped to the owned session plane: AoE and its token consumers retire,
+provider provisioning moves, and session status hooks are added. Other named
+capability sections and their status axes retain their existing claims.
+Validation: session-plane tests (44 unit, 15 integration), manifest projector
+suite and Clippy for both crates, proxy selftest (zero failures/skips), hook
+registration (12), role-supervisor isolation (25), boot projection (13), and
+manifest catalogue/declared-state checks pass locally. This does not claim new
+runtime acceptance of this record's unrelated capabilities.
 
 ## Context
 - Live on 2026-10-28, 5 of 10 AoE sessions are dead and one (`zai`) reports Idle while blocked on a trust prompt. The causes, each reproduced:
@@ -87,7 +100,7 @@ With `AGENTBOX_LAUNCH_DIR=~/workspace/project/agentbox`, which checks the CLI co
 
 A mutation check that restores the old OpenCode `-m` argv fails both the static tier and the live tier (`pane died: Unrecognized flag: -m in command opencode`).
 
-## Implementation (2026-10-29): the daemon landed, the cut-over has not
+## Implementation (2026-10-29, before cutover): dormant daemon
 `services/agentbox-sessions` is built, tested and baked into the image when `[interaction_plane].enabled`, but its supervisor program has `autostart=false`. Agent of Empires is still the live session plane and its consumers still call it, so starting both would run every agent twice. The cut-over is a separate change that removes `aoe-serve`, repoints the consumers and flips the daemon on.
 
 Landed, with the decisions it forced:
@@ -133,3 +146,50 @@ credentials and Antigravity sign-in remain live gates. The retained mount is an
 explicit exception to decision 1's immediate volume removal: it allows fast
 activation's unchanged-mount invariant and keeps the recovery image usable.
 Removal requires a later mount migration; no data is deleted by this cutover.
+
+## Activation evidence — 2026-10-29T18:14:17.085Z
+
+- Running image: `127.0.0.1:15000/agentbox@sha256:ef1f99398eba048d9c9d2d03237ea6150caafc581ba7d02fa5bf95c67d5f8fa8`.
+- Prepared source: `3b498088e5a35e78158a9eb8d6f0266996d31f82`; `sourceDirty: false`.
+- Nine legacy AoE boundary close requests succeeded before replacement. The foreign
+  grouped record was left alone. Dirty/foreign worktree protections remain; no recovery image or volume was deleted.
+- Only Agentbox was recreated. Persistent mounts match the receipt. Caddy was
+  reloaded without recreating its sidecar; the other container IDs were retained.
+- `agentbox-sessions`, nip98-proxy, tab0-bridge and nostr-gateway are running.
+  No AoE binary/program or :9095 listener remains. Socket mode is 0660, group
+  ab-sessions; devuser is accepted and an unlisted uid is rejected.
+- Acceptance results: antigravity=fail, codex=pass, deepseek=pass, loom-raw=pass, openrouter=fail, router=pass, zai=pass.
+- Remaining acceptance failures: antigravity: blocked: You are currently not signed in; openrouter: API Error: 401.
+
+Acceptance details are in the host-only
+`.agentbox-build/session-plane-acceptance.json`. Router is excluded from the
+round trip by design. Implementation remains `partial` until the full cold-boot
+and provider acceptance condition is met; `live` records the actual cutover,
+not an all-provider success claim.
+
+### Final cold-boot and status evidence
+
+The host observer saw all seven seed panes present by 9.06 seconds after
+container start. At 60 seconds, six seeds were live and unblocked; Antigravity
+was explicitly blocked on sign-in. Four chat seeds generated fresh arithmetic
+PONG replies. OpenRouter's request returned `API Error: 401`, now classified as
+blocked; router is excluded from chat round trips. After successful replies,
+Codex, DeepSeek, loom-raw and Z.AI returned to idle. A regression test ensures a
+pane-detected agent without completion hooks does not retain a synthetic busy
+mark (44 unit and 15 integration tests pass).
+
+The first live boot exposed an unset Stage-A variable in the new Stage-B notify
+projection. The fix resolves both voice gates in Stage B; the isolated shell
+execution test removes Stage-A variables and verifies fanout and retraction.
+The final image booted normally and passed /ready without the manual recovery
+used during diagnosis of that earlier image.
+
+Separate limitations observed: session-boundary turn events report HTTP 500
+while the beads privacy redactor returns RedactionShapeError, so successful
+agent responses are not proof of successful session-epic binding. The initial
+fresh worktree creation also reported an unavailable parent-project submodule
+gitlink; its failure was left visible and no parent-project pin was changed.
+Readiness can additionally report an aged optional sidechain tip. These remain
+reported limits, not an all-capability acceptance claim. The pre-cutover recovery
+receipt is `.agentbox-build/pre-session-plane-active.json`; candidate history in
+previous.json is not a last-known-good deployment guarantee.

@@ -2,19 +2,34 @@
 id: ADR-2002
 title: AoE interaction plane requires token auth — loopback is not a boundary
 date: 2026-08-31
-decision_status: accepted
+decision_status: superseded
 implementation_status: complete
-activation_status: live
+activation_status: inactive
 supersedes: []
-superseded_by: []
-verified_commit: 0e3d98b181f4bd546ca84ff96eb8ab71c5ad53f2
-verified_paths: [config/nip98-proxy/proxy.mjs, scripts/aoe-curl.sh, flake.nix]
+superseded_by: [ADR-2153]
+verified_commit: 3b498088e5a35e78158a9eb8d6f0266996d31f82
+verified_paths: [config/nip98-proxy/proxy.mjs, flake.nix]
 owner: jjohare
 review_trigger: next image rebuild (activation), or any new consumer of :9095, or per-process isolation becoming available
 repo: agentbox
 ---
 
 # ADR-2002 — AoE interaction plane requires token auth — loopback is not a boundary
+
+## Re-verification — 2026-10-29 at 3b498088e (ADR-2153 cutover)
+
+Reviewed the governed-path diff from this record's previous verification to
+`3b498088e5a35e78158a9eb8d6f0266996d31f82`. Shared manifest, schema, supervisor and bootstrap changes
+are scoped to the owned session plane: AoE and its token consumers retire,
+provider provisioning moves, and session status hooks are added. Other named
+capability sections and their status axes retain their existing claims.
+Validation: session-plane tests (44 unit, 15 integration), manifest projector
+suite and Clippy for both crates, proxy selftest (zero failures/skips), hook
+registration (12), role-supervisor isolation (25), boot projection (13), and
+manifest catalogue/declared-state checks pass locally. This does not claim new
+runtime acceptance of this record's unrelated capabilities.
+
+This boundary is retired: no AoE package, supervisor, bearer consumer or :9095 listener remains. ADR-2153 owns session control on its peer-authorised unix socket.
 
 ## Re-verification — 2026-10-02 at caab741c6 (factrail landing, ADR-2121)
 

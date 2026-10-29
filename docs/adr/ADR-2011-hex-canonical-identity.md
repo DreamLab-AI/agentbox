@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 275e12356319a9630846656580d497d53de3d38c
+verified_commit: 3b498088e5a35e78158a9eb8d6f0266996d31f82
 verified_paths: [management-api/lib/agent-identity.js, config/nip98-proxy/proxy.mjs]
 owner: jjohare
 review_trigger: A durable identity appears in bech32/npub form in storage or a URL, or the did:nostr:local fallback fires in production
@@ -17,6 +17,19 @@ lineage: legacy ADR-053 (hex-canonical pod naming), ADR-033 (did:nostr / Multike
 ---
 
 # ADR-2011 — Hex-canonical identity: 64-hex x-only everywhere durable
+
+## Re-verification — 2026-10-29 at 3b498088e (ADR-2153 cutover)
+
+Reviewed the governed-path diff from this record's previous verification to
+`3b498088e5a35e78158a9eb8d6f0266996d31f82`. Shared manifest, schema, supervisor and bootstrap changes
+are scoped to the owned session plane: AoE and its token consumers retire,
+provider provisioning moves, and session status hooks are added. Other named
+capability sections and their status axes retain their existing claims.
+Validation: session-plane tests (44 unit, 15 integration), manifest projector
+suite and Clippy for both crates, proxy selftest (zero failures/skips), hook
+registration (12), role-supervisor isolation (25), boot projection (13), and
+manifest catalogue/declared-state checks pass locally. This does not claim new
+runtime acceptance of this record's unrelated capabilities.
 
 ## Context
 An identity has several encodings (bech32 npub, x-only hex, did:nostr, W3C

@@ -7,16 +7,31 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 21769a881315a246afaa6e9d0b39daf4ec39b5bc
+verified_commit: 3b498088e5a35e78158a9eb8d6f0266996d31f82
 verified_paths: [config/nip98-proxy/proxy.mjs, docs/INGRESS-identity.md]
 owner: jjohare
-review_trigger: A governance upstream stops re-verifying the operator signature, or a bearer is added to the default AoE route
+review_trigger: A governance upstream stops re-verifying the operator signature, or a new default proxy route is proposed
 repo: agentbox
 domain: INGRESS-identity
 lineage: legacy ADR-069 (unified operator auth / dreamlab adoption)
 ---
 
 # ADR-2010 — Bearer credential exchange is gated beneath the NIP-98 identity
+
+## Re-verification — 2026-10-29 at 3b498088e (ADR-2153 cutover)
+
+Reviewed the governed-path diff from this record's previous verification to
+`3b498088e5a35e78158a9eb8d6f0266996d31f82`. Shared manifest, schema, supervisor and bootstrap changes
+are scoped to the owned session plane: AoE and its token consumers retire,
+provider provisioning moves, and session status hooks are added. Other named
+capability sections and their status axes retain their existing claims.
+Validation: session-plane tests (44 unit, 15 integration), manifest projector
+suite and Clippy for both crates, proxy selftest (zero failures/skips), hook
+registration (12), role-supervisor isolation (25), boot projection (13), and
+manifest catalogue/declared-state checks pass locally. This does not claim new
+runtime acceptance of this record's unrelated capabilities.
+
+The former AoE default route and unconditional daemon-token exception are retired. Identity verification, canonical pubkeys, cookie checks and named-route NIP-98/bearer exchange remain; unknown HTTP/WS routes return 404 after authentication.
 
 ## Re-verification — 2026-09-29 (instruction-home migration)
 
