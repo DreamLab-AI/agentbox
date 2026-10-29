@@ -125,12 +125,12 @@ jobs:
         with:
           node-version: '22'
           cache: 'npm'
-          cache-dependency-path: management-api/package-lock.json
+          cache-dependency-path: package-lock.json
 
-      # The bridge resolves ws through NODE_PATH=management-api/node_modules.
+      # The bridge is an ES module, so ws resolves from the repository root's
+      # node_modules (NODE_PATH does not apply to import).
       - name: Install dependencies
-        working-directory: management-api
-        run: npm ci
+        run: npm ci --ignore-scripts
 
       # A fake session daemon on a unix socket: readiness must appear, drop when
       # the daemon goes away, and return when it comes back.
