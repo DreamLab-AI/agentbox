@@ -7,6 +7,9 @@ on:
       - 'services/agentbox-sessions/**'
       - 'config/session-plane/**'
       - 'tests/cli/session-launch-contract.test.mjs'
+      - 'tests/cli/session-control.test.cjs'
+      - 'scripts/session-control.cjs'
+      - 'config/hooks/session-state.cjs'
       - 'tests/tui/**'
       - '.github/workflows/tui-tests.yml'
   push:
@@ -17,6 +20,9 @@ on:
       - 'services/agentbox-sessions/**'
       - 'config/session-plane/**'
       - 'tests/cli/session-launch-contract.test.mjs'
+      - 'tests/cli/session-control.test.cjs'
+      - 'scripts/session-control.cjs'
+      - 'config/hooks/session-state.cjs'
       - 'tests/tui/**'
 
 jobs:
@@ -101,4 +107,4 @@ jobs:
       - name: Node/Rust launch-contract parity
         env:
           AGENTBOX_SESSIONS_BIN: ${{ github.workspace }}/services/agentbox-sessions/target/debug/agentbox-sessions
-        run: node --test tests/cli/session-launch-contract.test.mjs
+        run: node --test tests/cli/session-launch-contract.test.mjs tests/cli/session-control.test.cjs
