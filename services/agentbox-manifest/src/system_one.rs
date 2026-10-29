@@ -91,7 +91,10 @@ impl Projection {
     }
 
     fn backend(&self, name: &str) -> Option<&Backend> {
-        self.backends.iter().find(|(n, _)| n == name).map(|(_, b)| b)
+        self.backends
+            .iter()
+            .find(|(n, _)| n == name)
+            .map(|(_, b)| b)
     }
 }
 
@@ -137,21 +140,47 @@ pub fn resolve(manifest: &Value, warn: &mut dyn FnMut(String)) -> Option<Project
         return None;
     }
     let Some(map) = so.get("backends").and_then(Value::as_object) else {
-        warn("[system-one] enabled but no [system_one.backends] — leaving the cloud path in place".into());
+        warn(
+            "[system-one] enabled but no [system_one.backends] — leaving the cloud path in place"
+                .into(),
+        );
         return None;
     };
     let mut backends = Vec::with_capacity(map.len());
     for (name, raw) in map {
         let b = Backend {
-            url: raw.get("url").and_then(Value::as_str).unwrap_or("").trim().to_string(),
-            model: raw.get("model").and_then(Value::as_str).unwrap_or("").trim().to_string(),
-            key_env: raw.get("key_env").and_then(Value::as_str).unwrap_or("").trim().to_string(),
+            url: raw
+                .get("url")
+                .and_then(Value::as_str)
+                .unwrap_or("")
+                .trim()
+                .to_string(),
+            model: raw
+                .get("model")
+                .and_then(Value::as_str)
+                .unwrap_or("")
+                .trim()
+                .to_string(),
+            key_env: raw
+                .get("key_env")
+                .and_then(Value::as_str)
+                .unwrap_or("")
+                .trim()
+                .to_string(),
             local: raw.get("local").and_then(Value::as_bool).unwrap_or(false),
-            timeout_ms: raw.get("timeout_ms").and_then(Value::as_i64).unwrap_or(30_000),
-            usd_per_mtok_in: raw.get("usd_per_mtok_in").and_then(Value::as_f64).unwrap_or(0.0),
+            timeout_ms: raw
+                .get("timeout_ms")
+                .and_then(Value::as_i64)
+                .unwrap_or(30_000),
+            usd_per_mtok_in: raw
+                .get("usd_per_mtok_in")
+                .and_then(Value::as_f64)
+                .unwrap_or(0.0),
         };
         if b.url.is_empty() {
-            warn(format!("[system-one] backend {name} has no url — refusing to project (E080)"));
+            warn(format!(
+                "[system-one] backend {name} has no url — refusing to project (E080)"
+            ));
             return None;
         }
         if b.local {
@@ -193,7 +222,12 @@ pub fn resolve(manifest: &Value, warn: &mut dyn FnMut(String)) -> Option<Project
         ));
         return None;
     }
-    Some(Projection { bind, log, active, backends })
+    Some(Projection {
+        bind,
+        log,
+        active,
+        backends,
+    })
 }
 
 /// What a previously written projection file said, as far as a switch needs.
@@ -212,7 +246,10 @@ impl Existing {
         let v: Value = serde_json::from_str(&text).ok()?;
         Some(Existing {
             projected_local: v.get("projected_local").and_then(Value::as_bool),
-            projected_at: v.get("projected_at").and_then(Value::as_str).map(str::to_string),
+            projected_at: v
+                .get("projected_at")
+                .and_then(Value::as_str)
+                .map(str::to_string),
         })
     }
 }
@@ -318,6 +355,173 @@ pub fn render_json(p: &Projection, active: &str, existing: Option<&Existing>) ->
     })
 }
 
+/// Project explicit consumer opt-ins and a separately validated private-data route.
+/// A cloud backend can never be relabelled local; private consumers fail closed.
+fn consumer_exports(manifest: &Value, p: &Projection, warn: &mut dyn FnMut(String)) -> Vec<String> {
+    let mut lines = Vec::new();
+    let local = tomlval::get(manifest, "system_one.local_backend")
+        .and_then(Value::as_str)
+        .and_then(|name| p.backend(name));
+    let local = local.filter(|b| b.local && b.key_env.is_empty() && is_local_endpoint(&b.url));
+    if tomlval::get(manifest, "system_one.local_backend").is_some() && local.is_none() {
+        warn("[system-one] local_backend must name a declared keyless LAN backend; private route disabled".into());
+    }
+    // Emit empty values too: withdrawing the route must clear an inherited export.
+    lines.push(format!(
+        "export AGENTBOX_SYSTEM_ONE_LOCAL_ENDPOINT={}",
+        shq(local.map_or("", |b| b.url.as_str()))
+    ));
+    lines.push(format!(
+        "export AGENTBOX_SYSTEM_ONE_LOCAL_MODEL={}",
+        shq(local.map_or("", |b| b.model.as_str()))
+    ));
+    lines.push(format!(
+        "export AGENTBOX_JEV_FAILURE_TAXONOMY={}",
+        u8::from(
+            tomlval::get(manifest, "system_one.consumers.failure_taxonomy")
+                == Some(&Value::Bool(true))
+        )
+    ));
+    lines.push(format!(
+        "export AGENTBOX_JEV_MANIFEST_PLAN={}",
+        u8::from(
+            tomlval::get(manifest, "system_one.consumers.manifest_plan")
+                == Some(&Value::Bool(true))
+        )
+    ));
+    lines.push(format!(
+        "export AGENTBOX_JEV_VOICE_INTENT={}",
+        u8::from(
+            tomlval::get(manifest, "system_one.consumers.voice_intent") == Some(&Value::Bool(true))
+        )
+    ));
+    lines.push(format!(
+        "export AGENTBOX_JEV_APPROVAL_REVIEW={}",
+        u8::from(
+            tomlval::get(manifest, "system_one.consumers.approval_review")
+                == Some(&Value::Bool(true))
+        )
+    ));
+    lines.push(format!(
+        "export AGENTBOX_JEV_CONSULT_ADVICE={}",
+        u8::from(
+            tomlval::get(manifest, "system_one.consumers.consult_advice")
+                == Some(&Value::Bool(true))
+        )
+    ));
+    lines.push(format!(
+        "export AGENTBOX_JEV_MEMORY_RERANK={}",
+        u8::from(
+            tomlval::get(manifest, "system_one.consumers.memory_rerank")
+                == Some(&Value::Bool(true))
+        )
+    ));
+    lines.push(format!(
+        "export AGENTBOX_JEV_TRAJECTORY_CLASSIFY={}",
+        u8::from(
+            tomlval::get(manifest, "system_one.consumers.trajectory_classify")
+                == Some(&Value::Bool(true))
+        )
+    ));
+    lines.push(format!(
+        "export AGENTBOX_JEV_SKILL_INTENT={}",
+        u8::from(
+            tomlval::get(manifest, "system_one.consumers.skill_intent") == Some(&Value::Bool(true))
+        )
+    ));
+    lines.push(format!(
+        "export AGENTBOX_JEV_SKILL_VERIFY={}",
+        u8::from(
+            tomlval::get(manifest, "system_one.consumers.skill_verify") == Some(&Value::Bool(true))
+        )
+    ));
+    lines.push(format!(
+        "export AGENTBOX_JEV_ONTOLOGY_RELEVANCE={}",
+        u8::from(
+            tomlval::get(manifest, "system_one.consumers.ontology_relevance")
+                == Some(&Value::Bool(true))
+        )
+    ));
+    lines.push(format!(
+        "export AGENTBOX_JEV_ONTOLOGY_RERANK={}",
+        u8::from(
+            tomlval::get(manifest, "system_one.consumers.ontology_rerank")
+                == Some(&Value::Bool(true))
+        )
+    ));
+    lines.push(format!(
+        "export AGENTBOX_JEV_ONTOLOGY_PROPOSALS={}",
+        u8::from(
+            tomlval::get(manifest, "system_one.consumers.ontology_proposals")
+                == Some(&Value::Bool(true))
+        )
+    ));
+    lines.push(format!(
+        "export AGENTBOX_JEV_HEADROOM_EVIDENCE={}",
+        u8::from(
+            tomlval::get(manifest, "system_one.consumers.headroom_evidence")
+                == Some(&Value::Bool(true))
+        )
+    ));
+    lines.push(format!(
+        "export AGENTBOX_JEV_GOVERNANCE_RUBRIC={}",
+        u8::from(
+            tomlval::get(manifest, "system_one.consumers.governance_rubric")
+                == Some(&Value::Bool(true))
+        )
+    ));
+
+    for key in [
+        "CONSULT",
+        "TRAJECTORY",
+        "ONTOLOGY",
+        "ONTOLOGY_PROPOSALS",
+        "GOVERNANCE_RUBRIC",
+        "DREAM_TRIAGE",
+    ] {
+        lines.push(format!("export AGENTBOX_JEV_{key}_LOCAL_ONLY=1"));
+    }
+    for (key, prefix) in [
+        ("visionflow_advisories", "VISIONFLOW_JEV"),
+        ("website_advisories", "DREAMLAB_JEV"),
+        ("solid_pod_advisories", "SOLID_POD_JEV"),
+        ("vault_rank", "VISIONCLAW_JEV_PATCH_RANK"),
+        ("ontomark_suggestions", "ONTOMARK_JEV"),
+    ] {
+        let on = tomlval::get(manifest, &format!("system_one.consumers.{key}"))
+            == Some(&Value::Bool(true));
+        lines.push(format!(
+            "export {prefix}={}",
+            u8::from(on && local.is_some())
+        ));
+        lines.push(format!(
+            "export {prefix}_ENDPOINT={}",
+            shq(local.map_or("", |b| b.url.as_str()))
+        ));
+        lines.push(format!(
+            "export {prefix}_MODEL={}",
+            shq(local.map_or("", |b| b.model.as_str()))
+        ));
+        lines.push(format!(
+            "export {prefix}_LOCAL={}",
+            u8::from(local.is_some())
+        ));
+    }
+    lines.push(format!(
+        "export VISIONCLAW_JEV_ENDPOINT={}",
+        shq(local.map_or("", |b| b.url.as_str()))
+    ));
+    lines.push(format!(
+        "export VISIONCLAW_JEV_MODEL={}",
+        shq(local.map_or("", |b| b.model.as_str()))
+    ));
+    lines.push(format!(
+        "export VISIONCLAW_JEV_LOCAL={}",
+        u8::from(local.is_some())
+    ));
+    lines
+}
+
 /// Render the consumer-facing projection. Disabled or unusable ⇒ empty string.
 pub fn render(
     manifest: &Value,
@@ -330,20 +534,31 @@ pub fn render(
         return Ok(String::new());
     };
     let active = select_active(&p, existing, switch)?;
-    let b = p.backend(&active).expect("select_active returns a declared backend");
+    let b = p
+        .backend(&active)
+        .expect("select_active returns a declared backend");
     let endpoint = p.endpoint();
     Ok(match format {
-        Format::Shell => [
-            "export AGENTBOX_SYSTEM_ONE_PROXY=1".to_string(),
-            format!("export AGENTBOX_SYSTEM_ONE_BACKEND={}", shq(&active)),
-            format!("export AGENTBOX_SYSTEM_ONE_BACKEND_LOCAL={}", u8::from(b.local)),
-            format!("export AGENTBOX_SYSTEM_ONE_ENDPOINT={}", shq(&endpoint)),
-            format!("export AGENTBOX_SYSTEM_ONE_MODEL={}", shq(&b.model)),
-            format!("export AGENTBOX_SKILL_ROUTE_API={}", shq(&endpoint)),
-            format!("export AGENTBOX_SKILL_ROUTE_MODEL={}", shq(&b.model)),
-            format!("export AGENTBOX_SKILL_ROUTE_USD_PER_MTOK_IN={}", b.usd_per_mtok_in),
-        ]
-        .join("\n"),
+        Format::Shell => {
+            let mut lines = vec![
+                "export AGENTBOX_SYSTEM_ONE_PROXY=1".to_string(),
+                format!("export AGENTBOX_SYSTEM_ONE_BACKEND={}", shq(&active)),
+                format!(
+                    "export AGENTBOX_SYSTEM_ONE_BACKEND_LOCAL={}",
+                    u8::from(b.local)
+                ),
+                format!("export AGENTBOX_SYSTEM_ONE_ENDPOINT={}", shq(&endpoint)),
+                format!("export AGENTBOX_SYSTEM_ONE_MODEL={}", shq(&b.model)),
+                format!("export AGENTBOX_SKILL_ROUTE_API={}", shq(&endpoint)),
+                format!("export AGENTBOX_SKILL_ROUTE_MODEL={}", shq(&b.model)),
+                format!(
+                    "export AGENTBOX_SKILL_ROUTE_USD_PER_MTOK_IN={}",
+                    b.usd_per_mtok_in
+                ),
+            ];
+            lines.extend(consumer_exports(manifest, &p, warn));
+            lines.join("\n")
+        }
         Format::PluginConfig => [
             format!("baseUrl={endpoint}"),
             format!("model={}", b.model),
@@ -430,7 +645,12 @@ timeout_ms = 20000
         tomlval::parse(body).expect("valid toml")
     }
 
-    fn quiet(m: &Value, f: Format, existing: Option<&Existing>, switch: Option<&str>) -> (Result<String, SwitchRefused>, Vec<String>) {
+    fn quiet(
+        m: &Value,
+        f: Format,
+        existing: Option<&Existing>,
+        switch: Option<&str>,
+    ) -> (Result<String, SwitchRefused>, Vec<String>) {
         let mut warns = Vec::new();
         let out = render(m, f, existing, switch, &mut |w| warns.push(w));
         (out, warns)
@@ -486,8 +706,34 @@ timeout_ms = 20000
         assert!(out.contains("export AGENTBOX_SYSTEM_ONE_PROXY=1"));
         assert!(out.contains("export AGENTBOX_SKILL_ROUTE_USD_PER_MTOK_IN=0"));
         assert!(out.contains("export AGENTBOX_SYSTEM_ONE_BACKEND_LOCAL=0"));
-        assert!(out.contains("export AGENTBOX_SKILL_ROUTE_API='http://127.0.0.1:8094/v1/systemone'"));
+        assert!(
+            out.contains("export AGENTBOX_SKILL_ROUTE_API='http://127.0.0.1:8094/v1/systemone'")
+        );
         assert!(out.contains("export AGENTBOX_SKILL_ROUTE_MODEL='subq-snap-preview'"));
+    }
+
+    #[test]
+    fn private_route_and_opt_ins_are_explicit_and_cloud_cannot_be_local() {
+        let mut m = manifest(SLOT);
+        m["system_one"]["local_backend"] = json!("local");
+        m["system_one"]["backends"]["local"] = json!({"url":"http://systemone:8097/v1/systemone", "model":"laya", "local":true, "key_env":""});
+        m["system_one"]["consumers"] = json!({"memory_rerank":true, "visionflow_advisories":true});
+        let (out, warns) = quiet(&m, Format::Shell, None, None);
+        let out = out.unwrap();
+        assert!(warns.is_empty(), "{warns:?}");
+        assert!(out.contains("export AGENTBOX_SYSTEM_ONE_BACKEND_LOCAL=0"));
+        assert!(out.contains(
+            "export AGENTBOX_SYSTEM_ONE_LOCAL_ENDPOINT='http://systemone:8097/v1/systemone'"
+        ));
+        assert!(out.contains("export AGENTBOX_JEV_MEMORY_RERANK=1"));
+        assert!(out.contains("export AGENTBOX_JEV_VOICE_INTENT=0"));
+        assert!(out.contains("export VISIONFLOW_JEV=1"));
+        m["system_one"]["local_backend"] = json!("subq");
+        let (out, warns) = quiet(&m, Format::Shell, None, None);
+        let out = out.unwrap();
+        assert!(warns.iter().any(|w| w.contains("local_backend")));
+        assert!(out.contains("export AGENTBOX_SYSTEM_ONE_LOCAL_ENDPOINT=''"));
+        assert!(out.contains("export VISIONFLOW_JEV=0"));
     }
 
     #[test]
@@ -520,27 +766,43 @@ timeout_ms = 20000
 
     #[test]
     fn existing_is_preserved_and_local_to_cloud_is_refused() {
-        let boot = Existing { projected_local: Some(true), projected_at: Some("2026-10-12T00:00:00Z".into()) };
+        let boot = Existing {
+            projected_local: Some(true),
+            projected_at: Some("2026-10-12T00:00:00Z".into()),
+        };
         let m = manifest(&SLOT.replace("backend = \"subq\"", "backend = \"laya\""));
         let (out, _) = quiet(&m, Format::Json, Some(&boot), Some("typesafe"));
         assert!(out.unwrap_err().0.contains("restart the container"));
         // cloud → local is allowed and keeps the boot record
-        let cloud = Existing { projected_local: Some(false), projected_at: Some("2026-10-12T00:00:00Z".into()) };
+        let cloud = Existing {
+            projected_local: Some(false),
+            projected_at: Some("2026-10-12T00:00:00Z".into()),
+        };
         let (out, _) = quiet(&manifest(SLOT), Format::Json, Some(&cloud), Some("laya"));
         let v: Value = serde_json::from_str(&out.unwrap()).unwrap();
         assert_eq!(v["active"], "laya");
         assert_eq!(v["projected_local"], false);
         assert_eq!(v["projected_at"], "2026-10-12T00:00:00Z");
         // same class switch
-        let (out, _) = quiet(&manifest(SLOT), Format::Json, Some(&cloud), Some("typesafe"));
-        assert_eq!(serde_json::from_str::<Value>(&out.unwrap()).unwrap()["active"], "typesafe");
+        let (out, _) = quiet(
+            &manifest(SLOT),
+            Format::Json,
+            Some(&cloud),
+            Some("typesafe"),
+        );
+        assert_eq!(
+            serde_json::from_str::<Value>(&out.unwrap()).unwrap()["active"],
+            "typesafe"
+        );
     }
 
     #[test]
     fn a_quote_in_a_value_cannot_break_out_of_the_export() {
         let m = manifest(&SLOT.replace("subq-snap-preview", "a'; rm -rf /"));
         let (out, _) = quiet(&m, Format::Shell, None, None);
-        assert!(out.unwrap().contains(r"export AGENTBOX_SYSTEM_ONE_MODEL='a'\''; rm -rf /'"));
+        assert!(out
+            .unwrap()
+            .contains(r"export AGENTBOX_SYSTEM_ONE_MODEL='a'\''; rm -rf /'"));
     }
 
     #[test]

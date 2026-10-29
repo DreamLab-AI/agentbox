@@ -381,6 +381,101 @@
       "name": "System One vendor slot (typed-decision proxy)",
       "summary": "ADR-2139: the System One judge is a vendor slot. [program:system-one-proxy] (crates/system-one/system-one-proxy, loopback [system_one].bind, default 127.0.0.1:8094) fronts all three typed-decision consumers (the live skill router ADR-2091, factrail compaction ADR-2121, the advisor checkpoints ADR-2135) and forwards POST /v1/systemone to the backend named by [system_one].backend out of [system_one.backends.*] (shipped: typesafe = Jev, subq = SubQ Snap, laya = the ADR-2094 facade sidecar, kev = a local Kev-9B server). The proxy owns the vendor keys (read from each backend's key_env, sent only to that key's hard-coded host over https, never to a local backend, redirects off), overwrites `model` with the backend's own and drops the Authorization a consumer sent. BOOT-class projection: the entrypoint runs `agentbox-manifest system-one-project`, writes /run/agentbox/system-one.json (the proxy's only config; re-read on change) and projects the proxy URL, the selected model and backendLocal = the selected backend's declared locality into runtime-env.sh, the router hook and both plugins' userConfig. LIVE subset: `./agentbox.sh systemone backend <name>` re-projects the JSON in place and the next request follows it — allowed between two backends of one locality class and from cloud to local; local-to-cloud is refused (and the proxy answers 503 backend_locality_changed) until the container restarts, because the consumers' email fence was projected at boot (ADR-2094 §5). The program itself is REBUILD-class (flake.nix bakes it from the in-repo workspace). Mutually exclusive with [features.sovereign_system_one].enabled (E081). Observability: GET /v1/backend (active backend, per-backend counters, estimated spend) and the JSONL request log at [system_one].log (never content). Validator: E080/E081/W076; W071/W072 stand down because the vendor key lives in the proxy — the consumers still need TYPESAFE_API_KEY or FACTRAIL_API_KEY present as their own gate token."
     },
+    "system_one.consumers.approval_review": {
+      "class": "boot",
+      "name": "System One approval review",
+      "summary": "Explicit consumer opt-in projected before supervisord and into runtime-env; existing advisory, locality and threshold guards remain authoritative."
+    },
+    "system_one.consumers.consult_advice": {
+      "class": "boot",
+      "name": "System One consult advice",
+      "summary": "Explicit consumer opt-in projected before supervisord and into runtime-env; existing advisory, locality and threshold guards remain authoritative."
+    },
+    "system_one.consumers.failure_taxonomy": {
+      "class": "boot",
+      "name": "System One failure taxonomy",
+      "summary": "Explicit consumer opt-in projected before supervisord and into runtime-env; existing advisory, locality and threshold guards remain authoritative."
+    },
+    "system_one.consumers.governance_rubric": {
+      "class": "boot",
+      "name": "System One governance rubric",
+      "summary": "Explicit consumer opt-in projected before supervisord and into runtime-env; existing advisory, locality and threshold guards remain authoritative."
+    },
+    "system_one.consumers.headroom_evidence": {
+      "class": "boot",
+      "name": "System One headroom evidence",
+      "summary": "Explicit consumer opt-in projected before supervisord and into runtime-env; existing advisory, locality and threshold guards remain authoritative."
+    },
+    "system_one.consumers.manifest_plan": {
+      "class": "boot",
+      "name": "System One manifest plan",
+      "summary": "Explicit consumer opt-in projected before supervisord and into runtime-env; existing advisory, locality and threshold guards remain authoritative."
+    },
+    "system_one.consumers.memory_rerank": {
+      "class": "boot",
+      "name": "System One memory rerank",
+      "summary": "Explicit consumer opt-in projected before supervisord and into runtime-env; existing advisory, locality and threshold guards remain authoritative."
+    },
+    "system_one.consumers.ontology_proposals": {
+      "class": "boot",
+      "name": "System One ontology proposals",
+      "summary": "Explicit consumer opt-in projected before supervisord and into runtime-env; existing advisory, locality and threshold guards remain authoritative."
+    },
+    "system_one.consumers.ontology_relevance": {
+      "class": "boot",
+      "name": "System One ontology relevance",
+      "summary": "Explicit consumer opt-in projected before supervisord and into runtime-env; existing advisory, locality and threshold guards remain authoritative."
+    },
+    "system_one.consumers.ontology_rerank": {
+      "class": "boot",
+      "name": "System One ontology rerank",
+      "summary": "Explicit consumer opt-in projected before supervisord and into runtime-env; existing advisory, locality and threshold guards remain authoritative."
+    },
+    "system_one.consumers.ontomark_suggestions": {
+      "class": "rebuild",
+      "name": "System One ontomark suggestions",
+      "summary": "Build the Jev feature and project a keyless local endpoint; advisory only."
+    },
+    "system_one.consumers.skill_intent": {
+      "class": "boot",
+      "name": "System One skill intent",
+      "summary": "Explicit consumer opt-in projected before supervisord and into runtime-env; existing advisory, locality and threshold guards remain authoritative."
+    },
+    "system_one.consumers.skill_verify": {
+      "class": "boot",
+      "name": "System One skill verify",
+      "summary": "Explicit consumer opt-in projected before supervisord and into runtime-env; existing advisory, locality and threshold guards remain authoritative."
+    },
+    "system_one.consumers.solid_pod_advisories": {
+      "class": "rebuild",
+      "name": "System One solid pod advisories",
+      "summary": "Build the Jev feature and project a keyless local endpoint; advisory only."
+    },
+    "system_one.consumers.trajectory_classify": {
+      "class": "boot",
+      "name": "System One trajectory classify",
+      "summary": "Explicit consumer opt-in projected before supervisord and into runtime-env; existing advisory, locality and threshold guards remain authoritative."
+    },
+    "system_one.consumers.vault_rank": {
+      "class": "rebuild",
+      "name": "System One vault rank",
+      "summary": "Build vault with Jev and supply its private local endpoint for read-only patch ranking."
+    },
+    "system_one.consumers.visionflow_advisories": {
+      "class": "boot",
+      "name": "System One visionflow advisories",
+      "summary": "Explicit consumer opt-in projected before supervisord and into runtime-env; existing advisory, locality and threshold guards remain authoritative."
+    },
+    "system_one.consumers.voice_intent": {
+      "class": "boot",
+      "name": "System One voice intent",
+      "summary": "Explicit consumer opt-in projected before supervisord and into runtime-env; existing advisory, locality and threshold guards remain authoritative."
+    },
+    "system_one.consumers.website_advisories": {
+      "class": "boot",
+      "name": "System One website advisories",
+      "summary": "Explicit consumer opt-in projected before supervisord and into runtime-env; existing advisory, locality and threshold guards remain authoritative."
+    },
     "toolchains.agentic_qe": {
       "class": "rebuild",
       "name": "Agentic QE fleet (aqe)",

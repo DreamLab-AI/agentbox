@@ -58,7 +58,7 @@
 # Licence: the crate is AGPL-3.0-only like its VisionClaw siblings; recorded
 # here and in docs/developer/licensing.md alongside the other AGPL daemons.
 
-{ lib, pkgs, src, version ? "0.1.0" }:
+{ lib, pkgs, src, version ? "0.1.0", jev ? false }:
 
 pkgs.rustPlatform.buildRustPackage {
   pname = "vault";
@@ -78,6 +78,7 @@ pkgs.rustPlatform.buildRustPackage {
     };
   };
   buildAndTestSubdir = "crates/vault";
+  buildFeatures = lib.optionals jev [ "jev" ];
 
   nativeBuildInputs = [ pkgs.pkg-config ];
   buildInputs = [ pkgs.openssl ];

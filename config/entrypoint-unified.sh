@@ -1283,6 +1283,14 @@ if [ "${AGENTBOX_TAB0_BRIDGE_SUPERVISED:-0}" = "1" ] && [ -z "${BRIDGE_TOKEN:-}"
   export BRIDGE_TOKEN
 fi
 
+# Project the typed-decision environment BEFORE supervisord starts. Stage B alone
+# cannot change the environment of its sibling services (management API/MCP/cron).
+if command -v agentbox-manifest >/dev/null 2>&1; then
+  _SO_SERVICE_EXPORTS="$(agentbox-manifest system-one-project \
+    --manifest "${AGENTBOX_CONFIG:-/etc/agentbox.toml}" --format shell)"
+  [ -z "$_SO_SERVICE_EXPORTS" ] || eval "$_SO_SERVICE_EXPORTS"
+fi
+
 # Custody W1 (ADR-2122): pick the supervisor config. Flag off: today's
 # /etc/supervisord.conf, unchanged. Flag on: deliver every role's secrets into
 # /run/secrets/<role>/ (0500 dir, 0400 files, owned by the role), unset the

@@ -160,3 +160,9 @@ own optional headless physics, the internal `:9890` job API and Blender motion
 export. Host lifecycle: `./agentbox.sh isaac-sim`; a GPU UUID is required and
 only executed fixtures raise simulator health. See
 [Isaac operations](../../developer/isaac-sim.md).
+
+
+System One consumer activation is staged under ADR-2155: explicit manifest
+switches reach services before launch, with a separate keyless local route for
+private data. See `docs/reference/system-one-activation.md` in the Agentbox
+repository for rebuild requirements and the remaining deployment prerequisites.

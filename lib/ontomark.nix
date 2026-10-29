@@ -35,10 +35,34 @@
 # The asset name keeps the `-linux-gnu` suffix the first release used; the
 # binary itself is static-pie musl and runs on glibc and Nix hosts alike.
 
-{ lib, pkgs, version ? "0.6.0"
+{ lib, pkgs, jev ? false, version ? "0.6.0"
 , hash ? "sha256-TPH5RFrK4R5ZZT8wqEpMn/2z+sSm6rbT0grBqT4Jo1c=" }:
 
-pkgs.stdenvNoCC.mkDerivation {
+# The released 0.6.0 binary predates the Jev feature. Build the pinned upstream
+# source only for the enabled suggestion consumer; off retains the release bytes.
+if jev then pkgs.rustPlatform.buildRustPackage {
+  pname = "ontomark";
+  inherit version;
+  src = pkgs.fetchFromGitHub {
+    owner = "DreamLab-AI";
+    repo = "ontomark";
+    rev = "07f4c1ce6ac9e7d5c1c2169b4672ca73c54e5efa";
+    hash = "sha256-ObTA4pvmpDeeBHtzTEw5f1FWWvmFiRjjU7w55bkXlgo=";
+  };
+  cargoLock.lockFile = ./lockfiles/ontomark-07f4c1ce.Cargo.lock;
+  buildAndTestSubdir = "crates/ontomark-cli";
+  buildFeatures = [ "jev" ];
+  nativeBuildInputs = [ pkgs.pkg-config ];
+  buildInputs = [ pkgs.openssl ];
+  doCheck = true;
+  meta = with lib; {
+    description = "Ontomark CLI with local typed-decision suggestions";
+    homepage = "https://github.com/DreamLab-AI/ontomark";
+    license = [ licenses.mit licenses.asl20 ];
+    mainProgram = "ontomark";
+    platforms = platforms.linux;
+  };
+} else pkgs.stdenvNoCC.mkDerivation {
   pname = "ontomark";
   inherit version;
 

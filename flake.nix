@@ -39,7 +39,7 @@
     # Pin the parent VisionClaw commit so the corpus door is reproducible and
     # cannot drift with a mutable branch.
     vaultSrc = {
-      url = "github:DreamLab-AI/VisionClaw/e2d4e2cc131454db236b175226ab809014b6a88d";
+      url = "github:DreamLab-AI/VisionClaw/f3bbb430ea00a9a7828b2d86b43a34a0a21e200d";
       flake = false;
     };
 
@@ -962,6 +962,7 @@
           inherit lib;
           pkgs = rustPkgs;
           src = vaultSrc;
+          jev = ((agentboxConfig.system_one or {}).consumers or {}).vault_rank or false;
         };
         # ontomark — the released shared-ontology CLI (Ontomark ADR-OM-005; agentbox
         # ADR-2136 first step). Baked BESIDE vault under the same gate: it owns
@@ -970,7 +971,10 @@
         # lands, then retires verb by verb (Ontomark DEPRECATION §13, AB-P6).
         # Fetched as the release's static binary by digest, so this image runs the
         # same bytes as visionGraph's publish pipeline and the Loom host.
-        ontomarkPkg = import ./lib/ontomark.nix { inherit lib; pkgs = rustPkgs; };
+        ontomarkPkg = import ./lib/ontomark.nix {
+          inherit lib; pkgs = rustPkgs;
+          jev = ((agentboxConfig.system_one or {}).consumers or {}).ontomark_suggestions or false;
+        };
         vaultPackages = lib.optionals vaultCliActive [ vaultPkg ontomarkPkg ];
 
         # Supercronic drives the podcast ingestion schedule.  Keep it in the
@@ -1550,6 +1554,7 @@
         # dep-path so cargo enables them on the workspace member when the
         # server crate doesn't forward them.
         solidPodRsExtraFeatures =
+          lib.optionals (((agentboxConfig.system_one or {}).consumers or {}).solid_pod_advisories or false) [ "jev" ] ++
           lib.optionals (solidPodRsCfg.enable_schnorr_verify or true) [ "solid-pod-rs/nip98-schnorr" ]
           ++ lib.optionals (solidPodRsCfg.enable_did_nostr or true) [ "did-nostr" ]
           ++ lib.optionals (solidPodRsCfg.enable_rate_limit or true) [ "rate-limit" ]

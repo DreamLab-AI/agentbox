@@ -257,3 +257,9 @@ dependencies. See [ADR-2148](../docs/adr/ADR-2148-remote-media-control-planes.md
 The optional [Isaac physics sidecar](../docs/developer/isaac-sim.md) is also
 independent of this browser. Building or replacing it does not require a browser
 restart or a Podkey unlock.
+
+
+System One consumer activation is staged under ADR-2155: explicit manifest
+switches reach services before launch, with a separate keyless local route for
+private data. See `docs/reference/system-one-activation.md` in the Agentbox
+repository for rebuild requirements and the remaining deployment prerequisites.

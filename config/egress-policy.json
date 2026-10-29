@@ -26,7 +26,7 @@
     }
   ],
   "switches": {
-    "AGENTBOX_EGRESS": "Global. '0' disables EVERY path in this table, whatever the per-path switch says. This is the single off switch the review found missing — AGENTBOX_LIVE_MIRROR=0 was never proof that the separately configured Rust digest path was off.",
+    "AGENTBOX_EGRESS": "Global. '0' disables EVERY path in this table, whatever the per-path switch says. This is the single off switch the review found missing \u2014 AGENTBOX_LIVE_MIRROR=0 was never proof that the separately configured Rust digest path was off.",
     "AGENTBOX_LIVE_MIRROR": "'0' disables the live-mirror path only.",
     "AGENTBOX_SESSION_DIGEST": "'0' disables the session-digest path only.",
     "AGENTBOX_MIRROR_RECIPIENTS": "Required comma-separated allowlist of 64-hex live-mirror recipient pubkeys. Missing, empty, malformed or non-matching lists refuse the path before content is read, including dry-run.",
@@ -44,7 +44,7 @@
     "accepted": "The peer positively acknowledged (relay OK / provider 2xx).",
     "failed": "The attempt was made and the transport or peer rejected or errored."
   },
-  "notes": "Exit code zero from either path means the calling session was not blocked. It is NOT proof of delivery and NOT proof the path was disabled — read the outcome, not the exit code.",
+  "notes": "Exit code zero from either path means the calling session was not blocked. It is NOT proof of delivery and NOT proof the path was disabled \u2014 read the outcome, not the exit code.",
   "register": {
     "title": "Prompt egress register",
     "todo": "N-7",
@@ -81,7 +81,7 @@
         "destination_class": "vendor",
         "destination": "Anthropic API; OpenAI API",
         "gate": "none. A running session is the egress. `[toolchains].claude` (`agentbox.toml:1849`) and `codex` (`agentbox.toml:1860`) are rebuild-class bake gates, not runtime switches.",
-        "accepted_egress": "Owner disposition Q14, 2026-10-03 (custody-isolation design §11, pending owner review): primary-model egress recorded as accepted. No ADR yet.",
+        "accepted_egress": "Owner disposition Q14, 2026-10-03 (custody-isolation design \u00a711, pending owner review): primary-model egress recorded as accepted. No ADR yet.",
         "markers": [
           "no-gate"
         ],
@@ -108,7 +108,7 @@
           "code"
         ],
         "destination_class": "vendor",
-        "destination": "TypeSafe System One (cloud) unless repointed at the local façade",
+        "destination": "TypeSafe System One (cloud) unless repointed at the local fa\u00e7ade",
         "gate": "`[features.jev_compaction].enabled` (`agentbox.toml:680`); `egress = \"metadata\"` (`agentbox.toml:701`) narrows the payload to kinds, key names, counts and lengths.",
         "accepted_egress": "ADR-2093 (accepted): operator decision to send transcript windows beyond ADR-2090's routing-only scope, with email fenced out (`docs/adr/ADR-2093-jev-verbatim-compaction.md:53-54`).",
         "markers": [],
@@ -116,7 +116,7 @@
       },
       {
         "id": "system-one-local",
-        "route": "Sovereign System One façade (ADR-2094)",
+        "route": "Sovereign System One fa\u00e7ade (ADR-2094)",
         "leaves": [
           "prompt",
           "code"
@@ -124,7 +124,7 @@
         "destination_class": "LAN",
         "destination": "`system-one-facade` on `visionclaw_network`; option embeddings to `192.168.2.132:9997` (`agentbox.toml:737`)",
         "gate": "`[features.sovereign_system_one].enabled` (`agentbox.toml:732`), currently `false`",
-        "accepted_egress": "ADR-2094 (accepted, activation inactive): a local façade in the Jev wire format (`docs/adr/ADR-2094-local-capacity-adapting-typed-decision-facade.md:35-38`).",
+        "accepted_egress": "ADR-2094 (accepted, activation inactive): a local fa\u00e7ade in the Jev wire format (`docs/adr/ADR-2094-local-capacity-adapting-typed-decision-facade.md:35-38`).",
         "markers": [],
         "notes": "Carries the router and compaction payloads above. When on, nothing leaves the LAN. Inactive at HEAD, so the two vendor rows above are the live routes."
       },
@@ -134,14 +134,12 @@
         "leaves": [
           "prompt"
         ],
-        "destination_class": "vendor",
-        "destination": "The same System One endpoint as the existing Jev routes: the ADR-2139 loopback proxy (`system-one-proxy`, which holds the vendor key and drops any Authorization), else `api.typesafe.ai` with `TYPESAFE_API_KEY`; no new destination.",
-        "gate": "INACTIVE. `AGENTBOX_JEV_CONSULT_ADVICE=1`, unset by default; with it unset the tool is not listed and no request is built. `AGENTBOX_JEV_CONSULT_LOCAL_ONLY=1` requires a declared-local endpoint.",
-        "accepted_egress": "No accepted record covers this content class for this route; it is inactive, so nothing leaves until the flag is set. Proposed research candidate; no measured uplift.",
-        "markers": [
-          "no-accepted-record"
-        ],
-        "notes": "The question and context excerpt the coordinator would otherwise send to a cloud consultant (each clamped to 6000 characters), the reachable-consultant names and the remaining budget. Advisory only; `consult` is unchanged. Fails open to `advice: null`. 4 s deadline, no retry."
+        "destination_class": "LAN",
+        "destination": "Declared keyless local backend selected by system_one.local_backend; never falls through to cloud for local-only requests.",
+        "gate": "STAGED for rebuild: system_one.consumers per-item opt-in (dream_machine.jev_triage for dream triage), projected before supervisord starts. Existing outcome-changing thresholds remain authoritative.",
+        "accepted_egress": "Owner decision 2026-10-29: enable all components, retaining local-only data restrictions (ADR-2155).",
+        "markers": [],
+        "notes": "The question and context excerpt the coordinator would otherwise send to a cloud consultant (each clamped to 6000 characters), the reachable-consultant names and the remaining budget. Advisory only; `consult` is unchanged. Fails open to `advice: null`. 4 s deadline, no retry. Activation requested 2026-10-29; no measured uplift claimed."
       },
       {
         "id": "trajectory-pattern-jev-option",
@@ -149,14 +147,12 @@
         "leaves": [
           "prompt"
         ],
-        "destination_class": "vendor",
-        "destination": "The same System One endpoint as the existing Jev routes: the ADR-2139 loopback proxy (`system-one-proxy`, which holds the vendor key and drops any Authorization), else `api.typesafe.ai` with `TYPESAFE_API_KEY`; no new destination.",
-        "gate": "INACTIVE. `AGENTBOX_JEV_TRAJECTORY_CLASSIFY=1`, unset by default; `AGENTBOX_JEV_TRAJECTORY_MAX_PATTERNS` caps requests per sweep (default 40). `AGENTBOX_JEV_TRAJECTORY_LOCAL_ONLY=1` requires a declared-local endpoint.",
-        "accepted_egress": "ADR-2016/ADR-2017 govern the data (redacted `action` labels, I10). No accepted record for sending them to a vendor judge; inactive.",
-        "markers": [
-          "no-accepted-record"
-        ],
-        "notes": "Only the already-redacted low-cardinality `action` pattern and four aggregate numbers per eligible pattern. Annotation only: grouping, Wilson bounds, sample floors and the consumer gates are untouched. Fails open to the unannotated row."
+        "destination_class": "LAN",
+        "destination": "Declared keyless local backend selected by system_one.local_backend; never falls through to cloud for local-only requests.",
+        "gate": "STAGED for rebuild: system_one.consumers per-item opt-in (dream_machine.jev_triage for dream triage), projected before supervisord starts. Existing outcome-changing thresholds remain authoritative.",
+        "accepted_egress": "Owner decision 2026-10-29: enable all components, retaining local-only data restrictions (ADR-2155).",
+        "markers": [],
+        "notes": "Only the already-redacted low-cardinality `action` pattern and four aggregate numbers per eligible pattern. Annotation only: grouping, Wilson bounds, sample floors and the consumer gates are untouched. Fails open to the unannotated row. Activation requested 2026-10-29; no measured uplift claimed."
       },
       {
         "id": "dream-triage-jev-option",
@@ -165,14 +161,12 @@
           "prompt",
           "code"
         ],
-        "destination_class": "vendor",
-        "destination": "The same System One endpoint as the existing Jev routes: the ADR-2139 loopback proxy (`system-one-proxy`, which holds the vendor key and drops any Authorization), else `api.typesafe.ai` with `TYPESAFE_API_KEY`; no new destination.",
-        "gate": "INACTIVE. `AGENTBOX_JEV_DREAM_TRIAGE=1`, unset by default (`services/dream-engine/src/jev_triage.rs`). `AGENTBOX_JEV_DREAM_TRIAGE_LOCAL_ONLY=1` requires a declared-local endpoint; `AGENTBOX_JEV_DREAM_TRIAGE_DEFER_BELOW` unset means never defer.",
-        "accepted_egress": "No accepted record covers this content class for this route; it is inactive, so nothing leaves until the flag is set. Proposed research candidate; no measured uplift.",
-        "markers": [
-          "no-accepted-record"
-        ],
-        "notes": "The first 4000 characters of the night's report, the paths (not the content) the patch touches and the required-evaluator names. Annotation to `jev-triage.json`; the deterministic gate never sees it. Repository content may be private, so set the local-only toggle for private repositories."
+        "destination_class": "LAN",
+        "destination": "Declared keyless local backend selected by system_one.local_backend; never falls through to cloud for local-only requests.",
+        "gate": "STAGED for rebuild: system_one.consumers per-item opt-in (dream_machine.jev_triage for dream triage), projected before supervisord starts. Existing outcome-changing thresholds remain authoritative.",
+        "accepted_egress": "Owner decision 2026-10-29: enable all components, retaining local-only data restrictions (ADR-2155).",
+        "markers": [],
+        "notes": "The first 4000 characters of the night's report, the paths (not the content) the patch touches and the required-evaluator names. Annotation to `jev-triage.json`; the deterministic gate never sees it. Repository content may be private, so set the local-only toggle for private repositories. Activation requested 2026-10-29; no measured uplift claimed."
       },
       {
         "id": "ontology-grounding-jev-option",
@@ -180,14 +174,12 @@
         "leaves": [
           "prompt"
         ],
-        "destination_class": "vendor",
-        "destination": "The same System One endpoint as the existing Jev routes: the ADR-2139 loopback proxy (`system-one-proxy`, which holds the vendor key and drops any Authorization), else `api.typesafe.ai` with `TYPESAFE_API_KEY`; no new destination.",
-        "gate": "INACTIVE. `AGENTBOX_JEV_ONTOLOGY_RELEVANCE=1` and/or `AGENTBOX_JEV_ONTOLOGY_RERANK=1`, unset by default; a per-request `scaffold: false` always wins. `AGENTBOX_JEV_ONTOLOGY_LOCAL_ONLY=1` requires a declared-local endpoint.",
-        "accepted_egress": "No accepted record covers this content class for this route; it is inactive, so nothing leaves until the flag is set. Proposed research candidate; no measured uplift.",
-        "markers": [
-          "no-accepted-record"
-        ],
-        "notes": "The query and, per candidate (at most 8), label, domain and a summary clamped to 280 characters. A candidate marked `public: false` stops the evaluation. Shadow-only until `..._RERANK_APPLY_MIN_CONFIDENCE` / `..._PASSTHROUGH_MIN_CONFIDENCE` are set."
+        "destination_class": "LAN",
+        "destination": "Declared keyless local backend selected by system_one.local_backend; never falls through to cloud for local-only requests.",
+        "gate": "STAGED for rebuild: system_one.consumers per-item opt-in (dream_machine.jev_triage for dream triage), projected before supervisord starts. Existing outcome-changing thresholds remain authoritative.",
+        "accepted_egress": "Owner decision 2026-10-29: enable all components, retaining local-only data restrictions (ADR-2155).",
+        "markers": [],
+        "notes": "The query and, per candidate (at most 8), label, domain and a summary clamped to 280 characters. A candidate marked `public: false` stops the evaluation. Shadow-only until `..._RERANK_APPLY_MIN_CONFIDENCE` / `..._PASSTHROUGH_MIN_CONFIDENCE` are set. Activation requested 2026-10-29; no measured uplift claimed."
       },
       {
         "id": "ontology-proposal-jev-option",
@@ -195,14 +187,12 @@
         "leaves": [
           "prompt"
         ],
-        "destination_class": "vendor",
-        "destination": "The same System One endpoint as the existing Jev routes: the ADR-2139 loopback proxy (`system-one-proxy`, which holds the vendor key and drops any Authorization), else `api.typesafe.ai` with `TYPESAFE_API_KEY`; no new destination.",
-        "gate": "INACTIVE. `AGENTBOX_JEV_ONTOLOGY_PROPOSALS=1`, unset by default, on top of `AGENTBOX_ONTOLOGY_MONITOR=1`. A transcript that used a tool in `AGENTBOX_TAINT_TOOLS` (default the email gateway and Gmail prefixes) makes it local-only.",
-        "accepted_egress": "The monitor already sends the same session tail to Z.AI (ADR-011). No accepted record for a second vendor; inactive.",
-        "markers": [
-          "no-accepted-record"
-        ],
-        "notes": "At most 5 fresh proposals, the 3000-character transcript tail and up to 30 changed-file names, plus cited class definitions. Verdicts go to a separate unsigned file and never into the signed 31402. `AGENTBOX_JEV_PROPOSAL_HOLD_BELOW` unset means nothing is held."
+        "destination_class": "LAN",
+        "destination": "Declared keyless local backend selected by system_one.local_backend; never falls through to cloud for local-only requests.",
+        "gate": "STAGED for rebuild: system_one.consumers per-item opt-in (dream_machine.jev_triage for dream triage), projected before supervisord starts. Existing outcome-changing thresholds remain authoritative.",
+        "accepted_egress": "Owner decision 2026-10-29: enable all components, retaining local-only data restrictions (ADR-2155).",
+        "markers": [],
+        "notes": "At most 5 fresh proposals, the 3000-character transcript tail and up to 30 changed-file names, plus cited class definitions. Verdicts go to a separate unsigned file and never into the signed 31402. `AGENTBOX_JEV_PROPOSAL_HOLD_BELOW` unset means nothing is held. Activation requested 2026-10-29; no measured uplift claimed."
       },
       {
         "id": "headroom-evidence-jev-option",
@@ -212,11 +202,11 @@
           "code"
         ],
         "destination_class": "LAN",
-        "destination": "Only an endpoint declared local (`AGENTBOX_SYSTEM_ONE_BACKEND_LOCAL=1`, e.g. the `laya` or `kev` backend); a cloud endpoint is refused with `local-only`.",
-        "gate": "INACTIVE. `AGENTBOX_JEV_HEADROOM_EVIDENCE=1`, unset by default. There is no cloud override.",
-        "accepted_egress": "Local processing: nothing leaves the LAN. No cloud record is needed or sought.",
+        "destination": "Declared keyless local backend selected by system_one.local_backend; never falls through to cloud for local-only requests.",
+        "gate": "STAGED for rebuild: system_one.consumers per-item opt-in (dream_machine.jev_triage for dream triage), projected before supervisord starts. Existing outcome-changing thresholds remain authoritative.",
+        "accepted_egress": "Owner decision 2026-10-29: enable all components, retaining local-only data restrictions (ADR-2155).",
         "markers": [],
-        "notes": "At most 12 excerpts of 1200 characters from the memory, pods, beads or orchestrator slots. Reorders and annotates; there is no drop path and originals stay in the CCR store. Fails open to the input order."
+        "notes": "At most 12 excerpts of 1200 characters from the memory, pods, beads or orchestrator slots. Reorders and annotates; there is no drop path and originals stay in the CCR store. Fails open to the input order. Activation requested 2026-10-29; no measured uplift claimed."
       },
       {
         "id": "governance-rubric-jev-option",
@@ -224,23 +214,21 @@
         "leaves": [
           "prompt"
         ],
-        "destination_class": "vendor",
-        "destination": "The same System One endpoint as the existing Jev routes: the ADR-2139 loopback proxy (`system-one-proxy`, which holds the vendor key and drops any Authorization), else `api.typesafe.ai` with `TYPESAFE_API_KEY`; no new destination.",
-        "gate": "INACTIVE. `AGENTBOX_JEV_GOVERNANCE_RUBRIC=1`, unset by default. `AGENTBOX_JEV_GOVERNANCE_RUBRIC_LOCAL_ONLY=1` requires a declared-local endpoint.",
-        "accepted_egress": "No accepted record covers this content class for this route; it is inactive, so nothing leaves until the flag is set. Proposed research candidate; no measured uplift.",
-        "markers": [
-          "no-accepted-record"
-        ],
-        "notes": "The title, subject, rationale, structured fields and context URL of the request card, as built, after it is signed for publication. The signal is written to a sidecar bound to the request digest and is never part of the event; approver signatures, dispatch and receipts are untouched."
+        "destination_class": "LAN",
+        "destination": "Declared keyless local backend selected by system_one.local_backend; never falls through to cloud for local-only requests.",
+        "gate": "STAGED for rebuild: system_one.consumers per-item opt-in (dream_machine.jev_triage for dream triage), projected before supervisord starts. Existing outcome-changing thresholds remain authoritative.",
+        "accepted_egress": "Owner decision 2026-10-29: enable all components, retaining local-only data restrictions (ADR-2155).",
+        "markers": [],
+        "notes": "The title, subject, rationale, structured fields and context URL of the request card, as built, after it is signed for publication. The signal is written to a sidecar bound to the request digest and is never part of the event; approver signatures, dispatch and receipts are untouched. Activation requested 2026-10-29; no measured uplift claimed."
       },
       {
         "id": "loom-door",
-        "route": "Ontology Loom façade: ontology condense; dream nights when `llm_provider = \"loom\"`",
+        "route": "Ontology Loom fa\u00e7ade: ontology condense; dream nights when `llm_provider = \"loom\"`",
         "leaves": [
           "prompt"
         ],
         "destination_class": "LAN",
-        "destination": "`${LOOM_BASE_URL}`: the estate façade `:8084` on the HP host. Compose default is `http://loom:8080/v1` (`flake.nix:3438`); the LAN address is deployment configuration.",
+        "destination": "`${LOOM_BASE_URL}`: the estate fa\u00e7ade `:8084` on the HP host. Compose default is `http://loom:8080/v1` (`flake.nix:3438`); the LAN address is deployment configuration.",
         "gate": "`[skills.ontology.condense].enabled` (`agentbox.toml:860`); `[dream_machine].llm_provider` (`agentbox.toml:2179`) or `DREAM_LLM_PROVIDER`",
         "accepted_egress": "ADR-2070 (accepted, live): the Loom endpoints are named egress doors and knowledge work holds `:8084` (`docs/adr/ADR-2070-one-front-door-is-ingress-the-loom-raw-port-is-a-named-egress-door.md:39-47`); `docs/LAN-door-threat-model.md:16`.",
         "markers": [],
@@ -664,8 +652,8 @@
         ],
         "destination_class": "vendor",
         "destination": "The same System One endpoint as `skill-router` (the ADR-2139 loopback proxy, or `api.typesafe.ai`); no new destination",
-        "gate": "INACTIVE. `AGENTBOX_JEV_SKILL_VERIFY=1` and/or `AGENTBOX_JEV_SKILL_INTENT=1`, both unset by default, on top of the `skill-router` gate (`[skills.routing].router = \"jev\"`). With neither set the request body is byte-identical to `skill-router`.",
-        "accepted_egress": "ADR-2090 (accepted): routing prompt may leave, skill routing only. The option adds questions to the same request and sends no additional content class.",
+        "gate": "STAGED for rebuild: system_one.consumers.skill_intent/skill_verify and features.jev_checkpoints.claim_check enabled; original routing/checkpoint gates still apply.",
+        "accepted_egress": "ADR-2090 (accepted): routing prompt may leave, skill routing only. The option adds questions to the same request and sends no additional content class. Owner decision 2026-10-29 enables these bounded extensions; ADR-2155.",
         "markers": [],
         "notes": "Adds up to `AGENTBOX_JEV_SKILL_K` (default 3) Noul questions carrying the shortlisted skills' descriptions and, with the intent flag, a second blind Choice over the same candidates keyed by opaque ids (the criteria are sent twice, about +16k input tokens a turn) plus a facet Choice and a multi-intent Noul. The real `skill` question is byte-identical. All thresholds default to accept nothing (`AGENTBOX_JEV_SKILL_VETO_BELOW=0`, `AGENTBOX_JEV_SKILL_LIST_AT_LEAST=2`, `AGENTBOX_JEV_SKILL_BLIND_ADOPT_AT=1.01`). Fails open to the unchanged router outcome. Proposed research candidate; no measured uplift."
       },
@@ -676,13 +664,11 @@
           "code"
         ],
         "destination_class": "LAN",
-        "destination": "A declared-local System One endpoint only (`AGENTBOX_SYSTEM_ONE_BACKEND_LOCAL=1` behind the ADR-2139 proxy, or the sovereign façade); the cloud and an undeclared proxy are refused in code",
-        "gate": "INACTIVE. `AGENTBOX_JEV_FAILURE_TAXONOMY=1`, unset by default. Without a declared-local endpoint no request is built.",
-        "accepted_egress": "None yet: a new route, deliberately local-only because the payload is redacted tool error text (`failureHint`, at most 400 characters) that may carry private material. Needs an ADR before it can be activated against anything but a local judge.",
-        "markers": [
-          "no-accepted-record"
-        ],
-        "notes": "Sent only for a failure the taxonomy left `unmapped`: the redacted error text, the action pattern and the 14 MAST mode definitions. A pre-pass before the database opens: at most 3 requests under one overall 4 s deadline per Stop run. Acceptance thresholds default to unreachable, so an enabled option changes no tag until fitted. The raw failure and the outcome are never touched. Proposed research candidate; no measured uplift."
+        "destination": "Declared keyless local backend selected by system_one.local_backend; never falls through to cloud for local-only requests.",
+        "gate": "STAGED for rebuild: system_one.consumers per-item opt-in (dream_machine.jev_triage for dream triage), projected before supervisord starts. Existing outcome-changing thresholds remain authoritative.",
+        "accepted_egress": "Owner decision 2026-10-29: enable all components, retaining local-only data restrictions (ADR-2155).",
+        "markers": [],
+        "notes": "Sent only for a failure the taxonomy left `unmapped`: the redacted error text, the action pattern and the 14 MAST mode definitions. A pre-pass before the database opens: at most 3 requests under one overall 4 s deadline per Stop run. Acceptance thresholds default to unreachable, so an enabled option changes no tag until fitted. The raw failure and the outcome are never touched. Proposed research candidate; no measured uplift. Activation requested 2026-10-29; no measured uplift claimed."
       },
       {
         "id": "memory-rerank-jev-option",
@@ -692,13 +678,11 @@
           "code"
         ],
         "destination_class": "LAN",
-        "destination": "A declared-local System One endpoint only (`AGENTBOX_SYSTEM_ONE_BACKEND_LOCAL=1` behind the ADR-2139 proxy, or the sovereign façade); the cloud and an undeclared proxy are refused in code",
-        "gate": "INACTIVE. `AGENTBOX_JEV_MEMORY_RERANK=1`, unset by default. Without a declared-local endpoint no request is built.",
-        "accepted_egress": "None yet: a new route, deliberately local-only because memory holds private namespaces. Needs an ADR before it can be activated.",
-        "markers": [
-          "no-accepted-record"
-        ],
-        "notes": "Sent after the embedding search, namespace exclusions and TTL filter have run: the query and the candidate snippets (the rows the search already returned; overfetch to at most 20 only by explicit `AGENTBOX_JEV_MEMORY_POOL`) of at most 400 characters (keys and namespaces are not sent). Reorders only; `score` stays the cosine and no row is added or dropped. Proposed research candidate; no measured uplift."
+        "destination": "Declared keyless local backend selected by system_one.local_backend; never falls through to cloud for local-only requests.",
+        "gate": "STAGED for rebuild: system_one.consumers per-item opt-in (dream_machine.jev_triage for dream triage), projected before supervisord starts. Existing outcome-changing thresholds remain authoritative.",
+        "accepted_egress": "Owner decision 2026-10-29: enable all components, retaining local-only data restrictions (ADR-2155).",
+        "markers": [],
+        "notes": "Sent after the embedding search, namespace exclusions and TTL filter have run: the query and the candidate snippets (the rows the search already returned; overfetch to at most 20 only by explicit `AGENTBOX_JEV_MEMORY_POOL`) of at most 400 characters (keys and namespaces are not sent). Reorders only; `score` stays the cosine and no row is added or dropped. Proposed research candidate; no measured uplift. Activation requested 2026-10-29; no measured uplift claimed."
       },
       {
         "id": "voice-intent-jev-option",
@@ -707,13 +691,11 @@
           "prompt"
         ],
         "destination_class": "LAN",
-        "destination": "A declared-local System One endpoint only (`AGENTBOX_SYSTEM_ONE_BACKEND_LOCAL=1` behind the ADR-2139 proxy, or the sovereign façade); the cloud and an undeclared proxy are refused in code",
-        "gate": "INACTIVE. `AGENTBOX_JEV_VOICE_INTENT=1`, unset by default. Runs only after speaker authentication, the mandate checks and target validation.",
-        "accepted_egress": "None yet: a new route, deliberately local-only because a transcript is the operator's private speech. Needs an ADR before it can be activated.",
-        "markers": [
-          "no-accepted-record"
-        ],
-        "notes": "Sent: the transcript, the parsed verb/subject/object and the list of allowed command families. May annotate the response or hold a doubted state-changing intent for clarification (422); thresholds default to never. It never chooses a verb, subject or target, and signing, mandate and dispatch are untouched. Proposed research candidate; no measured uplift."
+        "destination": "Declared keyless local backend selected by system_one.local_backend; never falls through to cloud for local-only requests.",
+        "gate": "STAGED for rebuild: system_one.consumers per-item opt-in (dream_machine.jev_triage for dream triage), projected before supervisord starts. Existing outcome-changing thresholds remain authoritative.",
+        "accepted_egress": "Owner decision 2026-10-29: enable all components, retaining local-only data restrictions (ADR-2155).",
+        "markers": [],
+        "notes": "Sent: the transcript, the parsed verb/subject/object and the list of allowed command families. May annotate the response or hold a doubted state-changing intent for clarification (422); thresholds default to never. It never chooses a verb, subject or target, and signing, mandate and dispatch are untouched. Proposed research candidate; no measured uplift. Activation requested 2026-10-29; no measured uplift claimed."
       },
       {
         "id": "approval-review-jev-option",
@@ -723,13 +705,11 @@
           "code"
         ],
         "destination_class": "LAN",
-        "destination": "A declared-local System One endpoint only (`AGENTBOX_SYSTEM_ONE_BACKEND_LOCAL=1` behind the ADR-2139 proxy, or the sovereign façade); the cloud and an undeclared proxy are refused in code",
-        "gate": "INACTIVE. `AGENTBOX_JEV_APPROVAL_REVIEW=1`, unset by default. The decide route (`POST /v1/approvals/:id/decide`) does not consult it.",
-        "accepted_egress": "None yet: a new route, deliberately local-only because an operation can carry commands, paths and identifiers. Needs an ADR before it can be activated.",
-        "markers": [
-          "no-accepted-record"
-        ],
-        "notes": "Sent per listed request (at most 10): the title, authority class, requester rationale, exact operation and task properties. Adds an advisory `review_aid` (per-obligation addressed probability, review urgency) and nothing else; it never approves, signs, reorders, hides or alters authority. Proposed research candidate; no measured uplift."
+        "destination": "Declared keyless local backend selected by system_one.local_backend; never falls through to cloud for local-only requests.",
+        "gate": "STAGED for rebuild: system_one.consumers per-item opt-in (dream_machine.jev_triage for dream triage), projected before supervisord starts. Existing outcome-changing thresholds remain authoritative.",
+        "accepted_egress": "Owner decision 2026-10-29: enable all components, retaining local-only data restrictions (ADR-2155).",
+        "markers": [],
+        "notes": "Sent per listed request (at most 10): the title, authority class, requester rationale, exact operation and task properties. Adds an advisory `review_aid` (per-obligation addressed probability, review urgency) and nothing else; it never approves, signs, reorders, hides or alters authority. Proposed research candidate; no measured uplift. Activation requested 2026-10-29; no measured uplift claimed."
       },
       {
         "id": "jev-checkpoints-claim-option",
@@ -739,8 +719,8 @@
         ],
         "destination_class": "vendor",
         "destination": "The same System One endpoint as the existing done checkpoint (`[features.jev_checkpoints].api`, the ADR-2139 proxy, or `api.typesafe.ai`); no new destination",
-        "gate": "INACTIVE. `[features.jev_checkpoints].claim_check = false` (the default), on top of the checkpoint's own `enabled` and `done_check`. The existing email taint fence and key rules apply unchanged.",
-        "accepted_egress": "ADR-2135 (accepted): the done checkpoint already sends the clamped final text and the compact tool-call list. The option adds one Noul question to that request and no further content.",
+        "gate": "STAGED for rebuild: system_one.consumers.skill_intent/skill_verify and features.jev_checkpoints.claim_check enabled; original routing/checkpoint gates still apply.",
+        "accepted_egress": "ADR-2135 (accepted): the done checkpoint already sends the clamped final text and the compact tool-call list. The option adds one Noul question to that request and no further content. Owner decision 2026-10-29 enables these bounded extensions; ADR-2155.",
         "markers": [],
         "notes": "Same state as the done score (final text, tool name/ok/first command line; never tool output). Can only ADD the done advisory line when an uncovered claim reads at or above `claim_threshold`; never removes one and never alters an exit code or receipt. Proposed research candidate; no measured uplift."
       },
@@ -751,13 +731,11 @@
           "prompt"
         ],
         "destination_class": "LAN",
-        "destination": "A declared-local System One endpoint only (`AGENTBOX_SYSTEM_ONE_BACKEND_LOCAL=1` behind the ADR-2139 proxy, or the sovereign façade); the cloud and an undeclared proxy are refused in code",
-        "gate": "INACTIVE. `AGENTBOX_JEV_MANIFEST_PLAN=1`, unset by default, and an operator running the subcommand; no API route and no automatic caller.",
-        "accepted_egress": "None yet: a new route, deliberately local-only because a request can name private configuration. Needs an ADR before it can be activated.",
-        "markers": [
-          "no-accepted-record"
-        ],
-        "notes": "Sent: the operator's request (at most 500 characters), the catalogue names and summaries of boolean gates, and the names of satisfied prerequisites; never agentbox.toml values or secrets. Propose-only: prints a validated one-line diff and never edits agentbox.toml; every failure exits 3 with nothing written. The model chooses a catalogue entry only; key and value come from the catalogue and the request wording, parsed in code. Proposed research candidate; no measured uplift."
+        "destination": "Declared keyless local backend selected by system_one.local_backend; never falls through to cloud for local-only requests.",
+        "gate": "STAGED for rebuild: system_one.consumers per-item opt-in (dream_machine.jev_triage for dream triage), projected before supervisord starts. Existing outcome-changing thresholds remain authoritative.",
+        "accepted_egress": "Owner decision 2026-10-29: enable all components, retaining local-only data restrictions (ADR-2155).",
+        "markers": [],
+        "notes": "Sent: the operator's request (at most 500 characters), the catalogue names and summaries of boolean gates, and the names of satisfied prerequisites; never agentbox.toml values or secrets. Propose-only: prints a validated one-line diff and never edits agentbox.toml; every failure exits 3 with nothing written. The model chooses a catalogue entry only; key and value come from the catalogue and the request wording, parsed in code. Proposed research candidate; no measured uplift. Activation requested 2026-10-29; no measured uplift claimed."
       }
     ]
   }

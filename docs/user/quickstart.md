@@ -633,3 +633,9 @@ For optional headless physics, choose a GPU with `./agentbox.sh isaac-sim gpu`,
 then build/start with `./agentbox.sh isaac-sim up`. The internal job API shares
 motion results with Blender. Container health does not prove physics execution;
 follow [Isaac operations](../developer/isaac-sim.md) for the fixture checks.
+
+
+System One consumer activation is staged under ADR-2155: explicit manifest
+switches reach services before launch, with a separate keyless local route for
+private data. See `docs/reference/system-one-activation.md` in the Agentbox
+repository for rebuild requirements and the remaining deployment prerequisites.

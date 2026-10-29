@@ -29,7 +29,7 @@ const KEYS = {
 const EXTRA = ['backendLocal', 'taintTools', 'taintSkills']
 const DEFAULTS = {
   enabled: true, api: '', model: 'jev-latest', timeout_ms: 4000, done_check: true, done_threshold: 0.9,
-  claim_check: false, claim_threshold: 0.9, repeat_check: true, repeat_count: 2, plan_check: true, plan_threshold: 0.8, min_chars: 24,
+  claim_check: true, claim_threshold: 0.9, repeat_check: true, repeat_count: 2, plan_check: true, plan_threshold: 0.8, min_chars: 24,
   spawn_mode: 'shadow', spawn_min_confidence: 0.8,
   shadow_log: '/home/devuser/.claude/jev-checkpoints/shadow.jsonl', usd_per_mtok_in: 0.042,
 }

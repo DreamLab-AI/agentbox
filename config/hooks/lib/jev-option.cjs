@@ -67,6 +67,15 @@ function resolveEndpoint(env = process.env, { explicit = {}, localOnly = false }
     };
   }
 
+  // A dedicated, manifest-validated LAN route keeps private consumers off the cloud
+  // without changing the public vendor selection or sending vendor credentials.
+  const privateUrl = nonEmpty(env.AGENTBOX_SYSTEM_ONE_LOCAL_ENDPOINT);
+  if (localOnly && privateUrl) {
+    return { ok: true, url: privateUrl,
+      model: nonEmpty(env.AGENTBOX_SYSTEM_ONE_LOCAL_MODEL) || DEFAULT_MODEL,
+      via: 'local', local: true, headers: json };
+  }
+
   if (env.AGENTBOX_SYSTEM_ONE_PROXY === '1') {
     const purl = nonEmpty(env.AGENTBOX_SYSTEM_ONE_ENDPOINT) || nonEmpty(env.AGENTBOX_SKILL_ROUTE_API);
     if (purl) {
