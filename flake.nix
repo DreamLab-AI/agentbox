@@ -1585,7 +1585,7 @@
         solidPodRsLauncher = pkgs.writeShellScript "start-solid-pod-rs" ''
           set -eu
           runtime_config="''${TMPDIR:-/tmp}/solid-pod-rs-config.json"
-          ${lib.optionalString ((solidPodRsForge.enable or true)) ''
+          ${lib.optionalString (solidPodRsForge.enable or true) ''
           # ── Forge (ADR-2145). Everything below is data from the manifest or
           # the root .env; nothing external is followed by default. ─────────────
           export FORGE_CHAIN=${lib.escapeShellArg (solidPodRsForge.chain or "txbt4")}
