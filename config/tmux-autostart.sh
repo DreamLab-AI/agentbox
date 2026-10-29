@@ -290,6 +290,8 @@ tmux $TMUX_ARGS start-server 2>/dev/null || true
 # ============================================================================
 tmux $TMUX_ARGS new-session -d -s "$SESSION" -n "Claude" -c "$PROJECT"
 tmux send-keys -t "${SESSION}:0" "export CLAUDE_CONFIG_DIR=/home/devuser/.claude" C-m
+# The external coordinator shares the boundary slug used by its status hooks.
+tmux send-keys -t "${SESSION}:0" "export AGENTBOX_PROFILE=tab0" C-m
 
 # Welcome dashboard — gum renders a styled panel, falls back to plain text
 if command -v gum >/dev/null 2>&1; then
