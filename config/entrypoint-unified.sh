@@ -1918,7 +1918,7 @@ SINKJS
 fi
 
 # Codex completion status without voicelink; preserve an operator-owned notify.
-SESSION_PLANE="$_IP_ENABLED" VL_ON="$_VL_ENABLED" VL_RECORD="$_VL_RECORD" node <<'SESSIONCODEX' || true
+SESSION_PLANE="$_IP_ENABLED" VL_ON="$(_ab_toml_bool voicelink enabled)" VL_RECORD="$(_ab_toml_val voicelink record_events)" node <<'SESSIONCODEX' || true
 const fs = require('fs'), path = require('path');
 const f = path.join(process.env.CODEX_HOME || '/home/devuser/.codex', 'config.toml');
 let text = ''; try { text = fs.readFileSync(f, 'utf8'); } catch {}

@@ -81,11 +81,14 @@ jobs:
       - name: check-listeners unit tests (ADR-2062 — supervisor bind-address listener rule)
         run: node --test tests/security/check-listeners.test.mjs
 
-      - name: aoe-launch-never-attaches (2026-10-01 — aoe pin past the non-tty attach fix; no attached launch in our tooling)
+      - name: session-plane retirement (AoE removed; scripts never attach the operator client)
         run: node --test tests/cli/aoe-launch-never-attaches-from-scripts.test.mjs
 
       - name: session-launch-contract (ADR-2153 — every seed resolves to a launch the pinned CLIs accept; live tiers are opt-in)
         run: node --test tests/cli/session-launch-contract.test.mjs
+
+      - name: session-plane notify (fresh Stage-B environment, voice fanout and gate retraction)
+        run: bash tests/config/session-plane-notify.test.sh
 
       - name: trust-seed (every Claude config store a session reads, wrapper profiles included)
         run: node --test tests/config/trust-seed.test.mjs
