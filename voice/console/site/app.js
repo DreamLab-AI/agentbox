@@ -318,6 +318,18 @@ async function inject(text) {
   if (!res.ok) throw new Error('bridge ' + res.status);
 }
 
+// Shared by approval cards after the session board's retirement.
+function ageStr(ts) {
+  if (!ts) return '';
+  const ms = typeof ts === 'number' ? (ts < 1e12 ? ts * 1000 : ts) : Date.parse(ts);
+  if (!ms || Number.isNaN(ms)) return '';
+  const seconds = Math.max(0, (Date.now() - ms) / 1000);
+  if (seconds < 60) return Math.floor(seconds) + 's';
+  if (seconds < 3600) return Math.floor(seconds / 60) + 'm';
+  if (seconds < 86400) return Math.floor(seconds / 3600) + 'h';
+  return Math.floor(seconds / 86400) + 'd';
+}
+
 // ── approvals ─────────────────────────────────────────────────────────────────
 
 let approvals = [];
