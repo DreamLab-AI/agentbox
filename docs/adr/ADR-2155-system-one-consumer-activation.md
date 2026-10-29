@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit:
+verified_commit: 6534e78dca0c949c166983977997d1c6f3674504
 verified_paths: []
 owner: operator
 review_trigger: Image activation or changes to consumer locality or acceptance thresholds

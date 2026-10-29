@@ -3220,79 +3220,98 @@
           "properties": {
             "failure_taxonomy": {
               "type": "boolean",
-              "default": false
+              "default": false,
+              "description": "Enable failure taxonomy through the boot projection; existing locality, authority and confidence guards still apply."
             },
             "manifest_plan": {
               "type": "boolean",
-              "default": false
+              "default": false,
+              "description": "Enable manifest plan through the boot projection; existing locality, authority and confidence guards still apply."
             },
             "voice_intent": {
               "type": "boolean",
-              "default": false
+              "default": false,
+              "description": "Enable voice intent through the boot projection; existing locality, authority and confidence guards still apply."
             },
             "approval_review": {
               "type": "boolean",
-              "default": false
+              "default": false,
+              "description": "Enable approval review through the boot projection; existing locality, authority and confidence guards still apply."
             },
             "consult_advice": {
               "type": "boolean",
-              "default": false
+              "default": false,
+              "description": "Enable consult advice through the boot projection; existing locality, authority and confidence guards still apply."
             },
             "memory_rerank": {
               "type": "boolean",
-              "default": false
+              "default": false,
+              "description": "Enable memory rerank through the boot projection; existing locality, authority and confidence guards still apply."
             },
             "trajectory_classify": {
               "type": "boolean",
-              "default": false
+              "default": false,
+              "description": "Enable trajectory classify through the boot projection; existing locality, authority and confidence guards still apply."
             },
             "skill_intent": {
               "type": "boolean",
-              "default": false
+              "default": false,
+              "description": "Enable skill intent through the boot projection; existing locality, authority and confidence guards still apply."
             },
             "skill_verify": {
               "type": "boolean",
-              "default": false
+              "default": false,
+              "description": "Enable skill verify through the boot projection; existing locality, authority and confidence guards still apply."
             },
             "ontology_relevance": {
               "type": "boolean",
-              "default": false
+              "default": false,
+              "description": "Enable ontology relevance through the boot projection; existing locality, authority and confidence guards still apply."
             },
             "ontology_rerank": {
               "type": "boolean",
-              "default": false
+              "default": false,
+              "description": "Enable ontology rerank through the boot projection; existing locality, authority and confidence guards still apply."
             },
             "ontology_proposals": {
               "type": "boolean",
-              "default": false
+              "default": false,
+              "description": "Enable ontology proposals through the boot projection; existing locality, authority and confidence guards still apply."
             },
             "headroom_evidence": {
               "type": "boolean",
-              "default": false
+              "default": false,
+              "description": "Enable headroom evidence through the boot projection; existing locality, authority and confidence guards still apply."
             },
             "governance_rubric": {
               "type": "boolean",
-              "default": false
+              "default": false,
+              "description": "Enable governance rubric through the boot projection; existing locality, authority and confidence guards still apply."
             },
             "visionflow_advisories": {
               "type": "boolean",
-              "default": false
+              "default": false,
+              "description": "Enable visionflow advisories through the boot projection; existing locality, authority and confidence guards still apply."
             },
             "website_advisories": {
               "type": "boolean",
-              "default": false
+              "default": false,
+              "description": "Enable website advisories through the boot projection; existing locality, authority and confidence guards still apply."
             },
             "solid_pod_advisories": {
               "type": "boolean",
-              "default": false
+              "default": false,
+              "description": "Enable solid pod advisories through the boot projection; existing locality, authority and confidence guards still apply."
             },
             "ontomark_suggestions": {
               "type": "boolean",
-              "default": false
+              "default": false,
+              "description": "Enable ontomark suggestions through the boot projection; existing locality, authority and confidence guards still apply."
             },
             "vault_rank": {
               "type": "boolean",
-              "default": false
+              "default": false,
+              "description": "Enable vault rank through the boot projection; existing locality, authority and confidence guards still apply."
             }
           }
         }
