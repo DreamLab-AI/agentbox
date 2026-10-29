@@ -98,6 +98,23 @@ async fn systemone(State(facade): State<Shared>, headers: HeaderMap, body: Strin
         })
         .sum();
 
+    // Core Answer deliberately accepts tagged and untagged upstream responses.
+    // The HTTP facade must nevertheless emit the discriminator required by the
+    // estate's strict adapters. Derive it from the validated request, never from
+    // an engine-supplied label; Facade::answer validates every answer against it.
+    let answer_types: Vec<_> = request
+        .questions
+        .iter()
+        .map(|(name, question)| {
+            let kind = match question {
+                Question::Choice { .. } => "choice",
+                Question::Score { .. } => "score",
+                Question::Noul { .. } => "noul",
+            };
+            (name.clone(), kind)
+        })
+        .collect();
+
     match facade.answer(request).await {
         Ok(response) => {
             // The log records shape and outcome, never the prompt: the whole
@@ -122,7 +139,11 @@ async fn systemone(State(facade): State<Shared>, headers: HeaderMap, body: Strin
                     .collect::<Vec<_>>(),
                 "request served"
             );
-            (StatusCode::OK, Json(response)).into_response()
+            let mut body = json!(response);
+            for (name, kind) in answer_types {
+                body["answers"][&name]["type"] = json!(kind);
+            }
+            (StatusCode::OK, Json(body)).into_response()
         }
         Err(e) => {
             tracing::warn!(

@@ -1059,3 +1059,33 @@ async fn windowing_stays_live_on_an_unbounded_engine() {
     assert_eq!(windowed["selected"], 2);
     assert!(body["answers"]["stale"]["noul"].is_number());
 }
+
+// The forum, Ontomark and Solid adapters validate this discriminator even
+// though system-one-core also accepts untagged answers from upstream vendors.
+#[tokio::test]
+async fn http_answers_carry_the_requested_type_for_strict_consumers() {
+    let h = harness(stub(), |_| {}).await;
+    let (status, body) = h
+        .post(
+            json!({"state": "rust code needs a review", "questions": {
+                "kind": {"type": "choice", "instructions": "Choose the topic",
+                    "criteria": {"rust": "rust code", "other": "other topics"}},
+                "quality": {"type": "score", "instructions": "Rate the evidence",
+                    "criteria": ["weak", "strong"]},
+                "supported": {"type": "noul", "instructions": "Does this concern rust code?"}
+            }}),
+            None,
+        )
+        .await;
+    assert_eq!(status, 200, "{body}");
+    for (id, kind, field) in [
+        ("kind", "choice", "choice"),
+        ("quality", "score", "score"),
+        ("supported", "noul", "noul"),
+    ] {
+        assert_eq!(body["answers"][id]["type"], kind);
+        assert!(!body["answers"][id][field].is_null());
+    }
+    assert!(body["usage"]["input_tokens"].is_number());
+    assert!(body["sso"].is_object());
+}
