@@ -1,10 +1,11 @@
 ---
 title: "Agentbox Memory & Learning — Ground Truth"
 doc_id: AB-LEARNING
-version: 0.1.4
+version: 0.1.5
 status: draft-for-ratification
 verified_commit: 
 changelog:
+  - "0.1.5 (2026-10-29): ADR-2153 session-plane cutover retains management-owned identity and scoped memory namespaces. No retrieval geometry or durable adapter policy changes."
   - "0.1.4 (2026-10-07): ADR-2133 — `ruvector reindex` (serial rebuild beside the live index, one-transaction swap, recall before/after); `ruvector reader-role` (ruvector_reader, SELECT on memory_entries only) and `ruvector hba-harden` (non-loopback pg_hba trust → scram); invariants 8 and 13"
   - "0.1.3 (2026-09-07): ADR-2082 — the governed server forwards swarm/agent/task/coordination tools to one filtered ruflo child per session; memory_* is denied on the proxy side, so the access invariant is unchanged (invariant 9)"
   - "0.1.2 (2026-09-06): Remediation — 2026-09-05 section: ADR-2057/2061/2062/2063/2064/2065/2066/2068/2069/2070/2072 and proposed 2071/2073–2078, the ADR-2018 recall diagnosis, landed in 796d85fcf — re-verified at "

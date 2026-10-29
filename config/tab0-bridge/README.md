@@ -3,46 +3,22 @@
 Canonical source for the bridge that fronts the coordinator Claude Code session
 to every remote surface: the Unmute voice loop (OpenAI-compatible
 `/v1/chat/completions`), the browser voice console (`/feed` websocket,
-`/tab0/send`, read-only `/tabs/:n` captures, `/aoe/sessions` status list), and
+`/tab0/send`, read-only `/tabs/:n` captures, `/sessions` status list), and
 the Nostr plane (`/nostr/status`, `/nostr/events`, `/nostr/send`).
 
-## Injection seam — repointed onto Agent of Empires (ADR-044)
+## Injection seam — owned session plane (ADR-2153)
 
-The single write path is repointed off raw `tmux send-keys -t agentbox:0` onto
-the Agent of Empires interaction plane ([ADR-044](../../docs/archive/adr/ADR-044-voice-plane-aoe-repoint.md),
-WS5 of [PRD-021](../../docs/archive/prd/PRD-021-interaction-surface-consolidation.md)):
+`sendToTab0()` sends `{op:"send", slug:"tab0", text}` to the peer-authorised
+unix socket at `/run/agentbox-sessions/sessions.sock`. The daemon serialises
+mutations and preserves the paste-burst delay before Enter. If unavailable,
+the bridge logs the degradation and uses its existing tmux fallback.
 
-- `sendToTab0()` POSTs the intent to `POST /api/sessions/{id}/send` on the
-  loopback AoE daemon (`AGENTBOX_INTERACTION_PLANE_PORT`, default `:9095`),
-  which honours the per-agent paste-burst delay and **serialises** concurrent
-  callers so voice and nostr injections cannot interleave keystrokes (D1).
-- The coordinator session id is **resolved at start** via `GET /api/sessions`,
-  matching the seed title `AOE_COORDINATOR_TITLE` (default `coordinator`,
-  case-insensitive), pinned for the process lifetime, and **re-resolved on a
-  404** (session drift after a daemon restart/reseed) (D2). A 30s interval
-  re-resolves while unpinned so the id is picked up if AoE starts after the
-  bridge.
-- **FAIL-OPEN (D3):** when AoE is unreachable (refused, 404, transient) the seam
-  degrades to the byte-identical legacy `tmux send-keys` path and logs the
-  degradation — a down daemon never mutes the voice loop. The fallback is the
-  degraded path (unaccounted, races AoE's watcher), never the steady state.
-- The meta-controller's Bash allowlist (`metaAllowedTools()`) migrates from
-  tmux send-keys to **curl against the AoE API**, with `send`/`output` pinned to
-  the resolved coordinator id (send never targets an arbitrary session); the
-  read-only `tmux list-windows`/`capture-pane` commands stay for legacy windows
-  on the shared socket (D6).
-- Loopback + token: the daemon runs `--auth token --behind-proxy` (N-05: loopback
-  is no longer the boundary), so a same-host POST authenticates with the daemon's
-  shared-secret token, read from its state file (`serve.url`,
-  override `AGENTBOX_AOE_TOKEN_FILE`) and sent as `Authorization: Bearer` (D8
-  route 2, direct-loopback break-glass). The NIP-98 reverse proxy that is the sole
-  identity ingress to `:9095` (ADR-043 D6) is a deployment concern in front of the
-  bridge, not implemented here.
-- **Untouched (D9):** the *shape* of the Unmute `/v1/chat/completions` +
-  `/v1/models` LLM contract, the `/hook/turn` sink, `/feed`/`/turns`, and the
-  `/nostr/*` surface. The injection seam itself (`sendToTab0()` fail-open to
-  tmux) is byte-for-byte preserved. These surfaces now sit behind the global
-  auth gate below, but the request/response bodies are unchanged.
+`GET /sessions` lists daemon states. The spoken controller is restricted to
+`scripts/session-control.cjs list` and `send <text>`: fleet reads and coordinator
+sends only, without create/close or arbitrary-session commands. Read-only tmux
+captures remain available. There is no :9095 listener or AoE bearer token.
+
+The external HTTP and WebSocket auth contract below is retained.
 
 ## Auth model and bind (ADR-044 finding 1)
 
@@ -53,12 +29,12 @@ path. Auth is therefore global, with two carriers and one hard startup gate:
 - **`BRIDGE_TOKEN`** — when set, every surface **except `/health`** requires it,
   including the Unmute LLM contract (`/v1/chat/completions`, `/v1/models`), the
   `/feed` WebSocket, `/tab0/send`, `/nostr/*`, `/turns`, `/tabs*`, and
-  `/aoe/sessions`. Missing/wrong token → `401` (HTTP) or a rejected upgrade (WS).
+  `/sessions`. Missing/wrong token → `401` (HTTP) or a rejected upgrade (WS).
 - **Bearer header** — `Authorization: Bearer <BRIDGE_TOKEN>`. Carried by:
   - the **Unmute backend**, which sends `KYUTAI_LLM_API_KEY=$BRIDGE_TOKEN` as the
     OpenAI-style bearer when it calls `/v1/chat/completions` over the docker
     network (set in `agentbox/voice/unmute-override.yml`);
-  - the **console via Caddy**, which forwards `Authorization` on `/aoe/*` etc.;
+  - the **console via Caddy**, which forwards `Authorization` on `/bridge/*` and `/feed`.;
   - any CLI caller.
 - **`?token=<BRIDGE_TOKEN>` query param** — direct bridge compatibility only.
   The console goes through the identity proxy, using its NIP-07 session cookie,
@@ -72,10 +48,6 @@ path. Auth is therefore global, with two carriers and one hard startup gate:
   that would expose the injection seam and the `claude -p` backend to the network
   unauthenticated. A loopback bind (`127.0.0.1`/`::1`/`localhost`) is the
   token-optional dev path; there the gate is open.
-
-Note the AoE-daemon "loopback, no token" line in the injection-seam section above
-is about the bridge → AoE hop (`:9095`), a separate loopback concern, and is not
-affected by the bridge's own inbound auth.
 
 ### BRIDGE_TOKEN — one shared source of truth (security audit Finding 2)
 

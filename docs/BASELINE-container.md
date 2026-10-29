@@ -1,10 +1,11 @@
 ---
 title: Agentbox Container Baseline
 doc_id: AB-BASELINE
-version: 0.5.12
+version: 0.5.13
 status: draft-for-ratification
 verified_commit: 
 changelog:
+  - "0.5.13 (2026-10-29): ADR-2153 is live: owned session daemon replaces AoE, :9095 and the board; profile volume retained unused for recovery. Cold boot and provider limits are recorded in the ADR."
   - "0.5.12 (2026-10-29): ADR-2154 (accepted, partial, staged; supersedes ADR-2152). Mermaid renders in the image with a pinned Pele 1.12.0 (`pele-render`, with `mmdc` kept as a compatibility shim); browsercontainer no longer carries mermaid-cli or `/render-mermaid`. No new port, adapter or sidecar; browsercontainer change lands at its next rebuild."
   - "0.5.11 (2026-10-28): ADR-2153 (proposed, none, inactive). Agent of Empires (aoe-serve, the aoe flake input, the aoe-profiles volume, scripts/aoe-*) is to be replaced by services/agentbox-sessions: a tmux-backed daemon that reconciles [[interaction_plane.session_seeds]] at boot and on a timer, recreates dead, blocked or drifted sessions unless their worktree is dirty, keeps worktrees under ~/workspace/wt/aoe-<slug>, and serves list/create/send/status on a unix socket. The launch contract (config/session-plane/launch.json) is verified by tests/cli/session-launch-contract.test.mjs. Scaffolded `loom` seed dropped. Services table and invariants unchanged until cut-over."
   - "0.5.10 (2026-10-27): ADR-2152 (proposed, partial, staged). Mermaid rendering moves to browsercontainer's separate headless Chromium; Agentbox carries only the mmdc sidecar client, eliminating a third browser from the Nix closure. Agentbox and browsercontainer activation remain separate."
@@ -79,8 +80,8 @@ Supervisord runs as PID 1 root; every long-running program drops to `user=devuse
 |---|---|---|
 | `management-api` | Fastify control plane; `AGENTBOX_REQUIRED_FOR_READINESS` | `$MANAGEMENT_API_PORT` (4000) |
 | `bootstrap` / `bootstrap-seal` | boot reconcile + one-shot readiness seal writing `/run/agentbox/bootstrap.done` | — |
-| `aoe-serve` | Agent-of-Empires interaction plane, `--auth token --behind-proxy` | `127.0.0.1:9095` (never published) |
-| `nip98-proxy` | sole NIP-98 ingress to `:9095`, multi-upstream `/mgmt/*` router | `:9096` (LAN-published) |
+| `agentbox-sessions` | Owned manifest-reconciled session plane (ADR-2153) | unix socket, 0660, ab-sessions, SO_PEERCRED ACL |
+| `nip98-proxy` | named NIP-98 operator routes, including `/mgmt/*`; no default upstream | `:9096` (LAN-published) |
 | `tab0-bridge` | voice/nostr meta-controller for tmux window 0 | `:8971` |
 | `tmux-autostart` | primary operator terminal surface; window 0 is the tab0-bridge target, window 9 **"Notes"** is the vault TUI | — |
 | └ window 9 "Notes" | Rune markdown TUI opened at `$VAULT_ROOT` when `[vault].tui = "rune"` and the binary is present; otherwise prints the same rebuild notice the Sessions window uses (ADR-2029) | — |
@@ -136,7 +137,7 @@ Not supervised inside the box — external compose services on `visionclaw_netwo
 - **browsercontainer** — GPU Chrome, chrome-devtools-mcp at `:8931/sse` (`system-manifest.js:154`, apply-class `live`). It no longer renders Mermaid: Agentbox renders in-process with Pele (ADR-2154, superseding ADR-2152). `[program:podkey-loader]` loads the pinned Podkey extension over CDP once per Chrome process. Its vault, holding K_browser, persists on the `browsercontainer-profile` volume; the owner mints and unlocks it (`./agentbox.sh browsercontainer podkey status|pubkey|unlock`, `browsercontainer/README.md`).
 - **gui-tools-service** — FHS GPU sidecar for BlenderMCP `:9876` and QGIS `:9877` under `vglrun` (`:157`).
 - **isaac-sim** — opt-in headless Isaac Sim physics sidecar (ADR-2149): no published port, control API on `isaac-sim:9890` (container network), GPU pinned by `ISAAC_SIM_GPU_UUID`, results on the gui-tools exchange volume under `isaac/`, apply-class `live`. Health is four levels; only smoke jobs that succeeded raise the last three. Staged until its first pinned-image smoke run. See [Isaac Sim operations](developer/isaac-sim.md).
-- **voice-console** — ADR-044 Caddy origin `:8444`, Unmute voice loop + AoE board; external build context (`:160`).
+- **voice-console** — ADR-044 Caddy origin `:8444`, Unmute voice loop + approvals; external build context (`:160`).
 - **ruvector-postgres** — mandatory memory store sidecar (ADR-015); compose block generated in `flake.nix:2200`, `db ruvector`, health-gated. `ruvector-mcp.cjs` fails closed, no sql.js fallback.
 - **xr-runtime** — Godot 4 XR consumer, downstream of the box (referenced by role; not a supervised program here).
 
@@ -231,7 +232,7 @@ agent-team teammates, ADR-2032 identity rules). Background programs run under
 - **Legacy ADR-005 conflates the four validation stages** into "contract tests"; this document separates them because they live in different files and fire at different lifecycle points (see Current State). ADR-2005's dispatch-ordering claim is superseded by ADR-2036.
 - **Sovereign settlement remains partial (PRD-024, ADR-2096/2098/2099/2102/2103).** `[sidechain].enabled` now gates the interim JS `sidestr-producer`; child gates `mirror` and `faucet` enable `sidestr-mirror` and `sidestr-faucet`. The faucet bakes the standalone AGPL `sidestr-agent` from a pinned upstream revision, never into a permissive crate (ADR-2112). This operates the existing sealed testnet chain in `config/sidechain/`. No `sidestr-node`, `sidestr-bridge` or `:9097` bind is implemented. The broader design and three candidate invariants in [Sovereign settlement (PROPOSED)](#sovereign-settlement--proposed-2026-09-21) remain outside the compliance surface pending ratification.
 - **`~/.claude` ownership (ADR-2118) — partially rolled out.** The gateway override mounts the container-owned `agentbox-claude-home` volume plus a credential-only host bind; the connected-node overlay (`docker-compose.hp.yml`) that still bound the host's whole `~/.claude` was retired with the node (ADR-2140), so this rollout no longer has a second target. The credential bind remains writable (Q20 residual: a compromised in-container tool can still edit the host's `.claude`). `~/.config/claude` is still a host bind and the workspace still rides the legacy external MAD volume (Q43). Stack profiles (`$WORKSPACE/profiles/*/.claude`) receive neither the global tier nor credentials. Open.
-- Setup wizard exits after saving (`system-manifest.js:47`); operations moved to the AoE cockpit — legacy docs describing pseudo-user isolation (`gemini-user` etc.) are dead paths.
+- Setup wizard exits after saving (`system-manifest.js:47`); operations use the voice/operator console and terminal session picker — legacy docs describing pseudo-user isolation (`gemini-user` etc.) are dead paths.
 - **Media-sidecar cancellation is not yet confirmed per job** (ADR-2150): `skills/blender/tools/blender-job.js` writes its `cancelled` marker once SIGTERM is signalled, before termination is confirmed, so Blender cancellation is request-level. `skills/comfyui/mcp-server/server.js` `cancelJob` posts `/interrupt` with `prompt_id`; the live ComfyUI (commit `faa7e494f3a0`) interrupts only when that prompt is running, but the adapter reports success on acceptance, not confirmation, and a build that ignored `prompt_id` would make the call global.
 
 ## Native pod: forge and mirror (ADR-2145)

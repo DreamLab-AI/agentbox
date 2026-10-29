@@ -372,7 +372,7 @@ Agentbox is headless; the operator reaches it from LAN devices. Two doors are pu
 
 | LAN door | What | Auth |
 |---|---|---|
-| `https://<host>:8444` | **Operator cockpit** (voice + approvals) — the primary human surface | one origin, one credential; self-signed TLS; `/aoe/*` re-verified by NIP-98 |
+| `https://<host>:8444` | **Operator cockpit** (voice + approvals) — the primary human surface | one origin, one credential; self-signed TLS; named operator routes verified by NIP-98 |
 | `http://<host>:9096` | **Sovereign ingress** — Named operator routes, `/mgmt/` → management-api | NIP-98 (kind-27235) signed requests; `NIP98_PROXY_ALLOW_BEARER` break-glass for browsers until NIP-07 signing lands |
 
 The session daemon uses a local unix socket; :9095 and the web board are retired (ADR-2153).

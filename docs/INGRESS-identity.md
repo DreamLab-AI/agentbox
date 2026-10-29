@@ -1,11 +1,12 @@
 ---
 title: Agentbox Ingress & Identity
 doc_id: AB-INGRESS
-version: 0.2.3
+version: 0.2.4
 status: draft-for-ratification
 verified_commit: 
 date: 2026-09-05
 changelog:
+  - "0.2.4 (2026-10-29): ADR-2153 is live: session control uses a 0660 ab-sessions unix socket and peer-uid ACL; :9096 has named routes only, and the old :9095 token invariant is retired."
   - "0.2.3 (2026-10-28): ADR-2153 (proposed, none, inactive) - AoE is to be replaced by an owned session plane on a unix socket with no TCP listener; at cut-over the :9095 door row and Invariant 1 retire and :9096 narrows to /mgmt/* and its other named routes. Recorded as a proposed note on Invariant 1; the live compliance surface is unchanged."
   - "0.2.2 (2026-10-02): invariant 11 — pod origination signs as the sovereign identity the boot mints, or fails closed (ADR-2078, owner decision SC3); `sign_requests = true` in both manifests."
   - "0.2.1 (2026-09-26): item 10 — JunkieJarvis in end-to-end encrypted forum zones (forum ADR-2016): zone-key grants are stored in a 0600 key file and never read as messages; zk-tagged messages are decrypted before reading and undecryptable ones never reach the LLM; replies into an encrypted zone are encrypted or withheld."
@@ -104,8 +105,7 @@ signature themselves.
 The proxy is also the sovereign front door for other surfaces. `NIP98_PROXY_ROUTES`
 (JSON) and the boot-projected config file
 (`/home/devuser/workspace/.agentbox/nip98-proxy-config.json`, from
-`agentbox.toml [interaction_plane.proxy]`) add ordered prefix rules ahead of the
-default AoE upstream (`proxy.mjs:212-250`). Identity verification is route-independent:
+`agentbox.toml [interaction_plane.proxy]`) declare ordered named prefix rules, with no default upstream (ADR-2153). Identity verification is route-independent:
 every upstream request is authenticated before routing (the proxy-owned NIP-07 handshake is separate), and the same identity
 headers are injected whichever upstream wins. The canonical extra route is
 `/mgmt/` → management-api `:9090`. Malformed route/allowlist config is **fatal at boot**
@@ -122,7 +122,7 @@ allowlist.
 `docker-compose.voice.yml:40` publishes `0.0.0.0:8444`. A Caddy origin
 (`voice/README.md:13-22, 94-106`) fronts one credential over one origin, forwarding
 `Authorization` to management-api `:9090` for `/lo/*` and `/docs/*`, and through the
-nip98-proxy `:9096` for `/aoe/*`, `/approvals/*`, `/mgmt/*`, `/dream/*` and — since
+nip98-proxy `:9096` for `/approvals/*`, `/mgmt/*`, `/dream/*` and — since
 ADR-069 — `/feed` and `/bridge/*` as well, where the proxy performs the server-side
 `BRIDGE_TOKEN` credential exchange so the browser never holds the bridge secret
 (`voice/console/Caddyfile:97-105`). `docker-compose.voice.yml:37-40` publishes both
@@ -148,11 +148,13 @@ single storage and URL identity (legacy ADR-053; `pods/<hex>/`, WAC agent URIs, 
 
 ### Session identity binding
 
-The nip98-proxy stamps the verified pubkey as `X-Agentbox-Pubkey` +
-`X-Agentbox-Auth-Mode`. AoE derives the session `AGENTBOX_PROFILE` and the scoped memory
-namespace from that identity at session-create (legacy ADR-043 D4.1/D4.4). Each seeded
-session binds a `did:nostr` + URN + beads epic + scoped namespace
-(`scripts/aoe-seed-sessions.mjs`).
+The nip98-proxy stamps operator identity as `X-Agentbox-Pubkey` and
+`X-Agentbox-Auth-Mode` on its named routes. Session control uses the peer-authorised
+unix socket. The session daemon supplies the seed slug as `AGENTBOX_PROFILE` and
+emits create/turn/close to management-api, which owns DID, URN, beads and namespace
+binding. The coordinator is an external entry bound to `agentbox:0` (ADR-2153).
+A failed beads binding remains a reported degradation; successful pane startup
+does not establish that every durable binding succeeded.
 
 ### Sovereign mesh relay posture
 
@@ -191,7 +193,7 @@ JunkieJarvis signer and the existing authenticated `NostrBridge`.
   normalised `(host_ip, published, target, protocol)` tuple so a sanction cannot be
   smuggled in by re-spelling. Every other publish must bind `127.0.0.1` or CI fails.
   Correct statement of current reality: **`:9096` is the sole identity-gated ingress to
-  the AoE interaction plane, and agentbox additionally publishes nine other sanctioned
+  named operator surfaces; session control is a local unix socket. Agentbox additionally publishes other sanctioned
   LAN ports whose own auth is each surface's responsibility.** Note the earlier framing
   understated the count as well as mis-framing it.
 - **Resolved — ADR-2047 (2026-09-05): the `--auth none` comment was corrected in the
@@ -483,7 +485,7 @@ narrowing of ADR-2012.
 
 `/v1/wallet/{balance,holdings,send,peg-in,peg-out}` and `/v1/chain/{info,tip,open,close}` sit
 behind the existing global auth hook on management-api, the same arrangement `routes/payments.js:29`
-documents for `/v1/pay/*`; AoE-plane callers reach them through nip98-proxy `/mgmt/v1/wallet/*`,
+documents for `/v1/pay/*`; Operator callers reach them through nip98-proxy `/mgmt/v1/wallet/*`,
 and the mirror is published at `/chain/`. **The authenticated `did:nostr` from NIP-98 is what
 selects the spend key.** There is no separate wallet auth, no API key and no session token for
 money, and a request whose NIP-98 DID does not match the addressed wallet is refused *before*

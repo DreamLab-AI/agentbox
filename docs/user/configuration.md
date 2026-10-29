@@ -365,7 +365,7 @@ FastGRNN) but the npm tarball ships none of its artefacts and ruflo's own task
 embedder imports a package the closure lacks, so the cost-optimal path never fires
 by itself. This gate vendors the pinned artefacts
 ([`config/model-router/artefacts.json`](../../config/model-router/artefacts.json))
-and exposes the router as a dedicated AoE session, `router`, whose console embeds
+and exposes the router as a dedicated session-plane seed, `router`, whose console embeds
 each task offline, picks the cheapest OpenRouter model above the quality bar,
 executes it and prints a labelled receipt. **Public, open-source work only** — the
 console refuses any other privacy tier and drops to dry-run when `AGENTBOX_EGRESS=0`.
