@@ -1,3 +1,8 @@
+> ADR-2153 cutover (2026-10-29): the AoE session board and /aoe routes below
+> are retired. This console keeps voice to tab0, transcript, approvals and the
+> named operator surfaces. Manage sessions in terminal tab 8 or via Nostr.
+> AoE references below describe the former layout, retained for troubleshooting.
+
 # agentbox/voice — voice + AoE operator console
 
 All web services and shared speech models join `visionclaw_network`; no private

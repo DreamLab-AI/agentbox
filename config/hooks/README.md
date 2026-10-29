@@ -20,7 +20,7 @@ to hooks). After every registration block has run, the entrypoint calls
 `agentbox-manifest hooks-reconcile` on `~/.claude/settings.json` and
 `$WORKSPACE/.claude/settings.json`: `own` rows are agentbox's hooks (moved off foreign
 events, de-duplicated, timeout rewritten to the canonical value), `keep` rows are
-third-party (AoE's `# aoe-hooks` entries, the `agentbox-hook` shim), `prune` rows are
+third-party (`agentbox-hook` shim; retired AoE hooks are pruned), `prune` rows are
 removed wherever they appear, and anything else is **kept and reported** in the boot
 log. The reconciler never adds a hook — gating stays with each block. A changed file
 keeps a `settings.json.pre-hooks-reconcile` copy beside it.
@@ -104,3 +104,9 @@ registration an earlier on-boot wrote (ADR-2020 byte-identical-when-off), add an
 unregistered), and add its row above. Gates:
 `node_modules/.bin/jest tests/config/hook-registration.test.js` and
 `cargo test` in `services/agentbox-manifest`.
+
+ADR-2153: `session-state.cjs` is registered on UserPromptSubmit, Stop and
+Notification (3 s) in root settings by the entrypoint and in profiles by stacks.rs,
+gated by interaction_plane.enabled and retracted when off. Codex notify uses the
+same dispatcher and preserves voicelink recording when enabled. It is silent and
+fails open; status goes to the peer-authorised session socket.

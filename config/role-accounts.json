@@ -38,7 +38,7 @@
     {
       "name": "ab-gateway",
       "uid": 961,
-      "purpose": "nostr-gateway: operator DMs and relay AUTH. Holds no key; signs through the identity port (W3a), reads the AoE bearer through the aoe-share copy (design 2.6, W2).",
+      "purpose": "nostr-gateway: operator DMs and relay AUTH. Holds no key; signs through the identity port (W3a), uses the session-plane unix socket as an ab-sessions group member (ADR-2153).",
       "programs": ["nostr-gateway"],
       "secrets": []
     },

@@ -352,14 +352,8 @@ above, enabled but explicitly-invoke-only.
    nothing checks which base URL a session actually opened.
 4. **Deferred-distillation MCP tools are not built** — ADR-051 names them; only beads
    substrate primitives exist, "after image rebuild".
-5. **AoE :9095 is token-gated, not loopback-gated (N-05 revised).** `aoe serve` runs
-   `--auth token`: every request to `:9095` must carry the daemon's shared-secret token
-   (minted at launch into the owner-only 0700 `~/.config/agent-of-empires/serve.url`), so
-   loopback reachability alone no longer drives the daemon (`agentbox.toml:1137-1146`). The
-   nip98-proxy (`:9096`) remains the sole *identity* ingress — it verifies NIP-98 then
-   injects the token upstream (`config/nip98-proxy/README.md`). Documented residual limit:
-   a process running as the **same devuser** can still read the token file — the token
-   raises the bar but does not isolate same-uid peers; per-process isolation is future work.
+5. **Session control is peer-authorised (ADR-2153).** A unix socket replaces
+   :9095; named operator routes retain NIP-98. No default web board route remains.
 6. **Dream governance band (056/058/061/062–072) is paper** — the engine runs ahead of its
    decision-surface, self-GC, and telemetry-contract designs.
 7. **Skill lint is advisory** — `lint-skills.sh` gates estate hygiene but is not a runtime
@@ -401,10 +395,8 @@ above, enabled but explicitly-invoke-only.
   runtime trace.
 - **Agent activity leaves only through the activity sink** (ADR-2146) — `config/hooks/activity-sink.cjs`, gated by `[integrations.activity_sink]`, registered at boot in the root and every Claude profile, retracted when off; fail-open (1 s, exit 0, no stdout), never sends without a bearer token or with unredacted text, and obeys `AGENTBOX_EGRESS`.
 - **Tree-search-coder is never auto-routed** and always carries a `spend_cap_usd`.
-- **AoE daemon access is token-gated (N-05 revised)** — every request to `:9095` must carry
-  the daemon's shared-secret token (owner-only 0700 `serve.url`); the nip98-proxy (`:9096`)
-  stays the sole *identity* ingress. Loopback reachability is no longer the boundary, and the
-  token does not isolate same-uid peers (documented residual limit).
+- **Session control uses SO_PEERCRED** — socket 0660 in `ab-sessions`, ACL uids
+  1000 and 961, no TCP listener. Only marked owned tmux sessions are reconciled.
 - **Dream cycles are evidence-gated and human-merge-gated** — a self-modifying hypothesis
   (a change to the dream-engine that dreams itself) must never bypass the human merge gate
   (`dream.config.json` extraDisciplines / `self-referential`). Since ADR-2141 this is also

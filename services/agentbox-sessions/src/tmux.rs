@@ -212,6 +212,11 @@ impl Tmux {
     }
 
     /// Whether a raw tmux target (for the external coordinator) resolves to a live pane.
+    pub fn target_identity(&self, target: &str) -> Result<String> {
+        let key = self.run(&["display-message", "-p", "-t", target, "#{session_created}-#{pane_id}"])?;
+        Ok(format!("external-{}", key.trim()))
+    }
+
     pub fn target_alive(&self, target: &str) -> bool {
         self.run(&["display-message", "-p", "-t", target, "#{pane_dead}"]).map(|s| s.trim() == "0").unwrap_or(false)
     }

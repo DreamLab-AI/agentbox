@@ -20,7 +20,7 @@
 #     hostname substring match — see ADR-2007.
 #
 # Then it execs claude. No key bytes are minted here; settings.local.json is the
-# runtime source of truth, provisioned by scripts/aoe-seed-sessions.mjs.
+# runtime source of truth, provisioned by scripts/session-provision.mjs.
 # ============================================================================
 set -euo pipefail
 
@@ -92,7 +92,7 @@ PY
 # --- assert profile + settings exist ---------------------------------------
 [ -d "$PROFILE" ] || _die \
   "profile directory missing: ${PROFILE}" \
-  "run the boot reconciler (scripts/aoe-seed-sessions.mjs) or rebuild the image."
+  "run the boot reconciler (scripts/session-provision.mjs) or rebuild the image."
 
 [ -f "$SETTINGS" ] || _die \
   "settings.local.json missing: ${SETTINGS}" \

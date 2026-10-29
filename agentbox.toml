@@ -2072,37 +2072,13 @@ primer_on_scan      = false                                         # auto-gener
 nostr_publish       = true                                          # publish kind-30841 digests to the operator's did:nostr
 metrics             = true                                          # emit the agentbox_project_* gauges on the port-bound /metrics
 
-# ── Interaction plane — Agent of Empires (PRD-021 / ADR-042/043/044) ──────────
-# AoE is the canonical interaction plane: `aoe serve` creates, monitors, attaches,
-# and reviews interactive agent sessions, superseding the hand-rolled MAD tmux
-# harness (PRD-013 / ADR-025). Adopted as an OVERLAY — a pinned flake input
-# (flake.nix inputs.aoe), a supervised daemon, a NIP-98 reverse proxy, and the
-# declarative session seeds below — with ZERO patches to the AoE crate (ADR-042 D2).
-#
-# The daemon binary is REBUILD-class (flake input → Nix image composition); the
-# daemon + config + session seeds are BOOT-class (reconciled by the entrypoint every
-# boot). With enabled = false the daemon never starts and no seeds are provisioned.
-#
-# Identity binding (ADR-043): each session seed derives a distinct did:nostr
-# (AGENTBOX_PROFILE=<slug> → agent-identity.js loadOrMint), a session URN
-# (urn:agentbox:activity:<scope>:session-<sha256-12> via uris.js), a beads epic,
-# and a scoped memory namespace user:<pubkey>:proj:<repo>:<ns> at create time.
+# ── Interaction plane — owned tmux session manager (ADR-2153) ─────────────
+# Package set and supervisor are rebuild-gated together. No TCP API or web board.
+# Every session binds a did:nostr, URN, beads epic and scoped memory namespace.
 [interaction_plane]
-enabled     = true                  # master gate; false ⇒ no daemon, no seeds (apply-class boot)
-port        = 9095                  # aoe serve bind (127.0.0.1, --auth token behind proxy); NOT 8080 (code-server) / 7777 (relay)
-dashboard   = "on"                  # aoe serve web dashboard (absorbs the never-deployed PRD-012 setup/ops dashboard)
-proxy_auth  = "nip98"               # sole-ingress reverse proxy verifies NIP-98 → session pubkey (WS4 / ADR-043 D4.6)
-proxy_port  = 9096                  # nip98-proxy listen port — the sole IDENTITY ingress to :9095 (N-05); free (adjacent to mgmt-api 9090)
-# N-05 (revised): loopback is NO LONGER the boundary for :9095. aoe serve runs
-# `--auth token`, so every request to :9095 must carry the daemon's shared-secret
-# token (minted at launch into ~/.config/agent-of-empires/serve.url). The nip98-proxy
-# (:9096) is still the only IDENTITY ingress — it verifies NIP-98 then injects the
-# token upstream; the break-glass nostr-gateway reads the same token file. A
-# co-resident process that cannot read that owner-only (0700) file can no longer
-# drive the daemon merely because the port is loopback-reachable. Residual limit:
-# processes running as the SAME devuser can still read the token file — the token
-# raises the bar (no free loopback access) but does not isolate same-uid peers;
-# per-process isolation remains future work.
+enabled     = true                  # rebuild-class: package + supervisor gate
+proxy_auth  = "nip98"               # named operator routes retain sovereign ingress
+proxy_port  = 9096
 
 # ── Unified operator auth (ADR-069: dreamlab-ai auth adoption) ──────────────
 # The nip98-proxy is the ONE authenticator for every operator surface on the
@@ -2117,7 +2093,7 @@ allowed_pubkeys = [
   "11ed64225dd5e2c5e18f61ad43d5ad9272d08739d3a20dd25886197b0738663c",  # agentbox sovereign / house key (browsercontainer Podkey vault copy to be replaced by K_browser; G-5)
 ]
 
-# Routes beyond the default AoE upstream. bearer_env names an env var whose
+# Named operator routes; unknown routes return 404. bearer_env names an env var whose
 # value replaces the browser credential upstream (credential exchange at the
 # trust boundary — the browser NEVER holds BRIDGE_TOKEN).
 [[interaction_plane.proxy.routes]]
@@ -2159,7 +2135,7 @@ strip = false
 preserve_host = true
 
 # Declarative sessions replacing tmux-autostart harness windows 8–14 (WS2). Each
-# seed becomes an AoE session under SESSION_PREFIX aoe_. eager_mandate defaults
+# seed becomes an owned abs_<slug> tmux session. eager_mandate defaults
 # false (mandates are lazy, minted on first pod write — ADR-043 D4.5); flip true
 # only for known pod-writers. Perplexity has NO seed — retired to MCP (F2-6).
 [[interaction_plane.session_seeds]]
@@ -2209,16 +2185,14 @@ tool          = "custom:router"       # resolved by the seeder's WRAPPER_SLUGS �
 worktree      = false
 eager_mandate = false
 
-# tab-0 coordinator: named, special, TERMINAL VIEW. AoE's default ACP structured
-# view has no tmux pane, so POST /send returns 400 acp_mode_unsupported (F5-3);
-# terminal view is required for the voice send-keys / /send path (ADR-044).
+# External coordinator: listed, bound and sendable, never launched or reconciled.
 [interaction_plane.coordinator]
 slug          = "tab0"
 tool          = "claude"
-view          = "terminal"
+target        = "agentbox:0"
 eager_mandate = false
 
-# ── Voice + AoE operator console (ADR-044) ───────────────────────────────────
+# ── Voice operator console (ADR-044) ───────────────────────────────────
 # Documentation-as-data for the voice plane. This is a SIDECAR with its own
 # lifecycle (./agentbox.sh voice up|down|...), NOT part of ./agentbox.sh up —
 # so `enabled` here is descriptive state for /v1/system, not a boot gate. The

@@ -3,7 +3,7 @@ import test from 'node:test';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import * as seeder from '../../scripts/aoe-seed-sessions.mjs';
+import * as seeder from '../../scripts/session-provision.mjs';
 
 const listing = { data: [{ id: 'qwen3.8-27b-heretic-q8_0', owned_by: 'llamacpp', meta: { n_ctx: 262144 } }], models: [{ model: 'qwen3.8-27b-heretic-q8_0', capabilities: ['completion', 'multimodal'] }] };
 const selected = seeder.selectLoomModel(listing);
@@ -122,7 +122,7 @@ test('--providers-only refreshes model identity without materialising AoE config
   t.after(() => server.close());
   const env = { ...process.env, XDG_CONFIG_HOME: home, LOOM_BASE_URL: `http://127.0.0.1:${server.address().port}` };
   for (const key of ['LOOM_MODEL', 'GEMMA_MODEL', 'LOOM_IMAGE_INPUT']) delete env[key];
-  const child = spawn(process.execPath, ['scripts/aoe-seed-sessions.mjs', '--providers-only'], { env });
+  const child = spawn(process.execPath, ['scripts/session-provision.mjs', '--providers-only'], { env });
   let output = '';
   child.stdout.on('data', chunk => { output += chunk; });
   child.stderr.on('data', chunk => { output += chunk; });

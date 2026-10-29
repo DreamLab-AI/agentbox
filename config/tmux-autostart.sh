@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # tmux Workspace Auto-Start for Agentbox
-# Creates the operator windows (0-7), the AoE "Sessions" window (8) and the
-# vault "Notes" window (9) — the interaction plane is now Agent of Empires
+# Creates the operator windows (0-7), the session-plane "Sessions" window (8) and the
+# vault "Notes" window (9) — the interaction plane is now agentbox-sessions
 # (PRD-021/ADR-042), which supersedes the MAD-style per-provider harness tabs
 # 8-14 (ADR-025, superseded in place); Notes is the Rune markdown TUI over the
 # Obsidian vault (ADR-2029).
 #
 #   0:Claude  1:Agent  2:Services  3:Build  4:Logs
-#   5:System  6:VNC    7:Git       8:Sessions(AoE)  9:Notes(Rune)  10:Activity
+#   5:System  6:VNC    7:Git       8:Sessions(session-plane)  9:Notes(Rune)  10:Activity
 #
 # Replaces Zellij layouts; fish shell configs (config.fish,
 # bashrc.agentbox) are sourced automatically by fish in each window.
@@ -260,10 +260,8 @@ fi
 
 # Agentbox install root (dir containing config/ + scripts/). Resolved relative to
 # this script so it works whether launched from the baked image (/opt/agentbox)
-# or the repo bind mount. Used to locate the AoE seed reconciler and wrappers.
+# or the repo bind mount. Used to locate the session-plane seed reconciler and wrappers.
 AGENTBOX_ROOT="$(cd "$(dirname "$0")/.." 2>/dev/null && pwd || echo /opt/agentbox)"
-AOE_SEED="${AGENTBOX_ROOT}/scripts/aoe-seed-sessions.mjs"
-[ -f "$AOE_SEED" ] || AOE_SEED="/opt/agentbox/scripts/aoe-seed-sessions.mjs"
 
 # If session already exists, skip creation
 if tmux has-session -t "$SESSION" 2>/dev/null; then
@@ -295,7 +293,7 @@ tmux send-keys -t "${SESSION}:0" "export CLAUDE_CONFIG_DIR=/home/devuser/.claude
 
 # Welcome dashboard — gum renders a styled panel, falls back to plain text
 if command -v gum >/dev/null 2>&1; then
-  WELCOME_CMD="clear; gum style --border rounded --border-foreground '#7aa2f7' --padding '1 2' --margin '1 0' --bold --foreground '#a9b1d6' \"\$(printf '  AGENTBOX\\n\\n  Project: $PROJECT\\n  Shell:   fish + starship\\n  Tabs:    Claude · Agent · Services · Build · Logs · System · VNC · Git · Sessions (AoE) · Notes · Activity\\n\\n  Interactive agent sessions live in the Sessions tab (Agent of Empires).\\n  Vault pages open in the Notes tab (Rune markdown TUI).\\n  agentbox-help    quick reference\\n  svc-status       service health\\n  cf-doctor        system diagnostics')\""
+  WELCOME_CMD="clear; gum style --border rounded --border-foreground '#7aa2f7' --padding '1 2' --margin '1 0' --bold --foreground '#a9b1d6' \"\$(printf '  AGENTBOX\\n\\n  Project: $PROJECT\\n  Shell:   fish + starship\\n  Tabs:    Claude · Agent · Services · Build · Logs · System · VNC · Git · Sessions (session-plane) · Notes · Activity\\n\\n  Interactive agent sessions live in the Sessions tab (agentbox-sessions).\\n  Vault pages open in the Notes tab (Rune markdown TUI).\\n  agentbox-help    quick reference\\n  svc-status       service health\\n  cf-doctor        system diagnostics')\""
   tmux send-keys -t "${SESSION}:0" "$WELCOME_CMD" C-m
 else
   tmux send-keys -t "${SESSION}:0" "echo ''" C-m
@@ -303,7 +301,7 @@ else
   tmux send-keys -t "${SESSION}:0" "echo '  │  AGENTBOX                                   │'" C-m
   tmux send-keys -t "${SESSION}:0" "echo '  │                                             │'" C-m
   tmux send-keys -t "${SESSION}:0" "echo '  │  Project: $PROJECT'" C-m
-  tmux send-keys -t "${SESSION}:0" "echo '  │  Sessions tab   Agent of Empires plane       │'" C-m
+  tmux send-keys -t "${SESSION}:0" "echo '  │  Sessions tab   agentbox-sessions plane       │'" C-m
   tmux send-keys -t "${SESSION}:0" "echo '  │  Notes tab      Rune markdown TUI (vault)    │'" C-m
   tmux send-keys -t "${SESSION}:0" "echo '  │  agentbox-help   quick reference             │'" C-m
   tmux send-keys -t "${SESSION}:0" "echo '  │  svc-status      service health              │'" C-m
@@ -332,7 +330,7 @@ tmux send-keys -t "${SESSION}:3" "echo '  Build workspace'" C-m
 
 # ============================================================================
 # Window 4: Logs — split pane: management-api log + shell
-# LEGACY (ADR-042 D1/F6-2): the AoE dashboard's live feed absorbs this later;
+# LEGACY (ADR-042 D1/F6-2): the session-plane dashboard's live feed absorbs this later;
 # the window is retained for now so operators keep a plain log view.
 # ============================================================================
 tmux new-window -t "${SESSION}:4" -n "Logs" -c "$WORKSPACE_DIR"
@@ -369,48 +367,22 @@ tmux send-keys -t "${SESSION}:6" "ps aux | grep -i '[Xx]vnc' || echo '  VNC not 
 
 # ============================================================================
 # Window 7: Git — project git status
-# LEGACY (ADR-042 D1/F6-2): the AoE dashboard's per-session diff view absorbs
+# LEGACY (ADR-042 D1/F6-2): the session-plane dashboard's per-session diff view absorbs
 # this later; retained for now as a plain merge-coordinator view.
 # ============================================================================
 tmux new-window -t "${SESSION}:7" -n "Git" -c "$PROJECT"
 tmux send-keys -t "${SESSION}:7" "git status" C-m
 
 # ============================================================================
-# Window 8: Sessions — the Agent of Empires interaction plane
+# Window 8: Sessions — the agentbox-sessions interaction plane
 # ----------------------------------------------------------------------------
-# Supersedes the MAD harness tabs 8-14 (OpenRouter/ZAI/Antigravity/DeepSeek/
-# Perplexity/Ollama/Codex) and the bespoke harness/<name> worktree block. AoE
-# owns session lifecycle, per-session git worktrees, live terminals/diffs, and
-# a status FSM. The seven consoles are declared as [interaction_plane].
-# session_seeds in agentbox.toml and reconciled by scripts/aoe-seed-sessions.mjs
-# (custom_agents + wrappers + AGENTBOX_PROFILE binding). The Perplexity tab is
-# RETIRED (F2-6): research now rides mcp__perplexity + /perplexity-research.
-#
-# AoE coexists with this `agentbox` session on the shared default tmux socket
-# (F2-9); its own sessions are namespaced under the `aoe_` prefix, so there is
-# no collision. This window runs the `aoe` TUI when the (rebuilt-image) binary
-# is present; otherwise it prints a notice that the plane needs the rebuild.
-# ============================================================================
+# ADR-2153: only the interactive picker may switch its own terminal client.
+# The supervisor owns provider provisioning and session reconciliation.
 tmux new-window -t "${SESSION}:8" -n "Sessions" -c "$PROJECT"
-if command -v aoe >/dev/null 2>&1; then
-  tmux send-keys -t "${SESSION}:8" "echo '  Agent of Empires — interaction plane (PRD-021/ADR-042)'" C-m
-  # Reconcile profiles + AoE config + declared session seeds (fail-open). Runs
-  # every session start; it skips existing sessions and never kills any.
-  if [ -f "$AOE_SEED" ] && command -v node >/dev/null 2>&1; then
-    tmux send-keys -t "${SESSION}:8" "node ${AOE_SEED} || true" C-m
-  fi
-  tmux send-keys -t "${SESSION}:8" "echo '  Launching the AoE TUI — press ? for help, n for a new session.'" C-m
-  tmux send-keys -t "${SESSION}:8" "aoe" C-m
+if command -v agentbox-sessions >/dev/null 2>&1; then
+  tmux send-keys -t "${SESSION}:8" "agentbox-sessions pick" C-m
 else
-  tmux send-keys -t "${SESSION}:8" "echo '  Sessions (Agent of Empires) — interaction plane'" C-m
-  tmux send-keys -t "${SESSION}:8" "echo ''" C-m
-  tmux send-keys -t "${SESSION}:8" "echo '  The aoe binary is not present in this image.'" C-m
-  tmux send-keys -t "${SESSION}:8" "echo '  The interaction plane needs the rebuilt image:'" C-m
-  tmux send-keys -t "${SESSION}:8" "echo '    set [interaction_plane].enabled = true in agentbox.toml,'" C-m
-  tmux send-keys -t "${SESSION}:8" "echo '    then rebuild on the host (./agentbox.sh rebuild) to bake aoe-with-web.'" C-m
-  tmux send-keys -t "${SESSION}:8" "echo ''" C-m
-  tmux send-keys -t "${SESSION}:8" "echo '  Until then, interactive agents remain available via the consultant'" C-m
-  tmux send-keys -t "${SESSION}:8" "echo '  MCP tier and Claude Code (tab 0).'" C-m
+  tmux send-keys -t "${SESSION}:8" "echo 'Session plane disabled; enable interaction_plane and rebuild.'" C-m
 fi
 
 # ============================================================================
@@ -423,33 +395,26 @@ _notes_window
 _activity_window
 
 # ============================================================================
-# Harness-merge helper — reworked for the AoE per-session worktree model.
-# Under ADR-042, AoE owns per-session git worktrees; a worktree session's branch
+# Harness-merge helper — reworked for the session-plane per-session worktree model.
+# Under ADR-042, session-plane owns per-session git worktrees; a worktree session's branch
 # is derived from its title slug (docs/guides/worktrees.md). This helper merges
 # such a branch back into the current branch from tab 0.
 #   Usage (from tab 0): harness-merge <session-title>   e.g. harness-merge codex
-# It asks AoE for the session's actual worktree branch (falling back to the
+# It asks session-plane for the session's actual worktree branch (falling back to the
 # title as the branch name), then git-merges it.
 # ============================================================================
 _HARNESS_MERGE_SH="$(cat <<'MERGE_EOF'
 harness-merge() {
-  local _title="${1:?Usage: harness-merge <aoe-session-title>}"
+  local _title="${1:?Usage: harness-merge <session-slug>}"
   local _branch=""
-  # Resolve the session's worktree branch from AoE when possible.
-  if command -v aoe >/dev/null 2>&1 && command -v jq >/dev/null 2>&1; then
-    _branch="$(aoe session show "$_title" --json 2>/dev/null \
-      | jq -r '.worktree_info.branch // .branch // empty' 2>/dev/null)"
-  fi
-  # Fall back to the title slug as the branch name (AoE derives branches from
-  # the title, slashes → hyphens).
-  [ -n "$_branch" ] || _branch="$(printf '%s' "$_title" | tr '/ ' '--')"
+  _branch="session-plane/${_title}"
   if ! git rev-parse --verify "$_branch" >/dev/null 2>&1; then
     echo "harness-merge: branch not found for session '${_title}' (tried '${_branch}')" >&2
-    echo "  list AoE sessions with: aoe list" >&2
+    echo "  list session-plane sessions with: agentbox-sessions list" >&2
     return 1
   fi
-  echo "Merging AoE session '${_title}' (branch ${_branch}) into $(git branch --show-current)..."
-  git merge --no-ff "${_branch}" -m "merge: AoE session ${_title} (${_branch}) into primary"
+  echo "Merging session-plane session '${_title}' (branch ${_branch}) into $(git branch --show-current)..."
+  git merge --no-ff "${_branch}" -m "merge: session-plane session ${_title} (${_branch}) into primary"
 }
 export -f harness-merge 2>/dev/null || true
 MERGE_EOF
@@ -466,18 +431,18 @@ tmux set-environment -t "${SESSION}" HARNESS_MERGE_FN "${_HARNESS_MERGE_SH}"
 tmux send-keys -t "${SESSION}:0" "eval \"\$HARNESS_MERGE_FN\" 2>/dev/null || true" C-m
 
 # ============================================================================
-# Landing window: the AoE session plane is THE interaction surface (PRD-021);
+# Landing window: the session-plane session plane is THE interaction surface (PRD-021);
 # attach lands on Sessions when the plane is baked in. Window 0 stays the
 # tab0-bridge injection target either way — landing is a view choice only.
 # ============================================================================
-if command -v aoe >/dev/null 2>&1; then
+if command -v agentbox-sessions >/dev/null 2>&1; then
   tmux select-window -t "${SESSION}:8"
 else
   tmux select-window -t "${SESSION}:0"
 fi
 
 echo "[tmux-autostart] Session '$SESSION' created with 11 windows"
-echo "  0:Claude  1:Agent  2:Services  3:Build  4:Logs  5:System  6:VNC  7:Git  8:Sessions(AoE)  9:Notes(Rune)  10:Activity"
+echo "  0:Claude  1:Agent  2:Services  3:Build  4:Logs  5:System  6:VNC  7:Git  8:Sessions(session-plane)  9:Notes(Rune)  10:Activity"
 
 # ============================================================================
 # Dream-engine nightly loop — FALLBACK ONLY. Since the 2026-08 image rebuild

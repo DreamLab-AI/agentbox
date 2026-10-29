@@ -118,48 +118,10 @@ const CLAUDE_ENV = { ...process.env, AGENTBOX_LIVE_MIRROR: '0', AGENTBOX_NOSTR_G
 // Nostr.  Keeping it local means Nostr adds no exposed HTTP surface.
 const TAB0_BRIDGE_URL = (process.env.AGENTBOX_TAB0_BRIDGE_URL || 'http://127.0.0.1:8971').replace(/\/$/, '');
 // Agent of Empires interaction plane (ADR-042/ADR-044 D5). /spawn creates a
-// managed AoE session (status FSM, optional worktree, serialised send) instead
-// of a raw tmux window, falling open to tmux new-window when the daemon is
-// down. The plain-chat path already rides the tab-0 bridge /tab0/send seam,
-// which is itself repointed onto AoE — so it inherits D1–D3 for free. The daemon
-// now runs `--auth token` (N-05: loopback is no longer the boundary), so this
-// direct :9095 route authenticates with the daemon's shared-secret token, read
-// from aoe's own state file (serve.url) — the same token the nip98-proxy injects.
-// A co-resident process that cannot read the token file can no longer drive the
-// daemon even though the port is loopback-reachable.
-const AOE_PORT = Number(process.env.AGENTBOX_INTERACTION_PLANE_PORT || 9095);
-const AOE_BASE = `http://127.0.0.1:${AOE_PORT}`;
-// DUPLICATED VERBATIM (modulo the fs accessor) in 4 runtime consumers of :9095 —
-// no shared-lib path spans all four deploy locations. KEEP IN SYNC:
-//   config/nip98-proxy/proxy.mjs · config/nostr-gateway/gateway.cjs
-//   config/tab0-bridge/server.mjs · scripts/aoe-seed-sessions.mjs
-// Read-then-stat with a single retry on mtime skew (guards a torn read while the
-// daemon rewrites the file on restart); a transient stat/read error keeps the
-// last-good cache (NEVER caches null on error). Callers MUST fail closed on null.
-const AOE_TOKEN_FILE = process.env.AGENTBOX_AOE_TOKEN_FILE
-  || path.join(HOME, '.config', 'agent-of-empires', 'serve.url');
-let _aoeTokenCache = { mtimeMs: -1, token: null, valid: false };
-function readAoeToken() {
-  for (let attempt = 0; attempt < 2; attempt++) {
-    let stBefore;
-    try { stBefore = fs.statSync(AOE_TOKEN_FILE); }
-    catch { return _aoeTokenCache.valid ? _aoeTokenCache.token : null; }
-    if (_aoeTokenCache.valid && stBefore.mtimeMs === _aoeTokenCache.mtimeMs) return _aoeTokenCache.token;
-    let raw, stAfter;
-    try {
-      raw = fs.readFileSync(AOE_TOKEN_FILE, 'utf-8');
-      stAfter = fs.statSync(AOE_TOKEN_FILE);
-    } catch { return _aoeTokenCache.valid ? _aoeTokenCache.token : null; }
-    if (stBefore.mtimeMs !== stAfter.mtimeMs) continue; // file changed under us → retry once
-    const m = /[?&]token=([0-9a-fA-F]{64})(?:[&#\s]|$)/.exec(raw); // aoe mints a 32-byte (64-hex) token
-    const token = m ? m[1] : null;
-    _aoeTokenCache = { mtimeMs: stAfter.mtimeMs, token, valid: true };
-    return token;
-  }
-  return _aoeTokenCache.valid ? _aoeTokenCache.token : null;
-}
-const AOE_ENABLED = String(process.env.AGENTBOX_INTERACTION_PLANE || '').trim() !== '0';
-const AOE_TIMEOUT_MS = 12000; // create with ?wait=ready blocks until status leaves Starting (~10s)
+// managed session-plane session (status FSM, optional worktree, serialised send) instead
+// of a raw tmux window, falling open to the confined tmux path when unavailable.
+const SESSION_CLIENT = require('/opt/agentbox/config/session-plane/client.cjs');
+const SESSIONS_ENABLED = String(process.env.AGENTBOX_INTERACTION_PLANE || '').trim() !== '0';
 
 function log(...a) { try { process.stdout.write(`[gw ${new Date().toISOString()}] ${a.join(' ')}\n`); } catch { /* noop */ } }
 function nowSec() { return Math.floor(Date.now() / 1000); }
@@ -439,48 +401,28 @@ function watchTab(idx) {
 // and zai are their own CLIs.
 // exit is what to type at the agent's prompt to end its session; match tells
 // us (via pane_current_command) which exit verb a running tab needs.
-// aoeTool maps the launcher onto AoE's tool enum for POST /api/sessions: dsp/zai
+// sessionTool maps the launcher onto session-plane's tool enum for POST /api/sessions: dsp/zai
 // are the `claude` binary (zai is redirected via env, still tool=claude), codex
-// is native. Used when /spawn creates an AoE session instead of a tmux window.
+// is native. Used when /spawn creates an session-plane session instead of a tmux window.
 const AGENTS = {
-  dsp:    { launch: 'dsp',   exit: '/exit', aoeTool: 'claude' },
-  claude: { launch: 'dsp',   exit: '/exit', aoeTool: 'claude' },
-  codex:  { launch: 'codex', exit: '/quit', aoeTool: 'codex' },
-  zai:    { launch: 'zai',   exit: '/exit', aoeTool: 'claude' },
+  dsp:    { launch: 'dsp',   exit: '/exit', sessionTool: 'claude' },
+  claude: { launch: 'dsp',   exit: '/exit', sessionTool: 'claude' },
+  codex:  { launch: 'codex', exit: '/quit', sessionTool: 'codex' },
+  zai:    { launch: 'zai',   exit: '/exit', sessionTool: 'claude' },
 };
 
-// ── AoE interaction-plane client (fail-open) ────────────────────────────────
-async function aoeRequest(method, pathname, body) {
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), AOE_TIMEOUT_MS);
-  try {
-    const tok = readAoeToken();
-    if (!tok) throw new Error('AoE token unavailable (N-05 fail-closed) — not sending unauthenticated request');
-    const headers = { authorization: `Bearer ${tok}` };
-    if (body) headers['content-type'] = 'application/json';
-    const res = await fetch(`${AOE_BASE}${pathname}`, {
-      method,
-      headers,
-      body: body ? JSON.stringify(body) : undefined,
-      signal: ctrl.signal,
-    });
-    const text = await res.text();
-    let json = null; try { json = text ? JSON.parse(text) : null; } catch { /* non-json */ }
-    return { status: res.status, json, text };
-  } finally { clearTimeout(timer); }
+// ── session-plane interaction-plane client (fail-open) ────────────────────────────────
+async function sessionCreate(repoPath, tool, title) {
+  // The socket enforces project/worktree roots. Other cwd requests retain the
+  // existing confined tmux fallback rather than silently changing directory.
+  if (repoPath !== path.join(HOME, 'workspace', 'project')) throw new Error('using tmux for alternate project');
+  const slug = title.toLowerCase().replace(/[^a-z0-9-]/g, '-').slice(0, 32);
+  await SESSION_CLIENT.call({ op: 'create', slug, tool });
+  return { id: slug, status: 'starting' };
 }
-// Create an AoE session at `repoPath` running `tool`, blocking until it leaves
-// Starting. Throws on non-2xx / transport failure → caller falls back to tmux.
-async function aoeCreateSession(repoPath, tool, title) {
-  const r = await aoeRequest('POST', '/api/sessions?wait=ready', { path: repoPath, tool, title });
-  if (r.status !== 200 && r.status !== 201) throw new Error(`aoe create ${r.status}: ${String(r.text).slice(0, 120)}`);
-  const id = r.json && (r.json.id || r.json.session_id);
-  if (!id) throw new Error('aoe create returned no session id');
-  return { id: String(id), status: (r.json && r.json.status) || 'Starting' };
-}
-async function aoeSendSession(id, message) {
-  const r = await aoeRequest('POST', `/api/sessions/${encodeURIComponent(id)}/send`, { message });
-  return r.status === 200;
+async function sessionSend(slug, text) {
+  await SESSION_CLIENT.call({ op: 'send', slug, text });
+  return true;
 }
 const WORKSPACE = path.join(HOME, 'workspace');
 
@@ -512,24 +454,24 @@ async function doSpawn(ws, dirSpec, agentName, instr, why) {
   if (r.err) return reply(ws, `⚠ ${r.err}\ntop-level dirs: ${workspaceDirs()}`);
   const name = path.basename(r.dir);
   const follow = sanitize(instr);
-  // Prefer the AoE interaction plane — a managed session with a status FSM and
+  // Prefer the session-plane interaction plane — a managed session with a status FSM and
   // serialised send replaces the hand-rolled "poll the pane until it boots"
   // loop. Fail open to a raw tmux window if the daemon is unreachable so a spawn
   // is never dropped (ADR-044 D5). The whitelist/replay gates upstream in
   // handleWrap and the ~/workspace realpath confinement are unchanged.
-  if (AOE_ENABLED) {
+  if (SESSIONS_ENABLED && agent.launch !== 'zai') {
     try {
-      const sess = await aoeCreateSession(r.dir, agent.aoeTool, name);
+      const sess = await sessionCreate(r.dir, agent.sessionTool, name);
       const short = sess.id.slice(0, 8);
-      reply(ws, `🚀 aoe ${short} · ${name} · ${r.rel} · ${agent.aoeTool} · ${sess.status}${follow ? `\n⏳ sending "${follow}"` : ''}${why ? '\n↳ ' + String(why).slice(0, 120) : ''}`);
+      reply(ws, `🚀 session ${short} · ${name} · ${r.rel} · ${agent.sessionTool} · ${sess.status}${follow ? `\n⏳ sending "${follow}"` : ''}${why ? '\n↳ ' + String(why).slice(0, 120) : ''}`);
       if (follow) {
         let sent = false;
-        try { sent = await aoeSendSession(sess.id, follow); } catch (e) { log('aoe follow-up send failed', e.message); }
-        reply(ws, sent ? `✔ aoe ${short} ← "${follow}"` : `⚠ aoe ${short} is up but the follow-up send failed — check the dashboard`);
+        try { sent = await sessionSend(sess.id, follow); } catch (e) { log('session-plane follow-up send failed', e.message); }
+        reply(ws, sent ? `✔ session ${short} ← "${follow}"` : `⚠ session ${short} is up but the follow-up send failed — check the session picker`);
       }
       return;
     } catch (e) {
-      log('aoe spawn failed, falling back to tmux new-window:', e.message);
+      log('session-plane spawn failed, falling back to tmux new-window:', e.message);
     }
   }
   return doSpawnTmux(ws, r, agent, name, follow, why);

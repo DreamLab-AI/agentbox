@@ -46,16 +46,6 @@ https://:8444 {
 	handle_path /api/* {
 		reverse_proxy backend:80
 	}
-	# ── AoE session board (the main stage) ──────────────────────────────
-	# The sole ingress to the aoe serve daemon (loopback :9095) is the
-	# NIP-98 proxy on :9096. Same-origin so the console can call /aoe/api/*
-	# with the operator's signed header (which the proxy verifies → session
-	# pubkey). Includes the session live-ws ANSI streams (websocket upgrade).
-	handle_path /aoe/* {
-		reverse_proxy agentbox:9096 {
-			header_up Authorization {http.request.header.Authorization}
-		}
-	}
 	# ── Governance approvals (operator-gated, Part A finding 2) ──────────
 	# management-api :9090 serves GET /v1/approvals and
 	# POST /v1/approvals/:id/decide. The console signs a NIP-98 request; the

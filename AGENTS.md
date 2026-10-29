@@ -8,7 +8,7 @@ Agentbox is a standalone sovereign agent-container product (`github.com/DreamLab
 
 ## Architecture in one paragraph
 
-`agentbox.toml` is the *running* configuration, not a template — check it directly. Runtime is profile-based (tmux + fish). The **interaction plane is Agent of Empires** (PRD-021/ADR-042): `aoe serve` on loopback `:9095` behind the sole-ingress NIP-98 proxy `:9096`; each session binds a `did:nostr` + URN + beads epic + scoped memory namespace (ADR-043). Durable state goes through five adapter slots (beads, pods, memory, events, orchestrator; ADR-005), each resolving to `local-*`, `external` or `off`; `federation.mode` selects standalone vs client.
+`agentbox.toml` is the *running* configuration, not a template — check it directly. Runtime is profile-based (tmux + fish). The **interaction plane is agentbox-sessions** (ADR-2153): a tmux-backed daemon on a SO_PEERCRED-authorised unix socket (0660, `ab-sessions`), with the NIP-98 proxy `:9096` retaining named operator routes. Sessions bind a `did:nostr` + URN + beads epic + scoped memory namespace (ADR-043). Durable state goes through five adapter slots (beads, pods, memory, events, orchestrator; ADR-005), each resolving to `local-*`, `external` or `off`; `federation.mode` selects standalone vs client.
 
 ## RuVector — repo-specific rules
 
@@ -44,14 +44,14 @@ Narrative, Jev compaction (ADR-2093) and live skill routing (ADR-2091): [runtime
 | [`config/entrypoint-unified.sh`](config/entrypoint-unified.sh) | boot reconciliation of `.mcp.json`, hooks, model routing |
 | [`services/agentbox-manifest`](services/agentbox-manifest) | Rust boot projector for every manifest read (python3 is not a boot dependency) |
 | [`services/nostr-pod-bridge`](services/nostr-pod-bridge) | sovereign identity bootstrap, relay slot, session digests |
-| [`config/nip98-proxy/`](config/nip98-proxy/) | sole NIP-98 ingress `:9096` (AoE, `/mgmt/`) |
+| [`config/nip98-proxy/`](config/nip98-proxy/) | sole NIP-98 ingress `:9096` (named routes, `/mgmt/`) |
 | [`config/hooks/`](config/hooks/) | hooks and non-hook helpers — read its `CLAUDE.md` first |
 | [`config/model-router/`](config/model-router/) | ADR-2080 router console; `AGENTBOX_MODEL_ROUTER_*` only |
-| [`services/agentbox-sessions`](services/agentbox-sessions) | ADR-2153 session plane: tmux-backed daemon that reconciles `[[interaction_plane.session_seeds]]`. Baked into the image but **dormant** (supervisor `autostart=false`) until the cut-over removes Agent of Empires; sessions are `abs_<slug>`, ownership is the tmux option `@agentbox-sessions` |
+| [`services/agentbox-sessions`](services/agentbox-sessions) | ADR-2153 session plane: tmux-backed daemon that reconciles `[[interaction_plane.session_seeds]]`. Supervised with `autostart=true`; sessions are `abs_<slug>`, ownership is the tmux option `@agentbox-sessions` |
 | [`crates/colloquy/`](crates/colloquy/) | cq learning model — has its own `AGENTS.md` |
 | [`DreamLab-AI/sidestr-rs`](https://github.com/DreamLab-AI/sidestr-rs) | sidestr crates, **not in this repo** (ADR-2112); `AGPL-3.0-only`, never a dependency of a permissive crate. The optional supervised faucet bakes the standalone `sidestr-agent` binary from a pinned upstream Git revision (`lib/sidestr-agent.nix`); this repo hosts the chain instance: [`config/sidechain/`](config/sidechain/) |
 
-Everything else (tab0-bridge, voice, harness-wrappers, AoE seeder, explainer-tools): [runtime-files.md](docs/reference/claude-context/runtime-files.md).
+Everything else (tab0-bridge, voice, harness-wrappers, session provisioning, explainer-tools): [runtime-files.md](docs/reference/claude-context/runtime-files.md).
 
 ## URI/URN scheme
 
@@ -85,7 +85,7 @@ kernel, mounts or sidecars. See [the VEX guide](docs/developer/vex.md).
 - Mermaid renders only with the pinned Pele (ADR-2154, superseding ADR-2152): `pele-render` is the CLI and `mmdc` is a compatibility shim onto it, in-process in Node with no browser, Puppeteer or sidecar. `--check` is the cheap probe; PNG needs ImageMagick, PDF has no renderer. browsercontainer no longer carries mermaid-cli (effective at its next rebuild).
 - Isaac Sim is an independent opt-in physics sidecar (`isaac-sim:9890`, no published ports), pinned to one GPU UUID. Keep its exchange volume; simulator/physics/render health require executed fixtures, not container liveness. See [Isaac operations](docs/developer/isaac-sim.md).
 - The browser sidecar runs `[program:podkey-loader]` (`browsercontainer/supervisord.conf`), which loads the pinned Podkey into Chrome once per Chrome process. K_browser lives in Podkey's vault on the `browsercontainer-profile` volume. The owner mints it over VNC and unlocks it after every sidecar restart with `./agentbox.sh browsercontainer podkey unlock`. An agent only ever sees the public key (`podkey pubkey`). See `browsercontainer/README.md`.
-- AoE sessions persist on the `aoe-profiles` volume; the seeder reaps only its own clean orphan worktrees (ADR-2063). Hub-routed MCP servers refusing connections → `supervisorctl status agentbox-mcp-hub` first (it parks FATAL after 120 s without `/run/agentbox/mcp-hub.json`, ADR-2104).
+- The legacy `aoe-profiles` volume stays mounted, unused, for recovery. The session plane protects dirty worktrees and only touches sessions carrying its ownership marker (ADR-2153). Hub-routed MCP servers refusing connections → `supervisorctl status agentbox-mcp-hub` first (it parks FATAL after 120 s without `/run/agentbox/mcp-hub.json`, ADR-2104).
 - Pods requests are unsigned (`sign_requests = false`, ADR-2064) until ADR-2078 wires the identity key; flipping it without key material throws `SigningUnavailable`.
 - `[system_one]` owns the optional typed-decision vendor slot (ADR-2139); it is exclusive with `[features.sovereign_system_one]`. Inspect/switch via `./agentbox.sh systemone backend`; local-to-cloud transitions require rebuilding/restarting consumers. Request metadata logs are bounded.
 - Claude Fable 5.1 uses always-on adaptive thinking: keep API histories append-only, replay thinking blocks exactly, do not force tool choice.

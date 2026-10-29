@@ -287,6 +287,10 @@ async function main() {
   // browser never does. bearer_env is fatal at boot when unset — set it first.
   process.env.SELFTEST_GOV_BEARER = GOV_BEARER;
   process.env.NIP98_PROXY_ROUTES = JSON.stringify([
+    { prefix: '/stub/', target: `http://127.0.0.1:${upstreamPort}`, strip: false },
+    { prefix: '/health', target: `http://127.0.0.1:${upstreamPort}`, strip: false },
+    { prefix: '/api/', target: `http://127.0.0.1:${upstreamPort}`, strip: false },
+    { prefix: '/sessions/', target: `http://127.0.0.1:${upstreamPort}`, strip: false },
     { prefix: '/mgmt/', target: `http://127.0.0.1:${mgmtPort}` },
     { prefix: '/gov/', target: `http://127.0.0.1:${govPort}`, bearer_env: 'SELFTEST_GOV_BEARER' },
   ]);
@@ -295,14 +299,6 @@ async function main() {
   // Pinned so cookies minted here are verifiable by the child proxies below
   // (I/J: allowlist removal and restart under a rotated key).
   process.env.NIP98_PROXY_SESSION_SECRET = SESSION_SECRET;
-
-  // N-05: default-upstream (AoE) forwards fail closed without the daemon's
-  // shared-secret token. Provision a fake serve.url so the selftest exercises
-  // the injection path hermetically (the fake upstream ignores the bearer).
-  const aoeTokenFile = pathResolve(tmpdir(), `selftest-aoe-serve-${process.pid}.url`);
-  writeFileSync(aoeTokenFile, `http://127.0.0.1:${upstreamPort}/?token=${'ab'.repeat(32)}\n`);
-  process.env.AOE_TOKEN_FILE = aoeTokenFile;
-  process.on('exit', () => { try { unlinkSync(aoeTokenFile); } catch { /* gone */ } });
 
   const proxyMod = await import('./proxy.mjs');
   await new Promise((r) => setTimeout(r, 300)); // let it bind
@@ -326,8 +322,8 @@ async function main() {
     // N-05: the client's Authorization is stripped, and the proxy injects the
     // AoE daemon's shared-secret token toward the default upstream — the
     // upstream must see the daemon token, never the client credential.
-    assert(lastReq && lastReq.headers.authorization === `Bearer ${'ab'.repeat(32)}`,
-      'B: client Authorization replaced by injected AoE daemon token',
+    assert(lastReq && lastReq.headers.authorization === undefined,
+      'B: client bearer stripped from named upstream',
       JSON.stringify(lastReq && lastReq.headers.authorization));
   }
 
@@ -434,14 +430,13 @@ async function main() {
     assert(lastReq === null, 'E: default upstream NOT hit for routed path');
   }
 
-  // E2. unrouted path still falls through to the default (AoE) upstream
+  // ADR-2153: no default upstream, for HTTP or WebSocket.
   {
-    lastMgmtReq = null;
     lastReq = null;
-    const r = await request('/api/sessions', { authorization: `Bearer ${BREAK_GLASS}` });
-    assert(r.status === 200 && lastReq && lastReq.url === '/api/sessions',
-      'E2: unrouted path reaches default upstream unchanged', JSON.stringify(lastReq && lastReq.url));
-    assert(lastMgmtReq === null, 'E2: routed upstream NOT hit for default path');
+    const r = await request('/retired-board', { authorization: `Bearer ${BREAK_GLASS}` });
+    assert(r.status === 404 && lastReq === null, 'E2: unknown HTTP route returns 404 without upstream contact');
+    const ws = await wsUpgrade(`/retired-board?access_token=${BREAK_GLASS}`);
+    assert(ws.includes('404 Not Found'), 'E2: unknown WS route returns 404');
   }
 
   // E3. unauthenticated routed request → 401 (auth precedes routing)
@@ -855,18 +850,18 @@ module.exports = { NostrBridge: { verifyNip98 } };
     const aoeUrl = `http://127.0.0.1:${PROXY_PORT}/api/sessions`;
     const aoeNip98 = buildNip98('GET', aoeUrl);
     if (aoeNip98.skip) {
-      skip('L7: AoE receives its daemon token even in nip98 mode', aoeNip98.skip);
+      skip('L7: named upstream receives the original NIP-98 credential', aoeNip98.skip);
     } else {
       lastReq = null;
       await request('/api/sessions', { authorization: aoeNip98.header });
-      assert(lastReq && lastReq.headers.authorization === `Bearer ${'ab'.repeat(32)}`,
-        'L7: AoE receives its daemon token even in nip98 mode (HTTP)',
+      assert(lastReq && lastReq.headers.authorization === aoeNip98.header,
+        'L7: named upstream receives the original NIP-98 credential (HTTP)',
         JSON.stringify(lastReq && lastReq.headers.authorization));
       lastUpgrade = null;
       const wsAoe = buildNip98('GET', `http://127.0.0.1:${PROXY_PORT}/sessions/abc/live-ws`);
       await wsUpgrade(`/sessions/abc/live-ws?auth=${encodeURIComponent(wsAoe.header.slice('Nostr '.length))}`);
-      assert(lastUpgrade && lastUpgrade.headers.authorization === `Bearer ${'ab'.repeat(32)}`,
-        'L7b: AoE receives its daemon token even in nip98 mode (WS)',
+      assert(lastUpgrade && lastUpgrade.headers.authorization === wsAoe.header,
+        'L7b: named upstream receives the original NIP-98 credential (WS)',
         JSON.stringify(lastUpgrade && lastUpgrade.headers.authorization));
     }
   }

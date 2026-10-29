@@ -25,17 +25,13 @@ reference  = ~/workspace/docs/ruvector-system-reference.md
 
 Namespaces: `personal-context` (index key `personal-context-portfolio-index`), `project-state` (index key `project-state-current-focus`).
 
-## Agent sessions (Agent of Empires)
+## Agent sessions (ADR-2153)
 
-```
-launch  = from any shell WITHOUT its own terminal (an agent's tool shell, a hook, cron): `aoe add … --launch --no-attach`,
-          or `aoe add …` then `aoe session start <title>`, or plain `tmux new-session -d`
-why     = `--launch`/`session attach` hand the CALLER's terminal to the session via `tmux switch-client`; with TMUX merely
-          inherited that is the operator's client, every tab included, and their next prefix-d detaches it. The baked aoe
-          refuses to attach from a non-tty shell and starts detached instead; the flag/env make the intent explicit
-env     = AOE_NO_ATTACH=1 forces detached on every attach path
-watch   = `aoe` TUI in tmux tab 8, `tmux attach -t <aoe_session>` from a terminal you own, or `aoe session capture`
-```
+Declare desired sessions in `agentbox.toml`; the supervisor reconciles them.
+Use `agentbox-sessions list`, `send <slug> <text>`, or the peer-authorised socket
+(`agentbox-sessions call '{"op":"list"}'`). The interactive picker is
+`agentbox-sessions pick` in tab 8 and only switches its own terminal client.
+From an agent tool shell, never attach or switch the operator's tmux client.
 
 ## Host access & Docker builds
 

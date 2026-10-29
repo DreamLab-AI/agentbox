@@ -321,6 +321,17 @@ fn build_profile(name: &str, config: &Value, env: &Env, gates: &Gates) -> Result
                 }]}));
         }
     }
+    if gates.session_plane {
+        for event in ["UserPromptSubmit", "Stop", "Notification"] {
+            hooks.as_object_mut().unwrap().entry(event.to_string())
+                .or_insert_with(|| Value::Array(Vec::new())).as_array_mut().unwrap()
+                .push(serde_json::json!({"hooks": [{
+                    "type": "command",
+                    "command": format!("node /opt/agentbox/config/hooks/session-state.cjs {event} || true"),
+                    "timeout": 3
+                }]}));
+        }
+    }
     if let Some(sink) = &gates.activity_sink {
         add_activity_sink_hooks(&mut hooks, env, sink, name);
     }
@@ -411,6 +422,7 @@ mod tests {
         Gates {
             floor: false,
             voicelink_record: false,
+            session_plane: false,
             mobile_bridge: false,
             summary_model: String::new(),
             zai_reasoning_effort: String::new(),
@@ -461,6 +473,7 @@ mod tests {
         let gates = Gates {
             floor: false,
             voicelink_record: false,
+            session_plane: false,
             mobile_bridge: true,
             summary_model: "glm-5.3".into(),
             zai_reasoning_effort: String::new(),
@@ -493,6 +506,7 @@ mod tests {
         let gates = Gates {
             floor: false,
             voicelink_record: false,
+            session_plane: false,
             mobile_bridge: true,
             summary_model: "glm-5.3".into(),
             zai_reasoning_effort: String::new(),

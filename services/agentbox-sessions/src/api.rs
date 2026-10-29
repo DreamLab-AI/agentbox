@@ -89,6 +89,7 @@ pub fn dispatch(plane: &Plane, line: &str) -> Value {
     let res: Result<Value> = (|| match s("op") {
         "list" | "status" => Ok(json!({"sessions": plane.status()?})),
         "send" => plane.send(s("slug"), s("text")).map(|_| json!({})),
+        "mark" => plane.mark(s("slug"), s("state")).map(|_| json!({})),
         "create" => {
             let r: CreateReq = serde_json::from_value(req.clone())?;
             plane.create(&r).map(|_| json!({}))

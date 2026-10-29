@@ -53,23 +53,16 @@ for the list and its per-entry citation, and ADR-2013 / ADR-2047.
 
 | Door | Bind | Identity gate | Backing service |
 |---|---|---|---|
-| `:9096` nip98-proxy | `0.0.0.0` (LAN) | NIP-98 / NIP-07 session / break-glass bearer | AoE `:9095`, `/mgmt/` → mgmt-api `:9090` |
-| `:8444` voice cockpit | `0.0.0.0` (LAN) | Caddy origin, forwards `Authorization` to tab0-bridge / mgmt-api | AoE, `/approvals/*`, `/mgmt/*`, `/lo/*`, `/docs/*` |
+| `:9096` nip98-proxy | `0.0.0.0` (LAN) | NIP-98 / NIP-07 session / break-glass bearer | Named routes, `/mgmt/` → mgmt-api `:9090` |
+| `:8444` voice cockpit | `0.0.0.0` (LAN) | Caddy origin, forwards `Authorization` to tab0-bridge / mgmt-api | Voice, `/approvals/*`, `/mgmt/*`, `/lo/*`, `/docs/*` |
 | `:9090` management-api | `127.0.0.1` | NIP-98 bearer on identity surfaces (RbacGate-adjacent) | reached via `:9096/mgmt/` or `:8444/mgmt/` |
-| `:9095` AoE `aoe serve` | `127.0.0.1` | daemon bearer token (`--auth token --behind-proxy`) + sole-ingress invariant | the interaction plane itself |
 | `:7777` embedded relay | loopback unless `[sovereign_mesh.relay].expose` | pubkey allowlist | nostr-rs-relay |
 
-### `:9096` nip98-proxy — the sole legitimate ingress to AoE
+### `:9096` nip98-proxy — named sovereign ingress
 
-`config/nip98-proxy/proxy.mjs` is the trust boundary in front of `aoe serve`
-(`flake.nix:1977`: `aoe serve --auth token --behind-proxy --allowed-host 127.0.0.1
---host 127.0.0.1 --port 9095`). AoE trusts `X-Forwarded-For` because it runs
-`--behind-proxy`, so the sole-ingress invariant remains load-bearing for *identity*:
-anything that opens `:9095` directly bypasses NIP-98 pubkey verification. Since N-05,
-`--auth token` adds defence-in-depth beneath it — every `:9095` request must also carry
-the daemon's bearer token, minted at launch into `~/.config/agent-of-empires/serve.url`
-(not env-settable), so a co-resident process that never reads that file cannot drive
-sessions even on a loopback-reachable port (`flake.nix:1963-1975`, `proxy.mjs:18-21`).
+ADR-2153 removes the AoE upstream and :9095. Session consumers use the unix
+socket with peer-credential authorisation; the proxy keeps named operator routes.
+Unknown HTTP and WebSocket routes return 404 after authentication.
 
 Auth precedence in `verifyIdentity` (`proxy.mjs:626`; ADR-2047 refreshed these
 citations from the stale `proxy.mjs:410-450` range, and ADR-2058 re-verification at
@@ -105,18 +98,6 @@ credential-exchange path: a route may declare `bearer_env`, and the proxy inject
 upstream token **only when `auth.mode !== 'nip98'`** (`proxy.mjs:800`) — a genuine
 signed NIP-98 header passes through so governance upstreams re-verify the operator
 signature themselves.
-
-**AoE token auth — landed (N-05).** `:9095` runs `--auth token` (`flake.nix:1977`):
-the daemon mints a bearer token at launch into `~/.config/agent-of-empires/serve.url`
-and every request must carry it as `Authorization: Bearer`. Loopback is no longer the
-boundary. The two direct consumers read the token from that state file and inject it —
-`config/nostr-gateway/gateway.cjs:108-124` (`aoeToken()` reads `serve.url`; its own
-comment notes a co-resident process without the token file "can no longer drive the
-daemon") and `scripts/aoe-seed-sessions.mjs`. The nip98-proxy stays the only *identity*
-ingress (NIP-98 → pubkey); the token is defence-in-depth beneath it. The comment that
-formerly lagged this (`flake.nix`, "(aoe serve, --auth none) is NEVER published") has
-been corrected in the code and now reads `--auth token` at `flake.nix:2647` (ADR-2047;
-line re-pinned by ADR-2058 re-verification at `08e817f39`).
 
 ### `:9096` multi-upstream routing (legacy ADR-045)
 
@@ -253,19 +234,13 @@ JunkieJarvis signer and the existing authenticated `NostrBridge`.
 
 ## Invariants (must not silently change)
 
-1. AoE `:9095` stays loopback + `--behind-proxy` + `--auth token`; the nip98-proxy is the
-   sole *identity* ingress, and every direct loopback consumer (gateway, tab0-bridge,
-   seed script, `aoe-curl.sh`) must present the daemon token — a tokenless request to
-   `:9095` must always 401.
-   *Proposed (ADR-2153, not live):* when the session plane replaces AoE this invariant
-   retires with `:9095`; the replacement exposes only a 0600 unix socket and no TCP listener.
+1. Session control has no TCP listener. The unix socket is 0660 in `ab-sessions`,
+   with every request authorised by SO_PEERCRED against the pinned uid ACL (1000,
+   961). Named operator routes retain NIP-98 ingress; no default upstream exists.
 2. Identity is verified before any route is consulted; `X-Agentbox-Pubkey` is always
    proxy-injected, never trusted inbound.
-3. For *named governance upstreams*, `Authorization` injection is gated on
-   `auth.mode !== 'nip98'` — a signed NIP-98 identity reaches them intact. The default
-   AoE route is the exception: the proxy replaces `Authorization` with the daemon token
-   for **every** auth mode (the proxy is AoE's authenticator; identity travels via
-   `X-Agentbox-Pubkey`), and fails 503 locally when no token is available.
+3. For named governance upstreams, bearer exchange is gated on
+   `auth.mode !== 'nip98'`; genuine NIP-98 Authorization reaches them intact.
 4. Missing NIP-98 verifier ⇒ fail closed. Malformed route/allowlist config ⇒ fatal at boot.
 5. The DID is `did:nostr:<64-hex>`; hex x-only pubkey is the single storage/URL identity.
    Private keys never leave `agent-identity.js` and persist at 0600.

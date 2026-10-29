@@ -2937,17 +2937,18 @@
     "interaction_plane": {
       "type": "object",
       "additionalProperties": false,
-      "description": "Agent of Empires interaction plane (PRD-021 / ADR-042/043/044). AoE serve daemon (rebuild-class binary via flake input, boot-class daemon + config), a NIP-98 reverse proxy as sole ingress, and declarative session seeds replacing the MAD tmux harness. enabled=false \u21d2 no daemon, no seeds.",
+      "description": "Owned tmux session plane (ADR-2153), with a peer-authorised unix socket and named NIP-98 operator routes.",
       "properties": {
         "enabled": {
           "type": "boolean",
-          "description": "Master gate; false \u21d2 aoe serve never starts and no session seeds are provisioned (apply-class boot)."
+          "description": "Rebuild-class gate on the session daemon package and supervisor, plus named NIP-98 ingress."
         },
         "port": {
           "type": "integer",
           "minimum": 1,
           "maximum": 65535,
-          "description": "aoe serve loopback bind port (127.0.0.1, behind proxy). Must NOT be 8080 (code-server) or 7777 (nostr relay)."
+          "description": "Retired AoE field, ignored by the owned session plane (ADR-2153).",
+          "deprecated": true
         },
         "dashboard": {
           "type": "string",
@@ -2955,7 +2956,8 @@
             "on",
             "off"
           ],
-          "description": "aoe serve web dashboard (absorbs the PRD-012 setup/ops dashboard)."
+          "description": "Retired AoE field, ignored by the owned session plane (ADR-2153).",
+          "deprecated": true
         },
         "proxy_auth": {
           "type": "string",
@@ -2969,7 +2971,7 @@
           "type": "integer",
           "minimum": 1,
           "maximum": 65535,
-          "description": "nip98-proxy listen port \u2014 the only ingress to the aoe serve port (N-05 invariant)."
+          "description": "NIP-98 ingress for named operator routes; there is no default upstream."
         },
         "proxy": {
           "type": "object",
@@ -2986,7 +2988,7 @@
               "description": "Hex Nostr public keys permitted to authenticate. Empty means any valid signer."
             },
             "routes": {
-              "description": "Extra proxy routes beyond the default upstream, each with a prefix, a target URL and optionally bearer_env, the environment variable whose value replaces the browser's credential upstream. Edit in the raw TOML editor.",
+              "description": "Explicit operator routes. Unknown HTTP and WebSocket routes return 404.",
               "type": "array",
               "items": {
                 "type": "object",
@@ -3041,7 +3043,7 @@
               },
               "tool": {
                 "type": "string",
-                "description": "AoE agent key: native ACP (claude|codex|gemini|...) or a custom:<name> agent."
+                "description": "Launch-contract tool kind or custom:<slug> wrapper."
               },
               "model": {
                 "type": "string",
@@ -3049,7 +3051,7 @@
               },
               "worktree": {
                 "type": "boolean",
-                "description": "Create a per-session git worktree (AoE's built-in worktree model)."
+                "description": "Prepare a protected git worktree under the launch contract root."
               },
               "env_allowlist": {
                 "type": "array",
@@ -3073,10 +3075,9 @@
           "type": "object",
           "additionalProperties": false,
           "required": [
-            "slug",
-            "tool"
+            "slug"
           ],
-          "description": "The tab-0 coordinator: named, special, terminal view (ACP has no pane \u2192 400 acp_mode_unsupported; terminal view is required for the voice /send path, F5-3 / ADR-044).",
+          "description": "External coordinator: listed, identity-bound and sendable, never launched or reconciled.",
           "properties": {
             "slug": {
               "type": "string",
@@ -3084,7 +3085,8 @@
             },
             "tool": {
               "type": "string",
-              "description": "AoE agent key (claude)."
+              "description": "Legacy AoE coordinator field; the external coordinator is not launched by the daemon.",
+              "deprecated": true
             },
             "view": {
               "type": "string",
@@ -3092,11 +3094,18 @@
                 "terminal",
                 "acp"
               ],
-              "description": "View mode; terminal is required for the send-keys/POST /send voice path."
+              "description": "Legacy AoE coordinator field; the external coordinator is not launched by the daemon.",
+              "deprecated": true
             },
             "eager_mandate": {
               "type": "boolean",
-              "description": "Mint the mandate at create time rather than lazily (ADR-043 D4.5). Default false."
+              "description": "Legacy AoE coordinator field; the external coordinator is not launched by the daemon.",
+              "deprecated": true
+            },
+            "target": {
+              "type": "string",
+              "default": "agentbox:0",
+              "description": "Existing tmux pane target for the external coordinator."
             }
           }
         }

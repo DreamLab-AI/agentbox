@@ -2,7 +2,7 @@
 # ============================================================================
 # Agent-of-Empires custom-agent wrapper — the model-router console (ADR-2080)
 # ----------------------------------------------------------------------------
-# Registered as the AoE `custom_agents.router` entry by scripts/aoe-seed-sessions.mjs
+# Registered as the AoE `custom_agents.router` entry by scripts/session-provision.mjs
 # (WRAPPER_SLUGS) for the `router` session seed. AoE execs this in the session's
 # tmux pane; it asserts the preconditions LOUDLY and then hands off to
 # config/model-router/console.mjs, which embeds each task offline, asks the

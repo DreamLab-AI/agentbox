@@ -417,66 +417,39 @@ key respectively).
 
 ## `[interaction_plane]`
 
-The interaction plane — how interactive agent sessions are created, monitored,
-attached, and reviewed — is [Agent of Empires](https://github.com/DreamLab-AI/agentbox-of-empires)
-(AoE), adopted as an overlay ([PRD-021](../archive/prd/PRD-021-interaction-surface-consolidation.md) /
-[ADR-042](../archive/adr/ADR-042-agent-of-empires-interaction-plane.md) /
-[043](../archive/adr/ADR-043-session-identity-binding.md) /
-[044](../archive/adr/ADR-044-voice-plane-aoe-repoint.md)). It supersedes the
-hand-rolled MAD-style per-provider tmux harness tabs in place. With
-`enabled = false` no daemon starts and no seeds are provisioned — the runtime is
-byte-identical to the pre-PRD-021 product.
+ADR-2153 replaces AoE with the owned `agentbox-sessions` daemon. `enabled` gates
+both the package set and supervisor and requires a rebuild. The daemon reconciles
+`[[interaction_plane.session_seeds]]` from the running manifest; tool/model argv
+is governed by `config/session-plane/launch.json`. It listens only on a unix
+socket (0660, ab-sessions, SO_PEERCRED ACL). Window 8 runs its interactive picker.
 
 ```toml
 [interaction_plane]
-enabled    = true    # master gate; false ⇒ no daemon, no seeds (apply-class boot)
-port       = 9095    # aoe serve bind — loopback only, behind the proxy; NOT 8080 (code-server) / 7777 (relay)
-dashboard  = "on"    # aoe serve web dashboard (absorbs the never-deployed setup/ops dashboard)
-proxy_auth = "nip98" # sole-ingress reverse proxy verifies NIP-98 → session pubkey
-proxy_port = 9096    # nip98-proxy listen port — the ONLY ingress to :9095 (hard invariant)
-
-# Declarative sessions replacing the harness windows. Each seed becomes an AoE
-# session and, at create time, binds a did:nostr (AGENTBOX_PROFILE=<slug>), a
-# session URN, a beads epic, and a scoped namespace user:<pubkey>:proj:<repo>:<ns>.
-[[interaction_plane.session_seeds]]
-slug          = "codex"                # native ACP agent
-tool          = "codex"
-worktree      = true
+enabled = true
+proxy_auth = "nip98"
+proxy_port = 9096
 
 [[interaction_plane.session_seeds]]
-slug          = "openrouter"           # claude binary redirected — env_allowlist is load-bearing
-tool          = "claude"
-worktree      = false
-env_allowlist = ["ANTHROPIC_BASE_URL", "ANTHROPIC_AUTH_TOKEN"]
-
-# … antigravity (gemini), zai, deepseek (custom:codewhale), ollama (custom:nanocoder) …
+slug = "codex"
+tool = "codex"
+worktree = true
 
 [interaction_plane.coordinator]
-slug = "tab0"                          # the primary Claude window — named, special, terminal view
-tool = "claude"
-view = "terminal"                      # required for the voice send-keys / /send path
+slug = "tab0"
+target = "agentbox:0"
 ```
 
-**Sole ingress (hard invariant).** `aoe serve` runs `--auth none --behind-proxy`
-on `127.0.0.1:9095`; only the NIP-98 proxy on `proxy_port` is exposed, and it is
-the *only* process permitted to reach the daemon. Any container-local process
-reaching `:9095` directly would bypass identity — so the daemon port is never
-published (only `proxy_port` is added to the image's exposed ports).
+Sessions bind a did:nostr, session URN, beads epic and scoped memory namespace
+through management-api. Worktree sessions live under ~/workspace/wt/aoe-<slug>;
+the legacy path prefix is retained. Only abs_<slug> sessions with the ownership
+marker are reconciled, and dirty worktrees prevent recreation. Provider profiles
+are provisioned by scripts/session-provision.mjs. OpenRouter and Z.AI use isolated
+Claude profiles with hard-fail redirect wrappers. Codex, antigravity, deepseek,
+loom-raw and the public-only router complete the roster.
 
-**Identity binding & memory scope.** Because sessions are the identity boundary,
-[`[memory].admin_access_mode`](#adapters) ships as `"scoped"`: one session cannot
-read another session's `user:<pubkey>:proj:<repo-slug>:<ns>` namespace. The
-operator keeps a documented break-glass path — in scoped mode the bearer admin
-maps to the operator's own pubkey namespace (`AGENTBOX_X_ONLY_PUBKEY_HEX` /
-`AGENTBOX_PUBKEY`), so cross-session inspection stays possible but auditable.
-`admin_access_mode` is baked at build time (`MEMORY_ADMIN_ACCESS_MODE`) and is
-**rebuild-class**.
-
-**Apply classes.** The `aoe-with-web` binary is a pinned flake input and
-**rebuild-class**; the daemon, proxy, and session seeds are reconciled every boot
-and **boot-class**. Bumping the flake pin past a `web/package-lock.json` change
-requires recomputing `npmDepsHash` in the same commit. Perplexity has no seed —
-research is retired to `mcp__perplexity` + the `/perplexity-research` skill.
+The proxy keeps explicitly named operator routes. There is no default upstream,
+no :9095 listener, and no web session board. The legacy aoe-profiles volume stays
+mounted unused for recovery and unchanged-mount activation.
 
 ## `[integrations.<name>]`
 
@@ -1007,7 +980,7 @@ The validator runs in three places:
 |---|---|
 | `[adapters]` slot swap | Yes for `beads` (implementation resolved at image composition); other slots re-resolve on container restart |
 | `[memory].admin_access_mode` change | Yes — baked into `MEMORY_ADMIN_ACCESS_MODE` at build time |
-| `[interaction_plane].enabled` flip | Yes — pulls/removes the `aoe-with-web` flake input from the image package set (the seeds/daemon/proxy themselves are boot-class) |
+| `[interaction_plane].enabled` flip | Yes — adds/removes the session-plane binary and supervisor together (ADR-2153) |
 | `[observability]` tweak | No — env vars re-read on restart |
 | `[providers.*]` add/enable | No — boot-time env check only |
 | Adding/removing a `[skills.*]` or `[toolchains]` | Yes — image contents change |

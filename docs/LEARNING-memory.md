@@ -411,3 +411,16 @@ window. Missing receipts are missing evidence, not a passing day. The historical
 2026-09-06 recall pass alone does not supply seven days of observations. Activation
 is an explicit reviewed configuration change after that window, not a clock-only
 flip; no live learning gate was changed in this closeout.
+
+### Session plane cutover (ADR-2153, 2026-10-29)
+
+The interaction plane is `agentbox-sessions` (ADR-2153): a supervised tmux-backed
+daemon reconciles `[[interaction_plane.session_seeds]]` through a unix socket
+at `/run/agentbox-sessions/sessions.sock` (0660, `ab-sessions`, SO_PEERCRED ACL).
+Sessions are `abs_<slug>` with `@agentbox-sessions=1`; `tab0` is the external
+`agentbox:0` coordinator. Window 8 runs `agentbox-sessions pick`. Provider profiles
+are reconciled by `scripts/session-provision.mjs`. AoE, its default upstream,
+`:9095` and the web session board are retired. The NIP-98 proxy on `:9096` keeps
+its named operator routes and returns 404 for unknown routes. The old
+`aoe-profiles` volume remains mounted but unused for recovery and mount-stable
+activation; it must not be pruned as part of delivery.

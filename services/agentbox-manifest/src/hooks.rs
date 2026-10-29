@@ -410,7 +410,7 @@ mod tests {
         }
         assert!(rules
             .iter()
-            .any(|r| matches!(r, Rule::Keep { marker } if marker == "aoe-hooks")));
+            .any(|r| matches!(r, Rule::Prune { marker } if marker == "aoe-hooks")));
     }
 
     #[test]

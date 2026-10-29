@@ -18,19 +18,12 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 
-// Revisions of the fork known to switch the caller's client unconditionally.
-const UNSAFE_AOE_REVS = ['d615b8c829028e272b492ea1726e8f490bc1479c'];
-
-test('flake does not pin an aoe revision that attaches from a non-tty shell', () => {
+test('the AoE package and supervisor are retired', () => {
   const lock = JSON.parse(fs.readFileSync(path.join(ROOT, 'flake.lock'), 'utf8'));
-  const node = lock.nodes.aoe;
-  assert.ok(node, 'flake.lock has an aoe input');
-  assert.equal(node.locked.owner, 'DreamLab-AI');
-  assert.equal(node.locked.repo, 'agentbox-of-empires');
-  assert.ok(
-    !UNSAFE_AOE_REVS.includes(node.locked.rev),
-    `flake.lock pins aoe ${node.locked.rev}, which hijacks the caller's tmux client on --launch`,
-  );
+  assert.equal(lock.nodes[lock.root].inputs.aoe, undefined);
+  const flake = fs.readFileSync(path.join(ROOT, 'flake.nix'), 'utf8');
+  assert.ok(!flake.includes('[program:aoe-serve]'));
+  assert.match(flake, /\[program:agentbox-sessions\][\s\S]*?autostart=true/);
 });
 
 test('no tracked script, config or skill launches an aoe session attached', () => {

@@ -9,7 +9,7 @@
 <link rel="stylesheet" href="/styles.css">
 </head>
 <body class="voice-idle">
-<a class="skip-link" href="#stage">Skip to sessions</a>
+<a class="skip-link" href="#stage">Skip to console</a>
 
 <!-- ── top bar ─────────────────────────────────────────────────────────── -->
 <header id="topbar">
@@ -17,7 +17,6 @@
     <span class="mark">AGENTBOX</span><span class="sub">interaction plane</span>
   </div>
   <div id="chips">
-    <span class="chip" id="chip-aoe" role="status" title="Agent of Empires session daemon (via NIP-98 proxy)">aoe</span>
     <span class="chip" id="chip-bridge" role="status" title="tab0-bridge voice meta-controller">bridge</span>
     <span class="chip" id="chip-voice" role="status" title="Unmute STT/TTS backend">voice</span>
     <span class="chip" id="chip-nostr" role="status" title="Nostr gateway + mirror">nostr</span>
@@ -31,7 +30,7 @@
     <span data-surface="desktop" title="Use ./agentbox.sh vnc to open the desktop tunnel">Desktop · tunnel</span>
   </nav>
   <div id="auth-badge">
-    <span id="auth-state" title="operator credential for /aoe and /approvals">no key</span>
+    <span id="auth-state" title="operator credential for approvals and management">no key</span>
     <button class="btn-ghost" id="auth-open" type="button">Auth</button>
   </div>
 </header>
@@ -39,43 +38,9 @@
 <!-- ── cockpit ─────────────────────────────────────────────────────────── -->
 <div id="layout">
 
-  <!-- main stage: AoE session board / opened-session detail -->
   <main id="stage" tabindex="-1">
-    <div id="board-wrap">
-      <div class="sec-head">
-        <h2>Sessions</h2>
-        <span class="count" id="board-count">0</span>
-        <span class="spacer"></span>
-        <button class="btn-ghost" id="board-refresh" type="button" title="refresh now">↻</button>
-      </div>
-      <div id="board" class="scroll"></div>
-      <div id="board-empty" hidden>No live AoE sessions — or the daemon is unreachable. The bridge and voice loop still work.</div>
-    </div>
-
-    <div id="detail" hidden>
-      <div id="detail-head">
-        <div class="ring" id="detail-ring">•</div>
-        <div class="titles">
-          <div id="detail-title">—</div>
-          <div id="detail-sub"></div>
-        </div>
-        <div class="view-toggle" role="tablist" aria-label="Session output view">
-          <button id="tab-term" class="on" type="button" role="tab" aria-selected="true" aria-controls="term" tabindex="0">Terminal</button>
-          <button id="tab-diff" type="button" role="tab" aria-selected="false" aria-controls="diff" tabindex="-1">Diff</button>
-        </div>
-        <button id="detail-close" type="button" title="back to board" aria-label="close session view">✕</button>
-      </div>
-      <div id="detail-body">
-        <pre id="term" class="mono scroll" role="tabpanel" aria-labelledby="tab-term" aria-live="polite"></pre>
-        <pre id="diff" class="mono scroll" role="tabpanel" aria-labelledby="tab-diff" hidden></pre>
-      </div>
-      <form id="detail-send" autocomplete="off">
-        <span class="to" id="detail-to">→ session</span>
-        <label class="sr-only" for="detail-text">Message this session</label>
-        <input id="detail-text" placeholder="type into this session…" autocomplete="off">
-        <button class="send" type="submit">send</button>
-      </form>
-    </div>
+    <h2>Agentbox console</h2>
+    <p>Voice and messages go to the coordinator. Manage sessions in the terminal Sessions tab or through Nostr commands.</p>
   </main>
 
   <!-- right rail: persistent voice presence + transcript + approvals + nostr -->

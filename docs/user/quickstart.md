@@ -372,10 +372,10 @@ Agentbox is headless; the operator reaches it from LAN devices. Two doors are pu
 
 | LAN door | What | Auth |
 |---|---|---|
-| `https://<host>:8444` | **Operator cockpit** (voice + AoE session board + approvals) — the primary human surface | one origin, one credential; self-signed TLS; `/aoe/*` re-verified by NIP-98 |
-| `http://<host>:9096` | **Sovereign ingress** — AoE dashboard/API by default, `/mgmt/` → management-api | NIP-98 (kind-27235) signed requests; `NIP98_PROXY_ALLOW_BEARER` break-glass for browsers until NIP-07 signing lands |
+| `https://<host>:8444` | **Operator cockpit** (voice + approvals) — the primary human surface | one origin, one credential; self-signed TLS; `/aoe/*` re-verified by NIP-98 |
+| `http://<host>:9096` | **Sovereign ingress** — Named operator routes, `/mgmt/` → management-api | NIP-98 (kind-27235) signed requests; `NIP98_PROXY_ALLOW_BEARER` break-glass for browsers until NIP-07 signing lands |
 
-The interaction-plane daemon itself (`:9095`, `--auth none`) is **never** published — the ingress is its sole entry (PRD-021 N-05). Everything else binds `127.0.0.1` on the host and is reached over SSH tunnels, which remain the break-glass/diagnostic path.
+The session daemon uses a local unix socket; :9095 and the web board are retired (ADR-2153).
 
 ```mermaid
 graph LR
@@ -439,8 +439,7 @@ The desktop runs TigerVNC Xvnc with `-SecurityTypes None` (no VNC password) and 
 | Service | Container Port | Host Binding | Access |
 |---------|---------------|-------------|--------|
 | Sovereign ingress (NIP-98) | 9096 | 0.0.0.0:9096 | **LAN**, NIP-98 / bearer break-glass (ADR-045) |
-| Operator cockpit (voice+AoE) | 8444 | 0.0.0.0:8444 | **LAN**, TLS, one-credential origin (ADR-044) |
-| AoE daemon (`aoe serve`) | 9095 | *(never published)* | loopback-only behind the ingress |
+| Operator cockpit (voice+approvals) | 8444 | 0.0.0.0:8444 | **LAN**, TLS, one-credential origin (ADR-044) |
 | Management API | 9090 | 127.0.0.1:9090 | SSH tunnel, NIP-98 auth — or LAN via ingress `/mgmt/` |
 | VNC Desktop | 5901 | 127.0.0.1:5901 | SSH tunnel (agent action surface) |
 | Code Server | 8080 | 127.0.0.1:8080 | SSH tunnel |
@@ -577,27 +576,26 @@ The container runs a tmux session (`agentbox`) with operator windows plus a sing
 | 5 | System | SystemScape rotating telemetry history + `btm` process attribution companion |
 | 6 | VNC | VNC connection info |
 | 7 | Git | Project git status |
-| 8 | Sessions | Agent of Empires — the interaction plane (`aoe` TUI) |
+| 8 | Sessions | Owned session plane (`agentbox-sessions pick`) |
 | 9 | Notes | Rune markdown TUI on the authored vault (ADR-2029) |
 
-The per-provider harness tabs 8–14 (OpenRouter, ZAI, Antigravity, DeepSeek, Perplexity, Ollama, Codex) are **superseded by Agent of Empires** ([PRD-021](../archive/prd/PRD-021-interaction-surface-consolidation.md)/[ADR-042](../archive/adr/ADR-042-agent-of-empires-interaction-plane.md)). Instead of hand-driven tmux windows, interactive agent sessions are now created, monitored, attached, and reviewed through AoE, each with a real status FSM, its own git worktree, a live terminal and diff, and — supplied by agentbox at the session boundary — its own `did:nostr`, session URN, beads epic, and scoped memory namespace ([ADR-043](../archive/adr/ADR-043-session-identity-binding.md)).
+### The Sessions window
 
-### The Sessions window (Agent of Empires)
+The interaction plane is `agentbox-sessions` (ADR-2153): a supervised tmux-backed
+daemon reconciles `[[interaction_plane.session_seeds]]` through a unix socket
+at `/run/agentbox-sessions/sessions.sock` (0660, `ab-sessions`, SO_PEERCRED ACL).
+Sessions are `abs_<slug>` with `@agentbox-sessions=1`; `tab0` is the external
+`agentbox:0` coordinator. Window 8 runs `agentbox-sessions pick`. Provider profiles
+are reconciled by `scripts/session-provision.mjs`. AoE, its default upstream,
+`:9095` and the web session board are retired. The NIP-98 proxy on `:9096` keeps
+its named operator routes and returns 404 for unknown routes. The old
+`aoe-profiles` volume remains mounted but unused for recovery and mount-stable
+activation; it must not be pruned as part of delivery.
 
-Enabled by `[interaction_plane].enabled = true` in `agentbox.toml`. The consoles are declared once as `[[interaction_plane.session_seeds]]` (see [Configuration › `[interaction_plane]`](configuration.md)) — codex, antigravity (gemini), openrouter, zai, deepseek, ollama — and reconciled into AoE sessions at boot by `scripts/aoe-seed-sessions.mjs`. Two of them, **openrouter** and **zai**, run the `claude` binary redirected via `ANTHROPIC_BASE_URL`; they launch through the `config/harness-wrappers/` command-override scripts, which pin profile isolation and hard-fail loudly if the redirect is missing — so a routed session can never silently mis-bill to the direct-Anthropic key. **Perplexity is retired** — research now rides `mcp__perplexity` and the `/perplexity-research` skill, not a harness tab.
-
-Two ways in:
-
-- **TUI** — the `aoe` ratatui client in the Sessions window (window 8), or run `aoe` in any shell. Sessions live under the `aoe_` tmux prefix on the shared default socket, so `tmux attach` still works across the estate.
-- **Web dashboard** — `aoe serve` runs on loopback `:9095` and is reached **only** through the NIP-98-verifying reverse proxy on `:9096` (the sole ingress; the daemon port is never exposed). The dashboard absorbs the never-deployed setup/ops dashboard and gives a browser session console with a pending-approvals panel for the authority gate.
-
-Attach the operator session from inside the container:
-
-```bash
-tmux attach -t agentbox    # or use the alias: ta
-```
-
-The shell environment includes fish + starship prompt (Tokyo Night theme), modern CLI replacements (`eza`, `bat`, `delta`, `dust`, `procs`, `btm`), and the full agentbox alias set. Run `agentbox-help` for a quick reference or `agentbox-pick` for an interactive launcher.
+Declare codex, antigravity, openrouter, zai, deepseek, loom-raw and router in
+`agentbox.toml`. OpenRouter and Z.AI keep isolated Claude profiles and hard-fail
+wrappers. An absent credential or sign-in is reported explicitly as blocked;
+it is not evidence that a provider answered the acceptance prompt.
 
 ## Troubleshooting
 

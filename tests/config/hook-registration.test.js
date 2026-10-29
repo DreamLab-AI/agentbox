@@ -97,7 +97,7 @@ describe('the registry governs what the entrypoint registers', () => {
     for (const m of ['helpers/hook-handler.cjs', 'auto-memory-hook.mjs', 'claude-flow-hook-adapter.cjs', 'trust-seed.cjs']) {
       expect(pruned).toContain(m);
     }
-    expect(rows).toContainEqual(['keep', 'aoe-hooks']);
+    expect(rows).toContainEqual(['prune', 'aoe-hooks']);
   });
 
   test('the reconciler runs after the last hook registration block', () => {

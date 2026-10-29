@@ -4,7 +4,7 @@ title: Replace Agent of Empires with an owned, tmux-backed session plane that re
 date: 2026-10-28
 decision_status: accepted
 implementation_status: partial
-activation_status: inactive
+activation_status: staged
 supersedes: [ADR-2079]
 superseded_by: []
 verified_commit: 4b8f56352a4a824ed0bf55658662175c249c87b1
@@ -106,3 +106,30 @@ server's only session. Creation retries the specific server-exit error at most
 twice, only after checking that the session name does not already exist. The
 private-tmux regression passed 100 isolated repetitions, and the full suite
 passed 44 unit and 13 integration tests; this is not a live cut-over test.
+
+## Cutover implementation (2026-10-29)
+
+The interaction plane is `agentbox-sessions` (ADR-2153): a supervised tmux-backed
+daemon reconciles `[[interaction_plane.session_seeds]]` through a unix socket
+at `/run/agentbox-sessions/sessions.sock` (0660, `ab-sessions`, SO_PEERCRED ACL).
+Sessions are `abs_<slug>` with `@agentbox-sessions=1`; `tab0` is the external
+`agentbox:0` coordinator. Window 8 runs `agentbox-sessions pick`. Provider profiles
+are reconciled by `scripts/session-provision.mjs`. AoE, its default upstream,
+`:9095` and the web session board are retired. The NIP-98 proxy on `:9096` keeps
+its named operator routes and returns 404 for unknown routes. The old
+`aoe-profiles` volume remains mounted but unused for recovery and mount-stable
+activation; it must not be pruned as part of delivery.
+
+Consumers (tab0-bridge, nostr-gateway, picker, generated controller instructions)
+use the session plane. Alternate-project and Z.AI dynamic spawns retain the
+confined tmux fallback. Root and profile Claude hooks and Codex notify report
+status; Codex keeps its existing voice spool. Legacy AoE hooks are pruned. Boundary
+create failures retry on reconciliation, and the external coordinator gets its
+own fresh binding. Before activation the host closes the old AoE session epics;
+no old session identifier is reused.
+
+This is implementation evidence, not a cold-boot acceptance claim. Provider
+credentials and Antigravity sign-in remain live gates. The retained mount is an
+explicit exception to decision 1's immediate volume removal: it allows fast
+activation's unchanged-mount invariant and keeps the recovery image usable.
+Removal requires a later mount migration; no data is deleted by this cutover.

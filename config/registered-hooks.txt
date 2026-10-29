@@ -51,7 +51,7 @@ own   voice-paned                      Stop,Notification                        
 
 # ── third-party ──
 # Agent of Empires writes its own status/session hooks, each tagged `# aoe-hooks`.
-keep  aoe-hooks
+prune aoe-hooks
 # The resident hook shim (ADR-2034 §1) in workspace project settings; owned and
 # reconciled by `agentbox-hook reconcile`, not by this list.
 keep  agentbox-hook
@@ -87,3 +87,6 @@ prune trust-seed.cjs
 prune --generate-summary
 prune Auto-Compact
 prune custom_instructions
+
+# ADR-2153: session state from owned agent hooks.
+own session-state.cjs UserPromptSubmit,Stop,Notification 3

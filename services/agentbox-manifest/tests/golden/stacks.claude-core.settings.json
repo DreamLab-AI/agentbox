@@ -114,6 +114,15 @@
             "timeout": 10
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node /opt/agentbox/config/hooks/session-state.cjs Stop || true",
+            "timeout": 3
+          }
+        ]
       }
     ],
     "SubagentStop": [
@@ -134,6 +143,26 @@
             "type": "command",
             "command": "WORKSPACE='/tmp/abm-golden-stacks-ws' node /opt/agentbox/config/hooks/decline-recorder.cjs UserPromptSubmit || true",
             "timeout": 10
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node /opt/agentbox/config/hooks/session-state.cjs UserPromptSubmit || true",
+            "timeout": 3
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node /opt/agentbox/config/hooks/session-state.cjs Notification || true",
+            "timeout": 3
           }
         ]
       }

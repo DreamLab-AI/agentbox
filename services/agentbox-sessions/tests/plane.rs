@@ -379,3 +379,16 @@ fn the_real_manifest_and_contract_resolve_every_seed() {
     assert_eq!(zai["kind"], "wrapper");
     assert!(p.status().unwrap().iter().all(|r| !r.present), "nothing runs on a server that was never started");
 }
+
+#[test]
+fn socket_hook_marks_are_visible_and_reject_path_traversal() {
+    let fx = Fx::new(sleeper(), A);
+    let p = fx.plane();
+    p.reconcile_once(false);
+    assert_eq!(api::dispatch(&p, r#"{"op":"mark","slug":"a","state":"busy"}"#)["ok"], true);
+    assert_eq!(p.status().unwrap().iter().find(|s| s.slug == "a").unwrap().state, State::Busy);
+    assert_eq!(api::dispatch(&p, r#"{"op":"mark","slug":"a","state":"idle"}"#)["ok"], true);
+    assert_eq!(p.status().unwrap().iter().find(|s| s.slug == "a").unwrap().state, State::Idle);
+    assert_eq!(api::dispatch(&p, r#"{"op":"mark","slug":"../escape","state":"idle"}"#)["ok"], false);
+    assert_eq!(api::dispatch(&p, r#"{"op":"mark","slug":"a","state":"unknown"}"#)["ok"], false);
+}

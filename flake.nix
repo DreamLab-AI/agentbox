@@ -7,16 +7,6 @@
     nix2container.url = "github:nlewo/nix2container";
     rust-overlay.url = "github:oxalica/rust-overlay";
 
-    # Agent of Empires — the interaction plane (PRD-021 / ADR-042). Pinned to a
-    # commit so the web frontend's npmDepsHash is frozen; a pin bump that moves
-    # web/package-lock.json MUST recompute npmDepsHash in the same commit or the
-    # Nix build breaks (N-08). We consume packages.${system}.aoe-with-web
-    # (--features serve = axum + rust-embed baked dashboard); crane + flake-parts
-    # enter only as transitive inputs of this flake — agentbox's flake-utils
-    # outputs are not restructured (ADR-042; mesh-aoeCompat §Seam 1). Overlay-only:
-    # ZERO patches to the AoE crate (N-06). Host `nix build` locks the narHash.
-    aoe.url = "github:DreamLab-AI/agentbox-of-empires/33e806ad";
-
     # D.9: skills corpus as a content-addressed Nix input.
     # Currently a path-type input (file-system equivalent to ./skills).
     # Future: flip to fetchFromGitHub once DreamLab-AI/agentbox-skills exists:
@@ -69,7 +59,7 @@
     };
   };
 
-  outputs = { self, nixpkgs, flake-utils, nix2container, rust-overlay, skills, aoe, codexPlugin, rufloConsole, vaultSrc }:
+  outputs = { self, nixpkgs, flake-utils, nix2container, rust-overlay, skills, codexPlugin, rufloConsole, vaultSrc }:
     flake-utils.lib.eachSystem [
       "x86_64-linux"
       "aarch64-linux"
@@ -423,19 +413,10 @@
         podsImpl       = adaptersCfgTop.pods or "local-solid-rs";
         solidPodRsActive = podsImpl == "local-solid-rs";
 
-        # Interaction plane — Agent of Empires (PRD-021 / ADR-042). Gate both the
-        # aoe-with-web package pull AND the two supervisor blocks (aoe-serve +
-        # nip98-proxy) on [interaction_plane].enabled (CLAUDE.md rebuild-gate rule).
-        # The daemon binary is rebuild-class (flake input); the daemon/proxy/config
-        # are boot-class (system-manifest.js).
+        # ADR-2153: gate the owned session daemon and sovereign ingress together.
         interactionPlaneCfg       = agentboxConfig.interaction_plane or {};
         interactionPlaneEnabled   = interactionPlaneCfg.enabled or false;
-        interactionPlanePort      = interactionPlaneCfg.port or 9095;
         interactionPlaneProxyPort = interactionPlaneCfg.proxy_port or 9096;
-        # AoE's serve build (axum + rust-embed dashboard). Referenced lazily and
-        # only on Linux (the container image target); aoe upstream ships
-        # x86_64/aarch64-linux — the daemon never runs on the darwin dev-shell.
-        aoePkg = aoe.packages.${system}.aoe-with-web;
 
         # Provider gates. Ollama sidecar defaults OFF — most deployments
         # already run ollama on the host (docker.internal:11434), and the
@@ -2070,11 +2051,10 @@ default_days = ${toString (relayCfg.retention_days or 30)}
           # PRD-002 §9 Phase 2 — global npm CLI derivations (replaces npm install -g)
           ++ npmCliAlwaysPackages
           ++ npmCliGatedPackages
-          # PRD-021 WS1 — Agent of Empires serve binary (rebuild-class). Gated on
+          # ADR-2153 — owned session binary (rebuild-class). Gated on
           # [interaction_plane].enabled and confined to Linux (the image target);
-          # aoePkg is only forced when both hold, so the darwin dev-shell never
-          # demands a darwin aoe-with-web attr.
-          ++ lib.optionals (interactionPlaneEnabled && pkgs.stdenv.isLinux) [ aoePkg agentboxSessionsPkg ];
+          # Session control is a Linux runtime package, gated with its supervisor.
+          ++ lib.optionals (interactionPlaneEnabled && pkgs.stdenv.isLinux) [ agentboxSessionsPkg ];
 
         # D.9: skillsTree is sourced from inputs.skills (path-type input).
         # Switching to a remote upstream is a one-line inputs change + flake.lock regen.
@@ -2114,6 +2094,9 @@ default_days = ${toString (relayCfg.retention_days or 30)}
           # config instead; the image re-points it at each rebuild.
           mkdir -p $out/opt/agentbox/bin
           ln -s ${colloquyPkg}/bin/colloquy-mcp $out/opt/agentbox/bin/colloquy-mcp
+          ${lib.optionalString interactionPlaneEnabled ''
+          ln -s ${agentboxSessionsPkg}/bin/agentbox-sessions $out/opt/agentbox/bin/agentbox-sessions
+          ''}
           ${lib.optionalString vaultCliActive ''
           # Same reasoning for `vault`: skills, agent prose and the boot gate all
           # name a path, and a /nix/store path in prose rots at the next rebuild.
@@ -2244,7 +2227,7 @@ default_days = ${toString (relayCfg.retention_days or 30)}
           chmod -R u+w $out/opt/agentbox
 
           # nip98-proxy (PRD-021 WS4 / ADR-043 D4.6): the sole NIP-98-verifying
-          # ingress to the aoe serve loopback port. Source lives under
+          # ingress to named operator routes. Source lives under
           # config/nip98-proxy (Builder C, proxy.mjs); overlay it at the top-level
           # /opt/agentbox/nip98-proxy so the supervised [program:nip98-proxy] path
           # matches the other config-sourced services (https-bridge pattern). Copied
@@ -2429,7 +2412,7 @@ stderr_logfile=/var/log/ruvector-aggregate-sweep.error.log
 command=${pkgs.nodejs_22}/bin/node /opt/agentbox/config/nostr-gateway/gateway.cjs
 directory=/opt/agentbox/config/nostr-gateway
 user=devuser
-environment=HOME="/home/devuser",AGENTBOX_AOE_TOKEN_FILE="/home/devuser/.config/agent-of-empires/serve.url"
+environment=HOME="/home/devuser"
 autostart=true
 autorestart=true
 startsecs=3
@@ -2923,74 +2906,25 @@ stderr_logfile=/var/log/dream-engine.error.log
 ''}
 ${lib.optionalString interactionPlaneEnabled ''
 
-; Agent of Empires interaction plane (PRD-021 WS1 / ADR-042). aoe serve creates,
-; monitors, attaches, and reviews interactive agent sessions, superseding the MAD
-; tmux harness. Binds loopback with --auth token --behind-proxy (N-05): loopback is
-; NO LONGER the boundary — every request to :9095 must carry the daemon's token, so
-; a co-resident process that never reads the token file cannot drive sessions even
-; though the port is loopback-reachable. The token is minted by the daemon at launch
-; into its state file (~/.config/agent-of-empires/serve.url); it is not env-settable,
-; so the sole ingress [program:nip98-proxy] and the break-glass nostr-gateway READ it
-; from there and inject it as `Authorization: Bearer`. The nip98-proxy remains the
-; only IDENTITY ingress (NIP-98 → pubkey); the token is defence-in-depth beneath it.
-; --allowed-host must match the Host header the nip98-proxy forwards: proxy.mjs
-; rewrites it to the upstream (127.0.0.1:<port>) before dispatch, so loopback is the
-; correct value here, not the public hostname. Port 9095 is mandatory (8080 =
-; code-server, 7777 = nostr relay). Runs on the shared default tmux socket; the aoe_
-; session prefix is the collision guard against the agentbox tmux session (F2-1/F2-9).
-[program:aoe-serve]
-command=${aoePkg}/bin/aoe serve --auth token --behind-proxy --allowed-host 127.0.0.1 --host 127.0.0.1 --port ${toString interactionPlanePort}
-directory=/home/devuser/workspace
-user=devuser
-environment=HOME="/home/devuser"
-autostart=true
-autorestart=true
-startsecs=3
-priority=45
-stdout_logfile=/var/log/aoe-serve.log
-stderr_logfile=/var/log/aoe-serve.error.log
-
-; Session plane (ADR-2153): reconciles [[interaction_plane.session_seeds]] in tmux,
-; serves a unix socket for tab0-bridge and nostr-gateway, and reports session
-; boundaries to management-api. Runs as devuser because it must own devuser's tmux
-; server and launches agents, which a role account never hosts; its one secret,
-; MANAGEMENT_API_KEY, is devuser-class (config/custody/env-classes.json), so it
-; needs no role. It waits for the operator's tmux server before its first pass so
-; the server always starts with the baked tmux.conf. The socket is
-; /run/agentbox-sessions/sessions.sock, 0660 in group ab-sessions; every caller is
-; authorised by SO_PEERCRED against config/custody/session-plane-acl.json.
-; DORMANT until the cut-over (autostart=false): Agent of Empires is still the live
-; session plane and its consumers (tab0-bridge, nostr-gateway, tmux-autostart.sh)
-; still call it, so starting both would run every agent twice. The cut-over change
-; removes aoe-serve, repoints those consumers and flips this to true. To trial the
-; daemon alone: supervisorctl start agentbox-sessions (sessions are abs_<slug>).
+; ADR-2153: sole session manager. No TCP listener; SO_PEERCRED on its unix socket.
 [program:agentbox-sessions]
 command=${agentboxSessionsPkg}/bin/agentbox-sessions daemon
 directory=/home/devuser/workspace
 user=devuser
 environment=HOME="/home/devuser",WORKSPACE="/home/devuser/workspace",AGENTBOX_ROOT="/opt/agentbox",AGENTBOX_SESSIONS_ACL="/opt/agentbox/config/custody/session-plane-acl.json",AGENTBOX_SESSIONS_GID="${toString sessionsGroupGid}",PATH="${lib.makeBinPath [ pkgs.tmux pkgs.git pkgs.nodejs_22 pkgs.coreutils ]}:%(ENV_PATH)s"
-autostart=false
+autostart=true
 autorestart=true
 startsecs=5
 priority=47
 stdout_logfile=/var/log/agentbox-sessions.log
 stderr_logfile=/var/log/agentbox-sessions.error.log
 
-; NIP-98 identity proxy (PRD-021 WS4 / ADR-043 D4.6) — the sole ingress to the aoe
-; serve loopback port. Verifies the kind-27235 NIP-98 header (reusing the
-; management-api verifyNip98 contract) and forwards to the daemon with
-; X-Forwarded-For; the verified pubkey is the session identity that AGENTBOX_PROFILE
-; and the per-project memory namespace derive from. Source is Builder C's proxy.mjs,
-; overlaid at /opt/agentbox/nip98-proxy in appRoot.
-; ADR-045: the proxy is additionally the multi-upstream sovereign ingress —
-; NIP98_PROXY_MGMT_UPSTREAM routes /mgmt/* to the management-api with the same
-; verified-identity headers (the surface keeps its own auth; defence in depth).
-; Published to the LAN as 9096:9096 in docker-compose.yml (D2 exposure policy).
+; NIP-98 ingress for named operator routes; unknown routes return 404.
 [program:nip98-proxy]
 command=${pkgs.nodejs_22}/bin/node /opt/agentbox/nip98-proxy/proxy.mjs
 directory=/opt/agentbox/nip98-proxy
 user=devuser
-environment=HOME="/home/devuser",AOE_UPSTREAM="http://127.0.0.1:${toString interactionPlanePort}",AOE_TOKEN_FILE="/home/devuser/.config/agent-of-empires/serve.url",NIP98_PROXY_PORT="${toString interactionPlaneProxyPort}",NIP98_PROXY_MGMT_UPSTREAM="http://127.0.0.1:%(ENV_MANAGEMENT_API_PORT)s",MANAGEMENT_API_URL="http://127.0.0.1:%(ENV_MANAGEMENT_API_PORT)s"
+environment=HOME="/home/devuser",NIP98_PROXY_PORT="${toString interactionPlaneProxyPort}",NIP98_PROXY_MGMT_UPSTREAM="http://127.0.0.1:%(ENV_MANAGEMENT_API_PORT)s",MANAGEMENT_API_URL="http://127.0.0.1:%(ENV_MANAGEMENT_API_PORT)s"
 autostart=true
 autorestart=true
 startsecs=3
@@ -3592,7 +3526,7 @@ stderr_logfile_maxbytes=5MB
         # silently un-harden the artefact.
         # Exception (ADR-045 D2): the NIP-98 sovereign ingress is the ONE
         # identity-gated LAN door and publishes on all interfaces. :9095
-        # (aoe serve, --auth token) is NEVER published.
+        # Session control uses a unix socket, with no TCP port.
         agentboxPorts =
           lib.optionalString interactionPlaneEnabled
               "      - \"${toString interactionPlaneProxyPort}:${toString interactionPlaneProxyPort}\"\n"
@@ -4623,7 +4557,7 @@ ${ragflowNetworkDecl}
           "${toString (relayCfg.port or 7777)}/tcp" = {};
         };
 
-        # PRD-021 WS4: expose ONLY the NIP-98 proxy port — the aoe serve port stays
+        # ADR-2153: expose only NIP-98 ingress; session control stays
         # loopback and unexposed (N-05, sole-ingress invariant). Gated on the plane.
         interactionPlanePorts = lib.optionalAttrs interactionPlaneEnabled {
           "${toString interactionPlaneProxyPort}/tcp" = {};

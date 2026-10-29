@@ -8,7 +8,7 @@
 //   GET  /feed                 WebSocket live feed for the voice console
 //   POST /tab0/send            inject text into the coordinator session
 //   GET  /tabs, /tabs/:n       tmux window list / pane capture
-//   GET  /aoe/sessions         Agent of Empires session list passthrough (status FSM)
+//   GET  /sessions             owned session-plane status
 //   GET  /nostr/status         gateway liveness + mirror identity presence
 //   GET  /nostr/events?n=20    tail of the gateway's inbound command audit
 //   POST /nostr/send           outbound one-shot DM via nostr-send.cjs
@@ -22,17 +22,7 @@
 // The meta-controller never orchestrates: it relays intents into the
 // coordinator session, summarises what comes back, and reports state on request.
 //
-// Injection seam (ADR-044): the single write path — sendToTab0() and the
-// meta-controller's own allowlist — is repointed off raw `tmux send-keys
-// -t agentbox:0` onto the Agent of Empires interaction plane. Intents POST to
-// `POST /api/sessions/{id}/send` on the loopback AoE daemon (:9095), which
-// honours the per-agent paste-burst delay and serialises concurrent callers so
-// the voice and nostr orchestrators cannot interleave keystrokes. The tab-0
-// coordinator session id is resolved at start via `GET /api/sessions` and
-// re-resolved on a 404. FAIL-OPEN: when AoE is unreachable the seam degrades to
-// the byte-identical legacy tmux send-keys path so a down daemon never mutes the
-// voice loop. The Unmute `/v1/chat/completions` contract, the `/hook/turn`
-// sink, `/feed` and the `/nostr/*` surface are untouched (ADR-044 D9).
+// ADR-2153: coordinator injection uses the session socket with a tmux fallback.
 
 import http from 'node:http';
 import fs from 'node:fs';
@@ -65,60 +55,12 @@ if (!TOKEN && !BIND_IS_LOOPBACK) {
   process.exit(1);
 }
 
-// ---------------------------------------------------------------- AoE plane
-// Agent of Empires interaction plane (ADR-042/ADR-044). The daemon binds
-// loopback `:9095` under `--auth token --behind-proxy` (N-05: loopback is no
-// longer the boundary). This break-glass direct-loopback path (ADR-044 D8 route 2)
-// now authenticates with the daemon's shared-secret token, read from its own state
-// file (serve.url) and sent as `Authorization: Bearer`; the NIP-98 proxy route is a
-// deployment concern in front of the bridge.
-const AOE_PORT = Number(process.env.AGENTBOX_INTERACTION_PLANE_PORT || 9095);
-const AOE_BASE = `http://127.0.0.1:${AOE_PORT}`;
-// N-05: generated agent instructions and the Bash allowlist drive the daemon
-// THROUGH this wrapper, never `curl :9095` directly — the wrapper adds the
-// `Authorization: Bearer` token so the literal secret never lands in a prompt,
-// log, or transcript. Absolute path so it resolves from the coordinator's cwd.
-const AOE_CURL = process.env.AGENTBOX_AOE_CURL || '/opt/agentbox/scripts/aoe-curl.sh';
-// DUPLICATED VERBATIM (modulo the fs accessor) in 4 runtime consumers of :9095 —
-// no shared-lib path spans all four deploy locations. KEEP IN SYNC:
-//   config/nip98-proxy/proxy.mjs · config/nostr-gateway/gateway.cjs
-//   config/tab0-bridge/server.mjs · scripts/aoe-seed-sessions.mjs
-// Read-then-stat with a single retry on mtime skew (guards a torn read while the
-// daemon rewrites the file on restart); a transient stat/read error keeps the
-// last-good cache (NEVER caches null on error). Callers MUST fail closed on null.
-const AOE_TOKEN_FILE = process.env.AGENTBOX_AOE_TOKEN_FILE
-  || path.join(process.env.HOME || '/home/devuser', '.config', 'agent-of-empires', 'serve.url');
-let _aoeTokenCache = { mtimeMs: -1, token: null, valid: false };
-function readAoeToken() {
-  for (let attempt = 0; attempt < 2; attempt++) {
-    let stBefore;
-    try { stBefore = fs.statSync(AOE_TOKEN_FILE); }
-    catch { return _aoeTokenCache.valid ? _aoeTokenCache.token : null; }
-    if (_aoeTokenCache.valid && stBefore.mtimeMs === _aoeTokenCache.mtimeMs) return _aoeTokenCache.token;
-    let raw, stAfter;
-    try {
-      raw = fs.readFileSync(AOE_TOKEN_FILE, 'utf-8');
-      stAfter = fs.statSync(AOE_TOKEN_FILE);
-    } catch { return _aoeTokenCache.valid ? _aoeTokenCache.token : null; }
-    if (stBefore.mtimeMs !== stAfter.mtimeMs) continue; // file changed under us → retry once
-    const m = /[?&]token=([0-9a-fA-F]{64})(?:[&#\s]|$)/.exec(raw); // aoe mints a 32-byte (64-hex) token
-    const token = m ? m[1] : null;
-    _aoeTokenCache = { mtimeMs: stAfter.mtimeMs, token, valid: true };
-    return token;
-  }
-  return _aoeTokenCache.valid ? _aoeTokenCache.token : null;
-}
-// The declaratively-named coordinator seed (PRD-021 Appendix A / ADR-042
-// `session_seeds`). The seed reconciler (scripts/aoe-seed-sessions.mjs) creates
-// the coordinator session with title == `[interaction_plane.coordinator].slug`,
-// which Appendix A / agentbox.toml sets to "tab0" — so that is the default here.
-// Matched case-insensitively against each session's title on `GET /api/sessions`;
-// override via AOE_COORDINATOR_TITLE to the deployed seed title/slug if it differs.
-const AOE_COORDINATOR_TITLE = process.env.AOE_COORDINATOR_TITLE || 'tab0';
-const AOE_TIMEOUT_MS = 4_000;
-// Resolved once at start and pinned for the process lifetime (ADR-044 D2);
-// nulled + re-resolved on a 404 (session drift after a daemon restart/reseed).
-let aoeSessionId = null;
+// ---------------------------------------------------------------- session-plane plane
+// ADR-2153: the unix-socket client, also when this file is deployed to workspace.
+const SESSION_CLIENT = createRequire(import.meta.url)(fs.existsSync('/opt/agentbox/config/session-plane/client.cjs')
+  ? '/opt/agentbox/config/session-plane/client.cjs' : '../session-plane/client.cjs');
+const COORDINATOR = process.env.AGENTBOX_COORDINATOR_SLUG || 'tab0';
+let coordinatorReady = false;
 
 // An empty ANTHROPIC_API_KEY still wins the SDK/CLI credential precedence
 // slot and breaks OAuth resolution — truly unset it for child processes.
@@ -180,92 +122,22 @@ function capturePane(index, lines = 60) {
   return out.replace(/\s+$/, '');
 }
 
-// ---------------------------------------------------------------- AoE client
+// ---------------------------------------------------------------- session-plane client
 
-/**
- * Minimal HTTP call to the loopback AoE daemon with a hard timeout. Returns
- * `{ status, text }`; throws only on transport failure (refused/timeout), which
- * the injection seam treats as "AoE down → fall back to tmux".
- */
-async function aoeRequest(method, pathname, body) {
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), AOE_TIMEOUT_MS);
-  try {
-    const tok = readAoeToken();
-    if (!tok) throw new Error('AoE token unavailable (N-05 fail-closed) — not sending unauthenticated request');
-    const headers = { authorization: `Bearer ${tok}` };
-    if (body) headers['content-type'] = 'application/json';
-    const res = await fetch(`${AOE_BASE}${pathname}`, {
-      method,
-      headers,
-      body: body ? JSON.stringify(body) : undefined,
-      signal: ctrl.signal,
-    });
-    const text = await res.text();
-    return { status: res.status, text };
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-function aoeSessionList(text) {
-  let parsed;
-  try { parsed = JSON.parse(text); } catch { return []; }
-  if (Array.isArray(parsed)) return parsed;
-  return parsed.sessions || parsed.data || [];
-}
-
-/**
- * Resolve the tab-0 coordinator session id by matching the configured seed
- * title against the live session list. Fail-open: any error leaves the id unset
- * so the seam degrades to tmux. Returns the id or null.
- */
 async function resolveCoordinatorSession() {
   try {
-    const r = await aoeRequest('GET', '/api/sessions?state=live');
-    if (r.status !== 200) return null;
-    const want = AOE_COORDINATOR_TITLE.toLowerCase();
-    const match = aoeSessionList(r.text).find((s) => {
-      const fields = [s.title, s.slug, s.name].filter(Boolean).map((x) => String(x).toLowerCase());
-      return fields.some((f) => f === want || f.includes(want));
-    });
-    const id = match && (match.id || match.session_id);
-    if (id) {
-      aoeSessionId = String(id);
-      console.log(`[tab0-bridge] pinned AoE coordinator session ${aoeSessionId} (title~="${AOE_COORDINATOR_TITLE}")`);
-      return aoeSessionId;
-    }
-    return null;
-  } catch {
-    return null; // AoE not up yet — fall back to tmux, retry on the interval
-  }
+    const r = await SESSION_CLIENT.call({ op: 'list' });
+    coordinatorReady = r.sessions.some(s => s.slug === COORDINATOR && s.present);
+  } catch { coordinatorReady = false; }
 }
-
-/**
- * POST the intent to the AoE coordinator session. Resolves the id if unset,
- * re-resolves once on a 404 (session drift). Throws on any non-200 or transport
- * failure so sendToTab0() can fall open to tmux.
- */
-async function aoeSend(clean) {
-  if (!aoeSessionId) {
-    await resolveCoordinatorSession();
-    if (!aoeSessionId) throw new Error('coordinator session unresolved');
-  }
-  let r = await aoeRequest('POST', `/api/sessions/${encodeURIComponent(aoeSessionId)}/send`, { message: clean });
-  if (r.status === 404) {
-    aoeSessionId = null; // drifted after a restart/reseed — re-resolve and retry once
-    await resolveCoordinatorSession();
-    if (!aoeSessionId) throw new Error('coordinator session unresolved after 404');
-    r = await aoeRequest('POST', `/api/sessions/${encodeURIComponent(aoeSessionId)}/send`, { message: clean });
-  }
-  if (r.status !== 200) throw new Error(`AoE send ${r.status}: ${r.text.slice(0, 160)}`);
-  return true;
+async function sessionSend(text) {
+  await SESSION_CLIENT.call({ op: 'send', slug: COORDINATOR, text });
 }
 
 // ---------------------------------------------------------------- injection seam
 
 /**
- * The single write path for the voice/nostr plane. Repointed onto the AoE
+ * The single write path for the voice/nostr plane. Repointed onto the session-plane
  * interaction plane (ADR-044 D1) with a fail-open tmux fallback (D3). The
  * `pushTurn` transcript write and the returned clean text are unchanged, so the
  * `/tab0/send` contract is preserved for every caller.
@@ -273,15 +145,15 @@ async function aoeSend(clean) {
 async function sendToTab0(text, source = 'voice') {
   const clean = String(text).replace(/[\x00-\x08\x0b-\x1f\x7f]/g, ' ').trim();
   if (!clean) throw new Error('empty text');
-  let via = 'aoe';
+  let via = 'session-plane';
   try {
-    await aoeSend(clean);
+    await sessionSend(clean);
   } catch (err) {
     // FAIL-OPEN: degrade to the byte-identical legacy send-keys path. This races
-    // AoE's input accounting (the A1 anti-pattern used for one degraded turn),
+    // session-plane's input accounting (the A1 anti-pattern used for one degraded turn),
     // so it is logged, never silent — a wedged daemon must be alarmed upstream.
     via = 'tmux';
-    console.error('[sendToTab0] AoE unreachable, falling back to tmux send-keys:', err.message);
+    console.error('[sendToTab0] Session plane unreachable, falling back to tmux send-keys:', err.message);
     tmux(['send-keys', '-t', TAB0, '-l', clean]);
     // A TUI may read text and Enter in one burst as a paste and keep the Enter
     // as a newline (Codex does); pause so the Enter submits.
@@ -382,26 +254,12 @@ function metaSystemPrompt() {
     .join('\n') || '(none yet)';
   let tabs = '(tmux unavailable)';
   try { tabs = listTabs().map((t) => `${t.index}:${t.name}`).join(' '); } catch { /* fail open */ }
-  // Injection mechanics branch on whether the AoE coordinator id is resolved
-  // (ADR-044 D1/D2). When AoE is up, intents POST to its serialised `send`
-  // endpoint (URL first so the send-keys/curl allowlist prefix matches); when it
-  // is down, the meta-controller falls back to raw send-keys into window 0 (D3),
-  // matching the tmux fallback in sendToTab0().
-  const jobs = aoeSessionId
+  const jobs = coordinatorReady
     ? [
-        '1. Relay user intents into the coordinator: rewrite the spoken request as one',
-        '   clear, self-contained written prompt, then POST it to the coordinator session',
-        '   by running exactly (JSON-escape any quotes in the prompt):',
-        `   ${AOE_CURL} POST /api/sessions/${aoeSessionId}/send '{"message":"<prompt>"}'`,
-        '   Then confirm briefly. Coordinator turns take minutes; tell the user you will',
-        '   have status when they ask.',
-        '2. Report coordinator status: read its pane with',
-        `   ${AOE_CURL} GET '/api/sessions/${aoeSessionId}/output?lines=60&format=text'`,
-        '   or fetch recent turn summaries with `curl -s http://127.0.0.1:8971/turns?n=8`.',
-        '3. Report the fleet: list managed sessions and their status with',
-        `   ${AOE_CURL} GET '/api/sessions?state=live'`,
-        `   and read any legacy window with \`tmux list-windows -t ${TMUX_SESSION}\` and`,
-        `   \`tmux capture-pane -p -t ${TMUX_SESSION}:<n> -S -60\`, summarised in a sentence.`,
+        '1. Relay the user intent as a clear, self-contained written prompt:',
+        `   /opt/agentbox/bin/agentbox-sessions call '{"op":"send","slug":"${COORDINATOR}","text":"<prompt>"}'`,
+        `2. Read coordinator status: tmux capture-pane -p -t ${TAB0} -S -60`,
+        `3. Report the fleet: /opt/agentbox/bin/agentbox-sessions call '{"op":"list"}'`,
       ]
     : [
         `1. Relay user intents into the coordinator: run \`tmux send-keys -t ${TAB0} -l '<prompt>'\``,
@@ -448,9 +306,9 @@ function metaSystemPrompt() {
 
 // The meta-controller's own capability surface (ADR-044 D6). Read-only tmux is
 // retained for legacy windows on the shared socket; injection is repointed onto
-// the AoE API. Built per turn so the coordinator-pinned patterns pick up a
+// the session-plane API. Built per turn so the coordinator-pinned patterns pick up a
 // re-resolved session id. Send stays restricted to the coordinator: the tmux
-// fallback targets window 0 only, and the AoE send/output patterns pin the
+// fallback targets window 0 only, and the session-plane send/output patterns pin the
 // resolved coordinator id — never an arbitrary session.
 function metaAllowedTools() {
   const tools = [
@@ -458,19 +316,8 @@ function metaAllowedTools() {
     `Bash(tmux list-windows*)`,
     `Bash(tmux capture-pane*)`,
     'Bash(curl -s http://127.0.0.1:8971/*)',
-    // AoE access is via the token-injecting wrapper only (N-05); direct curl :9095
-    // is deliberately NOT allowlisted so a generated instruction cannot bypass auth.
-    // The wrapper is positional (METHOD PATH [BODY]) and loopback-pinned, so it
-    // cannot be pointed off-box even with an arbitrary PATH argument.
-    `Bash(${AOE_CURL} GET /api/sessions)`,
-    `Bash(${AOE_CURL} GET /api/sessions?*)`,
-    `Bash(${AOE_CURL} GET '/api/sessions?*)`,
+    'Bash(/opt/agentbox/bin/agentbox-sessions call*)',
   ];
-  if (aoeSessionId) {
-    tools.push(`Bash(${AOE_CURL} GET /api/sessions/${aoeSessionId}/output*)`);
-    tools.push(`Bash(${AOE_CURL} GET '/api/sessions/${aoeSessionId}/output*)`);
-    tools.push(`Bash(${AOE_CURL} POST /api/sessions/${aoeSessionId}/send*)`);
-  }
   return tools.join(',');
 }
 
@@ -792,15 +639,12 @@ const server = http.createServer(async (req, res) => {
     if (path === '/tabs' && req.method === 'GET') {
       return json(res, 200, { tabs: listTabs() });
     }
-    if (path === '/aoe/sessions' && req.method === 'GET') {
-      // Passthrough of the AoE session list (with its status FSM) for the voice
-      // console. Fail-soft: a 502 when the daemon is down, never a hard error.
+    if (path === '/sessions' && req.method === 'GET') {
       try {
-        const r = await aoeRequest('GET', '/api/sessions?state=live');
-        if (r.status !== 200) return json(res, 502, { error: 'aoe unavailable', status: r.status });
-        return json(res, 200, { sessions: aoeSessionList(r.text), coordinator: aoeSessionId });
+        const r = await SESSION_CLIENT.call({ op: 'list' });
+        return json(res, 200, { sessions: r.sessions, coordinator: COORDINATOR });
       } catch (err) {
-        return json(res, 502, { error: 'aoe unreachable', detail: err.message });
+        return json(res, 502, { error: 'session plane unreachable', detail: err.message });
       }
     }
     const tabMatch = path.match(/^\/tabs\/(\d+)$/);
@@ -835,14 +679,14 @@ wss.on('connection', (ws) => {
 });
 
 server.listen(PORT, BIND, () => {
-  console.log(`tab0-bridge listening on ${BIND}:${PORT} (backend=claude-cli, model=${MODEL}, session=${TMUX_SESSION}, auth=${TOKEN ? 'token' : 'open'}, nip98=${NostrBridge ? `enabled (${NIP98_ALLOWED.size} keys)` : 'off'}, aoe=${AOE_BASE})`);
-  // Resolve and pin the AoE coordinator session id (ADR-044 D2). Fail-open: if
-  // AoE is not up yet, the injection seam falls back to tmux and the interval
+  console.log(`tab0-bridge listening on ${BIND}:${PORT} (backend=claude-cli, model=${MODEL}, session=${TMUX_SESSION}, auth=${TOKEN ? 'token' : 'open'}, nip98=${NostrBridge ? `enabled (${NIP98_ALLOWED.size} keys)` : 'off'}, sessions=unix)`);
+  // Resolve and pin the session-plane coordinator session id (ADR-044 D2). Fail-open: if
+  // session-plane is not up yet, the injection seam falls back to tmux and the interval
   // below picks the id up once the daemon is running.
   resolveCoordinatorSession();
 });
 
-// Re-resolve while unpinned so the id is acquired if AoE starts after the
-// bridge; stops once pinned (a 404 in aoeSend re-resolves on demand).
-const aoeResolveTimer = setInterval(() => { if (!aoeSessionId) resolveCoordinatorSession(); }, 30_000);
-if (aoeResolveTimer.unref) aoeResolveTimer.unref();
+// Re-resolve while unpinned so the id is acquired if session-plane starts after the
+// bridge; stops once pinned (a 404 in sessionSend re-resolves on demand).
+const sessionResolveTimer = setInterval(() => { if (!coordinatorReady) resolveCoordinatorSession(); }, 30_000);
+if (sessionResolveTimer.unref) sessionResolveTimer.unref();

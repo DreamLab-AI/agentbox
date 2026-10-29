@@ -84,6 +84,7 @@ fn run() -> Result<()> {
         return Ok(());
     }
     if let Cmd::Mark { slug, state } = &cli.cmd {
+        if !agentbox_sessions::manifest::valid_slug(slug) { bail!("invalid slug"); }
         let s = match state.as_str() {
             "busy" => Hook::Busy,
             "idle" => Hook::Idle,
@@ -169,6 +170,21 @@ fn daemon(plane: Plane) -> Result<()> {
     {
         let p = Arc::clone(&plane);
         std::thread::spawn(move || api::serve(p, listener));
+    }
+    {
+        let p = Arc::clone(&plane);
+        std::thread::spawn(move || {
+            std::thread::sleep(std::time::Duration::from_secs(60));
+            match p.status() {
+                Ok(rows) => {
+                    let seeds: Vec<_> = rows.iter().filter(|s| s.origin == "seed").collect();
+                    let unhealthy: Vec<_> = seeds.iter().filter(|s| !s.present || matches!(s.state, agentbox_sessions::status::State::Dead | agentbox_sessions::status::State::Blocked(_) | agentbox_sessions::status::State::Missing | agentbox_sessions::status::State::Starting))
+                        .map(|s| format!("{}={}", s.slug, s.label)).collect();
+                    log(&format!("boot health: {}/{} seeds live and unblocked; {}", seeds.len() - unhealthy.len(), seeds.len(), unhealthy.join(", ")));
+                }
+                Err(e) => log(&format!("boot health unavailable: {e:#}")),
+            }
+        });
     }
     match plane.reap_legacy(false) {
         Ok(r) if !r.removed.is_empty() || !r.aside.is_empty() => log(&format!("legacy worktrees: removed {}, moved aside {}, left {}", r.removed.len(), r.aside.len(), r.left.len())),

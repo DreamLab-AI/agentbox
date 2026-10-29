@@ -176,6 +176,7 @@ pub struct Plane {
     restarts: Mutex<Restarts>,
     op: Mutex<()>,
     boundary: Option<Boundary>,
+    bound: Mutex<HashSet<String>>,
 }
 
 impl Plane {
@@ -183,7 +184,7 @@ impl Plane {
         let manifest = manifest::Plane::load(&cfg.root.join("agentbox.toml"))?;
         let contract = Contract::load(&cfg.root.join("config/session-plane/launch.json"))?;
         let tmux = Tmux::new(cfg.tmux_socket.clone());
-        Ok(Self { cfg, tmux, manifest, contract, restarts: Mutex::new(Restarts::default()), op: Mutex::new(()), boundary: Boundary::from_env() })
+        Ok(Self { cfg, tmux, manifest, contract, restarts: Mutex::new(Restarts::default()), op: Mutex::new(()), boundary: Boundary::from_env(), bound: Mutex::new(HashSet::new()) })
     }
 
     /// Replace the boundary client (tests, or a deployment without a key).
@@ -236,8 +237,26 @@ impl Plane {
         let Some(b) = &self.boundary else { return };
         let id = Self::session_id(pane);
         let who = Who { session_id: &id, slug: &plan.seed.slug, tool: &plan.seed.tool, project_path: &plan.dir.display().to_string(), eager_mandate: plan.seed.eager_mandate };
-        if let Err(e) = b.emit(phase, &who) {
-            log(&format!("boundary {phase:?} for {} failed open: {e:#}", plan.seed.slug));
+        match b.emit(phase, &who) {
+            Ok(()) if phase == Phase::Create => { lock(&self.bound).insert(id); }
+            Ok(()) if phase == Phase::Close => { lock(&self.bound).remove(&id); }
+            Ok(()) => {},
+            Err(e) => log(&format!("boundary {phase:?} for {} failed open: {e:#}", plan.seed.slug)),
+        }
+    }
+
+    fn external_boundary(&self, phase: Phase) {
+        let Some(b) = &self.boundary else { return };
+        let c = &self.manifest.coordinator;
+        if !self.tmux.target_alive(&c.target) { return; }
+        let Ok(id) = self.tmux.target_identity(&c.target) else { return };
+        if phase == Phase::Create && lock(&self.bound).contains(&id) { return; }
+        let dir = self.cfg.project.display().to_string();
+        let who = Who { session_id: &id, slug: &c.slug, tool: "claude", project_path: &dir, eager_mandate: false };
+        match b.emit(phase, &who) {
+            Ok(()) if phase == Phase::Create => { lock(&self.bound).insert(id); }
+            Ok(()) => {},
+            Err(e) => log(&format!("coordinator boundary failed open: {e:#}")),
         }
     }
 
@@ -253,6 +272,7 @@ impl Plane {
             self.emit(Phase::Close, o, plan);
             self.tmux.kill(&o.name).context("kill old session")?;
         }
+        let _ = std::fs::remove_file(status::hook_path(&self.cfg.hook_dir, &plan.seed.slug));
         self.tmux
             .new_session(&NewSession { name: &plan.name, cwd: &plan.dir, env: &plan.env, argv: &plan.argv, slug: &plan.seed.slug, fingerprint: &plan.fingerprint, origin, tool: &plan.seed.tool })
             .context("start session")?;
@@ -275,6 +295,16 @@ impl Plane {
             Ok(p) => p,
             Err(e) => return vec![Outcome { slug: "*".into(), decision: None, note: String::new(), error: Some(format!("tmux: {e:#}")) }],
         };
+        if !dry_run {
+            self.external_boundary(Phase::Create);
+            for seed in &self.manifest.seeds {
+                if let (Some(p), Ok(plan)) = (panes.get(&tmux::session_name(&seed.slug)), self.plan_for(seed)) {
+                    if p.owned && !p.dead && !lock(&self.bound).contains(&Self::session_id(p)) {
+                        self.emit(Phase::Create, p, &plan);
+                    }
+                }
+            }
+        }
         let mut out = Vec::new();
         for seed in &self.manifest.seeds {
             let plan = match self.plan_for(seed) {
@@ -354,7 +384,7 @@ impl Plane {
         }
         let c = &self.manifest.coordinator;
         let alive = self.tmux.target_alive(&c.target);
-        let state = if alive { State::Idle } else { State::Missing };
+        let state = if !alive { State::Missing } else if status::read_hook(&self.cfg.hook_dir, &c.slug) == Some(status::Hook::Busy) { State::Busy } else { State::Idle };
         out.push(SessionView { slug: c.slug.clone(), name: c.target.clone(), origin: "external".into(), present: alive, label: state.label(), state, tool: "claude".into(), model: None, dir: String::new(), worktree: false });
         out.sort_by(|a, b| a.slug.cmp(&b.slug));
         Ok(out)
@@ -366,7 +396,8 @@ impl Plane {
     pub fn send(&self, slug: &str, text: &str) -> Result<()> {
         let _g = lock(&self.op);
         if slug == self.manifest.coordinator.slug {
-            return self.tmux.send_text_to_target(&self.manifest.coordinator.target, text, self.cfg.send_pause);
+            self.tmux.send_text_to_target(&self.manifest.coordinator.target, text, self.cfg.send_pause)?;
+            return self.mark(slug, "busy");
         }
         let name = tmux::session_name(slug);
         let panes = self.panes()?;
@@ -378,6 +409,7 @@ impl Plane {
             _ => {}
         }
         self.tmux.send_text(&name, text, self.cfg.send_pause)?;
+        status::write_hook(&self.cfg.hook_dir, slug, status::Hook::Busy)?;
         if let Some(plan) = plan {
             self.emit(Phase::Turn, pane, &plan);
         }
@@ -387,6 +419,29 @@ impl Plane {
     /// Start a session that is not in the manifest (nostr-gateway `/spawn`).
     /// It is owned, so it can be listed, sent to and closed, but it is never
     /// reconciled: only manifest seeds are.
+    pub fn mark(&self, slug: &str, state: &str) -> Result<()> {
+        if !valid_slug(slug) { bail!("invalid slug"); }
+        let hook = match state {
+            "busy" => status::Hook::Busy,
+            "idle" => status::Hook::Idle,
+            _ => bail!("state must be busy or idle"),
+        };
+        let previous = status::read_hook(&self.cfg.hook_dir, slug);
+        status::write_hook(&self.cfg.hook_dir, slug, hook)?;
+        if hook == status::Hook::Busy && previous != Some(status::Hook::Busy) {
+            if slug == self.manifest.coordinator.slug {
+                self.external_boundary(Phase::Create);
+                self.external_boundary(Phase::Turn);
+            } else if let Some(seed) = self.manifest.seeds.iter().find(|s| s.slug == slug) {
+                let plan = self.plan_for(seed)?;
+                if let Some(pane) = self.panes()?.get(&plan.name).filter(|p| p.owned) {
+                    self.emit(Phase::Turn, pane, &plan);
+                }
+            }
+        }
+        Ok(())
+    }
+
     pub fn create(&self, req: &CreateReq) -> Result<()> {
         let _g = lock(&self.op);
         if !valid_slug(&req.slug) {

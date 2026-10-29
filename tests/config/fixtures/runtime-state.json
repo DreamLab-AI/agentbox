@@ -3,7 +3,7 @@
   "supervisor": {
     "agentbox-hook-drain": "RUNNING",
     "agentbox-mcp-hub": "RUNNING",
-    "aoe-serve": "RUNNING",
+    "agentbox-sessions": "RUNNING",
     "blender-mcp": "RUNNING",
     "bootstrap": "RUNNING",
     "bootstrap-seal": "EXITED",

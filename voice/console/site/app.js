@@ -308,292 +308,14 @@ function reconnectFeed() {
   return connectFeed();
 }
 
-// ── AoE session board ─────────────────────────────────────────────────────────
-
-let sessions = [];
-let coordinatorId = null;
-let aimedId = 'coordinator';    // 'coordinator' | AoE session id
-let openId = null;              // opened session detail id (null = board)
-let lastSessionTrigger = null;
-
-const sid = (s) => String(s.id ?? s.session_id ?? s.uuid ?? '');
-const stitle = (s) => s.title || s.slug || s.name || sid(s).slice(0, 8) || 'session';
-const sstate = (s) => String(s.state || s.status || s.run_state || 'unknown');
-const sagent = (s) => s.agent || s.agent_name || s.harness || s.kind || '';
-const sbranch = (s) => s.branch || s.worktree_branch || (s.worktree && (s.worktree.branch || s.worktree.name)) || '';
-const slastAt = (s) => s.last_activity || s.updated_at || s.last_activity_at || s.lastActivity || s.mtime || null;
-
-function stateClass(state) {
-  const s = state.toLowerCase();
-  if (s.startsWith('run')) return 'state-running';
-  if (s.startsWith('wait')) return 'state-waiting';
-  if (s.startsWith('idle') || s.startsWith('ready')) return 'state-idle';
-  if (s.startsWith('err') || s.startsWith('fail')) return 'state-error';
-  return 'state-stopped';
-}
-function ageStr(ts) {
-  if (!ts) return '';
-  const ms = typeof ts === 'number' ? (ts < 1e12 ? ts * 1000 : ts) : Date.parse(ts);
-  if (!ms || Number.isNaN(ms)) return '';
-  const s = Math.max(0, (Date.now() - ms) / 1000);
-  if (s < 60) return Math.floor(s) + 's';
-  if (s < 3600) return Math.floor(s / 60) + 'm';
-  if (s < 86400) return Math.floor(s / 3600) + 'h';
-  return Math.floor(s / 86400) + 'd';
-}
-function agentGlyph(agent, state) {
-  if (stateClass(state) === 'state-error') return '!';
-  const a = (agent || '').toLowerCase();
-  if (a.includes('claude')) return 'C';
-  if (a.includes('codex')) return 'X';
-  if (a.includes('gemini') || a.includes('antigrav')) return 'G';
-  if (a.includes('qwen')) return 'Q';
-  if (a.includes('kimi')) return 'K';
-  return '●';
-}
-
-function aimedName() {
-  if (aimedId === 'coordinator') return 'tab0 coordinator';
-  const s = sessions.find((x) => sid(x) === aimedId);
-  return s ? stitle(s) : aimedId.slice(0, 8) + '…';
-}
-function setAim(id) {
-  aimedId = id;
-  $('voice-aim-name').textContent = aimedName();
-  renderBoard();
-  if (openId) syncDetailTo();
-}
-
-function renderBoard() {
-  const board = $('board');
-  $('board-count').textContent = String(sessions.length);
-  // reconcile children by id to avoid full re-render flicker
-  board.innerHTML = '';
-  if (!sessions.length) { $('board-empty').hidden = false; return; }
-  $('board-empty').hidden = true;
-
-  for (const s of sessions) {
-    const id = sid(s);
-    const state = sstate(s);
-    const isCoord = id === coordinatorId;
-    const aimed = aimedId === id || (isCoord && aimedId === 'coordinator');
-    const card = el('div', 'card ' + stateClass(state) + (aimed ? ' aimed' : ''));
-
-    if (aimed) card.appendChild(el('span', 'voice-tag', 'voice'));
-
-    const top = el('div', 'card-top');
-    const ring = el('div', 'ring', agentGlyph(sagent(s), state));
-    top.appendChild(ring);
-    const idbox = el('div', 'card-id');
-    idbox.appendChild(el('div', 'card-title', stitle(s)));
-    const agentTxt = sagent(s) || 'session';
-    idbox.appendChild(el('div', 'card-agent', isCoord ? agentTxt + ' · coordinator' : agentTxt));
-    top.appendChild(idbox);
-    card.appendChild(top);
-
-    const meta = el('div', 'card-meta');
-    meta.appendChild(el('span', 'pill state', state));
-    const br = sbranch(s); if (br) meta.appendChild(el('span', 'pill branch', br));
-    const age = ageStr(slastAt(s)); if (age) meta.appendChild(el('span', 'pill age', age + ' ago'));
-    if (isCoord) meta.appendChild(el('span', 'pill coord', 'coordinator'));
-    card.appendChild(meta);
-
-    const actions = el('div', 'card-actions');
-    const openBtn = el('button', 'mini', 'Open'); openBtn.type = 'button';
-    const aimBtn = el('button', 'mini aim' + (aimed ? ' on' : ''), aimed ? '◎ Aimed' : 'Aim voice'); aimBtn.type = 'button';
-    actions.appendChild(openBtn); actions.appendChild(aimBtn);
-    card.appendChild(actions);
-
-    openBtn.onclick = (e) => { e.stopPropagation(); lastSessionTrigger = openBtn; openSession(id); };
-    aimBtn.onclick = (e) => { e.stopPropagation(); setAim(isCoord ? 'coordinator' : id); };
-    board.appendChild(card);
-  }
-}
-
-async function pollSessions() {
-  try {
-    const res = await authFetch('/aoe/api/sessions?state=live');
-    if (res.status === 401 || res.status === 403) { setChip('chip-aoe', 'unauthorised', 'set an operator credential'); return; }
-    if (!res.ok) { setChip('chip-aoe', 'degraded', 'aoe ' + res.status); return; }
-    const data = await res.json();
-    const list = Array.isArray(data) ? data : (data.sessions || data.data || []);
-    sessions = list;
-    // best-effort coordinator resolution (matches the bridge's title heuristic)
-    if (data.coordinator) coordinatorId = String(data.coordinator);
-    else if (!coordinatorId) {
-      const c = list.find((s) => ['tab0', 'coordinator'].some((w) => stitle(s).toLowerCase().includes(w)));
-      if (c) coordinatorId = sid(c);
-    }
-    setChip('chip-aoe', true, `${list.length} live session(s)`);
-    renderBoard();
-    if (openId) refreshDetailHead();
-  } catch (err) { if (err.name !== 'AbortError') setChip('chip-aoe', 'unavailable', 'aoe unreachable'); }
-}
-
-// ── session detail: terminal (poll /output) + diff ────────────────────────────
-
-let detailTimer = null;
-let detailView = 'term'; // 'term' | 'diff'
-
-function currentDetailSession() { return sessions.find((s) => sid(s) === openId) || null; }
-
-function refreshDetailHead() {
-  const s = currentDetailSession();
-  const state = s ? sstate(s) : 'unknown';
-  const ring = $('detail-ring');
-  ring.textContent = s ? agentGlyph(sagent(s), state) : '•';
-  // The state-* class on the head lets the existing `.state-* .ring` CSS colour
-  // the ring (the ring is a descendant of #detail-head).
-  $('detail-head').className = stateClass(state);
-  $('detail-title').textContent = s ? stitle(s) : openId;
-  const sub = $('detail-sub'); sub.innerHTML = '';
-  sub.appendChild(el('span', '', sagent(s || {}) || 'session'));
-  sub.appendChild(el('span', '', state));
-  const br = sbranch(s || {}); if (br) sub.appendChild(el('span', 'br', '⑂ ' + br));
-}
-
-function syncDetailTo() {
-  const isAimed = openId === aimedId || (openId === coordinatorId && aimedId === 'coordinator');
-  $('detail-to').textContent = (isAimed ? '◎ ' : '→ ') + 'this session';
-}
-
-// minimal ANSI SGR → HTML (16-colour + bold/dim), everything else stripped
-function ansiToHtml(text) {
-  const esc = (t) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  let out = '';
-  let open = 0;
-  const re = /\x1b\[([0-9;]*)m/g;
-  let last = 0, m;
-  const apply = (codes) => {
-    for (const raw of codes.split(';')) {
-      const c = Number(raw || '0');
-      if (c === 0) { out += '</span>'.repeat(open); open = 0; }
-      else if (c === 1) { out += '<span class="a-bold">'; open++; }
-      else if (c === 2) { out += '<span class="a-dim">'; open++; }
-      else if ((c >= 30 && c <= 37) || (c >= 90 && c <= 97)) { out += `<span class="a-${c}">`; open++; }
-    }
-  };
-  while ((m = re.exec(text)) !== null) {
-    out += esc(text.slice(last, m.index));
-    apply(m[1]);
-    last = re.lastIndex;
-  }
-  out += esc(text.slice(last));
-  out += '</span>'.repeat(open);
-  // strip any residual non-SGR escape sequences (cursor moves, clears)
-  return out.replace(/\x1b\[[0-9;?]*[A-Za-z]/g, '');
-}
-
-function colourDiff(text) {
-  const esc = (t) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  return text.split('\n').map((line) => {
-    let cls = '';
-    if (/^\+\+\+|^---|^diff /.test(line)) cls = 'd-hdr';
-    else if (/^@@/.test(line)) cls = 'd-hunk';
-    else if (/^\+/.test(line)) cls = 'd-add';
-    else if (/^-/.test(line)) cls = 'd-del';
-    return cls ? `<span class="${cls}">${esc(line)}</span>` : esc(line);
-  }).join('\n');
-}
-
-async function pollDetail() {
-  if (!openId) return;
-  if (detailView === 'term') {
-    try {
-      const res = await authFetch(`/aoe/api/sessions/${encodeURIComponent(openId)}/output?lines=200&format=text`);
-      const term = $('term');
-      const pinned = atBottom(term);
-      if (res.status === 401 || res.status === 403) { term.textContent = '(unauthorised — set an operator credential)'; return; }
-      if (!res.ok) { if (!term.textContent) term.textContent = `(no output — ${res.status})`; return; }
-      const txt = await res.text();
-      term.innerHTML = ansiToHtml(txt) || '(empty pane)';
-      if (pinned) term.scrollTop = term.scrollHeight;
-    } catch { /* keep last capture on transient error */ }
-  }
-}
-
-function scheduleDetailPoll() {
-  clearTimeout(detailTimer);
-  if (!openId) return;
-  detailTimer = setTimeout(async () => {
-    if (!document.hidden) await pollDetail();
-    scheduleDetailPoll();
-  }, 1600);
-}
-
-async function loadDiff() {
-  const diff = $('diff');
-  diff.textContent = 'loading diff…';
-  // try the documented shapes in order; render whatever text comes back
-  for (const p of [`/aoe/api/sessions/${encodeURIComponent(openId)}/diff`,
-                   `/aoe/api/sessions/${encodeURIComponent(openId)}/diff/file`]) {
-    try {
-      const res = await authFetch(p);
-      if (!res.ok) continue;
-      const ct = res.headers.get('content-type') || '';
-      let text;
-      if (ct.includes('json')) {
-        const j = await res.json();
-        text = typeof j === 'string' ? j : (j.diff || j.patch || j.content || JSON.stringify(j, null, 2));
-      } else { text = await res.text(); }
-      diff.innerHTML = text && text.trim() ? colourDiff(text) : '(no changes in this worktree)';
-      return;
-    } catch { /* try next shape */ }
-  }
-  diff.textContent = '(diff unavailable for this session)';
-}
-
-function setDetailView(v) {
-  detailView = v;
-  $('tab-term').classList.toggle('on', v === 'term');
-  $('tab-diff').classList.toggle('on', v === 'diff');
-  $('tab-term').setAttribute('aria-selected', String(v === 'term'));
-  $('tab-diff').setAttribute('aria-selected', String(v === 'diff'));
-  $('tab-term').tabIndex = v === 'term' ? 0 : -1;
-  $('tab-diff').tabIndex = v === 'diff' ? 0 : -1;
-  $('term').hidden = v !== 'term';
-  $('diff').hidden = v !== 'diff';
-  if (v === 'diff') loadDiff();
-  else pollDetail();
-}
-
-function openSession(id) {
-  openId = id;
-  $('board-wrap').hidden = true;
-  $('detail').hidden = false;
-  $('term').textContent = 'attaching…';
-  refreshDetailHead();
-  syncDetailTo();
-  setDetailView('term');
-  scheduleDetailPoll();
-  $('detail-close').focus();
-}
-
-function closeSession() {
-  openId = null;
-  clearTimeout(detailTimer);
-  $('detail').hidden = true;
-  $('board-wrap').hidden = false;
-  if (lastSessionTrigger && document.contains(lastSessionTrigger)) lastSessionTrigger.focus();
-}
-
-// ── injection: type into the aimed / opened session ───────────────────────────
-// Coordinator writes go through the bridge (records the shared transcript +
-// fail-open tmux fallback, ADR-044); any other session is written directly on
-// the AoE injection path (POST /api/sessions/{id}/send).
-
-async function inject(text, targetId) {
+// ADR-2153: the web session board retired; console voice targets tab0.
+const aimedId = 'coordinator';
+function aimedName() { return 'tab0 coordinator'; }
+async function inject(text) {
   const clean = text.trim();
   if (!clean) return;
-  const isCoord = targetId === 'coordinator' || targetId === coordinatorId;
-  if (isCoord) {
-    const res = await authFetch('/bridge/tab0/send', { method: 'POST', json: { text: clean, source: 'console' } });
-    if (!res.ok) throw new Error('bridge ' + res.status);
-  } else {
-    const res = await authFetch(`/aoe/api/sessions/${encodeURIComponent(targetId)}/send`,
-      { method: 'POST', json: { message: clean }, preferBearer: false });
-    if (!res.ok) throw new Error('aoe send ' + res.status + ': ' + (await res.text()).slice(0, 120));
-  }
+  const res = await authFetch('/bridge/tab0/send', { method: 'POST', json: { text: clean, source: 'console' } });
+  if (!res.ok) throw new Error('bridge ' + res.status);
 }
 
 // ── approvals ─────────────────────────────────────────────────────────────────
@@ -748,7 +470,7 @@ $('auth-dialog').addEventListener('close', () => {
     setBearer($('bearer-in').value.trim());
     if (getBearer() !== prev) reconnectFeed();
     toast('Credential updated', 'ok');
-    pollSessions(); pollApprovals();
+    pollApprovals();
   } else if (dlg.returnValue === 'clear') {
     setBearer('');
     reconnectFeed();
@@ -759,18 +481,6 @@ $('auth-dialog').addEventListener('close', () => {
 // ── boot ───────────────────────────────────────────────────────────────────────
 
 $('auth-open').onclick = openAuthDialog;
-$('board-refresh').onclick = () => pollSessions();
-$('detail-close').onclick = closeSession;
-$('tab-term').onclick = () => setDetailView('term');
-$('tab-diff').onclick = () => setDetailView('diff');
-document.querySelector('.view-toggle').addEventListener('keydown', (event) => {
-  if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
-  event.preventDefault();
-  const next = event.key === 'Home' || event.key === 'ArrowLeft' ? 'term' : 'diff';
-  setDetailView(next);
-  $(next === 'term' ? 'tab-term' : 'tab-diff').focus();
-});
-
 async function pollSystemView() {
   try {
     const res = await authFetch('/mgmt/v1/system');
@@ -786,10 +496,7 @@ async function pollSystemView() {
   } catch { /* navigation remains usable when system discovery is unavailable */ }
 }
 
-wireForm('detail-send', 'detail-text', (text) => {
-  const target = openId === coordinatorId ? 'coordinator' : openId;
-  return inject(text, target);
-});
+
 wireForm('nostr-send', 'nostr-text', async (text) => {
   const res = await authFetch('/bridge/nostr/send', { method: 'POST', json: { text } });
   if (!res.ok) throw new Error('nostr ' + res.status);
@@ -800,12 +507,11 @@ setVoiceState('idle');
 // Resolve the HttpOnly session before asking the signer for polling/WS auth.
 probeSession().then(() => {
   connectFeed();
-  pollHealth(); pollSessions(); pollApprovals(); pollNostrEvents(); pollSystemView();
+  pollHealth(); pollApprovals(); pollNostrEvents(); pollSystemView();
 });
 
 const pollSchedule = [
   [pollHealth, 12000],
-  [pollSessions, 4000],
   [pollApprovals, 8000],
   [pollNostrEvents, 20000],
   [pollSystemView, 30000],
@@ -839,7 +545,7 @@ window.addEventListener('nostr:ready', refreshAuthBadge);
       clearInterval(watch);
       refreshAuthBadge();
       reconnectFeed();
-      pollHealth(); pollSessions(); pollApprovals(); pollNostrEvents();
+      pollHealth(); pollApprovals(); pollNostrEvents();
     } else if (ticks >= 40) { // ~10s — no signer coming; badge shows "no key"
       clearInterval(watch);
       refreshAuthBadge();

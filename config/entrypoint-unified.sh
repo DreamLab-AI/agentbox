@@ -908,7 +908,7 @@ let top = lines.findIndex((l) => /^\s*\[/.test(l));
 if (top < 0) top = lines.length;
 // Ours = a single-line notify naming voice-paned, recognised BY VALUE: the marker
 // comment is cosmetic and does not survive a tool that re-serialises the file.
-const ours = (i) => /^\s*notify\s*=\s*\[.*\]\s*(#.*)?$/.test(lines[i]) && lines[i].includes('voice-paned');
+const ours = (i) => /^\s*notify\s*=\s*\[.*\]\s*(#.*)?$/.test(lines[i]) && (lines[i].includes('voice-paned') || lines[i].includes('session-state.cjs'));
 let at = -1;
 for (let i = 0; i < top; i++) if (/^\s*notify\s*=/.test(lines[i])) { at = i; break; }
 let out = null;
@@ -983,44 +983,15 @@ fi
 # The sentinel itself is written by [program:bootstrap-seal] after supervisord
 # has confirmed required programs are RUNNING (Option A from PRD-002 §9).
 # ---------------------------------------------------------------------------
+if [ "$(_ab_toml_bool interaction_plane enabled)" = "1" ]; then
+  mkdir -p /run/agentbox-sessions
+  chown 1000:1000 /run/agentbox-sessions
+  chmod 0755 /run/agentbox-sessions
+fi
 mkdir -p /run/agentbox /run/agentbox/hooks
 chown 1000:1000 /run/agentbox /run/agentbox/hooks 2>/dev/null || true
 chmod 700 /run/agentbox/hooks 2>/dev/null || true
 mkdir -p /var/lib/agentbox/events/hooks 2>/dev/null && chown 1000:1000 /var/lib/agentbox/events/hooks 2>/dev/null || true
-
-# N-05 boundary hardening: the aoe serve daemon runs `--auth token` and writes its
-# shared-secret token into ~/.config/agent-of-empires/serve.url at launch. That
-# token is now the security boundary for :9095 (loopback alone is not), so keep its
-# directory owner-only (0700) — the nip98-proxy and nostr-gateway read it as the
-# same devuser; nothing else should. Best-effort: the daemon recreates the dir if
-# absent, and mode is re-asserted here every boot before supervisord starts it.
-_AOE_CFG_DIR=/home/devuser/.config/agent-of-empires
-mkdir -p "$_AOE_CFG_DIR" 2>/dev/null || true
-chown 1000:1000 "$_AOE_CFG_DIR" 2>/dev/null || true
-chmod 0700 "$_AOE_CFG_DIR" 2>/dev/null || true
-# Verify (non-fatal): a wrong mode/owner means the token file is readable beyond
-# devuser — log a LOUD grep-able marker but never block boot. Expect 700 + uid 1000.
-if [ -d "$_AOE_CFG_DIR" ]; then
-  _AOE_MODE="$(stat -c '%a' "$_AOE_CFG_DIR" 2>/dev/null || echo '???')"
-  _AOE_OWN="$(stat -c '%u' "$_AOE_CFG_DIR" 2>/dev/null || echo '???')"
-  if [ "$_AOE_MODE" != "700" ] || [ "$_AOE_OWN" != "1000" ]; then
-    echo "[N-05-VIOLATION] AoE token dir $_AOE_CFG_DIR has mode=$_AOE_MODE owner=$_AOE_OWN (expected 700/1000) — token file may be readable beyond devuser" >&2
-  fi
-  # Also check serve.url itself if the daemon already wrote it (e.g. after a restart
-  # with a persisted config volume). The 0700 dir already gates access, so a looser
-  # file mode is not a boot failure — just alarm on it. Expect uid 1000 and no
-  # group/world read bits (mode & 077 == 0).
-  _AOE_URL_FILE="$_AOE_CFG_DIR/serve.url"
-  if [ -f "$_AOE_URL_FILE" ]; then
-    _URL_MODE="$(stat -c '%a' "$_AOE_URL_FILE" 2>/dev/null || echo '???')"
-    _URL_OWN="$(stat -c '%u' "$_AOE_URL_FILE" 2>/dev/null || echo '???')"
-    # low two octal digits = group+other perms; any non-zero means group/world access
-    _URL_GO="$(printf '%s' "$_URL_MODE" | sed -E 's/^.*([0-9])([0-9])$/\1\2/')"
-    if [ "$_URL_OWN" != "1000" ] || { [ "$_URL_GO" != "00" ] && [ "$_URL_GO" != "??" ]; }; then
-      echo "[N-05-VIOLATION] AoE token file $_AOE_URL_FILE has mode=$_URL_MODE owner=$_URL_OWN (expected uid 1000, no group/world read) — shared-secret token may be exposed" >&2
-    fi
-  fi
-fi
 
 # ADR-2040: code-server (--bind-addr 0.0.0.0:8080, flake.nix [program:code-server])
 # is reachable by every peer container on visionclaw_network, not just the
@@ -1547,7 +1518,6 @@ _ML_RETAINED_MAX_AGE=$(_ab_toml_int memory_learning retained_corpus_max_age_days
 # children. All-off/absent ⇒ these stay 0/defaults and the boot reconciliation
 # below is skipped (runtime byte-identical to the pre-PRD-021 product).
 _IP_ENABLED=$(_ab_toml_bool interaction_plane enabled)
-_IP_PORT=$(_ab_toml_int interaction_plane port 9095)
 _IP_PROXY_PORT=$(_ab_toml_int interaction_plane proxy_port 9096)
 
 # ── MCP server config: ensure .mcp.json always points to ruvector-mcp.cjs ──
@@ -1947,25 +1917,44 @@ else { console.log('  [voice] turn-sink hooks already registered'); }
 SINKJS
 fi
 
-# ── Interaction plane: seed the AoE declarative sessions (PRD-021 WS2/WS3) ──
-# When [interaction_plane].enabled, provision the [[interaction_plane.session_seeds]]
-# (+ coordinator) as AoE sessions once the supervised aoe-serve daemon is up. Each
-# seed derives a did:nostr (AGENTBOX_PROFILE=<slug>), a session URN, a beads epic,
-# and a scoped memory namespace at create time (ADR-043). scripts/aoe-seed-sessions.mjs
-# (Builder D) owns the daemon-readiness poll and the create calls; we invoke it
-# fire-and-forget (backgrounded, logged) so a slow or absent daemon never blocks the
-# boot — fail-open, matching the nostr-gateway/voice precedents. Off ⇒ skipped.
-_AOE_SEED="/opt/agentbox/scripts/aoe-seed-sessions.mjs"
-if [ "$_IP_ENABLED" = "1" ] && [ -f "$_AOE_SEED" ] && command -v node >/dev/null 2>&1; then
-  echo "[interaction-plane] seeding AoE sessions (backgrounded; daemon on 127.0.0.1:${_IP_PORT})"
-  AGENTBOX_INTERACTION_PLANE_PORT="$_IP_PORT" \
-  AGENTBOX_INTERACTION_PLANE_PROXY_PORT="$_IP_PROXY_PORT" \
-  AGENTBOX_CONFIG="${AGENTBOX_CONFIG:-/etc/agentbox.toml}" \
-  MANAGEMENT_API_URL="http://127.0.0.1:${MANAGEMENT_API_PORT:-9090}" \
-    nohup node "$_AOE_SEED" >/var/log/aoe-seed-sessions.log 2>&1 &
-elif [ "$_IP_ENABLED" = "1" ]; then
-  echo "[interaction-plane] session seeder $_AOE_SEED not present yet — skipping (fail-open)"
-fi
+# Codex completion status without voicelink; preserve an operator-owned notify.
+SESSION_PLANE="$_IP_ENABLED" VL_ON="$_VL_ENABLED" VL_RECORD="$_VL_RECORD" node <<'SESSIONCODEX' || true
+const fs = require('fs'), path = require('path');
+const f = path.join(process.env.CODEX_HOME || '/home/devuser/.codex', 'config.toml');
+let text = ''; try { text = fs.readFileSync(f, 'utf8'); } catch {}
+const lines = text.split('\n'), top = lines.findIndex(l => /^\s*\[/.test(l));
+const end = top < 0 ? lines.length : top;
+const i = lines.findIndex((l, n) => n < end && /^\s*notify\s*=/.test(l));
+const ours = i >= 0 && /voice-paned|session-state\.cjs/.test(lines[i]);
+const voice = process.env.VL_ON === '1' && process.env.VL_RECORD !== 'false';
+if (process.env.SESSION_PLANE === '1' && (i < 0 || ours)) {
+  const line = 'notify = ["node", "/opt/agentbox/config/hooks/session-state.cjs", "codex"' + (voice ? ', "--voice"' : '') + ']';
+  if (i >= 0) lines[i] = line; else lines.splice(0, 0, line);
+  fs.mkdirSync(path.dirname(f), {recursive: true});
+  fs.writeFileSync(f, lines.join('\n'));
+} else if (process.env.SESSION_PLANE !== '1' && ours) {
+  if (voice) lines[i] = 'notify = ["/opt/agentbox/bin/voice-paned", "record", "--source", "codex"]';
+  else lines.splice(i, 1);
+  fs.writeFileSync(f, lines.join('\n'));
+}
+SESSIONCODEX
+chown 1000:1000 /home/devuser/.codex/config.toml 2>/dev/null || true
+
+# ADR-2153: root-session status hooks (profiles are projected by stacks.rs).
+SESSION_PLANE="$_IP_ENABLED" node <<'SESSIONHOOKS' || true
+const fs = require('fs'), path = require('path');
+const on = process.env.SESSION_PLANE === '1';
+const f = '/home/devuser/.claude/settings.json';
+let s = {}; try { s = JSON.parse(fs.readFileSync(f, 'utf8')); } catch {}
+s.hooks ||= {};
+for (const event of ['UserPromptSubmit', 'Stop', 'Notification']) {
+  const groups = (s.hooks[event] || []).map(g => ({...g, hooks: (g.hooks || []).filter(h => !String(h.command).includes('session-state.cjs'))})).filter(g => g.hooks.length);
+  if (on) groups.push({ hooks: [{ type: 'command', command: `node /opt/agentbox/config/hooks/session-state.cjs ${event} || true`, timeout: 3 }] });
+  if (groups.length) s.hooks[event] = groups; else delete s.hooks[event];
+}
+fs.writeFileSync(f, JSON.stringify(s, null, 2) + '\n');
+SESSIONHOOKS
+chown 1000:1000 /home/devuser/.claude/settings.json 2>/dev/null || true
 
 # ── ADR-2085: register the colloquy reflect-candidate hook ──
 # config/hooks/colloquy-reflect-candidates.cjs scans the finished transcript for
@@ -3874,7 +3863,7 @@ $_MRN_EXPORTS
 # ports so children (voice bridge repoint, session tooling, shells) resolve them
 # without re-parsing agentbox.toml. Empty/defaults when the plane is disabled.
 export AGENTBOX_INTERACTION_PLANE_ENABLED="$_IP_ENABLED"
-export AGENTBOX_INTERACTION_PLANE_PORT="$_IP_PORT"
+export AGENTBOX_INTERACTION_PLANE="$_IP_ENABLED"
 export AGENTBOX_INTERACTION_PLANE_PROXY_PORT="$_IP_PROXY_PORT"
 # ADR-2091: the skill router's manifest choice, so /route in any shell agrees
 # with the UserPromptSubmit hook. "table" = the pre-2091 path; TYPESAFE_API_KEY
