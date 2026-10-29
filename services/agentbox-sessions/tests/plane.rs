@@ -112,7 +112,9 @@ fn pane_text(p: &Plane, name: &str) -> String {
 }
 
 fn decision(out: &[agentbox_sessions::plane::Outcome], slug: &str) -> Decision {
-    out.iter().find(|o| o.slug == slug).unwrap_or_else(|| panic!("no outcome for {slug}: {out:?}")).decision.clone().expect("a decision")
+    let outcome = out.iter().find(|o| o.slug == slug).unwrap_or_else(|| panic!("no outcome for {slug}: {out:?}"));
+    assert!(outcome.error.is_none(), "reconciliation failed for {slug}: {outcome:?}");
+    outcome.decision.clone().expect("a decision")
 }
 
 fn sleeper() -> Value {
@@ -191,6 +193,16 @@ fn a_live_session_on_a_stale_model_is_recreated() {
     let now = new.tmux.list().unwrap().into_iter().find(|x| x.name == "abs_d").unwrap();
     assert_ne!(now.fingerprint, fp_old);
     assert!(!now.dead && now.owned);
+
+    // Recreating the server's only session races tmux's server shutdown.
+    // Exercise that boundary repeatedly and require successful outcomes.
+    for i in 0..25 {
+        let model = if i % 2 == 0 { "deepseek-chat" } else { "deepseek-flash" };
+        std::fs::write(fx.root.join("agentbox.toml"), format!("[interaction_plane]\nenabled = true\n{}", seed(model))).unwrap();
+        let next = fx.plane();
+        assert_eq!(decision(&next.reconcile_once(false), "d"), Decision::Recreate(Reason::Drifted));
+        assert!(next.tmux.list().unwrap().iter().any(|x| x.name == "abs_d" && x.owned && !x.dead));
+    }
 }
 
 /// The advisor's blind spot: a worktree with build output must not hold its

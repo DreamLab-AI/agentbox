@@ -144,7 +144,22 @@ impl Tmux {
             args.extend([";".into(), "set-option".into(), "-t".into(), target.clone(), opt.into(), val.into()]);
         }
         let refs: Vec<&str> = args.iter().map(String::as_str).collect();
-        self.run(&refs).map(|_| ())
+        for attempt in 0..3 {
+            match self.run(&refs) {
+                Ok(_) => return Ok(()),
+                Err(e) if attempt < 2 && e.to_string().contains("server exited unexpectedly") => {
+                    // Killing the last session can leave tmux shutting down while
+                    // the replacement client connects. Never retry if a session
+                    // of this name already exists: creation may have succeeded.
+                    if self.list()?.iter().any(|p| p.name == s.name) {
+                        return Err(e);
+                    }
+                    std::thread::sleep(std::time::Duration::from_millis(50));
+                }
+                Err(e) => return Err(e),
+            }
+        }
+        unreachable!("the final attempt returns a result")
     }
 
     pub fn kill(&self, name: &str) -> Result<()> {
