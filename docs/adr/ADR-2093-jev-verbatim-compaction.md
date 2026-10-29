@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 3b498088e5a35e78158a9eb8d6f0266996d31f82
+verified_commit: 6ceb224899a2db4b96dc245e85ba3f4b326a96b3
 verified_paths: [lib/factrail.nix, config/entrypoint-unified.sh, lib/claude-code-binary.nix]
 owner: jjohare
 review_trigger: the first measured residency bill that exceeds the summary path's re-read savings, a Claude Code function-hook API change, a request to fence a class other than email, or a change to ADR-2121 (its implementation)
@@ -403,3 +403,10 @@ Re-verified 2026-10-29 at `00039efb1e4a70402df86ad19cf76894fe3b9a8f` for ADR-215
 
 
 Security follow-up re-verified 2026-10-29 at `7d8c3b2dfe165f4ab3f8a5e4f62b8294ea7b155d`: the changed hunks drop privilege before workspace credential writes, replace credentials atomically, reject typed-decision redirects and retain the timeout through response parsing. The stalled-body, planted-symlink and HTTP307 regressions pass. These strengthen the existing boundaries; status axes and activation limits are unchanged. The original Deepsec report remains BLOCK with a separate remediation receipt, not a claimed clean rescan.
+
+Re-verified 2026-10-29 at `6ceb22489`: `lib/factrail.nix` moves to factrail `d270a0a1`. The
+compaction policy this record owns (verbatim retention, thresholds, the rules fallback, the
+taint fence) is unchanged; the delta adds the answering backend and model to each decision's
+judge identity and a live-backend line to `/factrail status`. NAR hash reproduced the previous
+pin before being computed for the new one; Cargo.lock is byte-identical. factrail's merged tree
+passes 209 tests and clippy -D warnings. Not checked: an image build of the new pin.

@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 3b498088e5a35e78158a9eb8d6f0266996d31f82
+verified_commit: 6ceb224899a2db4b96dc245e85ba3f4b326a96b3
 verified_paths: [agentbox.toml, crates/system-one/system-one-proxy/src/server.rs, crates/system-one/system-one-proxy/src/key.rs, services/agentbox-manifest/src/system_one.rs, config/entrypoint-unified.sh, config/hooks/lib/skill-route.cjs, config/seal-bootstrap.sh, lib/system-one-proxy.nix, flake.nix, scripts/agentbox-config-validate.js, agentbox.sh]
 owner: jjohare
 review_trigger: SubQ Snap leaving public preview or changing its price, retention default or the Decisions request shape; a Kev, Clef or pplx-decider release that serves /v1/systemone on a 9B-class checkpoint; a system-one-eval run on the ADR-2089 corpus that moves any backend by more than 5 points; the first compaction replay whose keep-rate is above 5%
@@ -252,3 +252,21 @@ Re-verified 2026-10-29 at `00039efb1e4a70402df86ad19cf76894fe3b9a8f` for ADR-215
 
 
 Security follow-up re-verified 2026-10-29 at `7d8c3b2dfe165f4ab3f8a5e4f62b8294ea7b155d`: the changed hunks drop privilege before workspace credential writes, replace credentials atomically, reject typed-decision redirects and retain the timeout through response parsing. The stalled-body, planted-symlink and HTTP307 regressions pass. These strengthen the existing boundaries; status axes and activation limits are unchanged. The original Deepsec report remains BLOCK with a separate remediation receipt, not a claimed clean rescan.
+
+## Amendment — 2026-10-29: running backend returned to typesafe
+
+Decision 4's "Running backend: subq" no longer holds. On 2026-10-29 the operator ended the
+SubQ period that decision opened and selected `typesafe` (Jev) again, by the mechanism decision 4
+names: `./agentbox.sh systemone backend typesafe` live, then `[system_one].backend = "typesafe"`
+in `agentbox.toml` (2b5074658) so the next boot projects it. The vendor slot, the declared
+backends, the locality fence and the adoption-after-evaluation rule are unchanged; `subq` stays
+configured one switch away. Decision 5's whole-state compaction advantage is SubQ's, so on
+`typesafe` factrail's shrink stages carry the load again.
+
+Checked at `6ceb22489`: `agentbox-manifest system-one-project --manifest agentbox.toml` projects
+`model=jev-latest` and the loopback proxy endpoint for the plugin consumers; a request through
+the live proxy after the switch returned HTTP 200 from model `jev-1.14.0`. factrail `d270a0a1`
+(pinned at this commit) records the backend and model that actually answered from the proxy's
+`x-system-one-backend` / `x-system-one-model` headers, so a later switch is visible in the
+decision log without a restart. Not checked: the per-consumer accuracy comparison decision 4
+asks for before adoption; this is a return to the incumbent, not an adoption.
