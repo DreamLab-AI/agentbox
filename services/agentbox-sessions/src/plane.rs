@@ -409,7 +409,11 @@ impl Plane {
             _ => {}
         }
         self.tmux.send_text(&name, text, self.cfg.send_pause)?;
-        status::write_hook(&self.cfg.hook_dir, slug, status::Hook::Busy)?;
+        // Only hook-capable agents can clear a hook mark. OpenCode and the
+        // router use pane/ready detection; a synthetic Busy would stick forever.
+        if matches!(pane.tool.as_str(), "claude" | "codex") {
+            status::write_hook(&self.cfg.hook_dir, slug, status::Hook::Busy)?;
+        }
         if let Some(plan) = plan {
             self.emit(Phase::Turn, pane, &plan);
         }

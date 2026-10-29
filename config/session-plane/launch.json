@@ -14,7 +14,7 @@
       "$comment": "A seed whose slug has config/harness-wrappers/<slug>.sh (openrouter, zai, router). The wrapper owns env, profile and model.",
       "argv": ["{wrapper}"],
       "trust": ["claude-profile"],
-      "blockers": ["Yes, I trust this folder", "Select login method"]
+      "blockers": ["Yes, I trust this folder", "Select login method", "API Error: 401", "API Error: 403"]
     },
     "claude": {
       "argv": ["env", "AGENTBOX_PROFILE={slug}", "claude"],

@@ -392,3 +392,15 @@ fn socket_hook_marks_are_visible_and_reject_path_traversal() {
     assert_eq!(api::dispatch(&p, r#"{"op":"mark","slug":"../escape","state":"idle"}"#)["ok"], false);
     assert_eq!(api::dispatch(&p, r#"{"op":"mark","slug":"a","state":"unknown"}"#)["ok"], false);
 }
+
+#[test]
+fn send_does_not_latch_busy_for_a_pane_detected_agent_without_completion_hooks() {
+    let fx = Fx::new(json!({ "opencode": { "argv": ["cat"], "ready": "PONG" } }),
+        "[[interaction_plane.session_seeds]]\nslug = \"oc\"\ntool = \"opencode\"\n");
+    let p = fx.plane();
+    p.reconcile_once(false);
+    p.send("oc", "PONG").unwrap();
+    wait_for("ready pane", 5, || pane_text(&p, "abs_oc").contains("PONG"));
+    assert_eq!(p.status().unwrap().iter().find(|s| s.slug == "oc").unwrap().state, State::Idle);
+    assert!(!p.cfg.hook_dir.join("oc").exists(), "only completion-hook agents get a synthetic busy mark");
+}
