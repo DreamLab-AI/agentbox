@@ -11,7 +11,16 @@ All notable changes to agentbox are documented here. Format inspired by [Keep a 
   underscores, preventing the controller from finding focus. Its Nix checks
   exercise the `C` locale with a real terminal and the full end-to-end suite.
 
-### Mermaid build closure (2026-10-27 — staged)
+### Pele renders Mermaid (2026-10-29 — staged, ADR-2154)
+
+- Mermaid now renders in-process with a pinned Pele 1.12.0 (`lib/pele.nix`,
+  `pele-render`); `mmdc` stays as a compatibility shim that refuses options Pele
+  cannot honour (`-H -s -c -C -I -p -f`, `forest`/`neutral`, pdf). browsercontainer
+  loses `@mermaid-js/mermaid-cli` and `/render-mermaid` at its next rebuild.
+  Supersedes ADR-2152. The diagrams-as-code generator vendors Pele beside itself.
+- sealmap-review discovery skips linked git worktrees.
+
+### Mermaid build closure (2026-10-27 — superseded by ADR-2154)
 
 - Agentbox now bakes an `mmdc` compatibility client instead of a second
   Mermaid/Puppeteer/Chromium closure. Rendering is delegated to browsercontainer's

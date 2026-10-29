@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: staged
 supersedes: []
 superseded_by: [ADR-2154]
-verified_commit: d1dd896f4a790762b150d81a94a03b268b04c543
+verified_commit: 1da8d21719a27394f190866223b88533b52d87f9
 verified_paths: []
 owner: jjohare
 review_trigger: a change to Mermaid CLI, the mmdc client, browsercontainer's renderer, or their shared-volume topology

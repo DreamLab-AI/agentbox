@@ -11,7 +11,7 @@ Transform ANY input into a strategic Wardley map for understanding competitive p
 
 | Path | Tooling | When |
 |------|---------|------|
-| **Mermaid `wardley-beta`** *(default)* | `mmdc` 11.15.0+ from the `mermaid-diagrams` skill | Plain `.mmd` files, GitHub-native preview, embed in markdown/LaTeX, version-control friendly |
+| **Mermaid `wardley-beta`** *(default)* | `mmdc` (Pele-backed) from the `mermaid-diagrams` skill | Plain `.mmd` files, GitHub-native preview, embed in markdown/LaTeX, version-control friendly |
 | OnlineWardleyMaps (`.owm`) | https://onlinewardleymaps.com or tractorjuice converter | Editing in the canonical web tool, exporting CC-BY-SA assets |
 | Custom HTML/SVG | `wardley-generate` / `wardley-mapper` (Rust, `services/skill-tools`) | Bespoke interactivity / report-builder dark-theme dashboards |
 

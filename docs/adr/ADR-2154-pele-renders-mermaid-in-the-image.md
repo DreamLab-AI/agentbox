@@ -37,7 +37,7 @@ synchronous in Node). Measured there on 2026-10-28: 1,490 of 1,495 corpus blocks
   every fenced `mermaid` block of a `.md`, to static SVG: every Pele CSS variable is replaced by
   its declared default, so the file needs no stylesheet. Options: `--check` (parse only), `-o`,
   `-t light|dark`, `-b`, `-w`, `-q`, `-V`. Failures exit non-zero with `file:line` and Pele's caret
-  snippet. PNG goes through ImageMagick or is refused; PDF has no renderer (convert the SVG).
+  snippet. PNG goes through the image's ImageMagick (`[media].imagemagick`) or is refused; PDF has no renderer (convert the SVG).
 - **`mmdc` stays as a name, not an engine.** `scripts/mmdc-pele.cjs` accepts `-i -o -e -t -w -b -q`
   and refuses by name the options Pele cannot honour (`-H -s -c -C -I -p -f`, themes `forest` and
   `neutral`, pdf output). `[skills.docs].mermaid` gates both commands.
@@ -64,7 +64,11 @@ synchronous in Node). Measured there on 2026-10-28: 1,490 of 1,495 corpus blocks
 
 ## Verification
 
-Partial, staged. `node --test tests/cli/pele-render.test.mjs`, the diagrams-as-code generator tests and
-`--render` on a fixture, the sealmap-review tests and `cargo test` for `skill-tools` and `agentbox-ops`
-pass in the worktree. Not verified: `nix build` of `lib/pele.nix` and the rebuilt browsercontainer image.
-Supersedes ADR-2152; cites VisionFlow ADR-2020.
+Partial, staged. At the implementing commits (verified_commit): `node --test tests/cli/pele-render.test.mjs`
+(9 pass), `node --test skills/diagrams-as-code/scripts/diagram-index-gen.test.cjs` (23 pass, including `--render`
+through Pele and a Pele parse error), `node --test` over `skills/sealmap-review/scripts/*.test.cjs` (15, 9 and 43
+pass), `cargo test` in `services/skill-tools` (98) and `services/agentbox-ops` (212), `bash skills/lint-skills.sh`,
+`node scripts/adr-index-gen.js docs/adr --check`, and `ENABLE_MERMAID=true bash tests/artifact-probes/mermaid-probe.sh`
+with the scripts on `PATH`. Not verified: `nix build` of `lib/pele.nix` and the rebuilt browsercontainer image (no Nix
+evaluator in the authoring environment). ADR-2152 is superseded; its verified_commit is the last commit where its
+partial claim held. Cites VisionFlow ADR-2020.

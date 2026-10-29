@@ -49,9 +49,10 @@ let
   '';
 
   node = "${pkgs.nodejs_22}/bin/node";
+  # ImageMagick is deliberately not injected: PNG output uses the image's own
+  # [media].imagemagick when enabled, and pele-render refuses clearly without it.
   env = ''
     export PELE_VENDOR_DIR=${vendor}
-    export PATH=${pkgs.imagemagick}/bin:$PATH
   '';
 in
 {

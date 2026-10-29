@@ -10,7 +10,7 @@ own, so output differs from GitHub's native Mermaid rendering.
 
 ```bash
 mmdc -i diagram.mmd -o diagram.svg            # SVG, every Pele CSS variable flattened
-mmdc -i diagram.mmd -o diagram.png -t dark    # PNG needs ImageMagick (baked)
+mmdc -i diagram.mmd -o diagram.png -t dark    # PNG needs ImageMagick (`[media].imagemagick`)
 pele-render --check diagram.mmd notes.md      # parse only; file:line errors, exit 4
 pele-render notes.md -o figs/                 # every ```mermaid block of a .md
 ```
