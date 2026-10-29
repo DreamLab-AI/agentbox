@@ -33,13 +33,13 @@
 
 let
   version = "0.1.0";
-  rev = "57ac25b59d4b5975bbed1f066eb6ec294b38116a";
+  rev = "d270a0a168a4f7e69e7751d2a69c62b98264560a";
 
   src = pkgs.fetchFromGitHub {
     owner = "DreamLab-AI";
     repo  = "factrail";
     inherit rev;
-    hash  = "sha256-BnBsGMRJJWirmaJMCpJM08W2iXBuAwm9AggQDgLln5k=";
+    hash  = "sha256-lF/Xv7hQS16Va1HSmOHSc5mRZZVszKtjafd1MQfipcA=";
   };
 
 in
