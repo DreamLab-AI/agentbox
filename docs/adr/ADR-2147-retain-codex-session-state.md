@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: d1dd896f4a790762b150d81a94a03b268b04c543
+verified_commit: dcbdbeb8a4a2bc23f27fb070af71936a01cc4076
 verified_paths: [flake.nix, docker-compose.yml, docker-compose.override.yml, scripts/migrate-codex-home.sh, tests/config/compose-persistence.test.cjs]
 owner: jjohare
 review_trigger: changes to Codex home mounts, session retention, or the migration procedure

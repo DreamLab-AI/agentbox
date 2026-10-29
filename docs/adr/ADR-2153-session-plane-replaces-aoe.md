@@ -7,8 +7,8 @@ implementation_status: partial
 activation_status: inactive
 supersedes: [ADR-2079]
 superseded_by: []
-verified_commit:
-verified_paths: []
+verified_commit: dcbdbeb8a4a2bc23f27fb070af71936a01cc4076
+verified_paths: [services/agentbox-sessions, config/session-plane/launch.json, lib/agentbox-sessions.nix, config/role-accounts.json, config/custody/session-plane-acl.json, tests/cli/session-launch-contract.test.mjs]
 owner: jjohare
 review_trigger: the session-plane daemon lands, or any AoE consumer below is found to have been missed
 repo: agentbox

@@ -83,7 +83,7 @@ impl Fx {
 
 impl Drop for Fx {
     fn drop(&mut self) {
-        let _ = Command::new("tmux").args(["-L", &self.sock, "kill-server"]).status();
+        let _ = Command::new("tmux").args(["-L", &self.sock, "kill-server"]).stderr(std::process::Stdio::null()).status();
         // kill-server leaves the socket file behind; do not litter the tmux directory.
         use std::os::unix::fs::MetadataExt;
         let uid = std::fs::metadata("/proc/self").map(|m| m.uid()).unwrap_or(0);

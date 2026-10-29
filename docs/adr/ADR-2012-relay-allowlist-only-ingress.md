@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: d1dd896f4a790762b150d81a94a03b268b04c543
+verified_commit: dcbdbeb8a4a2bc23f27fb070af71936a01cc4076
 verified_paths: [agentbox.toml, flake.nix]
 owner: jjohare
 review_trigger: ingress_policy changes from allowlist, or the ADR-040 D3 governance-publisher key-split lands
