@@ -913,6 +913,7 @@
         "_SR_TIMEOUT",
         "_SSO_API",
         "_SSO_EXPORTS",
+        "_SO_SERVICE_EXPORTS",
         "_SSO_MODEL",
         "_SSO_PLUGIN_CONFIG",
         "_TRAJ_HOOK",

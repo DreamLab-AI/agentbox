@@ -962,7 +962,7 @@
           inherit lib;
           pkgs = rustPkgs;
           src = vaultSrc;
-          jev = ((agentboxConfig.system_one or {}).consumers or {}).vault_rank or false;
+          jev = systemOneProxyOn && (((agentboxConfig.system_one or {}).consumers or {}).vault_rank or false);
         };
         # ontomark — the released shared-ontology CLI (Ontomark ADR-OM-005; agentbox
         # ADR-2136 first step). Baked BESIDE vault under the same gate: it owns
@@ -973,7 +973,7 @@
         # same bytes as visionGraph's publish pipeline and the Loom host.
         ontomarkPkg = import ./lib/ontomark.nix {
           inherit lib; pkgs = rustPkgs;
-          jev = ((agentboxConfig.system_one or {}).consumers or {}).ontomark_suggestions or false;
+          jev = systemOneProxyOn && (((agentboxConfig.system_one or {}).consumers or {}).ontomark_suggestions or false);
         };
         vaultPackages = lib.optionals vaultCliActive [ vaultPkg ontomarkPkg ];
 
@@ -1554,7 +1554,7 @@
         # dep-path so cargo enables them on the workspace member when the
         # server crate doesn't forward them.
         solidPodRsExtraFeatures =
-          lib.optionals (((agentboxConfig.system_one or {}).consumers or {}).solid_pod_advisories or false) [ "jev" ] ++
+          lib.optionals (systemOneProxyOn && (((agentboxConfig.system_one or {}).consumers or {}).solid_pod_advisories or false)) [ "jev" ] ++
           lib.optionals (solidPodRsCfg.enable_schnorr_verify or true) [ "solid-pod-rs/nip98-schnorr" ]
           ++ lib.optionals (solidPodRsCfg.enable_did_nostr or true) [ "did-nostr" ]
           ++ lib.optionals (solidPodRsCfg.enable_rate_limit or true) [ "rate-limit" ]

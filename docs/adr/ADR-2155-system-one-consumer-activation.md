@@ -33,6 +33,10 @@ backend. Failure of that route never sends their content to the cloud. Explicit
 local-only flags cover consultants, trajectories, ontology, governance and dream
 triage. Claim-specific checkpoints and dream screening are enabled.
 
+JS/Rust consumer switches control behaviour within existing services; disabling
+a consumer does not remove its host process. Optional CLI/server Cargo features
+require both the vendor-slot parent gate and their own consumer switch.
+
 The owner decision accepts the bounded routing/checkpoint extensions and local
 processing recorded in the egress register. It does not remove email fences,
 authorisation, deterministic gates, or human approval. Unfitted thresholds that
