@@ -197,6 +197,22 @@ function hasCorpus(dir) {
 
 /** Corpus repos under `workspace` to `maxDepth` levels, by realpath. A symlinked directory is
  *  followed once: the link and its target are one repository. */
+/** True for a linked git worktree: its `.git` is a FILE whose `gitdir:` points into
+ *  `<common>/worktrees/<name>`. A submodule also has a `.git` file, but it points into
+ *  `.git/modules/<name>` and is a real corpus holder, so it is not matched. A worktree is a
+ *  second checkout of a repo we already review (often an unfinished task branch), never a
+ *  corpus of its own. */
+function isLinkedWorktree(dir) {
+  let text;
+  try {
+    const dotGit = path.join(dir, '.git');
+    if (!fs.statSync(dotGit).isFile()) return false;
+    text = fs.readFileSync(dotGit, 'utf8');
+  } catch { return false; }
+  const m = /^gitdir:\s*(.+?)\s*$/m.exec(text);
+  return !!m && /[\\/]worktrees[\\/][^\\/]+[\\/]?$/.test(m[1]);
+}
+
 function discoverRepos(workspace, { maxDepth = DISCOVERY_DEPTH } = {}) {
   const found = new Set();
   const seen = new Set();
@@ -204,6 +220,7 @@ function discoverRepos(workspace, { maxDepth = DISCOVERY_DEPTH } = {}) {
     const rp = real(dir);
     if (!rp || seen.has(rp)) return;
     seen.add(rp);
+    if (isLinkedWorktree(rp)) return;
     if (hasCorpus(rp)) found.add(rp);
     if (depth >= maxDepth) return;
     let entries;
@@ -974,7 +991,7 @@ async function main(argv, deps = {}) {
 }
 
 module.exports = {
-  readSection, loadConfig, discoverRepos, hasCorpus, readLocalFile, resolveRepos, createResolver, parseSources, loadTopics,
+  readSection, loadConfig, discoverRepos, isLinkedWorktree, hasCorpus, readLocalFile, resolveRepos, createResolver, parseSources, loadTopics,
   triageCandidates, changedByRepo, headsOf, reposOf, buildShards, shardChangedTopics, readLedger, appendLedger, monthToDateUsd,
   ledgerPath, decideGemini, estimateGeminiUsd, actualGeminiUsd, packUnchanged, isHighSeverity, parseVerdict, zaiSettings, glm,
   triage, reviewGlm, auditGemini, mergeReviews, statusOf, main, parseArgs, DEFAULTS, GEMINI_USD_PER_M,

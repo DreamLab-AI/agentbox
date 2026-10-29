@@ -123,6 +123,24 @@ test('discovery: depth 3, skips .tmp / node_modules / target / dot-directories, 
   assert.ok(!found.some((p) => /hidden|pkg|debug|\.dotdir|noprefix|c\/d$/.test(p)));
 });
 
+test('discovery: a linked worktree is skipped, a submodule (.git file into .git/modules) is still found', () => {
+  const ws = rp(tmp());
+  // The main checkout, with a real .git directory and one registered worktree.
+  put(ws, 'repo/docs/diagrams/area/01-t.md', '# t\n');
+  fs.mkdirSync(path.join(ws, 'repo', '.git', 'worktrees', 'task'), { recursive: true });
+  // A linked worktree of it under wt/ carrying its own docs/diagrams (an unfinished task branch).
+  put(ws, 'wt/repo-task/docs/diagrams/area/01-t.md', '# t\n');
+  fs.writeFileSync(path.join(ws, 'wt', 'repo-task', '.git'), `gitdir: ${path.join(ws, 'repo', '.git', 'worktrees', 'task')}\n`);
+  // A submodule: also a .git file, but into .git/modules/.
+  put(ws, 'repo/vendor/sub/docs/diagrams/area/01-t.md', '# t\n');
+  fs.mkdirSync(path.join(ws, 'repo', '.git', 'modules', 'sub'), { recursive: true });
+  fs.writeFileSync(path.join(ws, 'repo', 'vendor', 'sub', '.git'), 'gitdir: ../../.git/modules/sub\n');
+  assert.equal(C.isLinkedWorktree(path.join(ws, 'wt', 'repo-task')), true);
+  assert.equal(C.isLinkedWorktree(path.join(ws, 'repo', 'vendor', 'sub')), false);
+  assert.equal(C.isLinkedWorktree(path.join(ws, 'repo')), false, 'a .git directory is a primary checkout');
+  assert.deepEqual(C.discoverRepos(ws), [path.join(ws, 'repo'), path.join(ws, 'repo', 'vendor', 'sub')].sort());
+});
+
 test('discovery: a symlink cycle terminates', () => {
   const ws = rp(tmp());
   put(ws, 'x/docs/diagrams/area/01-t.md', '# t\n');
