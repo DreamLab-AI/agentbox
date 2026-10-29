@@ -12,7 +12,8 @@
 # config/session-plane/launch.json and config/harness-wrappers, none of which
 # are inside this crate's source tree, and its integration tests drive a real
 # tmux server. It runs where the whole repository is present: `cargo test` in
-# services/agentbox-sessions (CI: .github/workflows/contract-tests.yml) and
+# services/agentbox-sessions (CI: the sessions-tests job in
+# .github/workflows/tui-tests.yml) and
 # tests/cli/session-launch-contract.test.mjs, which compares this binary's
 # resolution of every seed with the Node contract test.
 #

@@ -4,6 +4,9 @@ on:
   pull_request:
     paths:
       - 'services/agentbox-manifest/**'
+      - 'services/agentbox-sessions/**'
+      - 'config/session-plane/**'
+      - 'tests/cli/session-launch-contract.test.mjs'
       - 'tests/tui/**'
       - '.github/workflows/tui-tests.yml'
   push:
@@ -11,6 +14,9 @@ on:
       - main
     paths:
       - 'services/agentbox-manifest/**'
+      - 'services/agentbox-sessions/**'
+      - 'config/session-plane/**'
+      - 'tests/cli/session-launch-contract.test.mjs'
       - 'tests/tui/**'
 
 jobs:
@@ -52,3 +58,47 @@ jobs:
       # byte-for-byte golden suites that pin parity with the retired Python.
       - name: Test
         run: cargo test --manifest-path services/agentbox-manifest/Cargo.toml
+
+  sessions-tests:
+    name: cargo test — agentbox-sessions (ADR-2153)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+
+      # The integration tests drive real processes on a private `tmux -L` server,
+      # so tmux must be present; a runner without it would fail loudly, not skip.
+      - name: Ensure tmux and git are installed
+        run: |
+          command -v tmux >/dev/null || { sudo apt-get update -qq && sudo apt-get install -y -qq tmux; }
+          tmux -V
+          git --version
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87
+        with:
+          components: clippy
+
+      - name: Cache cargo registry and build
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
+        with:
+          workspaces: services/agentbox-sessions
+
+      - name: Clippy
+        run: cargo clippy --locked --manifest-path services/agentbox-sessions/Cargo.toml --all-targets -- -D warnings
+
+      # Unit tests, plus tests/plane.rs: ownership marker, reconcile decisions,
+      # the dirty-worktree gate on a real built worktree, restart backoff, the
+      # SO_PEERCRED ACL and send. None of it touches the default tmux server.
+      - name: Test
+        run: cargo test --locked --manifest-path services/agentbox-sessions/Cargo.toml
+
+      - name: Build the binary for the parity test
+        run: cargo build --locked --manifest-path services/agentbox-sessions/Cargo.toml
+
+      # Compares the daemon's resolution of every seed with the Node contract
+      # test, field by field. Without the binary that case skips, so build it first.
+      - name: Node/Rust launch-contract parity
+        env:
+          AGENTBOX_SESSIONS_BIN: ${{ github.workspace }}/services/agentbox-sessions/target/debug/agentbox-sessions
+        run: node --test tests/cli/session-launch-contract.test.mjs

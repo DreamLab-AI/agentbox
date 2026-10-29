@@ -1796,8 +1796,15 @@
         # from the one role table so the supervisor block cannot drift from it.
         agentboxSessionsPkg = import ./lib/agentbox-sessions.nix { inherit lib; pkgs = rustPkgs; };
         sessionsGroupGid =
-          (lib.findFirst (g: g.name == "ab-sessions") { gid = 0; }
-            (builtins.fromJSON (builtins.readFile ./config/role-accounts.json)).groups).gid;
+          let
+            g = lib.findFirst (g: g.name == "ab-sessions") null
+              (builtins.fromJSON (builtins.readFile ./config/role-accounts.json)).groups;
+          in
+          # Fail at eval: a fallback gid would chgrp the socket to root's group and
+          # the daemon would only fail at runtime, long after the image was built.
+          if g == null
+          then throw "config/role-accounts.json declares no ab-sessions group (ADR-2153)"
+          else g.gid;
         # ---------------------------------------------------------------------------
         # Knowledge-tool binaries — the Rust replacements for the skill Python
         # retired by the 2026-09-02 Python-legacy audit (sections 2b/2c).
