@@ -178,29 +178,43 @@ async function ask(endpoint, state, questions, { fetchImpl, timeoutMs = DEFAULT_
   const body = JSON.stringify({ state, model: endpoint.model || DEFAULT_MODEL, questions });
   for (let attempt = 0; ; attempt++) {
     const ctl = new AbortController();
-    const timer = setTimeout(() => ctl.abort(), timeoutMs);
+    let timer;
+    const deadline = new Promise((_, reject) => {
+      timer = setTimeout(() => {
+        ctl.abort();
+        const error = new Error('deadline'); error.name = 'AbortError'; reject(error);
+      }, timeoutMs);
+    });
     const t0 = Date.now();
-    let res;
     try {
-      res = await doFetch(endpoint.url, { method: 'POST', headers: endpoint.headers || {}, body, signal: ctl.signal });
+      const res = await Promise.race([doFetch(endpoint.url, {
+        method: 'POST', headers: endpoint.headers || {}, body, signal: ctl.signal, redirect: 'error',
+      }), deadline]);
+      const status = res && typeof res.status === 'number' ? res.status : 0;
+      if (status === 429 || status === 529) {
+        if (attempt < retries) {
+          clearTimeout(timer);
+          await new Promise((r) => setTimeout(r, 750 * (attempt + 1)));
+          continue;
+        }
+        return { ok: false, reason: `http-${status}`, ms: Date.now() - t0 };
+      }
+      if (!res || !res.ok) return { ok: false, reason: `http-${status}`, ms: Date.now() - t0 };
+      let j;
+      try { j = await Promise.race([res.json(), deadline]); }
+      catch (e) {
+        return { ok: false, reason: e && e.name === 'AbortError' ? 'timeout' : 'malformed', ms: Date.now() - t0 };
+      }
+      const answers = j && j.answers;
+      const ms = Date.now() - t0;
+      if (!answers || typeof answers !== 'object' || Array.isArray(answers)) return { ok: false, reason: 'malformed', ms };
+      return { ok: true, answers, model: typeof j.model === 'string' ? j.model : endpoint.model, usage: j.usage || {}, ms };
     } catch (e) {
-      clearTimeout(timer);
       if (attempt < retries) continue;
       return { ok: false, reason: e && e.name === 'AbortError' ? 'timeout' : 'network', ms: Date.now() - t0 };
+    } finally {
+      clearTimeout(timer);
     }
-    clearTimeout(timer);
-    const ms = Date.now() - t0;
-    const status = res && typeof res.status === 'number' ? res.status : 0;
-    if (status === 429 || status === 529) {
-      if (attempt < retries) { await new Promise((r) => setTimeout(r, 750 * (attempt + 1))); continue; }
-      return { ok: false, reason: `http-${status}`, ms };
-    }
-    if (!res || !res.ok) return { ok: false, reason: `http-${status}`, ms };
-    let j;
-    try { j = await res.json(); } catch { return { ok: false, reason: 'malformed', ms }; }
-    const answers = j && j.answers;
-    if (!answers || typeof answers !== 'object' || Array.isArray(answers)) return { ok: false, reason: 'malformed', ms };
-    return { ok: true, answers, model: typeof j.model === 'string' ? j.model : endpoint.model, usage: j.usage || {}, ms };
   }
 }
 

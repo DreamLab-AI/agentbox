@@ -102,3 +102,20 @@ test('the fallback log line names the reason and nothing else', () => {
   delete env.AGENTBOX_SYSTEM_ONE_LOCAL_ENDPOINT
   assert.equal(j.resolveEndpoint(env, { localOnly: true }).reason, 'local-only')
  })
+
+test('the deadline covers stalled response bodies, even with a transport that ignores abort', async () => {
+  const result = await Promise.race([
+    j.ask(EP, {}, {}, { timeoutMs: 20, fetchImpl: async () => ({ ok: true, status: 200, json: () => new Promise(() => {}) }) }),
+    new Promise(resolve => setTimeout(() => resolve({ reason: 'deadline-not-enforced' }), 150)),
+  ]);
+  assert.equal(result.reason, 'timeout');
+});
+
+test('typed decisions refuse HTTP redirects', async () => {
+  let redirect;
+  await j.ask(EP, {}, {}, { fetchImpl: async (_url, init) => {
+    redirect = init.redirect;
+    return { ok:true, status:200, json:async()=>({answers:{}}) };
+  }});
+  assert.equal(redirect, 'error');
+});
