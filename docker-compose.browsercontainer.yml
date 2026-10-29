@@ -57,7 +57,7 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
-      # Shared exchange volume — mermaid renders here for agentbox/gui-tools pickup.
+      # Shared exchange volume — agentbox/gui-tools hand-offs (Mermaid no longer renders here, ADR-2154).
       - gui-tools-exchange:/home/devuser/exchange
       # Chrome profile (W9): Podkey's chrome.storage.local (encrypted key vault,
       # public key, consent grants) must survive container recreation.

@@ -7,15 +7,12 @@ sidecar; its lifecycle remains explicit. See [incremental builds](../docs/develo
 Agentbox image SBOM/VEX reports also exclude this separately built sidecar;
 assess its own image digest separately. [Evidence scope](../docs/developer/vex.md).
 
-Mermaid rendering is also hosted here: Agentbox's `mmdc` command posts to
-`/render-mermaid` and receives output through `gui-tools-exchange`. This uses
-the sidecar's **separate headless system Chromium**, not the persistent GPU
-Chrome Beta/CDP profile. Updating or building this sidecar does not require
-another Chromium in Agentbox. Keep `browsercontainer-profile` intact and do
-not restart the sidecar merely to prepare an Agentbox image (ADR-2152).
-Older sidecars can still handle basic renders, but the client rejects custom
-viewport, background and JSON config options unless the renderer responds with
-protocol version 2, so an old sidecar cannot silently ignore them.
+Mermaid is no longer rendered here: Agentbox renders it in-process with Pele
+(ADR-2154, superseding ADR-2152), and this sidecar carries neither
+`@mermaid-js/mermaid-cli` nor a `/render-mermaid` endpoint. The `gui-tools-exchange`
+volume stays for other hand-offs. The removal takes effect at your next rebuild of
+this sidecar; an already-running older image still serves `/render-mermaid` until then,
+and nothing in Agentbox calls it.
 
 ## Architecture
 

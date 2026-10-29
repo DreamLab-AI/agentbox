@@ -63,17 +63,12 @@ RUN mkdir -p /opt/browsercontainer /tmp/xdg-runtime /tmp/chromium-crashes /tmp/b
 # Pin the connector; the runtime uses Chrome Beta from AUR.
 RUN npm install -g chrome-devtools-mcp@1.12.0 && rm -rf /root/.npm
 
-# Mermaid diagram rendering — mmdc uses puppeteer which needs Chrome.
-# PUPPETEER_SKIP_DOWNLOAD avoids a second Chrome download (system chromium is already installed).
-RUN PUPPETEER_SKIP_DOWNLOAD=true npm install -g @mermaid-js/mermaid-cli@11.17.0 && rm -rf /root/.npm
-
 COPY --chown=devuser:devuser package.json /opt/browsercontainer/package.json
 COPY --chown=devuser:devuser package-lock.json /opt/browsercontainer/package-lock.json
 RUN cd /opt/browsercontainer && npm ci --omit=dev && chown -R devuser:devuser node_modules
 COPY --chown=devuser:devuser server.js /opt/browsercontainer/server.js
 COPY --chown=devuser:devuser launch-chromium.sh /opt/browsercontainer/launch-chromium.sh
 COPY --chown=devuser:devuser cdp-diagnose.js /opt/browsercontainer/cdp-diagnose.js
-COPY --chown=devuser:devuser puppeteer-mermaid.json /opt/browsercontainer/puppeteer-mermaid.json
 COPY --chown=devuser:devuser podkey-ctl.js /opt/browsercontainer/podkey-ctl.js
 
 # Podkey (W9, owner rule 2026-10-03): the published `podkey-extension` CI artefact

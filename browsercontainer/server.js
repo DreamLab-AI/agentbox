@@ -14,20 +14,15 @@
 'use strict';
 
 const http = require('http');
-const { spawn, execFile } = require('child_process');
+const { spawn } = require('child_process');
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
-const os = require('os');
 
 const log = (msg) => process.stderr.write(`[browsercontainer] ${msg}\n`);
 
 const PORT = parseInt(process.env.SIDECAR_PORT || '8931', 10);
 const CDP_PORT = parseInt(process.env.CDP_PORT || '9222', 10);
-const EXCHANGE_DIR = process.env.EXCHANGE_DIR || '/home/devuser/exchange';
-const MMDC_PUPPETEER_CONFIG = '/opt/browsercontainer/puppeteer-mermaid.json';
-const MMDC_FORMATS = new Set(['svg', 'png', 'pdf']);
-const MMDC_THEMES = new Set(['default', 'dark', 'forest', 'neutral']);
 
 // ---------------------------------------------------------------------------
 // Wait for Chrome CDP to be reachable before accepting sessions
@@ -139,83 +134,6 @@ class Session {
 }
 
 // ---------------------------------------------------------------------------
-// Mermaid rendering — mmdc (puppeteer + system chromium) → shared exchange dir
-// ---------------------------------------------------------------------------
-
-function renderMermaid(options = {}) {
-  return new Promise((resolve) => {
-    if (!options || typeof options !== 'object' || Array.isArray(options)) {
-      return resolve({ ok: false, error: 'render options must be an object' });
-    }
-    const { definition, format, theme, width = 800, height = 600,
-      background = 'white', config = null } = options;
-    if (typeof definition !== 'string' || !definition.trim()) {
-      return resolve({ ok: false, error: 'definition must be a non-empty string' });
-    }
-    if (definition.length > 1_000_000) {
-      return resolve({ ok: false, error: 'definition exceeds 1 MB' });
-    }
-    const fmt = MMDC_FORMATS.has(format) ? format : 'svg';
-    const thm = MMDC_THEMES.has(theme) ? theme : 'default';
-    if (![width, height].every(n => Number.isSafeInteger(n) && n >= 1 && n <= 6000)) {
-      return resolve({ ok: false, error: 'width and height must be integers from 1 to 6000' });
-    }
-    if (typeof background !== 'string' || !background || background.length > 64 || /[\r\n\0]/.test(background)) {
-      return resolve({ ok: false, error: 'invalid background colour' });
-    }
-    if (config !== null && (typeof config !== 'object' || Array.isArray(config))) {
-      return resolve({ ok: false, error: 'config must be a JSON object' });
-    }
-    const configText = config === null ? null : JSON.stringify(config);
-    if (configText && configText.length > 65536) {
-      return resolve({ ok: false, error: 'config exceeds 64 KB' });
-    }
-
-    const stamp = `${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
-    const inputPath = path.join(os.tmpdir(), `mermaid-${stamp}.mmd`);
-    const configPath = path.join(os.tmpdir(), `mermaid-${stamp}.json`);
-    const filename = `mermaid-${stamp}.${fmt}`;
-    const outputPath = path.join(EXCHANGE_DIR, filename);
-
-    const cleanup = () => {
-      for (const file of [inputPath, configPath]) {
-        try { fs.unlinkSync(file); } catch {}
-      }
-    };
-
-    try {
-      fs.mkdirSync(EXCHANGE_DIR, { recursive: true });
-      fs.writeFileSync(inputPath, definition, 'utf8');
-      if (configText) fs.writeFileSync(configPath, configText, 'utf8');
-    } catch (err) {
-      cleanup();
-      return resolve({ ok: false, error: `write failed: ${err.message}` });
-    }
-
-    const args = [
-      '-i', inputPath,
-      '-o', outputPath,
-      '-e', fmt,
-      '-t', thm,
-      '-w', String(width),
-      '-H', String(height),
-      '-b', background,
-      '--puppeteerConfigFile', MMDC_PUPPETEER_CONFIG,
-    ];
-    if (configText) args.push('-c', configPath);
-    execFile('mmdc', args, { timeout: 30000, env: process.env }, (err, _stdout, stderr) => {
-      cleanup();
-      if (err) {
-        try { fs.unlinkSync(outputPath); } catch {}
-        log(`mermaid render failed: ${err.message} ${stderr || ''}`.trim());
-        return resolve({ ok: false, error: (stderr && stderr.trim()) || err.message });
-      }
-      resolve({ ok: true, path: outputPath, filename, protocolVersion: 2 });
-    });
-  });
-}
-
-// ---------------------------------------------------------------------------
 // HTTP server
 // ---------------------------------------------------------------------------
 
@@ -264,36 +182,6 @@ async function main() {
           chrome: false,
           connector: 'chrome-devtools-mcp',
         }));
-      });
-      return;
-    }
-
-    if (url.pathname === '/render-mermaid' && req.method === 'POST') {
-      let body = '';
-      let tooLarge = false;
-      req.on('data', c => {
-        if (tooLarge) return;
-        body += c;
-        if (body.length > 1_200_000) {
-          tooLarge = true;
-          body = '';
-          res.writeHead(413, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ ok: false, error: 'render request exceeds 1.2 MB' }));
-        }
-      });
-      req.on('end', async () => {
-        if (tooLarge) return;
-        let parsed;
-        try {
-          parsed = JSON.parse(body || '{}');
-        } catch {
-          res.writeHead(400, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ ok: false, error: 'invalid JSON body' }));
-          return;
-        }
-        const result = await renderMermaid(parsed);
-        res.writeHead(result.ok ? 200 : 500, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify(result));
       });
       return;
     }
@@ -371,4 +259,3 @@ if (require.main === module) {
   });
 }
 
-module.exports = { renderMermaid };
