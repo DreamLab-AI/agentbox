@@ -848,7 +848,7 @@ model = "jev-latest"
 timeout_ms = 4000                # per-request deadline, 250-8000 (hook budget is 10 s); past it the checkpoint is skipped
 done_check = true                # checkpoint 3 of ADR-2134: done claimed without a verifying run
 done_threshold = 0.9             # Jev Score at or above which the done advisory is injected (0-1)
-claim_check = false              # AB-08-S1-01: also ask whether the specific claim is covered by a successful verifying call (same request); only ever adds the done line
+claim_check = true              # AB-08-S1-01: also ask whether the specific claim is covered by a successful verifying call (same request); only ever adds the done line
 claim_threshold = 0.9            # probability at or above which an uncovered claim injects the done line (0-1); unfitted
 repeat_check = true              # checkpoint 2: same failure fingerprint recurring (local, no egress)
 repeat_count = 2                 # occurrences (>= 2) that trigger the advisory, once per fingerprint
@@ -888,6 +888,7 @@ usd_per_mtok_in = 0.042          # input price used for the /jev-checkpoints cos
 #                   cloud backend with no key_env), E081 (local backend with an
 #                   off-LAN url), W076 (active vendor).
 enabled = true
+local_backend = "laya"           # keyless LAN route for private-data consumers
 backend = "subq"                 # typesafe | subq | laya | kev | any [system_one.backends.<name>]
 bind = "127.0.0.1:8094"          # loopback only; consumers run in this container
 log = "/home/devuser/.local/share/system-one-proxy/requests.jsonl"  # one line per request: backend, status, ms, tokens — never content
@@ -895,6 +896,29 @@ log = "/home/devuser/.local/share/system-one-proxy/requests.jsonl"  # one line p
 # Each backend: url (its /v1/systemone), model, key_env (name of the env var
 # holding its key; empty = keyless), local (DECLARED locality, never inferred
 # from the URL), timeout_ms, usd_per_mtok_in (for the consumers' cost lines).
+[system_one.consumers]
+# Boot-projected to supervised services AND interactive shells. Rebuild to bake.
+# Outcome-changing thresholds remain unset: advisory/shadow guards still apply.
+failure_taxonomy = true
+manifest_plan = true
+voice_intent = true
+approval_review = true
+consult_advice = true
+memory_rerank = true
+trajectory_classify = true
+skill_intent = true
+skill_verify = true
+ontology_relevance = true
+ontology_rerank = true
+ontology_proposals = true
+headroom_evidence = true
+governance_rubric = true
+visionflow_advisories = true
+website_advisories = true
+solid_pod_advisories = true
+ontomark_suggestions = true
+vault_rank = true
+
 [system_one.backends.typesafe]
 url = "https://api.typesafe.ai/v1/systemone"
 model = "jev-latest"
@@ -2608,7 +2632,7 @@ max_repos_per_night    = 5
 # AB-23-S1-01 Jev option (REBUILD-class): screen each night's hypothesis against
 # the repo's declared disciplines through the [system_one] proxy. Off by default;
 # needs [system_one].enabled. Off or unavailable = today's behaviour exactly.
-jev_triage             = false
+jev_triage             = true
 # Standby pruning: a repo whose last N ledger rows are ALL INCONCLUSIVE is
 # skipped in nightly mode (REJECT counts as learning and resets the streak;
 # revive via --target or a harness fix that yields a decisive verdict).

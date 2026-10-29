@@ -337,3 +337,9 @@ The optional Isaac Sim sidecar adds headless physics and an internal typed job
 API, sharing motion results through the GUI exchange volume. It has its own
 pinned image, one GPU UUID and executed-fixture health evidence. See
 [Isaac operations](isaac-sim.md) and ADR-2149.
+
+
+System One consumer activation is staged under ADR-2155: explicit manifest
+switches reach services before launch, with a separate keyless local route for
+private data. See `docs/reference/system-one-activation.md` in the Agentbox
+repository for rebuild requirements and the remaining deployment prerequisites.

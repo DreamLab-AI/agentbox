@@ -70,6 +70,6 @@ test('the register wires the Noul into the SAME done request, behind the option,
   assert.equal(plugin.userConfig.claimCheck.default, false)
   assert.equal(plugin.userConfig.claimThreshold.default, 0.9)
   const toml = fs.readFileSync(path.join(root, 'agentbox.toml'), 'utf8')
-  assert.match(toml, /^claim_check = false\b/m)
+  assert.match(toml, /^claim_check = true\b/m)
   assert.match(fs.readFileSync(path.join(root, 'config/entrypoint-unified.sh'), 'utf8'), /"claimCheck=\$\(_ab_toml_val features\.jev_checkpoints claim_check\)"/)
 })

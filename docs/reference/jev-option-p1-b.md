@@ -1,6 +1,6 @@
 # Jev option — P1 batch B (agentbox)
 
-Opt-in typed decisions (System One: Choice / Score / Noul) beside existing behaviour. **Every flag is off by default. With a flag off, no request is built and nothing leaves the process.** Every item falls back to its pre-change output on: flag off, no endpoint, transport error, timeout, any non-2xx, an unparsable body, a missing answer id, a Choice key outside the offered set, or confidence below the configured threshold. Fallback never throws and logs one line with the reason (`flag-off`, `no-endpoint`, `local-only`, `timeout`, `network`, `http-<code>`, `malformed`, `low-confidence`) and no request content.
+Opt-in typed decisions (System One: Choice / Score / Noul) beside existing behaviour. **Library flags remain off when unset; the shipped manifest now explicitly opts in under ADR-2155. With a flag off, no request is built and nothing leaves the process.** Every item falls back to its pre-change output on: flag off, no endpoint, transport error, timeout, any non-2xx, an unparsable body, a missing answer id, a Choice key outside the offered set, or confidence below the configured threshold. Fallback never throws and logs one line with the reason (`flag-off`, `no-endpoint`, `local-only`, `timeout`, `network`, `http-<code>`, `malformed`, `low-confidence`) and no request content.
 
 Each item is a proposed research candidate; **no measured uplift is claimed.** Wiring and fallback tests do not show uplift.
 
@@ -29,7 +29,7 @@ Defaults accept nothing wherever a decision would change an outcome: the AB-23 d
 
 ## Enabling the dream-engine option
 
-`[program:dream-engine]` (`flake.nix` ~2892) passes a fixed `environment=` and inherits the rest from the entrypoint launcher. `AGENTBOX_JEV_DREAM_TRIAGE`, `AGENTBOX_SYSTEM_ONE_PROXY` and the endpoint names (`AGENTBOX_SYSTEM_ONE_ENDPOINT` or `AGENTBOX_SKILL_ROUTE_API`, which `jev_triage.rs` accepts like the shared adapter) must reach that process; wiring them in is a rebuild-class change and is deliberately not made here.
+`[program:dream-engine]` (`flake.nix` ~2892) passes a fixed `environment=` and inherits the rest from the entrypoint launcher. `AGENTBOX_JEV_DREAM_TRIAGE`, `AGENTBOX_SYSTEM_ONE_PROXY` and the endpoint names (`AGENTBOX_SYSTEM_ONE_ENDPOINT` or `AGENTBOX_SKILL_ROUTE_API`, which `jev_triage.rs` accepts like the shared adapter) must reach that process; the shipped manifest enables dream_machine.jev_triage. The pre-supervisor projection now supplies the private route and local-only flag (ADR-2155). A rebuild is required.
 
 ## ES-05 — consuming the shared rubric from the forum and VisionClaw
 

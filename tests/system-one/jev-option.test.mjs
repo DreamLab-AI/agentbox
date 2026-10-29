@@ -90,3 +90,32 @@ test('the fallback log line names the reason and nothing else', () => {
   assert.equal(line, '[jev-option] ab-xx fallback (timeout)')
   assert.deepEqual(lines, [line])
 })
+
+ test('private route is separate from the cloud vendor and never receives its key', () => {
+  const env = { AGENTBOX_SYSTEM_ONE_LOCAL_ENDPOINT: 'http://systemone:8097/v1/systemone',
+    AGENTBOX_SYSTEM_ONE_LOCAL_MODEL: 'laya', AGENTBOX_SYSTEM_ONE_PROXY: '1',
+    AGENTBOX_SYSTEM_ONE_ENDPOINT: 'http://127.0.0.1:8094/v1/systemone', TYPESAFE_API_KEY: 'secret' }
+  const local = j.resolveEndpoint(env, { localOnly: true })
+  assert.equal(local.via, 'local'); assert.equal(local.local, true)
+  assert.equal(local.model, 'laya'); assert.equal(local.headers.Authorization, undefined)
+  assert.equal(j.resolveEndpoint(env).via, 'proxy')
+  delete env.AGENTBOX_SYSTEM_ONE_LOCAL_ENDPOINT
+  assert.equal(j.resolveEndpoint(env, { localOnly: true }).reason, 'local-only')
+ })
+
+test('the deadline covers stalled response bodies, even with a transport that ignores abort', async () => {
+  const result = await Promise.race([
+    j.ask(EP, {}, {}, { timeoutMs: 20, fetchImpl: async () => ({ ok: true, status: 200, json: () => new Promise(() => {}) }) }),
+    new Promise(resolve => setTimeout(() => resolve({ reason: 'deadline-not-enforced' }), 150)),
+  ]);
+  assert.equal(result.reason, 'timeout');
+});
+
+test('typed decisions refuse HTTP redirects', async () => {
+  let redirect;
+  await j.ask(EP, {}, {}, { fetchImpl: async (_url, init) => {
+    redirect = init.redirect;
+    return { ok:true, status:200, json:async()=>({answers:{}}) };
+  }});
+  assert.equal(redirect, 'error');
+});

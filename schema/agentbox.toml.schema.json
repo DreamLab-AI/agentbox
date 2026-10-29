@@ -3149,24 +3149,169 @@
       "additionalProperties": false,
       "description": "ADR-2139: the System One judge as a VENDOR SLOT. One loopback proxy ([program:system-one-proxy], crates/system-one/system-one-proxy) fronts every typed-decision consumer and forwards to the backend named here; it owns the vendor keys. Same-class backend switches are LIVE (./agentbox.sh systemone backend <name>); a cloud<->local change is BOOT-class. enabled=false => nothing projected (ADR-2020).",
       "properties": {
-        "enabled": { "type": "boolean", "description": "Project the proxy as every consumer's endpoint and bake [program:system-one-proxy] (REBUILD for the program, BOOT for the projection)." },
-        "backend": { "type": "string", "minLength": 1, "description": "Name of the active backend; must be a key of [system_one.backends]." },
-        "bind": { "type": "string", "pattern": "^(127\\.[0-9.]+|localhost|\\[::1\\]):[0-9]{2,5}$", "description": "Proxy listen address. Loopback only: every local process could otherwise spend the vendor keys." },
-        "log": { "type": "string", "description": "JSONL request log (backend, status, ms, tokens; never content). Empty disables." },
+        "enabled": {
+          "type": "boolean",
+          "description": "Project the proxy as every consumer's endpoint and bake [program:system-one-proxy] (REBUILD for the program, BOOT for the projection)."
+        },
+        "backend": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Name of the active backend; must be a key of [system_one.backends]."
+        },
+        "bind": {
+          "type": "string",
+          "pattern": "^(127\\.[0-9.]+|localhost|\\[::1\\]):[0-9]{2,5}$",
+          "description": "Proxy listen address. Loopback only: every local process could otherwise spend the vendor keys."
+        },
+        "log": {
+          "type": "string",
+          "description": "JSONL request log (backend, status, ms, tokens; never content). Empty disables."
+        },
         "backends": {
           "type": "object",
           "description": "Named backends. Shipped: typesafe, subq, laya (the ADR-2094 facade), kev (a local Kev server).",
           "additionalProperties": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["url", "model", "local"],
+            "required": [
+              "url",
+              "model",
+              "local"
+            ],
             "properties": {
-              "url": { "type": "string", "format": "uri", "description": "The backend's POST /v1/systemone. https for a cloud backend; LAN/loopback for local = true." },
-              "model": { "type": "string", "description": "Model id the proxy writes into every forwarded request (consumers' own model names are overwritten)." },
-              "key_env": { "type": "string", "description": "NAME of the env var holding the backend's key (or <NAME>_FILE for a path). Empty = keyless. Must be empty for local = true; must be set for local = false. The proxy sends a key only to the host hard-coded for that name (typesafe.ai, subq.ai)." },
-              "local": { "type": "boolean", "description": "DECLARED locality (ADR-2094 \u00a75): true lets email-tainted sessions be judged here and is never inferred from the URL." },
-              "timeout_ms": { "type": "integer", "minimum": 500, "maximum": 120000, "description": "Upstream deadline for one request. Keep it under the consumers' own deadlines (router 4000 ms)." },
-              "usd_per_mtok_in": { "type": "number", "minimum": 0, "description": "Input price per million tokens, for the consumers' cost lines and /v1/backend's estimate." }
+              "url": {
+                "type": "string",
+                "format": "uri",
+                "description": "The backend's POST /v1/systemone. https for a cloud backend; LAN/loopback for local = true."
+              },
+              "model": {
+                "type": "string",
+                "description": "Model id the proxy writes into every forwarded request (consumers' own model names are overwritten)."
+              },
+              "key_env": {
+                "type": "string",
+                "description": "NAME of the env var holding the backend's key (or <NAME>_FILE for a path). Empty = keyless. Must be empty for local = true; must be set for local = false. The proxy sends a key only to the host hard-coded for that name (typesafe.ai, subq.ai)."
+              },
+              "local": {
+                "type": "boolean",
+                "description": "DECLARED locality (ADR-2094 \u00a75): true lets email-tainted sessions be judged here and is never inferred from the URL."
+              },
+              "timeout_ms": {
+                "type": "integer",
+                "minimum": 500,
+                "maximum": 120000,
+                "description": "Upstream deadline for one request. Keep it under the consumers' own deadlines (router 4000 ms)."
+              },
+              "usd_per_mtok_in": {
+                "type": "number",
+                "minimum": 0,
+                "description": "Input price per million tokens, for the consumers' cost lines and /v1/backend's estimate."
+              }
+            }
+          }
+        },
+        "local_backend": {
+          "type": "string",
+          "description": "Declared keyless LAN backend for private typed-decision consumers; separate from active vendor."
+        },
+        "consumers": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "failure_taxonomy": {
+              "type": "boolean",
+              "default": false,
+              "description": "Enable failure taxonomy through the boot projection; existing locality, authority and confidence guards still apply."
+            },
+            "manifest_plan": {
+              "type": "boolean",
+              "default": false,
+              "description": "Enable manifest plan through the boot projection; existing locality, authority and confidence guards still apply."
+            },
+            "voice_intent": {
+              "type": "boolean",
+              "default": false,
+              "description": "Enable voice intent through the boot projection; existing locality, authority and confidence guards still apply."
+            },
+            "approval_review": {
+              "type": "boolean",
+              "default": false,
+              "description": "Enable approval review through the boot projection; existing locality, authority and confidence guards still apply."
+            },
+            "consult_advice": {
+              "type": "boolean",
+              "default": false,
+              "description": "Enable consult advice through the boot projection; existing locality, authority and confidence guards still apply."
+            },
+            "memory_rerank": {
+              "type": "boolean",
+              "default": false,
+              "description": "Enable memory rerank through the boot projection; existing locality, authority and confidence guards still apply."
+            },
+            "trajectory_classify": {
+              "type": "boolean",
+              "default": false,
+              "description": "Enable trajectory classify through the boot projection; existing locality, authority and confidence guards still apply."
+            },
+            "skill_intent": {
+              "type": "boolean",
+              "default": false,
+              "description": "Enable skill intent through the boot projection; existing locality, authority and confidence guards still apply."
+            },
+            "skill_verify": {
+              "type": "boolean",
+              "default": false,
+              "description": "Enable skill verify through the boot projection; existing locality, authority and confidence guards still apply."
+            },
+            "ontology_relevance": {
+              "type": "boolean",
+              "default": false,
+              "description": "Enable ontology relevance through the boot projection; existing locality, authority and confidence guards still apply."
+            },
+            "ontology_rerank": {
+              "type": "boolean",
+              "default": false,
+              "description": "Enable ontology rerank through the boot projection; existing locality, authority and confidence guards still apply."
+            },
+            "ontology_proposals": {
+              "type": "boolean",
+              "default": false,
+              "description": "Enable ontology proposals through the boot projection; existing locality, authority and confidence guards still apply."
+            },
+            "headroom_evidence": {
+              "type": "boolean",
+              "default": false,
+              "description": "Enable headroom evidence through the boot projection; existing locality, authority and confidence guards still apply."
+            },
+            "governance_rubric": {
+              "type": "boolean",
+              "default": false,
+              "description": "Enable governance rubric through the boot projection; existing locality, authority and confidence guards still apply."
+            },
+            "visionflow_advisories": {
+              "type": "boolean",
+              "default": false,
+              "description": "Enable visionflow advisories through the boot projection; existing locality, authority and confidence guards still apply."
+            },
+            "website_advisories": {
+              "type": "boolean",
+              "default": false,
+              "description": "Enable website advisories through the boot projection; existing locality, authority and confidence guards still apply."
+            },
+            "solid_pod_advisories": {
+              "type": "boolean",
+              "default": false,
+              "description": "Enable solid pod advisories through the boot projection; existing locality, authority and confidence guards still apply."
+            },
+            "ontomark_suggestions": {
+              "type": "boolean",
+              "default": false,
+              "description": "Enable ontomark suggestions through the boot projection; existing locality, authority and confidence guards still apply."
+            },
+            "vault_rank": {
+              "type": "boolean",
+              "default": false,
+              "description": "Enable vault rank through the boot projection; existing locality, authority and confidence guards still apply."
             }
           }
         }

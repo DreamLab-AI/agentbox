@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: d1dd896f4a790762b150d81a94a03b268b04c543
+verified_commit: ef768e785c7b89a6d31bba7e9f94a22055d96a19
 verified_paths: [skills/sealmap-review/scripts/review-cadence.cjs, skills/sealmap-review/run-cron.sh, skills/sealmap-review/crontab, schema/agentbox.toml.schema.json]
 owner: jjohare
 review_trigger: the first month of real Gemini spend (compare ledger cost with the estimate); a change to Gemini or Z.AI pricing; a GLM model change behind [consultants.zai]; a second corpus joining repos
@@ -108,3 +108,6 @@ Re-verified 2026-10-20 at `653b8b6387470eaa3be6c20e6dbd2208e538a985`: reviewed t
 ### Re-verification — 2026-10-29 (linked-worktree skip)
 
 `21769a881..d1dd896f4`: `review-cadence.cjs` gains `isLinkedWorktree()`, and discovery skips a directory whose `.git` file points into `…/worktrees/…` (a second checkout of a repo already reviewed; one run had reviewed and written into an unfinished task branch). Submodules (`.git` file into `…/modules/…`) are still found. The discovery rule in the Decision now reads "skipping … and linked git worktrees". Everything else in the record stands. Re-verified by `node --test` in `skills/sealmap-review/scripts` (a new case covers a linked worktree and a submodule) and `git diff 21769a881..d1dd896f4 -- skills/sealmap-review/scripts/review-cadence.cjs`.
+
+
+Re-verified 2026-10-29 at `00039efb1e4a70402df86ad19cf76894fe3b9a8f` for ADR-2155. Reviewed the typed-decision activation diff against this record: the changed manifest, bootstrap, catalogue or source-pin hunks do not alter its governing boundary. Existing status axes and runtime evidence limits are retained. No image or service activation is claimed.

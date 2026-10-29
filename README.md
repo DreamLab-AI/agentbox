@@ -164,3 +164,9 @@ Optional headless physics runs in the separate Isaac Sim sidecar, with a single
 GPU UUID, an internal job API and motion export to Blender. Its build and
 physics verification are independent of Agentbox readiness; see
 [Isaac operations](docs/developer/isaac-sim.md).
+
+
+System One consumer activation is staged under ADR-2155: explicit manifest
+switches reach services before launch, with a separate keyless local route for
+private data. See `docs/reference/system-one-activation.md` in the Agentbox
+repository for rebuild requirements and the remaining deployment prerequisites.

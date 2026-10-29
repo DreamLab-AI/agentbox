@@ -148,7 +148,15 @@ impl Config {
         let enabled = truthy(get(FLAG));
         let local_only = truthy(get("AGENTBOX_JEV_DREAM_TRIAGE_LOCAL_ONLY"));
         let declared_local = get("AGENTBOX_SYSTEM_ONE_BACKEND_LOCAL").as_deref() == Some("1");
-        let endpoint = if get("AGENTBOX_SYSTEM_ONE_PROXY").as_deref() == Some("1") {
+        let private_url = non_empty(get("AGENTBOX_SYSTEM_ONE_LOCAL_ENDPOINT"));
+        let endpoint = if local_only && private_url.is_some() {
+            Ok(Endpoint {
+                url: private_url.expect("checked above"),
+                model: non_empty(get("AGENTBOX_SYSTEM_ONE_LOCAL_MODEL")).unwrap_or_else(|| DEFAULT_MODEL.into()),
+                bearer: None,
+                local: true,
+            })
+        } else if get("AGENTBOX_SYSTEM_ONE_PROXY").as_deref() == Some("1") {
             // The entrypoint exports the proxy URL under both names (system_one.rs); the shared JS
             // adapter reads either, so this must too or it would skip the proxy and its locality switch.
             match non_empty(get("AGENTBOX_SYSTEM_ONE_ENDPOINT"))
@@ -266,6 +274,7 @@ impl Transport for ReqwestTransport {
         Box::pin(async move {
             let client = reqwest::Client::builder()
                 .timeout(TIMEOUT)
+                .redirect(reqwest::redirect::Policy::none())
                 .build()
                 .map_err(|_| TransportError::Network)?;
             let mut r = client
@@ -634,6 +643,28 @@ mod tests {
     }
 
     // ---- configuration ----
+
+    #[tokio::test]
+    async fn typed_decision_transport_does_not_follow_redirects() {
+        use std::io::{Read, Write};
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let addr = listener.local_addr().unwrap();
+        let server = std::thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            stream.set_read_timeout(Some(std::time::Duration::from_secs(2))).unwrap();
+            let mut buf = [0; 4096];
+            let _ = stream.read(&mut buf).unwrap();
+            stream.write_all(b"HTTP/1.1 307 Temporary Redirect\r\nLocation: http://127.0.0.1:1/private\r\nContent-Length: 0\r\nConnection: close\r\n\r\n").unwrap();
+        });
+        let request = HttpRequest {
+            url: format!("http://{addr}/v1/systemone"),
+            bearer: None,
+            body: "{}".into(),
+        };
+        let (status, _) = ReqwestTransport.post(&request).await.unwrap();
+        assert_eq!(status, 307);
+        server.join().unwrap();
+    }
 
     #[test]
     fn off_unless_explicitly_opted_in() {

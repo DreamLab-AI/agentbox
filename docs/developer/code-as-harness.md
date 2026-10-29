@@ -252,3 +252,9 @@ at `isaac-sim:9890`. The `isaac-sim` skill stages inputs, submits idempotently a
 waits on durable receipts; verified motion imports into Blender. See
 [Isaac operations](isaac-sim.md). No simulator capability is inferred from a
 healthy control-plane process.
+
+
+System One consumer activation is staged under ADR-2155: explicit manifest
+switches reach services before launch, with a separate keyless local route for
+private data. See `docs/reference/system-one-activation.md` in the Agentbox
+repository for rebuild requirements and the remaining deployment prerequisites.

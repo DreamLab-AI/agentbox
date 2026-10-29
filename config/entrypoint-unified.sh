@@ -1283,6 +1283,14 @@ if [ "${AGENTBOX_TAB0_BRIDGE_SUPERVISED:-0}" = "1" ] && [ -z "${BRIDGE_TOKEN:-}"
   export BRIDGE_TOKEN
 fi
 
+# Project the typed-decision environment BEFORE supervisord starts. Stage B alone
+# cannot change the environment of its sibling services (management API/MCP/cron).
+if command -v agentbox-manifest >/dev/null 2>&1; then
+  _SO_SERVICE_EXPORTS="$(agentbox-manifest system-one-project \
+    --manifest "${AGENTBOX_CONFIG:-/etc/agentbox.toml}" --format shell)"
+  [ -z "$_SO_SERVICE_EXPORTS" ] || eval "$_SO_SERVICE_EXPORTS"
+fi
+
 # Custody W1 (ADR-2122): pick the supervisor config. Flag off: today's
 # /etc/supervisord.conf, unchanged. Flag on: deliver every role's secrets into
 # /run/secrets/<role>/ (0500 dir, 0400 files, owned by the role), unset the
@@ -3904,8 +3912,7 @@ if [ "\$(id -u)" != 0 ] && [ -d "/home/devuser/workspace/.cargo/bin" ]; then
   esac
 fi
 EOF
-mkdir -p "/home/devuser/workspace/.cargo" "/home/devuser/workspace/.tmp" 2>/dev/null || true
-chown devuser:devuser "/home/devuser/workspace/.cargo" "/home/devuser/workspace/.tmp" 2>/dev/null || true
+run_as_devuser mkdir -p "/home/devuser/workspace/.cargo" "/home/devuser/workspace/.tmp" 2>/dev/null || true
 # ADR-2029 D4 follow-up: workspace/.cargo/bin sits AHEAD of the image on PATH and
 # outlives rebuilds, but a cargo-installed binary is linked against the image's
 # /nix/store glibc loader. Once a rebuild collects that loader the binary fails
@@ -3934,12 +3941,17 @@ _ab_quarantine_stale_cargo_bins() {
 _ab_quarantine_stale_cargo_bins
 # Cargo registry credentials — write credentials.toml if CRATES_TOKEN is set.
 if [ -n "${CRATES_TOKEN:-}" ]; then
-  cat > "/home/devuser/workspace/.cargo/credentials.toml" <<CRATESEOF
+  # Drop privilege before opening any workspace path. Atomic replacement does
+  # not follow a planted credentials.toml symlink; the token travels on stdin.
+  run_as_devuser sh -c '
+    umask 077
+    credential_tmp=$(mktemp /home/devuser/workspace/.cargo/.credentials.XXXXXX) || exit 1
+    trap "rm -f -- \"$credential_tmp\"" EXIT
+    cat > "$credential_tmp" && mv -T -- "$credential_tmp" /home/devuser/workspace/.cargo/credentials.toml
+  ' <<CRATESEOF
 [registry]
 token = "${CRATES_TOKEN}"
 CRATESEOF
-  chmod 600 "/home/devuser/workspace/.cargo/credentials.toml"
-  chown devuser:devuser "/home/devuser/workspace/.cargo/credentials.toml"
   echo "[bootstrap] cargo registry credentials configured"
 fi
 # CUDA and LIBCLANG env vars are set by the flake (gpu-backend.nix) via

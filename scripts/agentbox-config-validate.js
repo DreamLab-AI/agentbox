@@ -1599,6 +1599,15 @@ function isLocalEndpoint(endpoint) {
     if (((manifest.features || {}).sovereign_system_one || {}).enabled) {
       errors.push({ code: 'E081', message: 'E081: [system_one].enabled and [features.sovereign_system_one].enabled are both true — one projector per consumer set; reach the façade through the proxy as the `laya` backend and set the façade gate false (ADR-2139)' });
     }
+    if (so.local_backend !== undefined) {
+      const local = backends[so.local_backend];
+      if (!local || local.local !== true || local.key_env || !isLocalEndpoint(local.url || '')) {
+        errors.push({ code: 'E080', message: 'E080: system_one.local_backend must name a keyless declared-local LAN backend' });
+      }
+    }
+    for (const [name, value] of Object.entries(so.consumers || {})) {
+      if (typeof value !== 'boolean') errors.push({ code: 'E080', message: `E080: system_one.consumers.${name} must be boolean` });
+    }
     const a = backends[active] || {};
     warnings.push({ code: 'W076', message: `W076: [system_one] active backend "${active}" (${a.model ?? '?'}, ${a.local === true ? 'LOCAL — email-tainted sessions are judged here' : `cloud via ${a.key_env || '<no key>'}`}) behind the loopback proxy at ${bind}; switch with ./agentbox.sh systemone backend <name> (ADR-2139)` });
   }
