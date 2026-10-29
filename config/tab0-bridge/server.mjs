@@ -131,7 +131,14 @@ async function resolveCoordinatorSession() {
   } catch { coordinatorReady = false; }
 }
 async function sessionSend(text) {
-  await SESSION_CLIENT.call({ op: 'send', slug: COORDINATOR, text });
+  try {
+    await SESSION_CLIENT.call({ op: 'send', slug: COORDINATOR, text });
+  } catch (err) {
+    // The meta prompt stops advertising session-control.cjs (which has no tmux
+    // fallback) until the probe sees the coordinator again.
+    coordinatorReady = false;
+    throw err;
+  }
 }
 
 // ---------------------------------------------------------------- injection seam
@@ -590,7 +597,7 @@ const server = http.createServer(async (req, res) => {
   try {
     if (path === '/health') {
       let tabCount = 0; try { tabCount = listTabs().length; } catch { /* tmux down */ }
-      return json(res, 200, { ok: true, backend: 'claude-cli', model: MODEL, tabs: tabCount, turns: turns.length });
+      return json(res, 200, { ok: true, backend: 'claude-cli', model: MODEL, tabs: tabCount, turns: turns.length, coordinator: coordinatorReady });
     }
     // Global auth gate (ADR-044 finding 1): everything past /health requires the
     // bearer, including the Unmute LLM contract (/v1/chat/completions, /v1/models).
@@ -681,13 +688,14 @@ wss.on('connection', (ws) => {
 
 server.listen(PORT, BIND, () => {
   console.log(`tab0-bridge listening on ${BIND}:${PORT} (backend=claude-cli, model=${MODEL}, session=${TMUX_SESSION}, auth=${TOKEN ? 'token' : 'open'}, nip98=${NostrBridge ? `enabled (${NIP98_ALLOWED.size} keys)` : 'off'}, sessions=unix)`);
-  // Resolve and pin the session-plane coordinator session id (ADR-044 D2). Fail-open: if
-  // session-plane is not up yet, the injection seam falls back to tmux and the interval
-  // below picks the id up once the daemon is running.
+  // Probe whether the session plane has the coordinator (ADR-044 D2, ADR-2153). Fail-open:
+  // if the daemon is not up yet, the injection seam falls back to tmux and the interval
+  // below notices once it is running.
   resolveCoordinatorSession();
 });
 
-// Re-resolve while unpinned so the id is acquired if session-plane starts after the
-// bridge; stops once pinned (a 404 in sessionSend re-resolves on demand).
-const sessionResolveTimer = setInterval(() => { if (!coordinatorReady) resolveCoordinatorSession(); }, 30_000);
+// Probe on every tick, ready or not: the daemon may start after the bridge, and it
+// may die after it. A failed send also clears readiness at once (sessionSend).
+const SESSION_PROBE_MS = Number(process.env.BRIDGE_SESSION_PROBE_MS) || 30_000;
+const sessionResolveTimer = setInterval(resolveCoordinatorSession, SESSION_PROBE_MS);
 if (sessionResolveTimer.unref) sessionResolveTimer.unref();

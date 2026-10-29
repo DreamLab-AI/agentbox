@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: [ADR-2002, ADR-2063, ADR-2079]
 superseded_by: []
-verified_commit: 358e5d32c81e8a4259d754568919a962461b9a31
+verified_commit: 70bd88d9ed6c6b5f52fcb1895ca82b02fcdbe722
 verified_paths: [services/agentbox-sessions, config/session-plane, lib/agentbox-sessions.nix, flake.nix, flake.lock, agentbox.toml, config/entrypoint-unified.sh, config/role-accounts.json, config/custody/session-plane-acl.json, config/tab0-bridge, config/nostr-gateway/gateway.cjs, config/nip98-proxy, config/tmux-autostart.sh, config/hooks/session-state.cjs, config/registered-hooks.txt, scripts/session-provision.mjs, scripts/session-control.cjs, scripts/activation/session-plane-cutover.mjs, scripts/activation/session-plane-acceptance.mjs, management-api/lib/system-manifest.js, schema/agentbox.toml.schema.json, services/agentbox-manifest/src/stacks.rs, services/agentbox-manifest/src/stacks_env.rs, tests/cli/session-launch-contract.test.mjs, tests/cli/session-control.test.cjs, tests/config/session-plane-notify.test.sh]
 owner: jjohare
 review_trigger: the session-plane daemon lands, or any AoE consumer below is found to have been missed
@@ -193,3 +193,5 @@ Readiness can additionally report an aged optional sidechain tip. These remain
 reported limits, not an all-capability acceptance claim. The pre-cutover recovery
 receipt is `.agentbox-build/pre-session-plane-active.json`; candidate history in
 previous.json is not a last-known-good deployment guarantee.
+
+Re-verified at 70bd88d9e: tab0-bridge now probes the session plane on every tick and clears coordinator readiness on a failed send, so the voice meta-agent falls back to tmux after a daemon death instead of advertising session-control.cjs (which has none). This restores the "keep their existing tmux fallbacks" consequence above; `tests/cli/tab0-coordinator-readiness.test.mjs` covers it in CI.
