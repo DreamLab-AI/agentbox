@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: inactive
 supersedes: [ADR-2079]
 superseded_by: []
-verified_commit: 0e3d98b181f4bd546ca84ff96eb8ab71c5ad53f2
+verified_commit: 4b8f56352a4a824ed0bf55658662175c249c87b1
 verified_paths: [services/agentbox-sessions, config/session-plane/launch.json, lib/agentbox-sessions.nix, config/role-accounts.json, config/custody/session-plane-acl.json, tests/cli/session-launch-contract.test.mjs]
 owner: jjohare
 review_trigger: the session-plane daemon lands, or any AoE consumer below is found to have been missed
@@ -100,3 +100,9 @@ Landed, with the decisions it forced:
 - **The daemon waits for the operator's tmux server** (up to 120 s) before its first pass, so the server always starts with the baked `tmux.conf`.
 
 Not yet done, and not claimed: the consumer repoint (tab0-bridge, nostr-gateway, `tmux-autostart.sh`, the other `aoe-curl` users), AoE removal, the retirement of ADR-2002 and ADR-2063, and the §11 cold-boot acceptance. The acceptance can only be measured after a rebuild and the cut-over.
+
+The 2026-10-29 verification found a tmux shutdown race when recreating the
+server's only session. Creation retries the specific server-exit error at most
+twice, only after checking that the session name does not already exist. The
+private-tmux regression passed 100 isolated repetitions, and the full suite
+passed 44 unit and 13 integration tests; this is not a live cut-over test.
