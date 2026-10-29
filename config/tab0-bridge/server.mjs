@@ -257,9 +257,9 @@ function metaSystemPrompt() {
   const jobs = coordinatorReady
     ? [
         '1. Relay the user intent as a clear, self-contained written prompt:',
-        `   /opt/agentbox/bin/agentbox-sessions call '{"op":"send","slug":"${COORDINATOR}","text":"<prompt>"}'`,
+        `   node /opt/agentbox/scripts/session-control.cjs send '<prompt>'`,
         `2. Read coordinator status: tmux capture-pane -p -t ${TAB0} -S -60`,
-        `3. Report the fleet: /opt/agentbox/bin/agentbox-sessions call '{"op":"list"}'`,
+        '3. Report the fleet: node /opt/agentbox/scripts/session-control.cjs list',
       ]
     : [
         `1. Relay user intents into the coordinator: run \`tmux send-keys -t ${TAB0} -l '<prompt>'\``,
@@ -316,7 +316,8 @@ function metaAllowedTools() {
     `Bash(tmux list-windows*)`,
     `Bash(tmux capture-pane*)`,
     'Bash(curl -s http://127.0.0.1:8971/*)',
-    'Bash(/opt/agentbox/bin/agentbox-sessions call*)',
+    'Bash(node /opt/agentbox/scripts/session-control.cjs list)',
+    'Bash(node /opt/agentbox/scripts/session-control.cjs send*)',
   ];
   return tools.join(',');
 }
