@@ -7,8 +7,8 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 6534e78dca0c949c166983977997d1c6f3674504
-verified_paths: []
+verified_commit: ef768e785c7b89a6d31bba7e9f94a22055d96a19
+verified_paths: [services/agentbox-manifest/src/system_one.rs, config/hooks/lib/jev-option.cjs, tests/system-one/consumer-activation.test.mjs]
 owner: operator
 review_trigger: Image activation or changes to consumer locality or acceptance thresholds
 repo: agentbox

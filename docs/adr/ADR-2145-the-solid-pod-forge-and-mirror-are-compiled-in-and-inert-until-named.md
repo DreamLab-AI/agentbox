@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: d1dd896f4a790762b150d81a94a03b268b04c543
+verified_commit: ef768e785c7b89a6d31bba7e9f94a22055d96a19
 verified_paths: [lib/solid-pod-rs.nix, lib/solid-pod-rs.cargo-lock, flake.nix, agentbox.toml, scripts/ci/check-manifest-catalogue.js]
 owner: jjohare
 review_trigger: the first image rebuilt with this pin; any change to the forge block defaults (open_edit, allow_mainnet, mirror_follow); a solid-pod-rs release that changes the forge feature names; a second operator
@@ -89,3 +89,6 @@ Re-verified 2026-10-23 at `951ada931e235ad45b61b2bef90b7e5c76f8d76c`: flake.nix 
 ### Re-verification — 2026-10-29 (ADR-2154 Pele renderer)
 
 `21769a881..d1dd896f4`: `flake.nix` replaces the `mermaidSidecarCliPkg` shell wrapper with `lib/pele.nix` (`pele-render` and an `mmdc` shim, still gated by `[skills.docs].mermaid`) and puts the two commands in `npmCliGatedPackages` in its place; no other gate, pin or supervisor text changes. Nothing ADR-2145 governs changes meaning. The decision holds. Re-verified by reading `git diff 21769a881..d1dd896f4 -- flake.nix` (new hunks only). Nix was not evaluated here; the image is unverified until the host rebuild.
+
+
+Re-verified 2026-10-29 at `00039efb1e4a70402df86ad19cf76894fe3b9a8f` for ADR-2155. The server and identity bridge now share alpha.17 plus Jev revision45c73aa86d062b55055c5e779d74ae856522b10f, rather than tag55bfec1f. The library/relay substrate is unchanged. Exact-pin bridge check, server shipped-feature check, 21 Jev tests and 2 forge integration tests passed. The Jev Cargo feature requires both parent and consumer gates; forge configuration, mirrors and authorisation are unchanged. No image or service activation is claimed.
