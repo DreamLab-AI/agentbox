@@ -63,3 +63,10 @@ problems. Loom's Rust suite is blocked by its missing pinned RuVector sibling.
 Loom Compose configuration was checked. These are not recorded as passing tests.
 The memory fixture failure above remains unresolved. Rebuild-time image/SBOM/VEX
 checks and post-activation runtime receipts still need the candidate image.
+
+
+The pre-rebuild Deepsec run reported one high-severity pre-existing bootstrap
+credential-symlink write, redirect following in dream triage, and an unbounded
+response-body wait in the shared adapter. All three were fixed and checked with
+planted-symlink, stalled-body and real HTTP307 regressions. The original report
+remains BLOCK; targeted remediation evidence does not relabel it a clean rescan.

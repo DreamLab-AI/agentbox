@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: ef768e785c7b89a6d31bba7e9f94a22055d96a19
+verified_commit: 7d8c3b2dfe165f4ab3f8a5e4f62b8294ea7b155d
 verified_paths: [services/agentbox-manifest/src/system_one.rs, config/hooks/lib/jev-option.cjs, tests/system-one/consumer-activation.test.mjs]
 owner: operator
 review_trigger: Image activation or changes to consumer locality or acceptance thresholds
@@ -53,3 +53,6 @@ no service was restarted or image activated by this work. The local sidecar also
 requires rebuilding for its response compatibility fix. Transport acceptance is
 not evidence of accuracy uplift. Memory recall currently cannot score because
 six frozen fixture IDs no longer resolve; this must not be represented as a pass.
+
+
+Security follow-up re-verified 2026-10-29 at `7d8c3b2dfe165f4ab3f8a5e4f62b8294ea7b155d`: the changed hunks drop privilege before workspace credential writes, replace credentials atomically, reject typed-decision redirects and retain the timeout through response parsing. The stalled-body, planted-symlink and HTTP307 regressions pass. These strengthen the existing boundaries; status axes and activation limits are unchanged. The original Deepsec report remains BLOCK with a separate remediation receipt, not a claimed clean rescan.
