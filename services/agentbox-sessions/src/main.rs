@@ -159,6 +159,9 @@ fn daemon(plane: Plane) -> Result<()> {
         println!("agentbox-sessions: [interaction_plane].enabled is false; not starting");
         return Ok(());
     }
+    if !plane.wait_for_server(std::time::Duration::from_secs(120)) {
+        log("no tmux server after 120 s; continuing (the first session will start one without the baked tmux.conf)");
+    }
     log(&plane.provision());
     let listener = api::bind(&plane.cfg)?;
     log(&format!("socket {} (uids {:?})", plane.cfg.socket_path.display(), plane.cfg.acl_uids));

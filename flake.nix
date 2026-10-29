@@ -1785,6 +1785,14 @@
         # tooling that was always present. See lib/agentbox-ops.nix.
         agentboxOpsPkg = import ./lib/agentbox-ops.nix { inherit lib; pkgs = rustPkgs; };
         agentboxOpsPackages = [ agentboxOpsPkg ];
+        # agentbox-sessions — the session plane (ADR-2153) that replaces Agent of
+        # Empires. Built whenever the interaction plane is enabled (see the package
+        # set and [program:agentbox-sessions] below); the socket group's gid comes
+        # from the one role table so the supervisor block cannot drift from it.
+        agentboxSessionsPkg = import ./lib/agentbox-sessions.nix { inherit lib; pkgs = rustPkgs; };
+        sessionsGroupGid =
+          (lib.findFirst (g: g.name == "ab-sessions") { gid = 0; }
+            (builtins.fromJSON (builtins.readFile ./config/role-accounts.json)).groups).gid;
         # ---------------------------------------------------------------------------
         # Knowledge-tool binaries — the Rust replacements for the skill Python
         # retired by the 2026-09-02 Python-legacy audit (sections 2b/2c).
@@ -2054,7 +2062,7 @@ default_days = ${toString (relayCfg.retention_days or 30)}
           # [interaction_plane].enabled and confined to Linux (the image target);
           # aoePkg is only forced when both hold, so the darwin dev-shell never
           # demands a darwin aoe-with-web attr.
-          ++ lib.optionals (interactionPlaneEnabled && pkgs.stdenv.isLinux) [ aoePkg ];
+          ++ lib.optionals (interactionPlaneEnabled && pkgs.stdenv.isLinux) [ aoePkg agentboxSessionsPkg ];
 
         # D.9: skillsTree is sourced from inputs.skills (path-type input).
         # Switching to a remote upstream is a one-line inputs change + flake.lock regen.
@@ -2929,6 +2937,32 @@ startsecs=3
 priority=45
 stdout_logfile=/var/log/aoe-serve.log
 stderr_logfile=/var/log/aoe-serve.error.log
+
+; Session plane (ADR-2153): reconciles [[interaction_plane.session_seeds]] in tmux,
+; serves a unix socket for tab0-bridge and nostr-gateway, and reports session
+; boundaries to management-api. Runs as devuser because it must own devuser's tmux
+; server and launches agents, which a role account never hosts; its one secret,
+; MANAGEMENT_API_KEY, is devuser-class (config/custody/env-classes.json), so it
+; needs no role. It waits for the operator's tmux server before its first pass so
+; the server always starts with the baked tmux.conf. The socket is
+; /run/agentbox-sessions/sessions.sock, 0660 in group ab-sessions; every caller is
+; authorised by SO_PEERCRED against config/custody/session-plane-acl.json.
+; DORMANT until the cut-over (autostart=false): Agent of Empires is still the live
+; session plane and its consumers (tab0-bridge, nostr-gateway, tmux-autostart.sh)
+; still call it, so starting both would run every agent twice. The cut-over change
+; removes aoe-serve, repoints those consumers and flips this to true. To trial the
+; daemon alone: supervisorctl start agentbox-sessions (sessions are abs_<slug>).
+[program:agentbox-sessions]
+command=${agentboxSessionsPkg}/bin/agentbox-sessions daemon
+directory=/home/devuser/workspace
+user=devuser
+environment=HOME="/home/devuser",WORKSPACE="/home/devuser/workspace",AGENTBOX_ROOT="/opt/agentbox",AGENTBOX_SESSIONS_ACL="/opt/agentbox/config/custody/session-plane-acl.json",AGENTBOX_SESSIONS_GID="${toString sessionsGroupGid}",PATH="${lib.makeBinPath [ pkgs.tmux pkgs.git pkgs.nodejs_22 pkgs.coreutils ]}:%(ENV_PATH)s"
+autostart=false
+autorestart=true
+startsecs=5
+priority=47
+stdout_logfile=/var/log/agentbox-sessions.log
+stderr_logfile=/var/log/agentbox-sessions.error.log
 
 ; NIP-98 identity proxy (PRD-021 WS4 / ADR-043 D4.6) — the sole ingress to the aoe
 ; serve loopback port. Verifies the kind-27235 NIP-98 header (reusing the
@@ -4668,6 +4702,7 @@ ${ragflowNetworkDecl}
         packages = lib.optionalAttrs pkgs.stdenv.isLinux {
           security-tools = securityTools;
           agentbox-vex = vexPkg;
+          agentbox-sessions = agentboxSessionsPkg;
           web-researcher-mcp = webResearcherMcpPkg;
           systemscape = systemscapePkg; # fast standalone verification before an image rebuild
           runtime = mkImage { tag = "runtime-${system}"; };

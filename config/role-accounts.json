@@ -133,6 +133,14 @@
       "members": ["devuser", "ab-identity", "ab-gateway"],
       "owner": "ab-identity",
       "env": "AGENTBOX_IDENTITY_SOCK_GID"
+    },
+    {
+      "name": "ab-sessions",
+      "gid": 973,
+      "purpose": "The session plane's socket group (ADR-2153). services/agentbox-sessions runs as devuser (it must own devuser's tmux server and it launches agents, which a role never hosts) and creates /run/agentbox-sessions/sessions.sock 0660 in this group, so nostr-gateway (ab-gateway) can still reach it when role isolation is on. Authorisation is SO_PEERCRED against config/custody/session-plane-acl.json (uids 1000 and 961), never the mode. devuser owns the group and the socket directory, so it has no directory under the root-owned secrets mount.",
+      "members": ["devuser", "ab-gateway"],
+      "owner": "devuser",
+      "env": "AGENTBOX_SESSIONS_GID"
     }
   ],
   "at_rest_dirs": [

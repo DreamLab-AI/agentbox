@@ -42,6 +42,7 @@ the files inside each crate's package payload.
 | `agentbox-manifest` | MIT OR Apache-2.0 | `LICENSE-MIT`, `LICENSE-APACHE` | yes |
 | `agentbox-mcp` | MIT OR Apache-2.0 | `LICENSE-MIT`, `LICENSE-APACHE` | yes |
 | `agentbox-ops` | MIT OR Apache-2.0 | `LICENSE-MIT`, `LICENSE-APACHE` | yes |
+| `agentbox-sessions` | MIT OR Apache-2.0 | `LICENSE-MIT`, `LICENSE-APACHE` | yes (`publish = false`: session-plane infrastructure for this image, not offered on crates.io) |
 | `dream-engine` | **AGPL-3.0-only** (since 2026-09-25) | `LICENSE` (AGPL-3.0 full text) | yes — states NOT dual-licensed |
 | `explainer-tools` | MIT OR Apache-2.0 | `LICENSE-MIT`, `LICENSE-APACHE` | yes |
 | `nostr-pod-bridge` | **AGPL-3.0-only** | `LICENSE` (AGPL-3.0 full text) | yes — states NOT dual-licensed |

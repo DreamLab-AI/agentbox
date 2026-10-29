@@ -485,7 +485,15 @@ pub fn validate(t: &Table) -> Result<(), String> {
                 errs.push(format!("{at}: member {m:?} is neither devuser nor a role"));
             }
         }
-        match t.roles.iter().find(|r| r.name == g.owner) {
+        // A socket created by a devuser-class daemon (the session plane, ADR-2153)
+        // has no role to own it. chgrp still needs membership, but there is no
+        // role secret its env name could clash with.
+        if g.owner == DEVUSER {
+            if !g.members.iter().any(|m| m == DEVUSER) {
+                errs.push(format!("{at}: owner {DEVUSER} must be a member (chgrp needs it)"));
+            }
+        } else {
+            match t.roles.iter().find(|r| r.name == g.owner) {
             None => errs.push(format!("{at}: owner {:?} is not a role", g.owner)),
             Some(r) => {
                 if !g.members.contains(&g.owner) {
@@ -494,6 +502,7 @@ pub fn validate(t: &Table) -> Result<(), String> {
                 if r.secrets.iter().any(|s| s.env.as_deref() == Some(g.env.as_str())) {
                     errs.push(format!("{at}: env {} already names a secret of {}", g.env, g.owner));
                 }
+            }
             }
         }
         if !is_env_name(&g.env) || matches!(g.env.as_str(), "HOME" | "AGENTBOX_SECRETS_DIR") {
@@ -608,16 +617,12 @@ pub fn summary(t: &Table) -> String {
         ));
     }
     for g in &t.groups {
-        out.push_str(&format!(
-            "{}\t{}\tgroup of {}\t{}/{}/ owned by {}\t{}\n",
-            g.name,
-            g.gid,
-            g.members.join(","),
-            t.secrets_root,
-            g.name,
-            g.owner,
-            g.purpose
-        ));
+        let home = if g.owner == DEVUSER {
+            format!("socket group, created by {DEVUSER} outside {}", t.secrets_root)
+        } else {
+            format!("{}/{}/ owned by {}", t.secrets_root, g.name, g.owner)
+        };
+        out.push_str(&format!("{}\t{}\tgroup of {}\t{home}\t{}\n", g.name, g.gid, g.members.join(","), g.purpose));
     }
     for d in &t.dirs {
         out.push_str(&format!(
@@ -990,7 +995,9 @@ pub fn isolate_with(
         }
     }
 
-    for g in &t.groups {
+    // A devuser-owned group (the session plane) keeps its socket under /run, which
+    // devuser owns, so it gets no directory inside the root-owned secrets mount.
+    for g in t.groups.iter().filter(|g| g.owner != DEVUSER) {
         let owner = t.user_id(&g.owner).unwrap_or_default();
         plan.push_str(&format!("sockdir\t{}\t{owner}\t{}\n", g.name, g.gid));
     }
@@ -1357,6 +1364,40 @@ mod tests {
             "dirs":[{{"path":"/var/lib/x","owner":"ab-a","group":"ab-g","mode":"2750"}}]}}"#
         ))
         .expect("a well-formed group and dir validate");
+    }
+
+    /// ADR-2153: the session plane's socket group is owned by devuser, not a role.
+    #[test]
+    fn a_devuser_owned_socket_group_validates_and_gets_no_secrets_dir() {
+        let t: Table = serde_json::from_str(&format!(
+            r#"{{{BASE},"roles":[{{"name":"ab-a","uid":960}}],
+            "groups":[{{"name":"ab-s","gid":969,"members":["devuser","ab-a"],"owner":"devuser","env":"S_GID"}}]}}"#
+        ))
+        .unwrap();
+        validate(&t).expect("a devuser-owned group validates");
+        assert!(group_lines(&t).contains("ab-s:x:969:devuser,ab-a\n"));
+        let iso = isolate(&t, "[program:other]\ncommand=x\nuser=devuser\n").unwrap();
+        assert!(!iso.plan.contains("sockdir\tab-s"), "no directory inside the root-owned secrets mount");
+        assert!(summary(&t).contains("socket group, created by devuser"), "{}", summary(&t));
+    }
+
+    #[test]
+    fn a_devuser_owned_group_still_needs_devuser_to_be_a_member() {
+        let e = tiny(&format!(
+            r#"{{{BASE},"roles":[{{"name":"ab-a","uid":960}}],
+            "groups":[{{"name":"ab-s","gid":969,"members":["ab-a"],"owner":"devuser","env":"S_GID"}}]}}"#
+        ))
+        .unwrap_err();
+        assert!(e.contains("owner devuser must be a member"), "{e}");
+    }
+
+    #[test]
+    fn the_repository_table_declares_the_session_plane_socket_group() {
+        let t = table();
+        let g = t.groups.iter().find(|g| g.name == "ab-sessions").expect("ADR-2153 socket group");
+        assert_eq!(g.owner, "devuser");
+        assert!(g.members.iter().any(|m| m == "devuser") && g.members.iter().any(|m| m == "ab-gateway"));
+        assert!(!isolate(&t, "[program:other]\ncommand=x\nuser=devuser\n").unwrap().plan.contains("sockdir\tab-sessions"));
     }
 
     #[test]

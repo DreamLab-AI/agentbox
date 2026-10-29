@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "_comment": [
+    "Session-plane socket ACL (ADR-2153). Loaded by services/agentbox-sessions from AGENTBOX_SESSIONS_ACL.",
+    "Authorisation is the caller's uid from SO_PEERCRED, never the socket mode (0660 in group ab-sessions only narrows who can connect).",
+    "1000 = devuser (tab0-bridge, the picker, the operator); 961 = ab-gateway (nostr-gateway /spawn under [security].role_isolation)."
+  ],
+  "allowed_uids": [
+    1000,
+    961
+  ]
+}

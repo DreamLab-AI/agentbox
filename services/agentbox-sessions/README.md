@@ -53,4 +53,28 @@ agentbox-sessions call '<json>'              one raw request to the daemon's soc
 
 ## Licence
 
-MIT OR Apache-2.0.
+Licensed under either of
+
+- Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE) or
+  <http://www.apache.org/licenses/LICENSE-2.0>)
+- MIT licence ([LICENSE-MIT](LICENSE-MIT) or
+  <http://opensource.org/licenses/MIT>)
+
+at your option.
+
+This crate lives inside the [agentbox](https://github.com/DreamLab-AI/agentbox) repository, which as a whole is
+AGPL-3.0-only. The permissive grant is per crate and travels with the crate:
+`services/` is a deliberately permissive subtree so these modules can be reused
+and published outside the hosted service. See
+[ADR-2030](https://github.com/DreamLab-AI/agentbox/blob/main/docs/adr/ADR-2030-permissive-licensing-for-publishable-service-crates.md)
+and [services/LICENSING-NOTICE.md](https://github.com/DreamLab-AI/agentbox/blob/main/services/LICENSING-NOTICE.md).
+
+### Contribution
+
+Unless you explicitly state otherwise, any contribution intentionally submitted
+for inclusion in the work by you, as defined in the Apache-2.0 licence, shall be
+dual licensed as above, without any additional terms or conditions.
+
+## Repository
+
+<https://github.com/DreamLab-AI/agentbox> — path `services/agentbox-ops`.

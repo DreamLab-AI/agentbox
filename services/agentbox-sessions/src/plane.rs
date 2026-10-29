@@ -420,6 +420,27 @@ impl Plane {
         self.tmux.kill(&name)
     }
 
+    /// Wait until the shared tmux server has a session. The operator's server
+    /// is started by `tmux-autostart.sh` with the baked `tmux.conf`; a daemon that
+    /// won the race would start the server itself, without that config. A private
+    /// (`-L`) server is ours alone, so there is nothing to wait for. Returns
+    /// whether a server was seen; the daemon proceeds either way after `max`.
+    pub fn wait_for_server(&self, max: Duration) -> bool {
+        if self.cfg.tmux_socket.is_some() {
+            return true;
+        }
+        let end = std::time::Instant::now() + max;
+        loop {
+            if self.tmux.list().map(|p| !p.is_empty()).unwrap_or(false) {
+                return true;
+            }
+            if std::time::Instant::now() >= end {
+                return false;
+            }
+            std::thread::sleep(Duration::from_secs(1));
+        }
+    }
+
     /// Provisioning that does not depend on tmux (OpenRouter, Z.AI and OpenCode
     /// config files) stays in `scripts/session-provision.mjs`. Fail-open.
     pub fn provision(&self) -> String {

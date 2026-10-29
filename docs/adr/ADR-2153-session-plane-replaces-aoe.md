@@ -2,8 +2,8 @@
 id: ADR-2153
 title: Replace Agent of Empires with an owned, tmux-backed session plane that reconciles to the manifest
 date: 2026-10-28
-decision_status: proposed
-implementation_status: none
+decision_status: accepted
+implementation_status: partial
 activation_status: inactive
 supersedes: [ADR-2079]
 superseded_by: []
@@ -33,7 +33,7 @@ repo: agentbox
 3. **The manifest is the only declaration.** `[[interaction_plane.session_seeds]]` (slug, tool, model, worktree) is the desired state. The per-tool command lines live in `config/session-plane/launch.json`, the launch contract. Each command is verified against the pinned CLI versions by `tests/cli/session-launch-contract.test.mjs`.
 4. **Reconcile, not create-only.**
    - At boot and on a timer, a seed whose session is missing, whose pane is dead, whose pane is blocked, or whose command/path/model differs from the manifest is recreated.
-   - Before recreating, the daemon runs `git status --porcelain --ignored` on the worktree. If it is dirty it reports and does not touch the session.
+   - Before recreating, the daemon checks the worktree for work in progress: tracked changes and untracked files (`git status --porcelain`, ignored files excluded). If there are any it reports and does not touch the session. Ignored build output (`node_modules`, `coverage`, `target`) must not count, or a built worktree would hold its session out of reconcile for ever; recreating a tmux session deletes no files. Deleting a worktree is stricter and also refuses when an ignored path is not regenerable, because `git worktree remove` deletes ignored files without warning.
    - Sessions the daemon did not create are never touched.
 5. **Worktrees live at `~/workspace/wt/aoe-<slug>`** (global one-root rule). Before launch, the daemon seeds folder trust for each session directory in every config store the session's tool reads: the root `~/.claude.json`, every wrapper profile's `profiles/<slug>/.claude/.claude.json`, and `~/.codex/config.toml`.
 6. **The daemon runs as devuser**, as `aoe-serve` does: it must own devuser's tmux server, and it launches agents, which a role account never hosts. Its one secret is `MANAGEMENT_API_KEY`, and that is devuser-class (`config/custody/env-classes.json`). It therefore gets no `role-accounts.json` row.
@@ -86,3 +86,17 @@ With `AGENTBOX_LAUNCH_DIR=~/workspace/project/agentbox`, which checks the CLI co
 - **Known flake:** `zai` timed out once and passed on the next two runs. The wrapper kind has no `ready` pattern, so the prompt is sent after a fixed settle time.
 
 A mutation check that restores the old OpenCode `-m` argv fails both the static tier and the live tier (`pane died: Unrecognized flag: -m in command opencode`).
+
+## Implementation (2026-10-29): the daemon landed, the cut-over has not
+`services/agentbox-sessions` is built, tested and baked into the image when `[interaction_plane].enabled`, but its supervisor program has `autostart=false`. Agent of Empires is still the live session plane and its consumers still call it, so starting both would run every agent twice. The cut-over is a separate change that removes `aoe-serve`, repoints the consumers and flips the daemon on.
+
+Landed, with the decisions it forced:
+- **Ownership is a marker, not a name.** Sessions are `abs_<slug>` and carry the tmux session option `@agentbox-sessions=1`. Reconcile only ever considers marked sessions, so `agentbox:0`, a leftover `aoe_*` session and anything the operator started are never touched. A foreign session holding a seed's name is reported as a conflict.
+- **The recreate gate ignores ignored files** (see §4 above, amended). Found by checking the campaignbuilder agent worktrees, which held only build output and would have blocked reconcile permanently.
+- **Restarts are bounded.** Three per seed per hour, then `hold (backoff)`, so a command that dies on launch cannot spin the daemon. A sign-in blocker is reported and left; only trust prompts are cleared by recreating.
+- **Socket group owned by `devuser`.** §6 asked for a socket group with no role account, but the role-accounts validator required every group owner to be a role. It now accepts `devuser` as owner (devuser must be a member) and creates no `/run/secrets/<group>` directory for it. The group is `ab-sessions`, gid 973; the ACL is `config/custody/session-plane-acl.json` (uids 1000 and 961). Peer credentials are read through `rustix`, because `UnixStream::peer_cred` is not stable on every toolchain.
+- **Provisioning is not yet split out.** `provisionOpenRouter`, `provisionZai` and `provisionOpenCode` still live in `scripts/aoe-seed-sessions.mjs`, which still runs at boot. The daemon runs `scripts/session-provision.mjs` when it exists, and the cut-over creates it.
+- **Busy/idle** come from `agentbox-sessions mark <slug> busy|idle` (hooks write it), else the contract's `ready` pattern, else age. Wiring Claude Stop/Notification and Codex `notify` to `mark` is part of the cut-over.
+- **The daemon waits for the operator's tmux server** (up to 120 s) before its first pass, so the server always starts with the baked `tmux.conf`.
+
+Not yet done, and not claimed: the consumer repoint (tab0-bridge, nostr-gateway, `tmux-autostart.sh`, the other `aoe-curl` users), AoE removal, the retirement of ADR-2002 and ADR-2063, and the §11 cold-boot acceptance. The acceptance can only be measured after a rebuild and the cut-over.

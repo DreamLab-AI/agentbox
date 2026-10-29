@@ -9,6 +9,7 @@ license = "MIT OR Apache-2.0"
 description = "Agentbox session plane (ADR-2153): a tmux-backed daemon and CLI that reconciles the manifest's session seeds, replacing Agent of Empires."
 repository = "https://github.com/DreamLab-AI/agentbox"
 readme = "README.md"
+publish = false
 
 [lib]
 name = "agentbox_sessions"
