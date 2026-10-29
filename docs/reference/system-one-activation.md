@@ -39,3 +39,27 @@ and `workspace/agent-runs/systemone-enable-20261029`. The mandatory before/after
 memory-recall run cannot score: six frozen fixture IDs are missing. Repairing that
 fixture and establishing a valid baseline is required for a recall claim; unit
 fallback tests cannot substitute for it.
+
+
+## Executed checks
+
+- Agentbox: 183 option/fallback tests, 37 checkpoint/memory tests, 12 projector
+  tests, 20 dream-triage tests, 2 boot-activation tests and 8 setup drift tests
+  passed. Rust projector clippy passed. All five adapter slots passed 169 tests;
+  34 existing contract TODOs remain. Supervisor parity passed 25 tests and the
+  secret-variable inventory passed (728 names).
+- The façade passed 60 tests, including an HTTP test for all three answer types.
+  Synthetic live local Choice/Score/Noul completed successfully in 133 ms.
+- Exact upstream pins: Vault 391 passed (5 diagnostic/scaling tests ignored),
+  Ontomark CLI/adapter 59 passed, Solid 23 Jev/forge tests passed with its shipped
+  feature check, and the identity bridge compiled with its unchanged lock.
+- Other repositories: Forum 806 tests; email 21; VisionFlow 62; website 37 plus
+  3 activation tests and a full build; Codescape 11; VisionClaw 80 adapter tests,
+  deployment/live-wire checks, 83 deployment checks, server compilation and
+  type generation passed.
+
+VisionClaw's full handler-test build is blocked by existing GPU fixture/import
+problems. Loom's Rust suite is blocked by its missing pinned RuVector sibling.
+Loom Compose configuration was checked. These are not recorded as passing tests.
+The memory fixture failure above remains unresolved. Rebuild-time image/SBOM/VEX
+checks and post-activation runtime receipts still need the candidate image.
