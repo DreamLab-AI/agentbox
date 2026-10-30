@@ -31,7 +31,7 @@ ARG GSPLAT_REV=937e29912570c372bed6747a5c9bf85fed877bae
 RUN --mount=type=cache,target=/root/.cache/pip if [ "$SPEDE" = "1" ]; then \
       set -eux; \
       apt-get update && apt-get install -y --no-install-recommends build-essential && rm -rf /var/lib/apt/lists/*; \
-      pip install --timeout 180 --retries 10 ninja setuptools wheel packaging jaxtyping rich; \
+      pip install --timeout 180 --retries 10 ninja==1.13.2 setuptools==84.2.1 wheel==0.48.0 packaging==26.3 jaxtyping==0.3.11 rich==15.0.0; \
       git init /tmp/gsplat-src && cd /tmp/gsplat-src \
         && git remote add origin https://github.com/nerfstudio-project/gsplat.git \
         && git fetch --depth 1 origin ${GSPLAT_REV} && git checkout --detach FETCH_HEAD \
@@ -71,7 +71,9 @@ RUN if [ "$SPEDE" = "1" ]; then \
       if grep -qi gsplat /tmp/spede-requirements.txt; then echo 'gsplat line survived filter' >&2; exit 1; fi; \
     fi
 RUN --mount=type=cache,target=/root/.cache/pip if [ "$SPEDE" = "1" ]; then \
-      pip install --timeout 180 --retries 10 -r /tmp/spede-requirements.txt && rm -f /tmp/spede-requirements.txt; \
+      printf 'plyfile==1.1.5\n' > /tmp/spede-constraints.txt && \
+      pip install --timeout 180 --retries 10 -r /tmp/spede-requirements.txt -c /tmp/spede-constraints.txt \
+        && rm -f /tmp/spede-requirements.txt /tmp/spede-constraints.txt; \
     fi
 WORKDIR /opt/ComfyUI
 # Regional text/mask routing and animated bounding boxes; dependencies are

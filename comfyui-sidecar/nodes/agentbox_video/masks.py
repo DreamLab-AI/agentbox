@@ -46,6 +46,11 @@ class TrackerConfig:
     probe_shift: int = 3              # px of translation slack searched at each probe scale
     scale_probe_margin: float = 0.05  # correlation gain over scale 1.0 that counts as "better"
 
+    def __post_init__(self):
+        # Calibrated acceptance was removed (ADR-2163): these bounds are measurement configuration only.
+        if self.calibrated:
+            raise ValueError("calibrated acceptance was removed (ADR-2163); acceptance is editorial")
+
 
 def _gray(frame):
     f = np.asarray(frame)
@@ -215,7 +220,8 @@ def track_mask(frames, seed_mask, config=None, return_log=False):
 def threshold_report(cfg):
     """The threshold set with its provenance, for receipts and the node's log output."""
     d = dict(vars(cfg))
-    d["provisional"] = not cfg.calibrated
+    d["provisional"] = True
+    d["acceptance"] = "editorial"
     return d
 
 

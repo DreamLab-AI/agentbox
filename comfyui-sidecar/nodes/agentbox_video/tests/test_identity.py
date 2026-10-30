@@ -147,13 +147,15 @@ class CastAwareTests(unittest.TestCase):
         self.assertEqual(r["judged_frames"], 1)
         self.assertFalse(r["acceptance_backing"])
         self.assertIn("1", r["reason"])
-        ok = idn.identity_score([frame(2), frame(2), frame(1), frame(1)], CAST, e)
-        self.assertEqual((ok["verdict"], ok["judged_frames"]), ("PASS", 2))
+        # Faces in a strict majority of the frames considered, all matching: PASS.
+        ok = idn.identity_score([frame(2), frame(1), frame(1), frame(1)], CAST, e)
+        self.assertEqual((ok["verdict"], ok["judged_frames"]), ("PASS", 3))
 
-    def test_min_judged_frames_is_configurable(self):
+    def test_min_judged_frames_is_configurable_upwards(self):
         e = FakeEmbedder({1: [(50, ALICE)], 2: []})
-        r = idn.identity_score([frame(2), frame(1)], CAST, e, ThresholdSet(min_judged_frames=1))
-        self.assertEqual(r["verdict"], "PASS")
+        clip = [frame(2), frame(1), frame(1), frame(1), frame(1)]
+        self.assertEqual(idn.identity_score(clip, CAST, e, ThresholdSet(min_judged_frames=4))["verdict"], "PASS")
+        self.assertEqual(idn.identity_score(clip, CAST, e, ThresholdSet(min_judged_frames=5))["verdict"], "not_judged")
 
     def test_cli_expect_flag_reports_the_swap(self):
         import contextlib
@@ -207,15 +209,35 @@ class CastAwareTests(unittest.TestCase):
             self.assertTrue(rep["provisional"])
             self.assertEqual(rep["acceptance"], "editorial")
 
-    def test_last_n_below_min_judged_frames_can_still_reach_a_verdict(self):
-        # last_n=1 is an explicit request for a single-frame verdict: min_judged_frames is capped at last_n.
+    def test_the_frame_floor_is_at_least_two_and_never_capped_by_last_n(self):
+        # One frame can never carry an identity verdict: the floor is >= 2 and last_n must cover it.
+        for bad in ({"min_judged_frames": 1}, {"min_judged_frames": 0}, {"min_judged_frames": -3},
+                    {"last_n": 1}, {"last_n": 3, "min_judged_frames": 4}):
+            with self.assertRaises(ValueError, msg=bad):
+                ThresholdSet(**bad)
         e = FakeEmbedder({1: [(50, ALICE)]})
-        r = idn.identity_score([frame(1)] * 3, CAST, e, ThresholdSet(last_n=1), expected_cast="alice")
+        r = idn.identity_score([frame(1)] * 3, CAST, e, ThresholdSet(last_n=2), expected_cast="alice")
         self.assertEqual(r["verdict"], "PASS")
-        self.assertEqual(r["effective_min_judged_frames"], 1)
-        # a clip shorter than last_n is still not_judged
+        self.assertEqual(r["effective_min_judged_frames"], 2)
+        # a clip shorter than the floor is not_judged
         short = idn.identity_score([frame(1)], CAST, e, ThresholdSet(last_n=5), expected_cast="alice")
         self.assertEqual(short["verdict"], "not_judged")
+
+    def test_faces_must_be_visible_in_a_majority_of_the_frames_considered(self):
+        # [faceless x3, good, good]: two matches in five frames is not a verdict.
+        e = FakeEmbedder({1: [], 2: [(50, ALICE)]})
+        clip = [frame(1)] * 3 + [frame(2)] * 2
+        r = idn.identity_score(clip, CAST, e, expected_cast="alice")
+        self.assertEqual(r["verdict"], "not_judged")
+        # [faceless x2, good x3] is a majority with faces, all matching: PASS
+        ok = idn.identity_score([frame(1)] * 2 + [frame(2)] * 3, CAST, e, expected_cast="alice")
+        self.assertEqual(ok["verdict"], "PASS")
+
+    def test_the_node_cannot_ask_for_a_one_frame_verdict(self):
+        req = idn.AgentboxIdentityScore.INPUT_TYPES()["required"]
+        opt = idn.AgentboxIdentityScore.INPUT_TYPES()["optional"]
+        self.assertGreaterEqual(req["last_n"][1]["min"], 2)
+        self.assertGreaterEqual(opt["min_judged_frames"][1]["min"], 2)
 
     def test_node_exposes_expected_cast_as_optional_string(self):
         opt = idn.AgentboxIdentityScore.INPUT_TYPES()["optional"]

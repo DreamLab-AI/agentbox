@@ -89,7 +89,12 @@ class MaskTests(unittest.TestCase):
     def test_threshold_report_carries_provenance(self):
         rep = masks.threshold_report(masks.TrackerConfig())
         self.assertEqual((rep["calibrated"], rep["provisional"]), (False, True))
+        self.assertEqual(rep["acceptance"], "editorial")
         self.assertTrue(rep["provenance"])
+
+    def test_a_calibrated_tracker_config_is_refused(self):
+        with self.assertRaisesRegex(ValueError, "acceptance is editorial"):
+            masks.TrackerConfig(calibrated=True)
 
     def test_area_blowup_fail_closed(self):
         frames, truth = scene(1, step=(0, 0), size=40, start=(44, 28))

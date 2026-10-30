@@ -71,6 +71,11 @@ class ThresholdSet:
         # configuration only, whatever a config file claims about it.
         if self.calibrated or self.calibration is not None:
             raise CalibrationError(CALIBRATION_REMOVED)
+        # One frame never carries an identity verdict, and the window must cover the floor.
+        if self.min_judged_frames < 2:
+            raise ValueError(f"min_judged_frames must be at least 2, got {self.min_judged_frames}")
+        if self.last_n < self.min_judged_frames:
+            raise ValueError(f"last_n ({self.last_n}) must be at least min_judged_frames ({self.min_judged_frames})")
 
     @classmethod
     def from_dict(cls, d: Optional[dict], base_dir=None) -> "ThresholdSet":
@@ -294,8 +299,8 @@ def identity_score(frames: Iterable[np.ndarray], refs: dict, embedder: Embedder,
     named, routed to human review). A two-shot where the other actor is simply
     the better match also trips this: it fails towards review, never towards a pass.
 
-    Verdict is ``not_judged`` when fewer than ``th.min_judged_frames`` (capped at
-    ``last_n``) of the last frames hold a face at or above the size floor, or
+    Verdict is ``not_judged`` when fewer than ``th.min_judged_frames`` of the last
+    frames, or not a majority of them, hold a face at or above the size floor, or
     ``expected_cast`` has no reference. A frame counts as *judged* only when its
     best match clears ``min_similarity``; the verdict is ``FAIL`` unless at least
     ``min_judged_frames`` frames match *and* they are a strict majority of the
@@ -328,9 +333,8 @@ def identity_score(frames: Iterable[np.ndarray], refs: dict, embedder: Embedder,
     frame_scores = ([p["best"] for p in per] if expected_cast is None
                     else [p["per_cast"].get(expected_cast) for p in per])
     judged_frames = sum(1 for v in frame_scores if v is not None and v >= th.min_similarity)
-    # last_n=1 asks for a one-frame verdict, so the floor cannot exceed the window; a clip shorter
-    # than last_n stays below it and is not_judged.
-    need = min(th.min_judged_frames, max(1, th.last_n))
+    # The floor is never capped: ThresholdSet guarantees last_n >= min_judged_frames >= 2.
+    need = th.min_judged_frames
     detail = None
     if not refs:
         verdict, reason = "not_judged", "no reference portrait with a face"
@@ -338,9 +342,9 @@ def identity_score(frames: Iterable[np.ndarray], refs: dict, embedder: Embedder,
         verdict, reason = "not_judged", f"expected cast {expected_cast!r} has no reference portrait with a face"
     elif best is None:
         verdict, reason = "not_judged", "no face at or above the size floor in the last frames"
-    elif face_frames < need:
+    elif face_frames < need or face_frames * 2 <= len(tail):
         verdict, reason = "not_judged", (f"only {face_frames} of {len(tail)} frames held a face at or above the "
-                                         f"size floor; {need} needed")
+                                         f"size floor; need {need} and a majority of the frames considered")
     elif swap:
         verdict, reason = "FAIL", "identity_swap"
         detail = (f"expected {swap['expected']} (best cosine {swap['expected_score']:.3f}) but "
@@ -653,14 +657,14 @@ class AgentboxIdentityScore:
     def INPUT_TYPES(cls):
         return {"required": {
             "frames": ("IMAGE",), "references": ("IMAGE",),
-            "last_n": ("INT", {"default": 5, "min": 1, "max": 64}),
+            "last_n": ("INT", {"default": 5, "min": 2, "max": 64}),
             "min_similarity": ("FLOAT", {"default": 0.25, "min": 0.0, "max": 1.0, "step": 0.01}),
             "min_face_frac": ("FLOAT", {"default": 0.12, "min": 0.0, "max": 1.0, "step": 0.01}),
         }, "optional": {
             "ref_names": ("STRING", {"default": ""}),
             "expected_cast": ("STRING", {"default": ""}),
             "swap_margin": ("FLOAT", {"default": 0.05, "min": 0.0, "max": 1.0, "step": 0.01}),
-            "min_judged_frames": ("INT", {"default": 2, "min": 1, "max": 64}),
+            "min_judged_frames": ("INT", {"default": 2, "min": 2, "max": 64}),
         }}
 
     def run(self, frames, references, last_n, min_similarity, min_face_frac, ref_names="",

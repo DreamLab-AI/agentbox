@@ -257,6 +257,10 @@ pub fn validate_revision(
 /// module documentation.
 pub fn run(mut args: Vec<OsString>) -> Result<()> {
     let root = Root::new(&take_root_option(&mut args)?)?;
+    // A bound diff is the whole scope; manual ranges added to it would widen it unchecked.
+    if args.iter().any(|a| a == "--allow") && args.iter().any(|a| a == "--allow-from-diff") {
+        return Err("use --allow or --allow-from-diff, not both".into());
+    }
     let mut allowed = Vec::new();
     let mut diffs = Vec::new();
     while let Some(i) = args.iter().position(|a| a == "--allow") {
@@ -557,6 +561,23 @@ mod tests {
             .to_string();
         assert!(err.contains("invalidated_intervals"), "{err}");
         fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn manual_allow_ranges_cannot_widen_a_bound_diff() {
+        let args: Vec<OsString> = [
+            "--allow",
+            "0..2",
+            "--allow-from-diff",
+            "missing.json",
+            "p",
+            "n",
+        ]
+        .iter()
+        .map(OsString::from)
+        .collect();
+        let err = run(args).unwrap_err().to_string();
+        assert!(err.contains("not both"), "{err}");
     }
 
     #[test]
