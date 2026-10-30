@@ -6,9 +6,11 @@
 //! * [`media`] — decoded frames, PCM and frame/packet hashes via ffmpeg raw pipes.
 //! * [`guide`] — decoded-clock and held-padding checks for guide video.
 //! * [`render_cache`] — complete render-cache assembly after a scoped edit.
+//! * [`stitch`] — frame-exact stitch, copied audio and retake planning.
 pub mod clock;
 pub mod comfy;
 pub mod guide;
 pub mod media;
 pub mod paths;
 pub mod render_cache;
+pub mod stitch;

@@ -251,6 +251,7 @@ fn run() -> Result<()> {
         || result["width"] != p.resolution.width
         || result["height"] != p.resolution.height
     {
+        let _ = fs::remove_file(&dest);
         return Err("output clock or canvas differs".into());
     }
     fs::write(
