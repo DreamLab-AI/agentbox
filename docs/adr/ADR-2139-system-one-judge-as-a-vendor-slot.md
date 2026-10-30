@@ -270,3 +270,29 @@ the live proxy after the switch returned HTTP 200 from model `jev-1.14.0`. factr
 `x-system-one-backend` / `x-system-one-model` headers, so a later switch is visible in the
 decision log without a restart. Not checked: the per-consumer accuracy comparison decision 4
 asks for before adoption; this is a return to the incumbent, not an adoption.
+
+## Amendment (2026-10-30): one route for every consumer, served on the private docker network
+
+Operator decision: every System One consumer, in this container and in the host
+containers, takes the selected backend (`typesafe`) through this proxy. Local routing
+stays wired as an explicit opt-in for private data. Decision 1's "loopback" is relaxed in
+one declared case only:
+
+- `[system_one].network = true` lets `bind` be the IPv4 wildcard or an RFC 1918 address
+  (`system-one-proxy` `config.rs` `is_network_bind`, mirrored in `agentbox-manifest`
+  `system_one.rs`). Without it the proxy and the projector still refuse any non-loopback
+  bind. The port is never published (`check-ports-loopback` is unchanged), so the listener
+  is reachable only from the docker networks agentbox joins; host containers on
+  `visionclaw_network` dial `http://agentbox:8094/v1/systemone`. Consequence the operator
+  accepted: any container on those networks can spend the vendor key. Consumers in this
+  container still dial loopback (`Projection::endpoint`).
+- `[system_one].local_only = []` names the consumers pinned to `local_backend` (the
+  keyless LAN route). Empty by default. The projector emits `AGENTBOX_JEV_<X>_LOCAL_ONLY`
+  for the twelve agentbox consumers from that list (they were six hard-coded `=1` flags
+  plus six literal `localOnly: true` call sites), and for the five external consumers
+  stops projecting the laya `_ENDPOINT/_MODEL/_LOCAL` and emits `_ALLOW_CLOUD=1`. A listed
+  consumer with no usable local backend is switched off, never sent to the cloud.
+  Data-level fences (email taint, private ontology seeds) are unchanged.
+
+Because the proxy rewrites `model` to the active backend's (checked: a request naming a
+bogus model returned `jev-1.14.0`), one backend switch now reroutes every consumer.

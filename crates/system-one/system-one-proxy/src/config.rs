@@ -53,8 +53,13 @@ pub struct Projection {
     /// Mirrors the manifest gate; false means the proxy should not be running.
     #[serde(default)]
     pub enabled: bool,
-    /// Listen address (loopback only).
+    /// Listen address: loopback, unless `network` declares container-network exposure.
     pub bind: String,
+    /// The operator declared that consumers in other containers on the private
+    /// docker network reach this proxy (ADR-2139 amendment, 2026-10-30). Only then
+    /// may `bind` be the wildcard or a private address; it is never published.
+    #[serde(default)]
+    pub network: bool,
     /// JSONL request log; empty disables.
     #[serde(default)]
     pub log: String,
@@ -94,11 +99,12 @@ impl Projection {
         if !self.enabled {
             return Err(ProxyError::Config("projection says enabled=false".into()));
         }
-        if !is_loopback_bind(&self.bind) {
-            return Err(ProxyError::Config(format!(
-                "bind {} is not loopback",
-                self.bind
-            )));
+        if !is_loopback_bind(&self.bind) && !(self.network && is_network_bind(&self.bind)) {
+            return Err(ProxyError::Config(if self.network {
+                format!("bind {} is neither loopback nor a private network address", self.bind)
+            } else {
+                format!("bind {} is not loopback", self.bind)
+            }));
         }
         if !self.backends.contains_key(&self.active) {
             return Err(ProxyError::Config(format!(
@@ -134,6 +140,18 @@ pub fn is_loopback_bind(bind: &str) -> bool {
     };
     let host = host.to_ascii_lowercase();
     host == "localhost" || host == "::1" || host.starts_with("127.")
+}
+
+/// A container-network bind: the IPv4 wildcard or an RFC 1918 address. Hostnames
+/// and IPv6 are refused, so the declaration cannot widen to a public interface.
+#[must_use]
+pub fn is_network_bind(bind: &str) -> bool {
+    let Some((host, port)) = bind.rsplit_once(':') else { return false };
+    if port.parse::<u16>().is_err() {
+        return false;
+    }
+    let Ok(ip) = host.parse::<std::net::Ipv4Addr>() else { return false };
+    ip.is_unspecified() || ip.is_private()
 }
 
 /// The host of an `http(s)://` URL under a STRICT grammar, or `None`.
@@ -383,6 +401,28 @@ mod tests {
         assert!(
             Projection::parse(&sample().replace("\"enabled\":true", "\"enabled\":false")).is_err()
         );
+    }
+
+    #[test]
+    fn network_bind_needs_the_explicit_declaration() {
+        let net = sample().replace("127.0.0.1:0", "0.0.0.0:8094");
+        // Without `network`, a non-loopback bind is refused (as before).
+        assert!(Projection::parse(&net).is_err());
+        // Declared: the container-network listener is accepted, loopback still is.
+        let declared = net.replace("\"enabled\":true", "\"enabled\":true,\"network\":true");
+        assert!(Projection::parse(&declared).unwrap().network);
+        assert!(Projection::parse(&sample().replace("\"enabled\":true", "\"enabled\":true,\"network\":true")).is_ok());
+        // Declared but public: still refused. Only the wildcard or a private address.
+        let public = declared.replace("0.0.0.0:8094", "8.8.8.8:8094");
+        assert!(Projection::parse(&public).is_err());
+        assert!(is_network_bind("172.20.0.10:8094"));
+        assert!(is_network_bind("10.1.2.3:8094"));
+        assert!(is_network_bind("192.168.2.10:8094"));
+        assert!(!is_network_bind("[::]:8094"));
+        assert!(!is_network_bind("172.32.0.1:8094"));
+        assert!(!is_network_bind("agentbox:8094"));
+        // Absent field defaults to false.
+        assert!(!Projection::parse(&sample()).unwrap().network);
     }
 
     #[test]
