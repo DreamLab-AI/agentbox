@@ -111,7 +111,9 @@ impl Projection {
 /// A docker-network bind: the IPv4 wildcard or an RFC 1918 address (mirrors the
 /// proxy's own check, `system-one-proxy` `is_network_bind`).
 fn is_network_bind(bind: &str) -> bool {
-    let Some((host, port)) = bind.rsplit_once(':') else { return false };
+    let Some((host, port)) = bind.rsplit_once(':') else {
+        return false;
+    };
     port.parse::<u16>().is_ok()
         && host
             .parse::<std::net::Ipv4Addr>()
@@ -458,12 +460,25 @@ fn consumer_exports(manifest: &Value, p: &Projection, warn: &mut dyn FnMut(Strin
             tomlval::get(manifest, "system_one.consumers.skill_intent") == Some(&Value::Bool(true))
         )
     ));
+    let skill_verify =
+        tomlval::get(manifest, "system_one.consumers.skill_verify") == Some(&Value::Bool(true));
     lines.push(format!(
         "export AGENTBOX_JEV_SKILL_VERIFY={}",
-        u8::from(
-            tomlval::get(manifest, "system_one.consumers.skill_verify") == Some(&Value::Bool(true))
-        )
+        u8::from(skill_verify)
     ));
+    // The router lists runner-up skills at or above this verify rate (ADR-2091);
+    // unset keeps its code default, which never lists. Meaningless without verify.
+    if let Some(v) = tomlval::get(manifest, "system_one.skill_list_at_least") {
+        match v.as_f64().filter(|r| (0.0..=1.0).contains(r)) {
+            Some(r) if skill_verify => {
+                lines.push(format!("export AGENTBOX_JEV_SKILL_LIST_AT_LEAST={r}"))
+            }
+            Some(_) => {}
+            None => warn(format!(
+                "[system_one] skill_list_at_least = {v} is not a rate in 0..=1; not projected"
+            )),
+        }
+    }
     lines.push(format!(
         "export AGENTBOX_JEV_ONTOLOGY_RELEVANCE={}",
         u8::from(
@@ -528,7 +543,12 @@ fn consumer_exports(manifest: &Value, p: &Projection, warn: &mut dyn FnMut(Strin
     ];
     let listed: Vec<String> = tomlval::get(manifest, "system_one.local_only")
         .and_then(Value::as_array)
-        .map(|a| a.iter().filter_map(Value::as_str).map(str::to_string).collect())
+        .map(|a| {
+            a.iter()
+                .filter_map(Value::as_str)
+                .map(str::to_string)
+                .collect()
+        })
         .unwrap_or_default();
     for name in &listed {
         let known = AGENTBOX_LOCAL.iter().any(|(k, _)| k == name)
@@ -550,7 +570,10 @@ fn consumer_exports(manifest: &Value, p: &Projection, warn: &mut dyn FnMut(Strin
         let on = AGENTBOX_LOCAL
             .iter()
             .any(|(c, k)| *k == key && is_local_only(c));
-        lines.push(format!("export AGENTBOX_JEV_{key}_LOCAL_ONLY={}", u8::from(on)));
+        lines.push(format!(
+            "export AGENTBOX_JEV_{key}_LOCAL_ONLY={}",
+            u8::from(on)
+        ));
     }
     for (key, prefix) in EXTERNAL {
         let on = tomlval::get(manifest, &format!("system_one.consumers.{key}"))
@@ -569,10 +592,20 @@ fn consumer_exports(manifest: &Value, p: &Projection, warn: &mut dyn FnMut(Strin
             "export {prefix}_MODEL={}",
             shq(route.map_or("", |b| b.model.as_str()))
         ));
-        lines.push(format!("export {prefix}_LOCAL={}", u8::from(route.is_some())));
-        lines.push(format!("export {prefix}_ALLOW_CLOUD={}", u8::from(!private)));
+        lines.push(format!(
+            "export {prefix}_LOCAL={}",
+            u8::from(route.is_some())
+        ));
+        lines.push(format!(
+            "export {prefix}_ALLOW_CLOUD={}",
+            u8::from(!private)
+        ));
     }
-    let vault = if is_local_only("vault_rank") { local } else { None };
+    let vault = if is_local_only("vault_rank") {
+        local
+    } else {
+        None
+    };
     lines.push(format!(
         "export VISIONCLAW_JEV_ENDPOINT={}",
         shq(vault.map_or("", |b| b.url.as_str()))
@@ -581,7 +614,10 @@ fn consumer_exports(manifest: &Value, p: &Projection, warn: &mut dyn FnMut(Strin
         "export VISIONCLAW_JEV_MODEL={}",
         shq(vault.map_or("", |b| b.model.as_str()))
     ));
-    lines.push(format!("export VISIONCLAW_JEV_LOCAL={}", u8::from(vault.is_some())));
+    lines.push(format!(
+        "export VISIONCLAW_JEV_LOCAL={}",
+        u8::from(vault.is_some())
+    ));
     lines.push(format!(
         "export VISIONCLAW_JEV_ALLOW_CLOUD={}",
         u8::from(!is_local_only("vault_rank"))
@@ -750,6 +786,38 @@ timeout_ms = 20000
     }
 
     #[test]
+    fn skill_list_at_least_projects_only_a_valid_rate_with_verify_on() {
+        let base = || {
+            let mut m = manifest(SLOT);
+            m["system_one"]["consumers"] = json!({ "skill_verify": true });
+            m
+        };
+        // Unset: nothing exported, the router keeps its code default (never list).
+        let (out, _) = quiet(&base(), Format::Shell, None, None);
+        assert!(!out.unwrap().contains("SKILL_LIST_AT_LEAST"));
+        let mut m = base();
+        m["system_one"]["skill_list_at_least"] = json!(0.6);
+        let (out, warns) = quiet(&m, Format::Shell, None, None);
+        assert!(warns.is_empty(), "{warns:?}");
+        assert!(out
+            .unwrap()
+            .contains("export AGENTBOX_JEV_SKILL_LIST_AT_LEAST=0.6"));
+        // Verify off: the list has nothing to read, so nothing is exported.
+        m["system_one"]["consumers"]["skill_verify"] = json!(false);
+        let (out, _) = quiet(&m, Format::Shell, None, None);
+        assert!(!out.unwrap().contains("SKILL_LIST_AT_LEAST"));
+        // Out of range: warned and not projected.
+        let mut bad = base();
+        bad["system_one"]["skill_list_at_least"] = json!(1.5);
+        let (out, warns) = quiet(&bad, Format::Shell, None, None);
+        assert!(!out.unwrap().contains("SKILL_LIST_AT_LEAST"));
+        assert!(
+            warns.iter().any(|w| w.contains("skill_list_at_least")),
+            "{warns:?}"
+        );
+    }
+
+    #[test]
     fn declared_network_bind_projects_and_keeps_the_local_endpoint_on_loopback() {
         let net = SLOT.replace("127.0.0.1:8094", "0.0.0.0:8094");
         // Undeclared: still refused.
@@ -761,7 +829,8 @@ timeout_ms = 20000
         assert!(warns.is_empty(), "{warns:?}");
         let out = out.unwrap();
         // Consumers in this container still dial loopback.
-        assert!(out.contains("export AGENTBOX_SYSTEM_ONE_ENDPOINT='http://127.0.0.1:8094/v1/systemone'"));
+        assert!(out
+            .contains("export AGENTBOX_SYSTEM_ONE_ENDPOINT='http://127.0.0.1:8094/v1/systemone'"));
         let (json_out, _) = quiet(&m, Format::Json, None, None);
         let v: Value = serde_json::from_str(&json_out.unwrap()).unwrap();
         assert_eq!(v["network"], json!(true));
@@ -778,16 +847,20 @@ timeout_ms = 20000
     fn every_consumer_takes_the_proxy_unless_listed_local_only() {
         let mut m = manifest(SLOT);
         m["system_one"]["local_backend"] = json!("laya");
-        m["system_one"]["consumers"] =
-            json!({"consult_advice":true, "visionflow_advisories":true, "solid_pod_advisories":true});
+        m["system_one"]["consumers"] = json!({"consult_advice":true, "visionflow_advisories":true, "solid_pod_advisories":true});
         let (out, warns) = quiet(&m, Format::Shell, None, None);
         assert!(warns.is_empty(), "{warns:?}");
         let out = out.unwrap();
         // Default: no consumer is pinned local; external consumers take the proxy.
         assert!(out.contains("export AGENTBOX_JEV_CONSULT_LOCAL_ONLY=0"));
         assert!(out.contains("export AGENTBOX_JEV_DREAM_TRIAGE_LOCAL_ONLY=0"));
-        for key in ["FAILURE", "MANIFEST", "VOICE", "APPROVAL", "MEMORY", "HEADROOM"] {
-            assert!(out.contains(&format!("export AGENTBOX_JEV_{key}_LOCAL_ONLY=0")), "{key}");
+        for key in [
+            "FAILURE", "MANIFEST", "VOICE", "APPROVAL", "MEMORY", "HEADROOM",
+        ] {
+            assert!(
+                out.contains(&format!("export AGENTBOX_JEV_{key}_LOCAL_ONLY=0")),
+                "{key}"
+            );
         }
         assert!(out.contains("export VISIONFLOW_JEV=1"));
         assert!(out.contains("export VISIONFLOW_JEV_ENDPOINT=''"));

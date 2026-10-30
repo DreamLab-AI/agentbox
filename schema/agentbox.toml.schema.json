@@ -3336,6 +3336,12 @@
           "type": "boolean",
           "description": "ADR-2139 amendment 2026-10-30: serve consumers in other containers on the private docker networks (host containers dial agentbox:8094). Never a published port; the proxy refuses browser-shaped requests. Default false (loopback only)."
         },
+        "skill_list_at_least": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Skill router lists runner-up skills at or above this verify rate (ADR-2091). Needs consumers.skill_verify."
+        },
         "local_only": {
           "type": "array",
           "uniqueItems": true,
