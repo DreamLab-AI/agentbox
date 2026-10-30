@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 310fa19a04ba8c56b5f571ea4cc50435585a44dd
+verified_commit: d4fefe8691fcfe2c627e21a3ddeb869590bd30a1
 verified_paths: [flake.nix, comfyui-sidecar/Dockerfile, docker-compose.comfyui.yml, docker-compose.gui-tools.yml, gui-tools-sidecar, skills/blender/tools, skills/comfyui/mcp-server, skills/comfyui/scripts, skills/comfyui/models/stopmotion-candidates.json]
 owner: jjohare
 review_trigger: media control-plane protocol, sidecar dependencies, workflow state handling or model provisioning changes
@@ -16,6 +16,10 @@ domain: BASELINE-container
 ---
 
 # ADR-2148: Typed remote media control planes alongside existing bridges
+
+## Re-verification — 2026-10-30 at d4fefe869 (gsplat C++20 flag)
+
+The sidecar Dockerfile now patches gsplat's nvcc `-std=c++17` to `-std=c++20` so it builds against torch 2.14. Re-checked: no model weights are baked into the image (provisioning still runs only through `download_video_models.py` into the models volume), and job submission, history-as-authority and owned-only cancellation are untouched.
 
 ## Re-verification — 2026-10-30 at b0c9f064e (SpEdE, review fixes)
 
