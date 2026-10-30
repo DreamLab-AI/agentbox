@@ -10,8 +10,9 @@ in ``face_models.json`` with a pinned URL and sha256 and refused on mismatch.
 
 A face is judged only when its height is at least ``min_face_frac`` of the
 frame's short side; otherwise the result is ``not_judged``, never a pass.
-Thresholds are configuration with provenance and ``calibrated: false``; a PASS
-on an uncalibrated set is ``provisional`` and must not back acceptance. A FAIL
+Thresholds are configuration with provenance. Every result is a measurement:
+``provisional`` is always true, ``acceptance_backing`` always false and
+``acceptance`` is ``"editorial"`` (calibrated acceptance was removed, ADR-2163). A FAIL
 routes to human review, not to an automatic retake.
 
 Adapted from Kinoloom (MIT), tool/qa_director.py (best-of-last-N cosine, 12%
@@ -29,7 +30,7 @@ import json
 import os
 import sys
 from collections import deque
-from dataclasses import asdict, dataclass, field, fields
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Callable, Iterable, Iterator, Optional, Protocol, Sequence
 
@@ -62,118 +63,28 @@ class ThresholdSet:
     min_judged_frames: int = 2
     provenance: str = "kinoloom-ltx-uncalibrated"
     calibrated: bool = False
-    #: Verified ``{path, sha256}`` of a ``threshold-calibration/2`` record.
+    #: Removed (ADR-2163): any value is refused. Kept so a config that still carries it fails loudly.
     calibration: Optional[dict] = None
 
     def __post_init__(self):
-        # ``calibrated`` is a claim anyone can write in a config file; it only
-        # counts with a record that from_dict has verified, and the record is
-        # bound to *these* values: a set altered after verification (replace(),
-        # direct construction with a forged marker) no longer matches its digest.
-        if self.calibrated:
-            cal = self.calibration or {}
-            if not cal.get("verified"):
-                raise CalibrationError("calibrated: true needs a verified calibration record (use from_dict with base_dir)")
-            if cal.get("thresholds_sha256") != thresholds_digest(effective_thresholds(self)):
-                raise CalibrationError("these thresholds differ from the ones the calibration record binds")
+        # Calibrated acceptance was removed: a threshold set is a measurement
+        # configuration only, whatever a config file claims about it.
+        if self.calibrated or self.calibration is not None:
+            raise CalibrationError(CALIBRATION_REMOVED)
 
     @classmethod
     def from_dict(cls, d: Optional[dict], base_dir=None) -> "ThresholdSet":
-        """Build a set from config; a calibrated claim is checked against its record.
+        """Build a set from config; ``calibrated`` and ``calibration`` are refused outright."""
+        if not isinstance(d, (dict, type(None))):
+            raise CalibrationError("thresholds must be a JSON object")
+        return cls(**{k: v for k, v in (d or {}).items() if k in cls.__dataclass_fields__})
 
-        ``calibration`` is ``{path, sha256}`` relative to ``base_dir`` (the
-        thresholds file's directory). The record must hash to ``sha256``, be
-        ``threshold-calibration/2`` for tool ``identity`` and this provenance,
-        bind these exact threshold values through ``thresholds_sha256``, and
-        list non-empty ``evidence`` files that exist and match their hashes.
-        """
-        known = {k: v for k, v in (d or {}).items() if k in cls.__dataclass_fields__}
-        claim = known.pop("calibration", None)
-        if known.get("calibrated"):
-            probe = cls(**{**known, "calibrated": False})
-            known["calibration"] = _verify_calibration(claim, base_dir, probe)
-        return cls(**known)
+
+CALIBRATION_REMOVED = "calibrated acceptance was removed (ADR-2163); acceptance is editorial"
 
 
 class CalibrationError(ValueError):
-    """A calibrated claim without matching, hashed evidence."""
-
-
-CALIBRATION_SCHEMA = "threshold-calibration/2"
-_UNBOUND = ("calibrated", "calibration")
-
-
-def effective_thresholds(th: "ThresholdSet") -> dict:
-    """The threshold values a calibration binds: every field except ``calibrated``/``calibration``.
-
-    Numbers are normalised to their declared type so ``0`` and ``0.0`` hash alike.
-    """
-    out = {}
-    for f in fields(th):
-        if f.name in _UNBOUND:
-            continue
-        v = getattr(th, f.name)
-        out[f.name] = float(v) if isinstance(f.default, float) else int(v) if isinstance(f.default, int) \
-            and not isinstance(f.default, bool) else v
-    return out
-
-
-def thresholds_digest(effective: dict) -> str:
-    """sha256 of the canonical JSON (sorted keys, no spaces, UTF-8) of ``effective``."""
-    raw = json.dumps(effective, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
-    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
-
-
-def _resolve_under(base: Path, rel, what: str) -> Path:
-    if not isinstance(rel, str) or not rel:
-        raise CalibrationError(f"{what} needs a path")
-    path = (base / rel).resolve()
-    if base != path and base not in path.parents:
-        raise CalibrationError(f"{what} path escapes {base}")
-    return path
-
-
-def _verify_calibration(claim, base_dir, th: "ThresholdSet"):
-    if not isinstance(claim, dict) or not claim.get("path") or not claim.get("sha256"):
-        raise CalibrationError("calibrated: true needs a calibration {path, sha256} record")
-    if base_dir is None:
-        raise CalibrationError("a calibration record needs a base directory to resolve against")
-    base = Path(base_dir).resolve()
-    path = _resolve_under(base, claim["path"], "calibration")
-    try:
-        data = path.read_bytes()
-    except OSError as e:
-        raise CalibrationError(f"calibration record unreadable: {e}") from e
-    digest = hashlib.sha256(data).hexdigest()
-    if digest != claim["sha256"]:
-        raise CalibrationError(f"calibration record hashes to {digest}, not {claim['sha256']}")
-    try:
-        record = json.loads(data)
-    except ValueError as e:
-        raise CalibrationError(f"calibration record is not JSON: {e}") from e
-    if not isinstance(record, dict):
-        raise CalibrationError("calibration record must be a JSON object")
-    if (record.get("schema"), record.get("tool"), record.get("provenance")) != (
-            CALIBRATION_SCHEMA, "identity", th.provenance):
-        raise CalibrationError(f"calibration record must be {CALIBRATION_SCHEMA} for tool identity and this provenance")
-    bound = thresholds_digest(effective_thresholds(th))
-    if record.get("thresholds_sha256") != bound:
-        raise CalibrationError(f"calibration record binds thresholds {record.get('thresholds_sha256')}, "
-                               f"not these ({bound})")
-    evidence = record.get("evidence")
-    if not isinstance(evidence, list) or not evidence:
-        raise CalibrationError("calibration record needs non-empty evidence [{path, sha256}]")
-    for item in evidence:
-        if not isinstance(item, dict) or not isinstance(item.get("sha256"), str):
-            raise CalibrationError("calibration evidence entries must be {path, sha256}")
-        ep = _resolve_under(base, item.get("path"), "calibration evidence")
-        try:
-            got = hashlib.sha256(ep.read_bytes()).hexdigest()
-        except OSError as e:
-            raise CalibrationError(f"calibration evidence unreadable: {e}") from e
-        if got != item["sha256"]:
-            raise CalibrationError(f"calibration evidence {item['path']} hashes to {got}, not {item['sha256']}")
-    return {"path": str(claim["path"]), "sha256": digest, "verified": True, "thresholds_sha256": bound}
+    """A threshold set claimed calibration, which no longer exists."""
 
 
 # ---------------------------------------------------------------- embedders
@@ -389,8 +300,7 @@ def identity_score(frames: Iterable[np.ndarray], refs: dict, embedder: Embedder,
     best match clears ``min_similarity``; the verdict is ``FAIL`` unless at least
     ``min_judged_frames`` frames match *and* they are a strict majority of the
     frames holding a face (one good frame among strangers is not a pass).
-    ``PASS`` is ``provisional`` while the set is uncalibrated, and never backs
-    acceptance without ``expected_cast``.
+    ``PASS`` is always ``provisional``; acceptance is editorial.
     """
     th = th or ThresholdSet()
     tail = list(deque(frames, maxlen=max(1, th.last_n)))
@@ -444,9 +354,7 @@ def identity_score(frames: Iterable[np.ndarray], refs: dict, embedder: Embedder,
         verdict, reason = "FAIL", "best similarity under threshold"
     report = {
         "schema": SCHEMA, "kind": "identity_score", "verdict": verdict,
-        "provisional": (verdict == "PASS" and not th.calibrated),
-        # A gate that does not know who should be on screen cannot back acceptance.
-        "acceptance_backing": bool(verdict == "PASS" and th.calibrated and expected_cast is not None),
+        "provisional": True, "acceptance_backing": False, "acceptance": "editorial",
         "score": best, "frames_considered": len(tail), "judged_frames": judged_frames,
         "face_frames": face_frames, "effective_min_judged_frames": need,
         "per_frame": per, "thresholds": asdict(th),
@@ -454,10 +362,8 @@ def identity_score(frames: Iterable[np.ndarray], refs: dict, embedder: Embedder,
     if expected_cast is not None:
         report["expected_cast"] = expected_cast
         report["matched_cast"] = swap["matched"] if swap else None
-    if expected_cast is None:
-        report["acceptance_blocked"] = "no expected_cast"
-        if verdict == "PASS":
-            reason = "no expected_cast"
+    if expected_cast is None and verdict == "PASS":
+        reason = "no expected_cast"  # a note: the gate did not know who should be on screen
     if reason:
         report["reason"] = reason
     if detail:
@@ -505,7 +411,7 @@ def drift_report(frames: Iterable[np.ndarray], link_starts: Sequence[int], refs:
             summary[name] = {"sim_first": seen[0]["sim"], "sim_last": seen[-1]["sim"],
                              "change": round(seen[-1]["sim"] - seen[0]["sim"], 4)}
     return {"schema": SCHEMA, "kind": "drift_report", "every": every, "links": links,
-            "summary": summary, "gate": False, "thresholds": asdict(th)}
+            "summary": summary, "gate": False, "acceptance": "editorial", "thresholds": asdict(th)}
 
 
 def choose_opening_frame(candidates: Sequence[np.ndarray], refs: dict, embedder: Embedder,
@@ -536,13 +442,15 @@ def choose_opening_frame(candidates: Sequence[np.ndarray], refs: dict, embedder:
                        "_rank": (1, likeness) if complete else (0, max(scored) if scored else -1.0)})
     if not scores:
         return {"schema": SCHEMA, "kind": "opening_frame", "chosen": None, "weak": True,
-                "scores": [], "thresholds": asdict(th)}
+                "scores": [], "thresholds": asdict(th), "provisional": True,
+                "acceptance_backing": False, "acceptance": "editorial"}
     best = max(scores, key=lambda s: s["_rank"])
     weak = best["likeness"] is None or best["likeness"] < th.weak_below
     for s in scores:
         s.pop("_rank")
     return {"schema": SCHEMA, "kind": "opening_frame", "chosen": best["index"], "weak": weak,
-            "likeness": best["likeness"], "scores": scores, "provisional": not th.calibrated,
+            "likeness": best["likeness"], "scores": scores, "provisional": True,
+            "acceptance_backing": False, "acceptance": "editorial",
             "thresholds": asdict(th)}
 
 
@@ -654,15 +562,12 @@ def _thresholds(args) -> ThresholdSet:
     d = json.loads(Path(args.thresholds).read_text()) if args.thresholds else {}
     if not isinstance(d, dict):
         raise CalibrationError("thresholds file must be a JSON object")
+    if d.get("calibrated") or d.get("calibration") is not None:
+        raise CalibrationError(CALIBRATION_REMOVED)
     overrides = {"last_n": args.last_n, "swap_margin": args.swap_margin,
                  "min_judged_frames": args.min_judged_frames}
-    given = {k: v for k, v in overrides.items() if v is not None}
-    if given and d.get("calibrated"):
-        raise CalibrationError(f"{', '.join(sorted(given))} cannot override a calibrated threshold set; "
-                               "calibrate the new values instead")
-    d.update(given)
-    base = Path(args.thresholds).resolve().parent if args.thresholds else None
-    return ThresholdSet.from_dict(d, base_dir=base)
+    d.update({k: v for k, v in overrides.items() if v is not None})
+    return ThresholdSet.from_dict(d)
 
 
 def main(argv: Optional[Sequence[str]] = None, embedder: Optional[Embedder] = None) -> int:

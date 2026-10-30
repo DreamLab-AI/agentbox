@@ -38,21 +38,6 @@ class FakeEmbedder:
         return [FaceHit((0.0, 0.0, 10.0, bh), emb) for bh, emb in self.table.get(int(bgr[0, 0, 0]), [])]
 
 
-def make_record(d, cfg, evidence_files=("ev.txt",), **over):
-    """Write an evidence file and a threshold-calibration/2 record for ``cfg`` in ``d``; return the claim."""
-    ev = []
-    for name in evidence_files:
-        Path(d, name).write_bytes(b"calibration run " + name.encode())
-        ev.append({"path": name, "sha256": hashlib.sha256(Path(d, name).read_bytes()).hexdigest()})
-    eff = idn.effective_thresholds(ThresholdSet(**{**cfg, "calibrated": False}))
-    rec = {"schema": "threshold-calibration/2", "tool": "identity", "provenance": cfg.get("provenance"),
-           "thresholds_sha256": idn.thresholds_digest(eff), "evidence": ev}
-    rec.update(over)
-    raw = json.dumps(rec).encode()
-    Path(d, "cal.json").write_bytes(raw)
-    return {"path": "cal.json", "sha256": hashlib.sha256(raw).hexdigest()}
-
-
 REF = unit(1, 0, 0)
 
 
@@ -82,7 +67,7 @@ class ScoreTests(unittest.TestCase):
         e2 = FakeEmbedder({1: [(12, REF)]})
         self.assertEqual(idn.identity_score([frame(1), frame(1)], {"a": [REF]}, e2)["verdict"], "PASS")
 
-    def test_uncalibrated_pass_is_provisional(self):
+    def test_pass_is_provisional_and_editorial(self):
         e = FakeEmbedder({1: [(50, REF)]})
         r = idn.identity_score([frame(1), frame(1)], {"a": [REF]}, e)
         self.assertEqual(r["verdict"], "PASS")
@@ -90,34 +75,14 @@ class ScoreTests(unittest.TestCase):
         self.assertFalse(r["acceptance_backing"])
         self.assertEqual(r["thresholds"]["provenance"], "kinoloom-ltx-uncalibrated")
         self.assertFalse(r["thresholds"]["calibrated"])
-        # A bare calibrated claim is a config assertion, not evidence: refused.
-        with self.assertRaises(idn.CalibrationError):
-            ThresholdSet(calibrated=True, provenance="x")
-        with self.assertRaises(idn.CalibrationError):
-            ThresholdSet.from_dict({"calibrated": True, "provenance": "x"})
-        with tempfile.TemporaryDirectory() as d:
-            good = make_record(d, {"provenance": "x"})
-            th = ThresholdSet.from_dict({"calibrated": True, "provenance": "x", "calibration": good}, base_dir=d)
-            cal = idn.identity_score([frame(1), frame(1)], {"a": [REF]}, e, th, expected_cast="a")
-            self.assertFalse(cal["provisional"])
-            self.assertTrue(cal["acceptance_backing"])
-            self.assertEqual(cal["thresholds"]["calibration"]["sha256"], good["sha256"])
-            for bad in ({**good, "sha256": "0" * 64}, {**good, "path": "../cal.json"}):
-                with self.assertRaises(idn.CalibrationError):
-                    ThresholdSet.from_dict({"calibrated": True, "provenance": "x", "calibration": bad}, base_dir=d)
-            with self.assertRaises(idn.CalibrationError):
-                ThresholdSet.from_dict({"calibrated": True, "provenance": "other", "calibration": good}, base_dir=d)
-            # A forged "verified" marker in the input is discarded, then re-checked.
-            with self.assertRaises(idn.CalibrationError):
-                ThresholdSet.from_dict({"calibrated": True, "provenance": "x",
-                                        "calibration": {**good, "sha256": "0" * 64, "verified": True}}, base_dir=d)
+        self.assertEqual(r["acceptance"], "editorial")
 
     def test_fail_routes_to_human_review(self):
         e = FakeEmbedder({1: [(50, unit(0, 1, 0))]})
         r = idn.identity_score([frame(1), frame(1)], {"a": [REF]}, e)
         self.assertEqual(r["verdict"], "FAIL")
         self.assertEqual(r["route"], "human_review")
-        self.assertFalse(r["provisional"])
+        self.assertTrue(r["provisional"])
 
     def test_no_references_not_judged(self):
         r = idn.identity_score([frame(1)], {}, FakeEmbedder({1: [(50, REF)]}))
@@ -231,18 +196,16 @@ class CastAwareTests(unittest.TestCase):
         half = idn.identity_score([frame(1)] * 2 + [frame(2)] * 2, CAST, e, expected_cast="alice")
         self.assertEqual(half["verdict"], "FAIL")
 
-    def test_no_expected_cast_never_backs_acceptance(self):
-        import tempfile
+    def test_no_expected_cast_pass_carries_a_note_and_never_backs_acceptance(self):
         e = FakeEmbedder({1: [(50, ALICE)]})
-        with tempfile.TemporaryDirectory() as d:
-            claim = make_record(d, {"provenance": "x"})
-            th = ThresholdSet.from_dict({"calibrated": True, "provenance": "x", "calibration": claim}, base_dir=d)
-            r = idn.identity_score([frame(1)] * 3, CAST, e, th)
-            self.assertEqual(r["verdict"], "PASS")
-            self.assertFalse(r["acceptance_backing"])
-            self.assertEqual(r["reason"], "no expected_cast")
-            r = idn.identity_score([frame(1)] * 3, CAST, e, th, expected_cast="alice")
-            self.assertTrue(r["acceptance_backing"])
+        r = idn.identity_score([frame(1)] * 3, CAST, e)
+        self.assertEqual((r["verdict"], r["reason"]), ("PASS", "no expected_cast"))
+        r = idn.identity_score([frame(1)] * 3, CAST, e, expected_cast="alice")
+        self.assertEqual(r["verdict"], "PASS")
+        for rep in (r, idn.identity_score([frame(1)] * 3, CAST, e)):
+            self.assertFalse(rep["acceptance_backing"])
+            self.assertTrue(rep["provisional"])
+            self.assertEqual(rep["acceptance"], "editorial")
 
     def test_last_n_below_min_judged_frames_can_still_reach_a_verdict(self):
         # last_n=1 is an explicit request for a single-frame verdict: min_judged_frames is capped at last_n.
@@ -259,108 +222,39 @@ class CastAwareTests(unittest.TestCase):
         self.assertEqual(opt["expected_cast"][0], "STRING")
 
 
-class CalibrationBindingTests(unittest.TestCase):
-    def claim(self, d, cfg, **kw):
-        return make_record(d, cfg, **kw)
+class CalibrationRemovedTests(unittest.TestCase):
+    def test_calibrated_true_is_refused(self):
+        with self.assertRaisesRegex(idn.CalibrationError, "editorial"):
+            ThresholdSet(calibrated=True)
+        with self.assertRaisesRegex(idn.CalibrationError, "ADR-2163"):
+            ThresholdSet.from_dict({"calibrated": True, "provenance": "x"})
 
-    def load(self, d, cfg, claim):
-        return ThresholdSet.from_dict({**cfg, "calibrated": True, "calibration": claim}, base_dir=d)
+    def test_calibration_field_is_refused(self):
+        with self.assertRaises(idn.CalibrationError):
+            ThresholdSet.from_dict({"calibration": {"path": "c.json", "sha256": "0" * 64}})
+        with self.assertRaises(idn.CalibrationError):
+            ThresholdSet(calibration={"path": "c.json"})
 
-    def test_forged_three_field_record_is_refused(self):
-        with tempfile.TemporaryDirectory() as d:
-            raw = json.dumps({"schema": "threshold-calibration/1", "tool": "identity", "provenance": "x"}).encode()
-            Path(d, "cal.json").write_bytes(raw)
-            claim = {"path": "cal.json", "sha256": hashlib.sha256(raw).hexdigest()}
-            with self.assertRaises(idn.CalibrationError):
-                self.load(d, {"provenance": "x", "min_similarity": -1}, claim)
-
-    def test_record_for_set_a_refused_for_set_b(self):
-        with tempfile.TemporaryDirectory() as d:
-            cfg_a = {"provenance": "x", "min_similarity": 0.4}
-            claim = self.claim(d, cfg_a)
-            self.load(d, cfg_a, claim)  # honest
-            with self.assertRaisesRegex(idn.CalibrationError, "thresholds"):
-                self.load(d, {"provenance": "x", "min_similarity": -1}, claim)
-            with self.assertRaises(idn.CalibrationError):
-                self.load(d, {**cfg_a, "last_n": 1}, claim)
-
-    def test_missing_empty_or_tampered_evidence_refused(self):
-        cfg = {"provenance": "x"}
-        with tempfile.TemporaryDirectory() as d:
-            claim = self.claim(d, cfg)
-            Path(d, "ev.txt").write_bytes(b"tampered")
-            with self.assertRaisesRegex(idn.CalibrationError, "evidence"):
-                self.load(d, cfg, claim)
-        with tempfile.TemporaryDirectory() as d:
-            claim = self.claim(d, cfg)
-            Path(d, "ev.txt").unlink()
-            with self.assertRaisesRegex(idn.CalibrationError, "evidence"):
-                self.load(d, cfg, claim)
-        with tempfile.TemporaryDirectory() as d:
-            with self.assertRaisesRegex(idn.CalibrationError, "evidence"):
-                self.load(d, cfg, self.claim(d, cfg, evidence_files=()))
-        with tempfile.TemporaryDirectory() as d:
-            claim = self.claim(d, cfg, evidence=[{"path": "../x", "sha256": "0" * 64}])
-            with self.assertRaises(idn.CalibrationError):
-                self.load(d, cfg, claim)
-
-    def test_old_schema_is_refused_and_honest_record_honoured(self):
-        cfg = {"provenance": "x", "min_similarity": 0.3}
-        with tempfile.TemporaryDirectory() as d:
-            with self.assertRaises(idn.CalibrationError):
-                self.load(d, cfg, self.claim(d, cfg, schema="threshold-calibration/1"))
-            th = self.load(d, cfg, self.claim(d, cfg))
-            self.assertTrue(th.calibrated)
-            self.assertEqual(th.min_similarity, 0.3)
-
-    def test_digest_is_canonical_json_sha256(self):
-        eff = idn.effective_thresholds(ThresholdSet())
-        self.assertNotIn("calibrated", eff)
-        self.assertNotIn("calibration", eff)
-        raw = json.dumps(eff, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
-        self.assertEqual(idn.thresholds_digest(eff), hashlib.sha256(raw).hexdigest())
-
-    def test_calibrated_set_cannot_be_mutated(self):
-        import dataclasses
-        with tempfile.TemporaryDirectory() as d:
-            cfg = {"provenance": "x"}
-            th = self.load(d, cfg, self.claim(d, cfg))
-            with self.assertRaises(idn.CalibrationError):
-                dataclasses.replace(th, min_similarity=-1)
-
-    def test_cli_overrides_of_a_calibrated_set_are_refused(self):
+    def test_cli_prints_blocked_not_a_traceback(self):
         import contextlib, io
-        with tempfile.TemporaryDirectory() as d:
-            cfg = {"provenance": "x"}
-            claim = self.claim(d, cfg)
-            Path(d, "th.json").write_text(json.dumps({**cfg, "calibrated": True, "calibration": claim}))
-            for flag, val in (("--last-n", "1"), ("--swap-margin", "0.9"), ("--min-judged-frames", "1")):
-                buf = io.StringIO()
-                with contextlib.redirect_stdout(buf):
-                    rc = idn.main(["--thresholds", str(Path(d, "th.json")), flag, val, "opening"],
-                                  embedder=FakeEmbedder({}))
-                self.assertEqual(rc, 2, flag)
-                self.assertEqual(json.loads(buf.getvalue())["verdict"], "BLOCKED")
-            buf = io.StringIO()
-            with contextlib.redirect_stdout(buf):
-                rc = idn.main(["--thresholds", str(Path(d, "th.json")), "opening"], embedder=FakeEmbedder({}))
-            self.assertEqual(rc, 0)
-
-    def test_non_object_record_is_a_calibration_error_and_cli_blocked(self):
-        import contextlib, io
-        for body in ("[1,2]", '"x"', "3", "null"):
+        for body in ({"calibrated": True}, {"calibration": {"path": "c.json", "sha256": "0"}}, [1, 2]):
             with tempfile.TemporaryDirectory() as d:
-                raw = body.encode()
-                Path(d, "cal.json").write_bytes(raw)
-                claim = {"path": "cal.json", "sha256": hashlib.sha256(raw).hexdigest()}
-                with self.assertRaises(idn.CalibrationError):
-                    self.load(d, {"provenance": "x"}, claim)
-                Path(d, "th.json").write_text(json.dumps({"provenance": "x", "calibrated": True, "calibration": claim}))
+                Path(d, "th.json").write_text(json.dumps(body))
                 buf = io.StringIO()
                 with contextlib.redirect_stdout(buf):
                     rc = idn.main(["--thresholds", str(Path(d, "th.json")), "opening"], embedder=FakeEmbedder({}))
                 self.assertEqual(rc, 2)
-                self.assertEqual(json.loads(buf.getvalue())["verdict"], "BLOCKED")
+                out = json.loads(buf.getvalue())
+                self.assertEqual(out["verdict"], "BLOCKED")
+                self.assertTrue(out["error"])
+
+    def test_every_report_is_editorial(self):
+        e = FakeEmbedder({1: [(50, ALICE)]})
+        for rep in (idn.identity_score([frame(1)] * 3, CAST, e, expected_cast="alice"),
+                    idn.choose_opening_frame([frame(1)], CAST, e)):
+            self.assertFalse(rep["acceptance_backing"])
+            self.assertTrue(rep["provisional"])
+            self.assertEqual(rep["acceptance"], "editorial")
 
 
 class DriftTests(unittest.TestCase):
