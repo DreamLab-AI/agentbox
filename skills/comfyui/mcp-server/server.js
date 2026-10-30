@@ -152,7 +152,13 @@ class ComfyUIClient extends EventEmitter {
         return { success: false, jobId, error: 'Job is not queued or running' };
     }
 
-    async safeFree() {
+    /**
+     * Best-effort unload on an idle queue. A job can arrive between the idle check and /free;
+     * ComfyUI applies the free flags between prompts, so that is not destructive, but the unload
+     * may be deferred or hit another job's models. `success` is true only for a clean free.
+     * `settleMs` (default 1500) is the wait before vram_after is read, because /free is asynchronous.
+     */
+    async safeFree({ settleMs = ComfyUIClient.SAFE_FREE_SETTLE_MS } = {}) {
         const idle = q => !(q.queue_running?.length || q.queue_pending?.length);
         const queue = await this.httpRequest('/queue');
         if (!idle(queue)) return { success: false, skipped: true, reason: 'queue is not idle',
@@ -163,11 +169,14 @@ class ComfyUIClient extends EventEmitter {
         };
         const before = vram(await this.httpRequest('/system_stats'));
         await this.httpRequest('/free', 'POST', { unload_models: true, free_memory: true });
-        // /free is asynchronous: re-read state, and never issue a second free.
+        // /free is asynchronous: settle, re-read state, and never issue a second free.
+        if (settleMs > 0) await new Promise(resolve => setTimeout(resolve, settleMs));
         const after = await this.httpRequest('/queue');
-        return { success: true, skipped: false, vram_before: before,
-            vram_after: vram(await this.httpRequest('/system_stats')), job_appeared_meanwhile: !idle(after),
-            message: 'Unload requested; compare vram_before and vram_after' };
+        const appeared = !idle(after);
+        return { success: !appeared, skipped: false, vram_before: before,
+            vram_after: vram(await this.httpRequest('/system_stats')), job_appeared_meanwhile: appeared,
+            message: appeared ? 'A job appeared meanwhile; best effort only, compare vram_before and vram_after with care'
+                : 'Unload requested (best effort); compare vram_before and vram_after' };
     }
 
     async listModels() {
@@ -432,6 +441,7 @@ class ComfyUIMCPServer {
     }
 }
 
+ComfyUIClient.SAFE_FREE_SETTLE_MS = 1500;
 module.exports = { ComfyUIClient, ComfyUIMCPServer };
 if (require.main === module) {
     const mcpServer = new ComfyUIMCPServer();

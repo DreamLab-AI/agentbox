@@ -264,24 +264,31 @@ class Client:
     def validate(self, graph):
         return validate_graph(graph, self.object_info())
 
-    def safe_free(self, settle=1.0):
-        """Unload models only on an idle queue. /free is asynchronous, so re-read state afterwards.
+    def safe_free(self, settle_s=1.5):
+        """Unload models only on an idle queue. /free is asynchronous, so settle, then re-read state.
 
+        Best effort, not a guarantee. A job can arrive between the idle check and
+        ``/free``; ComfyUI applies the free flags between prompts, so that race does not
+        kill the job, but the unload may then hit a different job's models or be deferred.
         At most one /free is ever issued, even if a job shows up meanwhile.
+
+        ``success`` is true only for a clean free: not skipped and no job appeared
+        meanwhile. ``settle_s`` is the wait before ``vram_after`` is read (tests pass 0).
         """
         def busy(queue):
             return bool(queue.get("queue_running") or queue.get("queue_pending"))
         queue = self.request("/queue")
         if busy(queue):
-            return {"skipped": True, "reason": "queue is not idle",
+            return {"success": False, "skipped": True, "reason": "queue is not idle",
                     "running": len(queue.get("queue_running", [])), "pending": len(queue.get("queue_pending", []))}
         before = vram_summary(self.request("/system_stats", timeout=self.stats_timeout))
         self.request("/free", {"unload_models": True, "free_memory": True})
-        time.sleep(max(settle, 0))
+        time.sleep(max(settle_s, 0))
         after_queue = self.request("/queue")
         after = vram_summary(self.request("/system_stats", timeout=self.stats_timeout))
-        return {"skipped": False, "free_requests": 1, "vram_before": before, "vram_after": after,
-                "job_appeared_meanwhile": busy(after_queue)}
+        appeared = busy(after_queue)
+        return {"success": not appeared, "skipped": False, "free_requests": 1, "vram_before": before,
+                "vram_after": after, "job_appeared_meanwhile": appeared}
 
     def vram_headroom(self):
         """Pre-submit VRAM check. Warns, never blocks; an unreadable server is recorded as unknown."""
@@ -432,7 +439,8 @@ def main():
     commands.add_parser("object-info")
     probe = commands.add_parser("probe")
     probe.add_argument("--manifest", help="JSON {required_nodes, required_models}")
-    commands.add_parser("safe-free")
+    safe_free = commands.add_parser("safe-free", help="best-effort unload on an idle queue; exit 3 if skipped or a job appeared")
+    safe_free.add_argument("--settle-s", type=float, default=1.5, help="wait before re-reading VRAM (default 1.5)")
     cancel = commands.add_parser("cancel")
     cancel.add_argument("receipt")
     validate = commands.add_parser("validate")
@@ -464,7 +472,10 @@ def main():
                 print(json.dumps(result, indent=2))
                 return 1
         elif args.command == "safe-free":
-            result = client.safe_free()
+            result = client.safe_free(settle_s=args.settle_s)
+            if not result["success"]:
+                print(json.dumps(result, indent=2))
+                return 3
         elif args.command == "cancel":
             result = client.cancel(args.receipt)
         elif args.command in ("validate", "submit"):
