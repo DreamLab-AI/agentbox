@@ -185,6 +185,6 @@ Re-verified 2026-10-29 at `00039efb1e4a70402df86ad19cf76894fe3b9a8f` for ADR-215
 
 - Running image: `.agentbox-build/active.json` (host, read via the project bind) records `sourceCommit` `e786197ccb9f56c638d4b0181e77f33ab38b7db9`, `sourceDirty: false`, `delivery: registry`, `activatedAt` 2026-10-30T14:22:59.281Z, `imageId` `sha256:9776d2fc515c…`; `docker inspect agentbox --format '{{.Image}}'` and `$AGENTBOX_IMAGE_HASH` both return `sha256:9776d2fc515c5922cde9f7791248f731416192a6b4a66e8d6d06b15bfd5c892d`. The running container therefore runs main at `e786197cc`.
 - The same receipt records `preparedStartedAt` 2026-10-30T14:13:43Z, `createdAt` 14:22:04Z, and `seconds` `{build: 125.452, pushOrStream: 9.961, pull: 61.258, smokeAndVerify: 0.521, deliveryAndSmoke: 71.968}`; `candidate.json` sits beside it and generation directories are retained.
-- `docker images | grep recovery` lists `agentbox:recovery-7fb68740e2f3` (the scoped-activation recovery tag).
+- `docker images | grep recovery` lists `agentbox:recovery-7fb68740e2f3`. A recovery tag exists, but it cannot be dated to this cycle: Nix-built images report `Created` 0001-01-01.
 
 Implementation axis and `verified_commit` are unchanged; the timings are one cycle, not a benchmark.

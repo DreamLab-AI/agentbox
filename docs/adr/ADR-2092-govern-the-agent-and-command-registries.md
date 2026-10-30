@@ -10,7 +10,7 @@ superseded_by: []
 verified_commit: 358e5d32c81e8a4259d754568919a962461b9a31
 verified_paths: [agents/registered-agents.txt, scripts/reconcile-agents.sh, scripts/reconcile-commands.sh, scripts/project-skill-roots.mjs, config/registered-commands.txt, config/entrypoint-unified.sh, flake.nix, tests/config/agent-reconcile.test.sh]
 owner: jjohare
-review_trigger: a new subagent worth always-loading, or evidence the router surfaces baked-but-unregistered skills too slowly
+review_trigger: a new subagent worth always-loading, or evidence the router surfaces baked-but-unregistered skills too slowly; a reconcile audit on the running image showing ~/.claude/agents matches agents/registered-agents.txt (activation → live)
 repo: agentbox
 ---
 

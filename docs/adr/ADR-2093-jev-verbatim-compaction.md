@@ -10,7 +10,7 @@ superseded_by: []
 verified_commit: 6ceb224899a2db4b96dc245e85ba3f4b326a96b3
 verified_paths: [lib/factrail.nix, config/entrypoint-unified.sh, lib/claude-code-binary.nix]
 owner: jjohare
-review_trigger: the first measured residency bill that exceeds the summary path's re-read savings, a Claude Code function-hook API change, a request to fence a class other than email, or a change to ADR-2121 (its implementation)
+review_trigger: the first measured residency bill that exceeds the summary path's re-read savings, a Claude Code function-hook API change, a request to fence a class other than email, or a change to ADR-2121 (its implementation); `/jev-compact status` answering in a fresh session on a booted image (activation → live)
 repo: agentbox
 ---
 

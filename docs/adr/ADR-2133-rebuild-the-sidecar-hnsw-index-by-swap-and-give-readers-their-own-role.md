@@ -10,7 +10,7 @@ superseded_by: []
 verified_commit: 9db3bcc4996ea1caf0a06c1660075568a52b5807
 verified_paths: [scripts/ruvector-sidecar-update.sh, tests/config/ruvector-sidecar-ops.test.sh]
 owner: jjohare
-review_trigger: a ruvector extension or image bump; a new read-only consumer or readable table; any pg_hba change
+review_trigger: a ruvector extension or image bump; a new read-only consumer or readable table; any pg_hba change; `ruvector reader-role --yes` and `hba-harden --yes` run on the live sidecar (activation → live)
 repo: agentbox
 domain: LEARNING-memory
 ---

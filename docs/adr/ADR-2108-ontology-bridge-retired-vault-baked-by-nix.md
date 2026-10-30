@@ -10,7 +10,7 @@ superseded_by: []
 verified_commit: e786197ccb9f56c638d4b0181e77f33ab38b7db9
 verified_paths: [lib/vault.nix, flake.nix, agentbox.toml, schema/agentbox.toml.schema.json, config/entrypoint-unified.sh, mcp/mcp.json, services/agentbox-manifest/tests/golden, management-api/lib/ontology-propose.js]
 owner: jjohare
-review_trigger: crates/vault being pushed to a remote (flip the flake input off the absolute path), a `vault --version` gate failure at boot, a request to re-register any deleted server, or `vault` shipping (re-point ontology-monitor/typed-spawn/ontology-workingset off lib/ontology-local.js and delete it)
+review_trigger: a `vault --version` gate failure at boot; a request to re-register any deleted server; ontology-monitor, typed-spawn and ontology-workingset re-pointed off mcp/servers/lib/ontology-local.js (vault shipped, so this is now due; ADR-2136); a vaultSrc bump that changes the vault verb set
 repo: agentbox
 domain: BASELINE-container
 lineage: ADR-2107 (no MCP for the corpus), ADR-2029 (rune, the gated-binary pattern this follows), ADR-2028 ([vault] path authority), ADR-023/ADR-054 (the retired bridge's own records), VisionFlow PRD-sovereign-corpus §4
@@ -236,3 +236,5 @@ publication alone does not retire the current source pin or read-only helpers.
 - Deletions hold on main: `mcp/servers/ontology-bridge.js` and `mcp/servers/ontology-local.cjs` are absent; `grep -c ontology-bridge mcp/mcp.json` and the baked `/opt/agentbox/mcp/mcp.json` → 1 each, the `decision-tools` description that records the retirement. `lib/ontology-local.js` survives at `mcp/servers/lib/ontology-local.js` as the read-only library this Decision keeps on purpose.
 
 Not claimed: the review-trigger follow-on (re-point `ontology-monitor`, `typed-spawn` and `ontology-workingset` off `ontology-local.js`); ADR-2136 still owns that. Found while verifying, and outside this record's Decision: the baked `vault 0.1.0` no longer has `find`/`retrieve`/`tree`/`edit`/`create`/`apply` ("Moved: … now live in the `ontomark` CLI"), while `flake.nix:950-953` still says vault keeps them. ADR-2109's close-out records the consumer impact.
+
+`review_trigger` (2026-10-30): the remote-push clause was closed by the 2026-10-02 pin to `github:DreamLab-AI/VisionClaw/<rev>`, and "vault shipping" fired with this close-out. The trigger now names what is still pending.
