@@ -28,7 +28,7 @@ relative to it. Paths outside it are rejected.
 | `performance-prompts` | Compile authored performance phases into timed video prompts bound to a scene timeline. |
 | `guide-check` | Verify a guide video's decoded clock and that its padding holds the last delivery frame. |
 | `scene-exchange` | Validate a software-independent scene and compile observed views into prompt data. |
-| `seam-qa` | Measure every join (look, detail, audio, overlap fidelity) against a local baseline; uncalibrated thresholds give only a provisional PASS. |
+| `seam-qa` | Measure every join (look, detail, audio, overlap fidelity) against a local baseline; uncalibrated thresholds give only a provisional PASS; static shots fall back to absolute floors. |
 | `stitch` | Frame-exact `assemble` and `retake` (trim + linear blend, one bt709 encode, approved audio copied by packet hash) and `plan-retake` geometry. |
 | `window-plan` | Plan generation windows on a model grid with chained checkpoint keys (`plan`), and diff two plans into a re-render scope (`diff`). |
 | `prompt-lint` | Static reference, start-image, look, emotion, continuity and take-cap checks over film and performance plans before GPU spend. |
@@ -151,3 +151,7 @@ Evidence is checked for existence and hash only; gates are not re-run.
 ## Tests
 
 `cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test && cargo doc --no-deps`.
+
+## Calibration evidence
+
+`calibrated: true` in any threshold set is honoured only with a `threshold-calibration/1` record (`calibration.rs`): `{schema, tool, provenance, evidence:[{path, sha256}]}`, every evidence file verified under `--root`. Without it the claim is refused. Decode refuses untagged YUV (unless a stitch segment declares `colour: {matrix, range}`), HDR, BT.2020, rotation and non-square SAR. `window-plan --model PATH=HEX` re-hashes the file; `--model-hash-unverified` is the escape for weights not on this box. `render-cache --allow-from-diff` requires the parent receipt's `plan_hash` and `plan_final_key` (record them with `--plan`), and `--old-plan`/`--new-plan` re-run the diff.

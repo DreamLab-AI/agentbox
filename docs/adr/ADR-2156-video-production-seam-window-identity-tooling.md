@@ -30,7 +30,7 @@ This amends ADR-2150 (adds tools and gates inside its evidence discipline; its d
 3. **ComfyUI client** (`comfy_client.py`, `server.js`, `comfy.rs`):
    - a capability snapshot against a per-workflow manifest, reading both `COMBO` wire forms;
    - a `/system_stats` probe before `/object_info`;
-   - `safe_free`, which needs an idle queue before and after `/free`;
+   - `safe_free`, a best-effort idle check before and after `/free` with a settle delay. A job can still arrive between the check and the call; ComfyUI applies free flags between prompts, so this is not destructive. A skipped or raced free returns `success: false` (exit 3).
    - a VRAM headroom record in each submission receipt;
    - an owned-only `cancel`.
 4. **Sidecar node pack** `comfyui-sidecar/nodes/agentbox_video`, copied into the image:
@@ -41,15 +41,18 @@ This amends ADR-2150 (adds tools and gates inside its evidence discipline; its d
    - identity scoring and an opening-frame chooser on YuNet (MIT) and SFace (Apache-2.0) from pinned opencv_zoo hashes.
 
    `opencv-python-headless==5.0.0.93` replaces the GUI wheel, because 4.12 caps numpy below 2.3.
-5. **One retake geometry contract.** The node and `stitch plan-retake` both emit `retake-geometry/1`, with rolls ≥ max(4, overlap). Both are pinned by `tests/retake_geometry_cases.json`, read by the Python and Rust suites. `retake-plan/1` (geometry, rate and assets) stays `stitch retake`'s input.
-6. **Borrowed thresholds are configuration with provenance.** Seam, identity, lint and unchanged-range PSNR thresholds carry `provenance` and `calibrated: false`. An uncalibrated PASS is `provisional: true, acceptance_backing: false` and never satisfies GATE-005 or GATE-007 alone. An identity FAIL routes to human review, not an automatic retake.
+5. **One retake geometry contract.** The node and `stitch plan-retake` both emit `retake-geometry/1`, with rolls ≥ max(4, overlap). Agreement is fixture-pinned, not proven: both suites read `tests/retake_geometry_cases.json`, so drift in either implementation fails a test.
+6. **Borrowed thresholds are configuration with provenance.** Seam, identity, lint and unchanged-range PSNR thresholds carry `provenance` and `calibrated: false`. `calibrated: true` is honoured only with a `threshold-calibration/1` record for the same tool and provenance, verified by sha256 under the root (`runtime/src/calibration.rs`, `identity.py`); a bare claim is refused. An uncalibrated PASS is `provisional: true, acceptance_backing: false` (stitch: `PASS_PROVISIONAL`), and so is any lint PASS with skipped rules. Plain `stitch assemble` has no borrowed thresholds (exact frame count, rate, colour and audio-hash gates), so it may back acceptance.
 
 ## Consequences
 - Seams, joins, windowed reruns and prompt defects become measurable and receipted before and after GPU spend. The known `xfade`, rounding, `COMBO` and global-interrupt defects are covered by tests.
 - Changing total frames, max window or history re-renders every window, even where early delivery intervals coincide (`plan_hash` is in every key). This is deliberate conservatism; finer reuse needs its own decision.
-- Thresholds stay provisional until a calibration run on estate material sets `calibrated: true` with recorded evidence. Until then these gates warn and route to review; they do not accept.
+- Thresholds stay provisional until a calibration run on estate material produces a hashed `threshold-calibration/1` record. Until then these gates warn and route to review; they do not accept.
 - H3 window and relay profiles are unit-tested arithmetic only. H3 qualification is NOT_RUN until a live sidecar with the H3 weights runs a smoke job. The node pack has not run inside a live ComfyUI.
 - The image build changes (node pack, OpenCV swap). BFSnodes and scenedetect lose the GUI OpenCV wheel; their import must be confirmed at the first rebuild. The build is started from the host shell, never from inside agentbox.
+- Decode is fail-closed on what `media.rs` cannot represent: untagged YUV in `stitch` (unless the segment declares `colour`), HDR transfer, BT.2020 primaries, rotation and non-square SAR are refused. `seam-qa` still decodes untagged sources with the ffmpeg default; a mismatch then lowers overlap PSNR and fails rather than passes.
+- `window-plan` hashes model files under `--root`; `--model-hash-unverified PATH=HEX` is the explicit escape for weights not on the box (H3 here) and marks the plan unverified. `render-cache --allow-from-diff` binds to the parent's `plan_hash` and `plan_final_key`.
+- Window keys now include each model's `verified` flag, so `window-plan/1` files written before this change fail `verify()`; none exist outside tests.
 - Follow-on work: calibration fixtures with real faces and real chains; a live window-relay qualification; and an inline review of the 22/17/5 relay against the chosen model's latent stride.
 
 ## Verification
