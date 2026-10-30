@@ -41,6 +41,12 @@ pub const RECEIPT_SCHEMA: &str = "seam-qa-receipt/1";
 pub const WINDOW: usize = 6;
 /// Frame offsets from the seam at which the local baseline is measured.
 pub const LOCAL_OFFSETS: [i64; 6] = [-24, -18, -12, 12, 18, 24];
+/// A local median frame difference at or below this (0-255 scale) is a numerically
+/// zero baseline: there is no ratio to take, so the absolute floor decides alone.
+/// Kept at the old ratio cut-off so the floor only adds a check where none existed.
+pub const STATIC_EPS: f64 = 1e-6;
+/// A detail (Laplacian variance) at or below this counts as featureless.
+pub const FLAT_EPS: f64 = 1e-6;
 /// Widest picture the statistics are computed at.
 pub const ANALYSIS_WIDTH: u32 = 480;
 
@@ -87,6 +93,21 @@ pub struct Thresholds {
     /// Look and pop steps must exceed this multiple of the local baseline to fail.
     #[serde(default = "default_multiplier")]
     pub baseline_multiplier: f64,
+    /// Absolute pop gate on the 0-255 mean-absolute-difference scale. When the
+    /// local median frame difference is below [`STATIC_EPS`] (a static shot) no
+    /// ratio exists, and a seam difference above this floor fails on its own.
+    #[serde(default = "default_pop_abs_floor")]
+    pub pop_abs_floor: f64,
+    /// Absolute detail gate in Laplacian-variance units (0-255 luma). When the
+    /// picture before the seam has no measurable detail, detail appearing after
+    /// it above this floor fails on its own.
+    #[serde(default = "default_detail_abs_floor")]
+    pub detail_abs_floor: f64,
+    /// Absolute click gate as a sample jump (full scale 1.0). When the take has
+    /// no measurable jump spread (digital silence), a jump at the seam above
+    /// this floor fails on its own.
+    #[serde(default = "default_click_abs_floor")]
+    pub click_abs_floor: f64,
     /// Below this level a 100 ms audio window counts as silence.
     #[serde(default = "default_silence")]
     pub silence_dbfs: f64,
@@ -97,6 +118,15 @@ pub struct Thresholds {
 
 fn default_multiplier() -> f64 {
     2.5
+}
+fn default_pop_abs_floor() -> f64 {
+    10.0
+}
+fn default_detail_abs_floor() -> f64 {
+    25.0
+}
+fn default_click_abs_floor() -> f64 {
+    0.05
 }
 fn default_silence() -> f64 {
     -60.0
@@ -122,6 +152,9 @@ impl Thresholds {
             audio_click: 3.0,
             overlap_psnr: 32.0,
             baseline_multiplier: default_multiplier(),
+            pop_abs_floor: default_pop_abs_floor(),
+            detail_abs_floor: default_detail_abs_floor(),
+            click_abs_floor: default_click_abs_floor(),
             silence_dbfs: default_silence(),
             audio_floor_dbfs: default_floor(),
         }
@@ -331,7 +364,7 @@ fn step(rows: &[FrameStats], at: i64, pick: Pick) -> f64 {
 fn detail(rows: &[FrameStats], at: i64) -> Option<f64> {
     let after = window_mean(rows, at, at + 4, |s| s.lap);
     let before = window_mean(rows, at - 4, at, |s| s.lap);
-    (before > 1e-6 && after.is_finite()).then(|| after / before)
+    (before > FLAT_EPS && after.is_finite()).then(|| after / before)
 }
 
 /// A look step at the seam and the typical step nearby.
@@ -352,7 +385,8 @@ pub struct VideoMetrics {
     pub diff: f64,
     /// Median frame difference in the 12 frames either side.
     pub local_median_diff: f64,
-    /// `diff / local_median_diff`, or `None` when the local picture is static.
+    /// `diff / local_median_diff`, or `None` when the local picture is static
+    /// (then the absolute [`Thresholds::pop_abs_floor`] judges the seam alone).
     pub pop_ratio: Option<f64>,
     /// Median pop ratio at the baseline offsets, if any were measurable.
     pub pop_local: Option<f64>,
@@ -366,6 +400,10 @@ pub struct VideoMetrics {
     pub detail_ratio: Option<f64>,
     /// Typical detail ratio nearby, expressed as ≥ 1.
     pub detail_local: Option<f64>,
+    /// Mean Laplacian variance of the 4 frames before the seam.
+    pub lap_before: f64,
+    /// Mean Laplacian variance of the 4 frames after the seam.
+    pub lap_after: f64,
 }
 
 // Adapted from Kinoloom (MIT), tool/seam_qa.py (seam_metrics).
@@ -392,7 +430,7 @@ pub fn video_metrics(a: &Analysis, frame: u64) -> VideoMetrics {
         .iter()
         .filter_map(|&p| {
             let m = local_median(p);
-            (m > 1e-6).then(|| a.diffs[p as usize] / m)
+            (m > STATIC_EPS).then(|| a.diffs[p as usize] / m)
         })
         .collect();
     let mk = |pick: Pick| {
@@ -413,13 +451,15 @@ pub fn video_metrics(a: &Analysis, frame: u64) -> VideoMetrics {
         frame,
         diff,
         local_median_diff: med,
-        pop_ratio: (med > 1e-6).then(|| diff / med),
+        pop_ratio: (med > STATIC_EPS).then(|| diff / med),
         pop_local: median(&mut pops),
         d_sat: mk(|s| s.sat),
         d_l: mk(|s| s.l),
         d_contrast: mk(|s| s.contrast),
         detail_ratio: detail(rows, b),
         detail_local: median(&mut ratios).map(f64::exp),
+        lap_before: window_mean(rows, b - 4, b, |s| s.lap),
+        lap_after: window_mean(rows, b, b + 4, |s| s.lap),
     }
 }
 
@@ -434,6 +474,9 @@ pub fn judge_video(m: &VideoMetrics, t: &Thresholds) -> Vec<&'static str> {
             .pop_ratio
             .max(t.baseline_multiplier * m.pop_local.unwrap_or(0.0))
     }) {
+        fails.push("pop");
+    } else if m.pop_ratio.is_none() && m.diff > t.pop_abs_floor {
+        // Static local picture: no ratio, so the absolute gate decides alone.
         fails.push("pop");
     }
     for (step, gate, name) in [
@@ -454,6 +497,9 @@ pub fn judge_video(m: &VideoMetrics, t: &Thresholds) -> Vec<&'static str> {
         if !(lo..=hi).contains(&dr) {
             fails.push("detail");
         }
+    } else if m.lap_before <= FLAT_EPS && m.lap_after > t.detail_abs_floor {
+        // Featureless before the seam: no ratio, so the absolute gate decides.
+        fails.push("detail");
     }
     fails
 }
@@ -471,6 +517,11 @@ pub struct AudioMetrics {
     pub onset: bool,
     /// Largest sample jump within ±5 ms of the seam / take 99.9th percentile jump.
     pub click: f64,
+    /// Largest sample jump within ±5 ms of the seam, full scale 1.0.
+    pub jump: f64,
+    /// Take 99.9th percentile sample jump (`0` in digital silence, where no
+    /// ratio exists and [`Thresholds::click_abs_floor`] judges alone).
+    pub jump_p999: f64,
 }
 
 fn rms_db(x: &[f32]) -> f64 {
@@ -517,6 +568,8 @@ pub fn audio_metrics(audio: &[f32], rate: u32, seam: usize, silence_dbfs: f64) -
         } else {
             0.0
         },
+        jump: f64::from(jump),
+        jump_p999: p999,
     }
 }
 
@@ -529,7 +582,7 @@ pub fn judge_audio(m: &AudioMetrics, t: &Thresholds) -> Vec<&'static str> {
     {
         fails.push("audio_level");
     }
-    if m.click > t.audio_click {
+    if m.click > t.audio_click || (m.jump_p999 <= 0.0 && m.jump > t.click_abs_floor) {
         fails.push("audio_click");
     }
     fails
@@ -1022,6 +1075,68 @@ mod tests {
         stale.cut.sha256 = "0".repeat(64);
         assert!(run(&root, &stale).is_err());
         assert!(absolute_paths(&r).is_empty());
+    }
+
+    /// 40 identical frames, then the same frame flipped both ways: a hard cut in
+    /// a static shot, where the local median frame difference is exactly zero.
+    #[test]
+    fn hard_cut_in_a_static_shot_fails_on_the_absolute_floor() {
+        let s = Scratch::new("seam-static");
+        let still = "alls=60:allf=u:all_seed=3";
+        let a = format!(
+            "color={SIZE}:d=1.6,noise={still}[a];color={SIZE}:d=1.6,noise={still},hflip,vflip[b];[a][b]concat=n=2:v=1:a=0"
+        );
+        lavfi(&s.path("cut.mkv"), &[&a], &["-c:v", "ffv1"]);
+        let root = Root::new(&s.0).unwrap();
+        let r = run(&root, &config(&root, "cut.mkv", vec![seam(40)])).unwrap();
+        let v = &r["seams"][0]["video"];
+        assert_eq!(v["local_median_diff"].as_f64().unwrap(), 0.0, "{v:#}");
+        assert_eq!(r["verdict"], "FAIL", "{r:#}");
+        assert!(fails(&r, 0).contains(&"pop".into()), "{r:#}");
+        assert_eq!(r["acceptance_backing"], false);
+        // The same static shot without a cut still passes.
+        let b = format!("color={SIZE}:d=3.2,noise={still}");
+        lavfi(&s.path("calm.mkv"), &[&b], &["-c:v", "ffv1"]);
+        let r = run(&root, &config(&root, "calm.mkv", vec![seam(40)])).unwrap();
+        assert_eq!(r["verdict"], "PASS", "{r:#}");
+    }
+
+    #[test]
+    fn a_near_static_baseline_still_fails_on_the_ratio() {
+        let t = Thresholds::kinoloom_uncalibrated();
+        let mut diffs = vec![0.03; 80];
+        diffs[40] = 5.0;
+        let a = Analysis {
+            stats: vec![FrameStats::default(); 80],
+            diffs,
+        };
+        let m = video_metrics(&a, 40);
+        assert!(m.pop_ratio.is_some_and(|r| r > 100.0), "{m:?}");
+        assert!(judge_video(&m, &t).contains(&"pop"));
+    }
+
+    #[test]
+    fn texture_appearing_from_flat_fails_the_absolute_detail_floor() {
+        let s = Scratch::new("seam-detail");
+        let a = format!(
+            "color={SIZE}:d=1.6[a];color={SIZE}:d=1.6,noise=alls=60:allf=u:all_seed=3[b];[a][b]concat=n=2:v=1:a=0"
+        );
+        lavfi(&s.path("cut.mkv"), &[&a], &["-c:v", "ffv1"]);
+        let root = Root::new(&s.0).unwrap();
+        let r = run(&root, &config(&root, "cut.mkv", vec![seam(40)])).unwrap();
+        assert!(fails(&r, 0).contains(&"detail".into()), "{r:#}");
+    }
+
+    #[test]
+    fn click_in_digital_silence_fails_on_the_absolute_jump_floor() {
+        let t = Thresholds::kinoloom_uncalibrated();
+        let mut audio = vec![0.0f32; 16000];
+        audio[8000] = 0.8;
+        let m = audio_metrics(&audio, 8000, 8000, t.silence_dbfs);
+        assert!(judge_audio(&m, &t).contains(&"audio_click"), "{m:?}");
+        let quiet = vec![0.0f32; 16000];
+        let m = audio_metrics(&quiet, 8000, 8000, t.silence_dbfs);
+        assert!(judge_audio(&m, &t).is_empty(), "{m:?}");
     }
 
     #[test]

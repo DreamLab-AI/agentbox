@@ -194,6 +194,21 @@ pub struct ModelFile {
     pub path: String,
     /// Lower-case hex SHA-256 of the file.
     pub sha256: String,
+    /// Whether the hash was computed from the file under the production root
+    /// when the plan was made. `false` marks a caller-asserted hash (weights not
+    /// on this box); it is part of the checkpoint keys, so an unverified plan
+    /// can never share keys with a verified one.
+    #[serde(default)]
+    pub verified: bool,
+}
+
+/// Streaming SHA-256 of a (possibly multi-gigabyte) file.
+pub fn sha256_file(path: &Path) -> Result<String> {
+    use sha2::{Digest, Sha256};
+    let mut file = fs::File::open(path)?;
+    let mut hasher = Sha256::new();
+    std::io::copy(&mut file, &mut hasher)?;
+    Ok(format!("{:x}", hasher.finalize()))
 }
 
 /// Hashes that every window key binds to.
@@ -328,7 +343,7 @@ fn chain_key(plan_hash: &str, window: &Window, hashes: &Hashes, prev: Option<&st
 ///     profile: Profile::h3(), total_frames: 121, max_window: 90, history_len: 18,
 ///     master_seed: 7, seed_overrides: Default::default(),
 ///     hashes: Hashes { input_sha256: h.clone(), prompt_sha256: h.clone(),
-///         settings_sha256: h.clone(), models: vec![ModelFile { path: "m.safetensors".into(), sha256: h }] },
+///         settings_sha256: h.clone(), models: vec![ModelFile { path: "m.safetensors".into(), sha256: h, verified: false }] },
 /// };
 /// let plan = build(&request).unwrap();
 /// let lengths: Vec<_> = plan.windows.iter().map(|w| w.length).collect();
@@ -440,7 +455,8 @@ pub fn build(request: &Request) -> Result<Plan> {
 impl Plan {
     /// Rebuild the plan from its own request and require byte-identical content.
     ///
-    /// Refuses edited windows, keys, hashes or schema ids.
+    /// Refuses edited windows, keys, hashes or schema ids. Model files are not
+    /// consulted; see [`Plan::verify_in`].
     pub fn verify(&self) -> Result<()> {
         let rebuilt = build(&self.request)?;
         if rebuilt != *self {
@@ -449,6 +465,35 @@ impl Plan {
             );
         }
         Ok(())
+    }
+
+    /// [`Plan::verify`], and additionally re-hash every model file that is
+    /// present under `root` and refuse a mismatch with the plan's hash.
+    ///
+    /// Returns the model paths that could not be checked (no root given, or the
+    /// file is not on this box), so a caller can report them rather than assume.
+    pub fn verify_in(&self, root: Option<&Root>) -> Result<Vec<String>> {
+        self.verify()?;
+        let mut unchecked = Vec::new();
+        for model in &self.request.hashes.models {
+            let present = match root {
+                Some(root) => Some(root.resolve(Path::new(&model.path))?).filter(|p| p.is_file()),
+                None => None,
+            };
+            let Some(path) = present else {
+                unchecked.push(model.path.clone());
+                continue;
+            };
+            let actual = sha256_file(&path)?;
+            if actual != model.sha256 {
+                return Err(format!(
+                    "model {} hashes to {actual}, but the plan records {}",
+                    model.path, model.sha256
+                )
+                .into());
+            }
+        }
+        Ok(unchecked)
     }
 }
 
@@ -468,8 +513,17 @@ fn merge(intervals: &[FrameInterval]) -> Vec<FrameInterval> {
 ///
 /// The report's `invalidated_intervals` are in `new`'s delivery frames.
 pub fn diff(old: &Plan, new: &Plan) -> Result<Value> {
+    diff_in(old, new, None)
+}
+
+/// [`diff`], additionally re-hashing `new`'s model files under `root`.
+///
+/// Only `new` is checked against the files: the old plan's weights are
+/// typically gone (that is what a model revision is). The report lists the
+/// models that could not be checked as `unchecked_models`.
+pub fn diff_in(old: &Plan, new: &Plan, root: Option<&Root>) -> Result<Value> {
     old.verify()?;
-    new.verify()?;
+    let unchecked = new.verify_in(root)?;
     let mut invalidated = Vec::new();
     let mut intervals = Vec::new();
     let mut first: Option<u64> = None;
@@ -500,6 +554,7 @@ pub fn diff(old: &Plan, new: &Plan) -> Result<Value> {
     Ok(json!({
         "schema": DIFF_SCHEMA,
         "old_plan_hash": old.plan_hash, "new_plan_hash": new.plan_hash,
+        "old_final_key": old.final_key, "new_final_key": new.final_key,
         "delivery_frames": new.request.total_frames,
         "first_invalid_window": first,
         "valid_windows": new.windows.len() - invalidated.len(),
@@ -507,6 +562,7 @@ pub fn diff(old: &Plan, new: &Plan) -> Result<Value> {
         "removed_windows": removed,
         "invalidated_intervals": merged,
         "allow": merged.iter().map(|i| format!("{}..{}", i.start(), i.end())).collect::<Vec<_>>(),
+        "unchecked_models": unchecked,
     }))
 }
 
@@ -547,9 +603,12 @@ fn fraction(name: &str, text: &str) -> Result<(u64, u64)> {
 const USAGE: &str = "usage:
   window-plan [--root DIR] plan --profile h3|ltx|generic (--frames F | --rate N/D --seconds N[/D])
       --max-window L --history H [--seed S] [--reroll INDEX=SEED]...
-      --input-sha256 HEX --prompt-sha256 HEX --settings-sha256 HEX --model PATH=HEX... [--out FILE]
+      --input-sha256 HEX --prompt-sha256 HEX --settings-sha256 HEX --model PATH=HEX... [--model-hash-unverified PATH=HEX]... [--out FILE]
       generic profile also needs --window-modulus M --window-offset O --history-modulus M --history-offset O
   window-plan [--root DIR] diff OLD_PLAN NEW_PLAN [--out FILE]
+--model hashes PATH under the root and refuses a different HEX or a missing file;
+--model-hash-unverified records a caller-asserted hash for weights not on this box
+(`verified: false`, part of every key). `diff` re-hashes NEW_PLAN's model files that are present.
 Writes JSON to stdout (or --out FILE, which must not exist). The diff's `allow` intervals feed
 `render-cache --allow-from-diff`.";
 
@@ -618,9 +677,40 @@ fn request_from(root: &Root, args: &mut Vec<OsString>) -> Result<Request> {
     let mut models = Vec::new();
     for item in take_all(args, "--model")? {
         let (path, sha) = item.rsplit_once('=').ok_or("--model expects PATH=SHA256")?;
+        check_hex(&format!("model {path}"), sha)?;
+        let file = root.resolve(Path::new(path))?;
+        if !file.is_file() {
+            return Err(format!(
+                "model file {path} is not under the production root (use --model-hash-unverified for weights not on this box)"
+            )
+            .into());
+        }
+        let actual = sha256_file(&file)?;
+        if actual != sha {
+            return Err(format!("model {path} hashes to {actual}, not the given {sha}").into());
+        }
+        models.push(ModelFile {
+            path: root.rel(Path::new(path))?,
+            sha256: actual,
+            verified: true,
+        });
+    }
+    for item in take_all(args, "--model-hash-unverified")? {
+        let (path, sha) = item
+            .rsplit_once('=')
+            .ok_or("--model-hash-unverified expects PATH=SHA256")?;
+        check_hex(&format!("model {path}"), sha)?;
+        let file = root.resolve(Path::new(path))?;
+        if file.is_file() {
+            return Err(format!(
+                "model file {path} is on this box: use --model so its hash is checked, not asserted"
+            )
+            .into());
+        }
         models.push(ModelFile {
             path: root.rel(Path::new(path))?,
             sha256: sha.into(),
+            verified: false,
         });
     }
     models.sort_by(|a, b| a.path.cmp(&b.path));
@@ -671,7 +761,11 @@ pub fn run(mut args: Vec<OsString>) -> Result<()> {
             if args.len() != 2 {
                 return Err(USAGE.into());
             }
-            let report = diff(&read_plan(&root, &args[0])?, &read_plan(&root, &args[1])?)?;
+            let report = diff_in(
+                &read_plan(&root, &args[0])?,
+                &read_plan(&root, &args[1])?,
+                Some(&root),
+            )?;
             emit(&root, out, &report)
         }
         _ => Err(USAGE.into()),
@@ -695,10 +789,12 @@ mod tests {
                 ModelFile {
                     path: "a.safetensors".into(),
                     sha256: hex('a'),
+                    verified: false,
                 },
                 ModelFile {
                     path: "b.safetensors".into(),
                     sha256: hex('b'),
+                    verified: false,
                 },
             ],
         }
@@ -1036,10 +1132,101 @@ mod tests {
         assert_eq!(same["allow"], json!([]));
     }
 
+    fn plan_cli(dir: &Path, models: &[(&str, String)], out: &str) -> Result<()> {
+        let mut v: Vec<OsString> = vec!["--root".into(), dir.into(), "plan".into()];
+        for (flag, value) in [
+            ("--profile", "ltx"),
+            ("--frames", "40"),
+            ("--max-window", "25"),
+            ("--history", "9"),
+            ("--input-sha256", &hex('1')),
+            ("--prompt-sha256", &hex('2')),
+            ("--settings-sha256", &hex('3')),
+            ("--out", out),
+        ] {
+            v.push(flag.into());
+            v.push(value.into());
+        }
+        for (flag, value) in models {
+            v.push((*flag).into());
+            v.push(value.into());
+        }
+        run(v)
+    }
+
+    fn read_plan_file(dir: &Path, name: &str) -> Plan {
+        serde_json::from_slice(&fs::read(dir.join(name)).unwrap()).unwrap()
+    }
+
+    #[test]
+    fn model_hashes_are_checked_against_the_files_and_a_changed_file_changes_the_keys() {
+        let nonce = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let dir =
+            std::env::temp_dir().join(format!("vpr-win-model-{}-{nonce}", std::process::id()));
+        fs::create_dir_all(dir.join("models")).unwrap();
+        let weights = dir.join("models/m.safetensors");
+        fs::write(&weights, b"weights-v1").unwrap();
+        let v1 = sha256_file(&weights).unwrap();
+        let model = |sha: &str| ("--model", format!("models/m.safetensors={sha}"));
+        // A wrong HEX and a missing file are both refused.
+        let err = plan_cli(&dir, &[model(&hex('f'))], "bad.json")
+            .unwrap_err()
+            .to_string();
+        assert!(err.contains("hashes to"), "{err}");
+        let missing = ("--model", format!("models/nope.safetensors={v1}"));
+        assert!(plan_cli(&dir, &[missing], "missing.json").is_err());
+        // The right HEX is accepted and recorded as verified.
+        plan_cli(&dir, &[model(&v1)], "p1.json").unwrap();
+        let p1 = read_plan_file(&dir, "p1.json");
+        assert!(p1.request.hashes.models[0].verified);
+        let root = Root::new(&dir).unwrap();
+        assert!(p1.verify_in(Some(&root)).unwrap().is_empty());
+        // The file changes: the old plan no longer verifies, and re-planning with the new
+        // hash changes the final key.
+        fs::write(&weights, b"weights-v2").unwrap();
+        let err = p1.verify_in(Some(&root)).unwrap_err().to_string();
+        assert!(err.contains("model models/m.safetensors"), "{err}");
+        let v2 = sha256_file(&weights).unwrap();
+        plan_cli(&dir, &[model(&v2)], "p2.json").unwrap();
+        let p2 = read_plan_file(&dir, "p2.json");
+        assert_ne!(p1.final_key, p2.final_key);
+        // The old HEX no longer matches the file on disk.
+        assert!(plan_cli(&dir, &[model(&v1)], "stale.json").is_err());
+        // diff re-checks the new plan's files under the root.
+        let report = diff_in(&p1, &p2, Some(&root)).unwrap();
+        assert_eq!(report["unchecked_models"], json!([]));
+        assert!(diff_in(&p2, &p1, Some(&root)).is_err());
+        // Weights that are not on this box: explicit escape, marked unverified in the keys.
+        let remote = (
+            "--model-hash-unverified",
+            format!("models/h3.safetensors={}", hex('c')),
+        );
+        plan_cli(&dir, std::slice::from_ref(&remote), "u.json").unwrap();
+        let unverified = read_plan_file(&dir, "u.json");
+        assert!(!unverified.request.hashes.models[0].verified);
+        assert_eq!(
+            unverified.verify_in(Some(&root)).unwrap(),
+            ["models/h3.safetensors"]
+        );
+        let mut as_verified = unverified.request.clone();
+        as_verified.hashes.models[0].verified = true;
+        assert_ne!(build(&as_verified).unwrap().final_key, unverified.final_key);
+        // Once the file does appear, the asserted hash is checked, and the escape is closed.
+        fs::write(dir.join("models/h3.safetensors"), b"h3").unwrap();
+        assert!(unverified.verify_in(Some(&root)).is_err());
+        assert!(plan_cli(&dir, std::slice::from_ref(&remote), "u2.json").is_err());
+        fs::remove_dir_all(dir).unwrap();
+    }
+
     #[test]
     fn frames_resolve_from_a_fractional_rate_and_cli_round_trips() {
         let dir = std::env::temp_dir().join(format!("vpr-win-{}", std::process::id()));
-        fs::create_dir_all(&dir).unwrap();
+        fs::create_dir_all(dir.join("models")).unwrap();
+        fs::write(dir.join("models/m.safetensors"), b"weights").unwrap();
+        let model_hash = sha256_file(&dir.join("models/m.safetensors")).unwrap();
         let common = |extra: &[&str]| -> Vec<OsString> {
             let mut v: Vec<String> = ["--root", dir.to_str().unwrap()].map(String::from).into();
             v.push("plan".into());
@@ -1054,7 +1241,7 @@ mod tests {
             }
             v.extend([
                 "--model".into(),
-                format!("models/m.safetensors={}", hex('a')),
+                format!("models/m.safetensors={model_hash}"),
             ]);
             v.into_iter().map(Into::into).collect()
         };
