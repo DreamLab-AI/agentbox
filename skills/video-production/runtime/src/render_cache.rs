@@ -170,9 +170,20 @@ fn take_path(args: &mut Vec<OsString>, name: &str, root: &Root) -> Result<Option
     Ok(Some(path))
 }
 
-fn load_plan(path: &Path, root: &Root) -> Result<Plan> {
+/// Load the *new* (current) plan: structure, hash, and every model file that
+/// is present under `root` must match what the plan records.
+fn load_new_plan(path: &Path, root: &Root) -> Result<Plan> {
     let plan: Plan = read_as(path)?;
     plan.verify_in(Some(root))?;
+    Ok(plan)
+}
+
+/// Load the *old* plan: structure and hash only. Its weights are typically
+/// gone or overwritten (that is what an in-place model update is), so they are
+/// deliberately not compared with the disk.
+fn load_old_plan(path: &Path) -> Result<Plan> {
+    let plan: Plan = read_as(path)?;
+    plan.verify()?;
     Ok(plan)
 }
 
@@ -272,8 +283,14 @@ pub fn run(mut args: Vec<OsString>) -> Result<()> {
     if old_plan_path.is_some() != new_plan_path.is_some() {
         return Err("--old-plan and --new-plan must be given together".into());
     }
+    if !diffs.is_empty() && old_plan_path.is_none() {
+        return Err(
+            "--allow-from-diff needs --old-plan and --new-plan, so the diff is reproduced rather than trusted"
+                .into(),
+        );
+    }
     if args.len() != 5 {
-        return Err("usage: render-cache [--root DIR] (--allow START..END | --allow-from-diff DIFF_JSON [--old-plan PLAN --new-plan PLAN]) [--plan PLAN_JSON] PARENT_DIR REVISION_JSON PATCH_DIR WORLD NEW_DIR".into());
+        return Err("usage: render-cache [--root DIR] (--allow START..END | --allow-from-diff DIFF_JSON --old-plan PLAN --new-plan PLAN) [--plan PLAN_JSON] PARENT_DIR REVISION_JSON PATCH_DIR WORLD NEW_DIR".into());
     }
     let at = |i: usize| root.resolve(Path::new(&args[i]));
     let (parent_dir, revision_path, patch_dir, world, output) =
@@ -291,7 +308,7 @@ pub fn run(mut args: Vec<OsString>) -> Result<()> {
     let count = parent_frames.len() as u64;
     let mut window_diffs = Vec::new();
     let supplied = match (&old_plan_path, &new_plan_path) {
-        (Some(o), Some(n)) => Some((load_plan(o, &root)?, load_plan(n, &root)?)),
+        (Some(o), Some(n)) => Some((load_old_plan(o)?, load_new_plan(n, &root)?)),
         _ => None,
     };
     let mut recorded_plan: Option<(String, String)> = None;
@@ -312,7 +329,7 @@ pub fn run(mut args: Vec<OsString>) -> Result<()> {
     }
     let mut plan_record = Value::Null;
     if let Some(path) = &plan_path {
-        let plan = load_plan(path, &root)?;
+        let plan = load_new_plan(path, &root)?;
         if recorded_plan
             .as_ref()
             .is_some_and(|r| *r != (plan.plan_hash.clone(), plan.final_key.clone()))
@@ -598,10 +615,25 @@ mod tests {
             );
             run(args)
         };
-        // A diff from another cut of the same length is refused.
-        let err = go("other-cut.json", "o1", &[]).unwrap_err().to_string();
-        assert!(err.contains("plan_final_key"), "{err}");
+        // A bare diff, without the plans that reproduce it, is never accepted.
+        let err = go("good.json", "o1", &[]).unwrap_err().to_string();
+        assert!(err.contains("--old-plan"), "{err}");
         assert!(!dir.join("o1").exists());
+        // A hand-widened diff without plans is refused for the same reason.
+        let mut widened = read(&dir.join("good.json")).unwrap();
+        widened["invalidated_intervals"] = json!([[0, 20]]);
+        save("widened.json", widened);
+        assert!(go("widened.json", "o1b", &[]).is_err());
+        assert!(!dir.join("o1b").exists());
+        // A diff from another cut of the same length is refused by the parent binding.
+        let err = go(
+            "other-cut.json",
+            "o1c",
+            &["--old-plan", "b.json", "--new-plan", "b2.json"],
+        )
+        .unwrap_err()
+        .to_string();
+        assert!(err.contains("plan_final_key"), "{err}");
         // Supplying the other cut's plans does not help: the diff is consistent, the parent is not.
         assert!(
             go(
@@ -635,7 +667,76 @@ mod tests {
         let mut bare = read(&dir.join("parent/complete.json")).unwrap();
         bare.as_object_mut().unwrap().remove("plan_hash");
         save("parent/complete.json", bare);
-        assert!(go("good.json", "o5", &[]).is_err());
+        assert!(
+            go(
+                "good.json",
+                "o5",
+                &["--old-plan", "a.json", "--new-plan", "a2.json"]
+            )
+            .is_err()
+        );
+        fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn an_in_place_model_update_loads_but_a_stale_new_plan_does_not() {
+        use crate::windows::{Hashes, ModelFile, Profile, Request, build};
+        let nonce = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let dir =
+            std::env::temp_dir().join(format!("vpr-cache-model-{}-{nonce}", std::process::id()));
+        fs::create_dir_all(&dir).unwrap();
+        let root = Root::new(&dir).unwrap();
+        let weights = dir.join("m.safetensors");
+        let plan_over = |bytes: &[u8]| {
+            fs::write(&weights, bytes).unwrap();
+            build(&Request {
+                profile: Profile::ltx(),
+                total_frames: 20,
+                max_window: 9,
+                history_len: 1,
+                master_seed: 3,
+                seed_overrides: Default::default(),
+                hashes: Hashes {
+                    input_sha256: "1".repeat(64),
+                    prompt_sha256: "2".repeat(64),
+                    settings_sha256: "3".repeat(64),
+                    models: vec![ModelFile {
+                        path: "m.safetensors".into(),
+                        sha256: sha(&weights).unwrap(),
+                        verified: true,
+                    }],
+                },
+            })
+            .unwrap()
+        };
+        let save = |name: &str, plan: &crate::windows::Plan| {
+            fs::write(dir.join(name), serde_json::to_vec(plan).unwrap()).unwrap();
+            dir.join(name)
+        };
+        let old = save("old.json", &plan_over(b"weights-v1"));
+        // The weights are overwritten in place, then re-planned.
+        let new = save("new.json", &plan_over(b"weights-v2"));
+        assert!(
+            load_old_plan(&old).is_ok(),
+            "old plan's weights are gone by design"
+        );
+        assert!(load_new_plan(&new, &root).is_ok());
+        // A new plan whose weights differ from the disk is still refused.
+        fs::write(&weights, b"weights-v3").unwrap();
+        let err = load_new_plan(&new, &root).unwrap_err().to_string();
+        assert!(err.contains("hashes to"), "{err}");
+        // The old plan's structure is still checked.
+        let mut broken: Value = read(&old).unwrap();
+        broken["final_key"] = json!("0".repeat(64));
+        fs::write(
+            dir.join("broken.json"),
+            serde_json::to_vec(&broken).unwrap(),
+        )
+        .unwrap();
+        assert!(load_old_plan(&dir.join("broken.json")).is_err());
         fs::remove_dir_all(dir).unwrap();
     }
 
