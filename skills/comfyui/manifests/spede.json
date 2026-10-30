@@ -1,0 +1,85 @@
+{
+  "_comment": "comfy_client.py probe --manifest. SpEdE product + Replace paths only; orbit (MiniMax H3) excluded. BLOCKED is the correct result until the spede/spede-replace profiles are provisioned and the SpEdE pack is installed.",
+  "required_nodes": [
+    "SpEdE_LocalAlignMoGeDepth",
+    "SpEdE_LocalAllRoundHero",
+    "SpEdE_LocalAllRoundInit",
+    "SpEdE_LocalAllRoundLoad",
+    "SpEdE_LocalAllRoundProgressive",
+    "SpEdE_LocalAllRoundQwenChain",
+    "SpEdE_LocalAllRoundStart",
+    "SpEdE_LocalAllRoundWarp",
+    "SpEdE_LocalCameraFOV",
+    "SpEdE_LocalCameraImages",
+    "SpEdE_LocalExtract",
+    "SpEdE_LocalFocusCrop",
+    "SpEdE_LocalHeldoutQA",
+    "SpEdE_LocalHeroConsistency",
+    "SpEdE_LocalLoadCameras",
+    "SpEdE_LocalLoadScene",
+    "SpEdE_LocalMasksToReport",
+    "SpEdE_LocalObjectCutout",
+    "SpEdE_LocalObjectName",
+    "SpEdE_LocalPatchFromDepth",
+    "SpEdE_LocalPatchPlane",
+    "SpEdE_LocalPatchQA",
+    "SpEdE_LocalPlaceGenerated",
+    "SpEdE_LocalPrepareReplace",
+    "SpEdE_LocalRemove",
+    "SpEdE_LocalRender",
+    "SpEdE_LocalReplaceBase",
+    "SpEdE_LocalSaveScene",
+    "SpEdE_LocalSelectMultiView",
+    "SpEdE_LocalViewImage",
+    "CFGGuider",
+    "CLIPLoader",
+    "CLIPTextEncode",
+    "CLIPVisionLoader",
+    "CheckpointLoaderSimple",
+    "KSampler",
+    "KSamplerSelect",
+    "LoadImage",
+    "LoadMoGeModel",
+    "ManualSigmas",
+    "MoGeInference",
+    "PreviewImage",
+    "QwenImage21Cache",
+    "RandomNoise",
+    "SAM3_Detect",
+    "SamplerCustomAdvanced",
+    "SaveImage",
+    "SplatToFile3D",
+    "TextEncodeQwenImage21",
+    "TextGenerate",
+    "TripoSplatConditioning",
+    "TripoSplatPreprocessImage",
+    "UNETLoader",
+    "VAEDecode",
+    "VAEDecodeTripoSplat",
+    "VAELoader"
+  ],
+  "required_models": {
+    "CheckpointLoaderSimple.ckpt_name": [
+      "sam3.1_multiplex_fp16.safetensors"
+    ],
+    "UNETLoader.unet_name": [
+      "qwen_image_2.1_int8_convrot.safetensors",
+      "qwen_image_2.1_turbo_int8_convrot.safetensors",
+      "triposplat_fp16.safetensors"
+    ],
+    "CLIPLoader.clip_name": [
+      "qwen3vl_8b_int8_convrot.safetensors"
+    ],
+    "VAELoader.vae_name": [
+      "qwen_image_2.1_vae_bf16.safetensors",
+      "triposplat_vae_decoder_fp16.safetensors",
+      "flux2-vae.safetensors"
+    ],
+    "CLIPVisionLoader.clip_name": [
+      "dino_v3_vit_h.safetensors"
+    ],
+    "LoadMoGeModel.model_name": [
+      "moge_3_vitl_fp16.safetensors"
+    ]
+  }
+}

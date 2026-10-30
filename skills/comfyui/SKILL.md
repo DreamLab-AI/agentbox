@@ -124,6 +124,9 @@ Detail lives in `references/` — pull the file that matches the task:
   JSON structures, supported image/video models, batch-generation Python.
 - [`references/salad-cloud.md`](references/salad-cloud.md) — Salad SDK deployment, the full
   recipe catalog (image/video/LLM), hardware recommendations, benchmarks, performance notes.
+- [`references/spede.md`](references/spede.md) — ComfyUI-SpEdE node pack (Gaussian-splat
+  object remove/extract/replace): build gate, `spede`/`spede-replace` profiles, probe manifest,
+  untested points.
 
 Bundled runnable assets in this directory:
 - `comfyui-generate` — FLUX 2 one-shot generator (quick path above), on PATH

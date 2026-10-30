@@ -63,6 +63,15 @@ Headline third-party / vendored components
       YuNet (MIT) and SFace (Apache-2.0), fetched at runtime into the ComfyUI
       models volume by the face-identity provisioning profile; not redistributed.
 
+  • ComfyUI-SpEdE                               AGPL-3.0-or-later
+      Burgstall Labs, https://github.com/Burgstall-labs/ComfyUI-SpEdE, pinned
+      to commit 78b2a011ae8c47e702b25759c95d140784da97ce. Installed unmodified
+      into the ComfyUI sidecar image as a separate runtime component (a custom
+      node pack loaded by ComfyUI); no agentbox code imports it. Its gsplat
+      dependency (Apache-2.0) is built from the pinned upstream tag v1.5.3.
+      The Qwen-Image 2.1 weights it uses are non-commercial (Qwen-Image 2.1
+      Research License); weights are fetched at runtime, not redistributed.
+
   • Skills directory (skills/*)                 Various third-party
       Each skill in `skills/` is a third-party SDK or template authored
       upstream. Their licenses are retained as published; consult each

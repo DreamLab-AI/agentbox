@@ -61,3 +61,9 @@ On branch `media/vp-sprint-integration`, merged from seven worker branches on a 
 - Node pack `python -I -m unittest discover`: 55 OK. ComfyUI client: 26 OK. `node --test server.test.js`: 9/9.
 - No H3 identifiers (`h3_relay`, `removal_cache`, `retouches_*`, `_safe_comfy_free` and others) appear in the changed files.
 - Image build, live sidecar, H3 weights and calibration: NOT_RUN. `verified_commit` stays blank until acceptance.
+
+## Addendum: ComfyUI-SpEdE node pack (2026-10-30)
+- **Decision.** Bake `Burgstall-labs/ComfyUI-SpEdE` (AGPL-3.0-or-later) at `78b2a011ae8c47e702b25759c95d140784da97ce` into the ComfyUI sidecar, unmodified and as a separate runtime component; no agentbox code imports it (`NOTICE`).
+- **Toolchain.** The base image moves to `nvidia/cuda:13.0.3-devel-ubuntu24.04` (pinned digest) so gsplat 1.5.3 compiles ahead of time against torch 2.14 cu130 (arch list 8.6;8.9). The runtime still comes from the torch wheels. `--build-arg SPEDE=0` skips gsplat and SpEdE.
+- **Weights.** Profiles `spede` and `spede-replace` carry pinned Hugging Face revisions and hashes; `skills/comfyui/manifests/spede.json` is the probe manifest. Qwen-Image 2.1 is non-commercial; DINOv3 is use-restricted. The MiniMax H3 orbit is excluded.
+- **Status.** The image build, the gsplat compile, ComfyUI 0.42 (upstream tested 0.41) and any SpEdE run are NOT_RUN. `verify-spede.sh` is the post-build check.
