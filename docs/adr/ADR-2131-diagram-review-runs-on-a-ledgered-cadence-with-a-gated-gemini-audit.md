@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: d0e9ca7865c7e120bd657b0ffc66e54b043dfa1a
+verified_commit: f7aa7f68e82f75b65afff8e4c1e0ad7154835ffe
 verified_paths: [skills/sealmap-review/scripts/review-cadence.cjs, skills/sealmap-review/run-cron.sh, skills/sealmap-review/crontab, schema/agentbox.toml.schema.json]
 owner: jjohare
 review_trigger: the first month of real Gemini spend (compare ledger cost with the estimate); a change to Gemini or Z.AI pricing; a GLM model change behind [consultants.zai]; a second corpus joining repos
@@ -128,3 +128,12 @@ Re-verified 2026-10-29 at `00039efb1e4a70402df86ad19cf76894fe3b9a8f` for ADR-215
 Re-verified 2026-10-30 at `cd3a29899`: the delta in schema/agentbox.toml.schema.json is [system_one] only (new `network` and `local_only` properties; `bind` admits 0.0.0.0/RFC 1918); management-api/lib/system-manifest.js gains one entry, `system-one-network`; scripts/agentbox-config-validate.js changes only the [system_one] E080 bind rule. This record's sections are untouched.
 
 Re-verified 2026-10-30 at d0e9ca786: the only change to the governed paths is the new `[system_one].skill_list_at_least` key and its schema property (router runner-up listing, ADR-2091); no section this record governs changed.
+
+## Re-verification 2026-10-30
+
+`f7aa7f68e` changes one governed file, `skills/sealmap-review/scripts/review-cadence.cjs`: the GLM triage
+output cap goes from 1,500 to the review path's 32,000 (`GLM_TRIAGE_MAX_OUTPUT_TOKENS`). GLM thinks by default
+and the thinking counts against the cap, so at 1,500 most triage calls returned empty; a rerun at 32,000 over the 36
+failed topics gave 0 empty replies in 26 calls. The decision is unchanged: cadence, sharding, both GLM passes and the
+gated Gemini audit are as recorded, and this record never fixed the triage budget. Tests: 43/43 in
+`review-cadence.test.cjs`, one new assertion pins the cap. Takes effect at the next image rebuild.
