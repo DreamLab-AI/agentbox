@@ -491,7 +491,7 @@ pub fn assemble(root: &Root, plan: &StitchPlan, out_dir: &Path) -> Result<Value>
         return Err(discard(&dest, error));
     }
     let (probe, tags) = gate(&dest, expected, plan.rate, size, audio_hashes.as_deref())?;
-    Ok(json!({"schema":"stitch-result/1","rate":plan.rate,
+    let mut receipt = json!({"schema":"stitch-result/1","rate":plan.rate,
         "resolution":{"width":size.0,"height":size.1},
         "frames":{"expected":expected,"decoded":probe.frames,
             "keep_total":plan.segments.iter().map(|s| s.keep[1]-s.keep[0]).sum::<u64>(),
@@ -500,8 +500,10 @@ pub fn assemble(root: &Root, plan: &StitchPlan, out_dir: &Path) -> Result<Value>
         "colour":{"matrix":"bt709","range":"tv","probed":tags},
         "audio":audio_record,
         "output":{"path":root.rel(&dest)?,"sha256":sha256_hex(&fs::read(&dest)?),"probe":probe},
-        "status":"PASS","provisional":false,"acceptance_backing":false,
-        "acceptance_note":"stitch gates the assembly only; acceptance of the seams needs a seam-qa receipt"}))
+        "status":"PASS",
+        "acceptance_note":"stitch gates the assembly only; acceptance is editorial and the seams are measured by seam-qa"});
+    crate::acceptance::stamp(&mut receipt);
+    Ok(receipt)
 }
 
 /// Result of [`plan_retake`].
@@ -612,12 +614,12 @@ pub struct RetakeThresholds {
     pub min_unchanged_psnr_db: f64,
     /// Where the numbers come from.
     pub provenance: String,
-    /// Whether the numbers were calibrated on real footage. A `true` claim is
-    /// refused unless `calibration` substantiates it.
+    /// Removed legacy field: any `true` is refused ([`crate::acceptance`]).
+    #[serde(default, skip_serializing)]
     pub calibrated: bool,
-    /// Hashed `threshold-calibration/2` record substantiating `calibrated`.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub calibration: Option<crate::calibration::Evidence>,
+    /// Removed legacy field: any value is refused ([`crate::acceptance`]).
+    #[serde(default, skip_serializing)]
+    pub calibration: Option<serde_json::Value>,
 }
 
 impl Default for RetakeThresholds {
@@ -849,18 +851,16 @@ fn deliver(
     } else {
         (serde_json::from_slice::<StitchPlan>(bytes)?, None)
     };
+    if let Some(input) = &retake
+        && let Some(t) = &input.thresholds
+    {
+        // Refuse a stale calibration claim before any frame is encoded.
+        crate::acceptance::refuse_calibration("stitch", t.calibrated, t.calibration.is_some())?;
+    }
     let mut receipt = assemble(root, &plan, out_dir)?;
     let dest = out_dir.join("stitched.mp4");
     if let Some(input) = &retake {
         let thresholds = input.thresholds.clone().unwrap_or_default();
-        let calibration = crate::calibration::honour(
-            root,
-            "stitch",
-            &thresholds.provenance,
-            thresholds.calibrated,
-            thresholds.calibration.as_ref(),
-            &thresholds,
-        )?;
         let original = verified(root, &input.original)?;
         let original_colour = Colour::resolve(
             &media::probe(&original)?,
@@ -892,15 +892,7 @@ fn deliver(
         receipt["retake"] = json!({"frames":input.frames,"retake":input.retake,
             "generation":input.generation,"overlap":input.overlap,"unchanged_ranges":ranges,
             "unchanged_check":{"method":"re-decoded PSNR against the original (lossy yuv420p delivery, so not bit-exact)",
-                "min_psnr_db":worst,"thresholds":thresholds,"calibration":calibration,
-                "provisional":calibration.is_none()}});
-        if calibration.is_none() {
-            // The unchanged-range threshold is uncalibrated: the delivery cannot
-            // back acceptance, and its top-level status says so.
-            receipt["status"] = json!("PASS_PROVISIONAL");
-            receipt["provisional"] = json!(true);
-            receipt["acceptance_backing"] = json!(false);
-        }
+                "min_psnr_db":worst,"thresholds":thresholds}});
     }
     let frames = receipt["frames"]["decoded"].as_u64().unwrap_or(0);
     receipt["plan"] = json!({"path":root.rel(plan_path)?,"sha256":sha256_hex(bytes)});
@@ -1431,14 +1423,48 @@ mod tests {
             "out".into(),
         ])
         .unwrap();
+        // A stale `calibrated: true` or `calibration` field is refused before encoding.
+        for (name, extra) in [
+            ("cal-true", json!({"calibrated":true})),
+            (
+                "cal-field",
+                json!({"calibration":{"path":"c.json","sha256":"ab"}}),
+            ),
+        ] {
+            let mut thresholds = json!({"min_unchanged_psnr_db":35.0,"provenance":"x"});
+            thresholds
+                .as_object_mut()
+                .unwrap()
+                .extend(extra.as_object().unwrap().clone());
+            fs::write(
+                s.path(&format!("{name}.json")),
+                serde_json::to_vec(&json!({
+                "schema":RETAKE_SCHEMA,"rate":25,"frames":40,"retake":[14,24],"generation":[9,30],
+                "original":input.original,"generated":input.generated,"mask":{"ignored":true},
+                "thresholds":thresholds}))
+                .unwrap(),
+            )
+            .unwrap();
+            let err = run(vec![
+                "--root".into(),
+                root.dir().into(),
+                "retake".into(),
+                format!("{name}.json").into(),
+                format!("out-{name}").into(),
+            ])
+            .unwrap_err()
+            .to_string();
+            assert!(err.contains("acceptance is editorial"), "{err}");
+            assert!(!s.path(&format!("out-{name}/stitched.mp4")).exists());
+        }
         let receipt: Value =
             serde_json::from_slice(&fs::read(s.path("out/complete.json")).unwrap()).unwrap();
         assert_eq!(receipt["frames"]["decoded"], 40);
-        assert_eq!(receipt["retake"]["unchanged_check"]["provisional"], true);
-        // An uncalibrated unchanged-range threshold makes the whole delivery provisional.
-        assert_eq!(receipt["status"], "PASS_PROVISIONAL", "{receipt:#}");
+        // The unchanged-range threshold is a measurement: acceptance is editorial.
+        assert_eq!(receipt["status"], "PASS", "{receipt:#}");
         assert_eq!(receipt["provisional"], true);
         assert_eq!(receipt["acceptance_backing"], false);
+        assert_eq!(receipt["acceptance"], "editorial");
         assert!(
             receipt["retake"]["unchanged_check"]["min_psnr_db"]
                 .as_f64()
@@ -1447,41 +1473,6 @@ mod tests {
         );
         assert_eq!(receipt["plan"]["path"], "rt.json");
         assert!(crate::paths::absolute_paths(&receipt).is_empty());
-    }
-
-    #[test]
-    fn a_calibration_record_binds_the_retake_threshold_value() {
-        let s = Scratch::new("stitch-cal-bind");
-        let root = Root::new(&s.0).unwrap();
-        std::fs::write(s.path("data.csv"), b"clips").unwrap();
-        let mut t = RetakeThresholds {
-            calibrated: true,
-            provenance: "estate".into(),
-            ..RetakeThresholds::default()
-        };
-        let record = serde_json::to_vec(&json!({"schema":crate::calibration::SCHEMA,
-            "tool":"stitch","provenance":"estate",
-            "thresholds_sha256":crate::calibration::thresholds_digest(&t).unwrap(),
-            "evidence":[{"path":"data.csv","sha256":sha256_hex(b"clips")}]}))
-        .unwrap();
-        std::fs::write(s.path("cal.json"), &record).unwrap();
-        t.calibration = Some(crate::calibration::Evidence {
-            path: "cal.json".into(),
-            sha256: sha256_hex(&record),
-        });
-        let honour = |t: &RetakeThresholds| {
-            crate::calibration::honour(
-                &root,
-                "stitch",
-                &t.provenance,
-                t.calibrated,
-                t.calibration.as_ref(),
-                t,
-            )
-        };
-        assert!(honour(&t).unwrap().is_some());
-        t.min_unchanged_psnr_db = 0.0;
-        assert!(honour(&t).is_err(), "a loosened PSNR gate must be refused");
     }
 
     #[test]

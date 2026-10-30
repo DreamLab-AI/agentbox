@@ -64,56 +64,39 @@ fn help_and_usage_errors() {
 }
 
 #[test]
-fn a_bare_calibrated_claim_config_is_refused_and_skipped_rules_stay_provisional() {
+fn calibration_claims_are_refused_and_the_receipt_is_editorial() {
     let dir = scratch("bare");
     fs::write(dir.join("ok.json"), film(100)).unwrap();
     fs::write(dir.join("bare.json"), r#"{"calibrated":true}"#).unwrap();
     let (code, _) = lint(&dir, &["--film", "ok.json", "--config", "bare.json"]);
     assert_eq!(code, 2, "a config without schema must be refused");
-    // A calibrated set whose run skipped rules (no annotations) still cannot back acceptance.
-    fs::write(dir.join("data.csv"), b"clips\n").unwrap();
-    let sha = |name: &str| {
-        let out = Command::new("sha256sum")
-            .arg(dir.join(name))
-            .output()
-            .unwrap();
-        String::from_utf8(out.stdout).unwrap()[..64].to_owned()
-    };
-    let config_for = |extra: serde_json::Value| {
+    let cfg = |extra: serde_json::Value| {
         let mut c = serde_json::json!({"schema":"prompt-lint-config/1","provenance":"estate"});
         c.as_object_mut()
             .unwrap()
             .extend(extra.as_object().unwrap().clone());
-        c
+        c.to_string()
     };
-    // The record binds the effective config (defaults applied) it was made for.
-    let honest = config_for(serde_json::json!({}));
-    let bound = video_production_runtime::calibration::thresholds_digest(
-        &video_production_runtime::prompt_lint::Config::from_value(honest).unwrap(),
+    fs::write(
+        dir.join("true.json"),
+        cfg(serde_json::json!({"calibrated":true})),
     )
     .unwrap();
-    let cal = serde_json::json!({"schema":"threshold-calibration/2","tool":"prompt-lint",
-        "provenance":"estate","thresholds_sha256":bound,
-        "evidence":[{"path":"data.csv","sha256":sha("data.csv")}]});
-    fs::write(dir.join("cal.json"), serde_json::to_vec(&cal).unwrap()).unwrap();
-    let digest = sha("cal.json");
-    let claim =
-        serde_json::json!({"calibrated":true,"calibration":{"path":"cal.json","sha256":digest}});
-    fs::write(dir.join("good.json"), config_for(claim.clone()).to_string()).unwrap();
-    // The same record cannot back loosened thresholds.
-    let mut forged = config_for(claim);
-    forged["thresholds"] = serde_json::json!({"max_references":99});
-    fs::write(dir.join("forged.json"), forged.to_string()).unwrap();
-    let (code, out) = lint(&dir, &["--film", "ok.json", "--config", "forged.json"]);
-    assert_eq!(
-        code, 2,
-        "a record for another threshold set must be refused: {out}"
-    );
+    let (code, _) = lint(&dir, &["--film", "ok.json", "--config", "true.json"]);
+    assert_eq!(code, 2, "calibrated: true must be refused");
+    fs::write(
+        dir.join("field.json"),
+        cfg(serde_json::json!({"calibration":{"path":"c.json","sha256":"ab"}})),
+    )
+    .unwrap();
+    let (code, _) = lint(&dir, &["--film", "ok.json", "--config", "field.json"]);
+    assert_eq!(code, 2, "a calibration field must be refused");
+    fs::write(dir.join("good.json"), cfg(serde_json::json!({}))).unwrap();
     let (code, out) = lint(&dir, &["--film", "ok.json", "--config", "good.json"]);
     assert_eq!(code, 0, "{out}");
     let r: serde_json::Value = serde_json::from_str(&out).unwrap();
-    assert!(!r["skipped_rules"].as_array().unwrap().is_empty());
     assert_eq!(r["provisional"], true, "{r:#}");
     assert_eq!(r["acceptance_backing"], false);
+    assert_eq!(r["acceptance"], "editorial");
     fs::remove_dir_all(dir).unwrap();
 }

@@ -12,9 +12,9 @@
 //! ([`LOCAL_OFFSETS`]), so a slow lighting ramp that changes the look on every
 //! frame does not read as a defect at the join.
 //!
-//! Thresholds are configuration ([`Thresholds`]), carry a provenance string and
-//! a `calibrated` flag; while uncalibrated, a pass is reported only as
-//! `provisional` and never backs acceptance.
+//! Thresholds are configuration ([`Thresholds`]) and carry a provenance string.
+//! A verdict is a measurement: the receipt is always `provisional`, never backs
+//! acceptance, and says `acceptance: editorial` ([`crate::acceptance`]).
 //!
 //! Pixels and samples come from [`crate::media`]; the picture statistics are
 //! computed on a downscaled (at most 480 px wide) RGB decode.
@@ -60,18 +60,18 @@ pub struct Asset {
     pub sha256: String,
 }
 
-/// Threshold set with its provenance and calibration state.
+/// Threshold set with its provenance.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct Thresholds {
     /// Where these numbers came from.
     pub provenance: String,
-    /// Whether the numbers were calibrated on this estate's own footage. A
-    /// `true` claim is refused unless `calibration` substantiates it.
+    /// Removed legacy field: any `true` is refused ([`crate::acceptance`]).
+    #[serde(default, skip_serializing)]
     pub calibrated: bool,
-    /// Hashed `threshold-calibration/2` record substantiating `calibrated`.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub calibration: Option<crate::calibration::Evidence>,
+    /// Removed legacy field: any value is refused ([`crate::acceptance`]).
+    #[serde(default, skip_serializing)]
+    pub calibration: Option<Value>,
     /// Largest allowed pop ratio (seam frame difference / local median).
     pub pop_ratio: f64,
     /// Largest allowed absolute saturation step (HSV S, 0-255).
@@ -701,15 +701,7 @@ pub fn run(root: &Root, config: &Config) -> Result<Value> {
         return Err(format!("config schema must be {CONFIG_SCHEMA}").into());
     }
     let t = &config.thresholds;
-    let calibration = crate::calibration::honour(
-        root,
-        "seam-qa",
-        &t.provenance,
-        t.calibrated,
-        t.calibration.as_ref(),
-        t,
-    )?;
-    let calibrated = calibration.is_some();
+    crate::acceptance::refuse_calibration("seam-qa", t.calibrated, t.calibration.is_some())?;
     let cut = checked(root, &config.cut)?;
     let probe = media::probe(&cut)?;
     let cut_colour = Colour::resolve(&probe, config.colour.as_ref(), "cut")?;
@@ -819,7 +811,7 @@ pub fn run(root: &Root, config: &Config) -> Result<Value> {
                             },
                             "psnr_db": values, "min_db": min,
                             "verdict": if pass { "PASS" } else { "FAIL" },
-                            "provisional": pass && !calibrated});
+                            "provisional": true});
                     }
                     Err(e) => blocked = Some(format!("overlap not measurable: {e}")),
                 }
@@ -834,7 +826,7 @@ pub fn run(root: &Root, config: &Config) -> Result<Value> {
         record["fails"] = json!(fails);
         record["blocked_reason"] = json!(blocked);
         record["verdict"] = json!(verdict);
-        record["provisional"] = json!(verdict == "PASS" && !calibrated);
+        record["provisional"] = json!(true);
         seams.push(record);
     }
     let overall = if seams.is_empty() {
@@ -854,11 +846,9 @@ pub fn run(root: &Root, config: &Config) -> Result<Value> {
         "thresholds": t,
         "seams": seams,
         "verdict": overall,
-        "calibration": calibration,
         "colour": {"cut": cut_colour, "declared": config.colour.is_some()},
-        "provisional": overall == "PASS" && !calibrated,
-        "acceptance_backing": overall == "PASS" && calibrated,
     });
+    crate::acceptance::stamp(&mut receipt);
     root.relativise(&mut receipt)?;
     if !absolute_paths(&receipt).is_empty() {
         return Err("receipt would contain a host path".into());
@@ -996,8 +986,9 @@ mod tests {
                 && f.contains(&"lightness".into()),
             "{f:?}"
         );
-        assert_eq!(r["provisional"], false);
+        assert_eq!(r["provisional"], true);
         assert_eq!(r["acceptance_backing"], false);
+        assert_eq!(r["acceptance"], "editorial");
     }
 
     #[test]
@@ -1018,36 +1009,23 @@ mod tests {
         assert_eq!(r["verdict"], "PASS", "{r:#}");
         assert_eq!(r["provisional"], true);
         assert_eq!(r["acceptance_backing"], false);
-        // A bare `calibrated: true` is a config claim, not evidence: refused.
+        assert_eq!(r["acceptance"], "editorial");
+        // A stale calibration claim is refused, never silently ignored.
         let mut claimed = config(&root, "cut.mkv", vec![seam(25)]);
         claimed.thresholds.calibrated = true;
-        assert!(run(&root, &claimed).is_err());
-        // With a hashed record binding these exact thresholds and data it counts.
-        std::fs::write(s.path("data.csv"), b"calibration clips").unwrap();
-        let write_record = |thresholds: &Thresholds, name: &str| {
-            let record = serde_json::to_vec(&json!({"schema":crate::calibration::SCHEMA,
-                "tool":"seam-qa","provenance":thresholds.provenance,
-                "thresholds_sha256":crate::calibration::thresholds_digest(thresholds).unwrap(),
-                "evidence":[{"path":"data.csv","sha256":sha256_hex(b"calibration clips")}]}))
-            .unwrap();
-            std::fs::write(s.path(name), &record).unwrap();
-            crate::calibration::Evidence {
-                path: name.into(),
-                sha256: sha256_hex(&record),
-            }
-        };
-        claimed.thresholds.calibration = Some(write_record(&claimed.thresholds, "cal.json"));
-        // Loosening a gate after the record was made (the 1e9 forgery) is refused.
-        let mut forged = claimed.clone();
-        forged.thresholds.pop_ratio = 1e9;
-        forged.thresholds.pop_abs_floor = 1e9;
-        assert!(run(&root, &forged).is_err());
-        let r = run(&root, &claimed).unwrap();
-        assert_eq!(
-            (r["provisional"].clone(), r["acceptance_backing"].clone()),
-            (json!(false), json!(true))
-        );
-        assert_eq!(r["calibration"]["path"], "cal.json");
+        let err = run(&root, &claimed).unwrap_err().to_string();
+        assert!(err.contains("calibrated acceptance was removed"), "{err}");
+        let mut field = config(&root, "cut.mkv", vec![seam(25)]);
+        field.thresholds.calibration = Some(json!({"path":"cal.json","sha256":"ab"}));
+        assert!(run(&root, &field).is_err());
+        let parsed = serde_json::from_value::<Config>(json!({
+            "schema": CONFIG_SCHEMA, "cut": asset(&root, "cut.mkv"), "colour": declared(),
+            "seams": [{"frame": 25}],
+            "thresholds": {"provenance":"p","calibrated":true,"pop_ratio":1.3,"d_sat":2.0,
+                "d_l":1.5,"d_contrast":1.5,"detail_lo":0.85,"detail_hi":1.15,
+                "audio_step_db":1.5,"audio_click":3.0,"overlap_psnr":32.0}}))
+        .unwrap();
+        assert!(run(&root, &parsed).is_err());
     }
 
     #[test]
