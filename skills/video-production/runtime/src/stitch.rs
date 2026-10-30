@@ -158,6 +158,26 @@ pub fn blend_frame(a: &[u8], b: &[u8], j: u64, o: u64) -> Vec<u8> {
         .collect()
 }
 
+/// Re-hash every source after the encode and refuse if any changed.
+///
+/// `verified` hashes a file and ffmpeg then reopens it by path, so a source
+/// swapped in between would be encoded unhashed. Re-checking afterwards turns
+/// a swap that persists into a refusal. Residual race: a file replaced after
+/// ffmpeg opened it but restored before this check is not detected; closing
+/// that needs a private copy or an fd shared with the child.
+fn sources_unchanged(sources: &[(PathBuf, &str)]) -> Result<()> {
+    for (path, expected) in sources {
+        if sha256_hex(&fs::read(path)?) != *expected {
+            return Err(format!(
+                "source {} changed while the delivery was being encoded",
+                path.display()
+            )
+            .into());
+        }
+    }
+    Ok(())
+}
+
 fn verified(root: &Root, asset: &Asset) -> Result<PathBuf> {
     let path = root.resolve(&asset.path)?;
     if sha256_hex(&fs::read(&path)?) != asset.sha256 {
@@ -459,6 +479,17 @@ pub fn assemble(root: &Root, plan: &StitchPlan, out_dir: &Path) -> Result<Value>
     if let Err(error) = encoded {
         return Err(discard(&dest, error));
     }
+    let mut sources: Vec<(PathBuf, &str)> = paths
+        .iter()
+        .cloned()
+        .zip(plan.segments.iter().map(|s| s.media.sha256.as_str()))
+        .collect();
+    if let (Some(path), Some(audio)) = (&audio_path, &plan.audio) {
+        sources.push((path.clone(), audio.source.sha256.as_str()));
+    }
+    if let Err(error) = sources_unchanged(&sources) {
+        return Err(discard(&dest, error));
+    }
     let (probe, tags) = gate(&dest, expected, plan.rate, size, audio_hashes.as_deref())?;
     Ok(json!({"schema":"stitch-result/1","rate":plan.rate,
         "resolution":{"width":size.0,"height":size.1},
@@ -469,7 +500,8 @@ pub fn assemble(root: &Root, plan: &StitchPlan, out_dir: &Path) -> Result<Value>
         "colour":{"matrix":"bt709","range":"tv","probed":tags},
         "audio":audio_record,
         "output":{"path":root.rel(&dest)?,"sha256":sha256_hex(&fs::read(&dest)?),"probe":probe},
-        "status":"PASS","provisional":false,"acceptance_backing":true}))
+        "status":"PASS","provisional":false,"acceptance_backing":false,
+        "acceptance_note":"stitch gates the assembly only; acceptance of the seams needs a seam-qa receipt"}))
 }
 
 /// Result of [`plan_retake`].
@@ -956,6 +988,16 @@ mod tests {
         let receipt = assemble(&root, &p, &s.path("out")).unwrap();
         assert_eq!(receipt["frames"]["decoded"], 28);
         assert_eq!(receipt["status"], "PASS");
+        assert_eq!(
+            receipt["acceptance_backing"], false,
+            "stitch alone has no seam QA"
+        );
+        assert!(
+            receipt["acceptance_note"]
+                .as_str()
+                .unwrap()
+                .contains("seam-qa")
+        );
         assert_eq!(receipt["output"]["path"], "out/stitched.mp4");
         let probe = media::probe(&s.path("out/stitched.mp4")).unwrap();
         assert_eq!(probe.frames, 28);
@@ -1096,6 +1138,20 @@ mod tests {
         let err = assemble(&root, &p, &s.path("out2")).unwrap_err();
         assert!(err.to_string().contains("re-encoded"), "{err}");
         assert!(!s.path("out2/stitched.mp4").exists());
+    }
+
+    #[test]
+    fn a_source_changed_after_hashing_is_refused() {
+        let s = Scratch::new("stitch-rehash");
+        let file = s.path("seg.mkv");
+        fs::write(&file, b"approved").unwrap();
+        let approved = sha256_hex(b"approved");
+        assert!(sources_unchanged(&[(file.clone(), approved.as_str())]).is_ok());
+        fs::write(&file, b"swapped").unwrap();
+        let err = sources_unchanged(&[(file, approved.as_str())])
+            .unwrap_err()
+            .to_string();
+        assert!(err.contains("changed while"), "{err}");
     }
 
     #[test]
