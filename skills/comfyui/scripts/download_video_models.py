@@ -89,6 +89,20 @@ LTX25_LAYOUT_MODELS = [dict(LTX25_MODELS[0],
     file="diffusion_models/ltx-2.5-22b-distilled-transformer-comfy-int8-convrot.safetensors",
     sha256="c4279eeff115cbeaca494bd2183e7d768c38fe85a184dc6afbb7159157c44334")] + LTX25_MODELS[1:]
 PROFILES["ltx25-layout"] = LTX25_LAYOUT_MODELS
+
+# Permissive face models for the agentbox_video identity nodes; mirrors
+# comfyui-sidecar/nodes/agentbox_video/face_models.json (a test keeps them equal).
+OPENCV_ZOO = "https://github.com/opencv/opencv_zoo/raw/48b10fa505aeb51fbd127fc60a5c660040e823b7/models"
+PROFILES["face-identity"] = [
+    dict(repo="opencv/opencv_zoo", revision="48b10fa505aeb51fbd127fc60a5c660040e823b7",
+         file="face_detection_yunet_2023mar.onnx", directory="agentbox_face", size=232589,
+         url=f"{OPENCV_ZOO}/face_detection_yunet/face_detection_yunet_2023mar.onnx",
+         sha256="8f2383e4dd3cfbb4553ea8718107fc0423210dc964f9f4280604804ed2552fa4"),
+    dict(repo="opencv/opencv_zoo", revision="48b10fa505aeb51fbd127fc60a5c660040e823b7",
+         file="face_recognition_sface_2021dec.onnx", directory="agentbox_face", size=38696353,
+         url=f"{OPENCV_ZOO}/face_recognition_sface/face_recognition_sface_2021dec.onnx",
+         sha256="0ba9fbfa01b5270c96627c4ef784da859931e02f04419c829e83484087c34e79"),
+]
 CAMPAIGN_PATH = Path(os.environ.get("COMFY_MODEL_MANIFEST", str(Path(__file__).resolve().parents[1] / "models" / "stopmotion-candidates.json")))
 CAMPAIGN = json.loads(CAMPAIGN_PATH.read_text()) if CAMPAIGN_PATH.is_file() else {}
 for profile_name, record in CAMPAIGN.get("profiles", {}).items():
@@ -149,6 +163,15 @@ def verified(path, model):
     return digest.hexdigest() == model["sha256"]
 
 
+def model_url(model):
+    """Return ``(url, is_huggingface)``; only Hugging Face URLs may carry HF_TOKEN."""
+    if "url" in model:
+        if not model["url"].startswith("https://"):
+            raise ValueError(f"model URL must be https: {model['url']}")
+        return model["url"], False
+    return f'https://huggingface.co/{model["repo"]}/resolve/{model["revision"]}/{model["file"]}', True
+
+
 def download(model, root, retries=5, reserve_bytes=0):
     target = root / model["directory"] / Path(model["file"]).name
     target.parent.mkdir(parents=True, exist_ok=True)
@@ -159,7 +182,7 @@ def download(model, root, retries=5, reserve_bytes=0):
             print(f"Verified existing {target}", flush=True)
             return target
         partial = target.with_suffix(target.suffix + ".part")
-        url = f'https://huggingface.co/{model["repo"]}/resolve/{model["revision"]}/{model["file"]}'
+        url, huggingface = model_url(model)
         for attempt in range(retries):
             offset = partial.stat().st_size if partial.exists() else 0
             if offset >= model["size"]:
@@ -179,7 +202,7 @@ def download(model, root, retries=5, reserve_bytes=0):
                 token_file = Path(os.environ.get("HF_TOKEN_PATH", str(Path.home() / ".cache/huggingface/token")))
                 if not token and token_file.is_file():
                     token = token_file.read_text().strip()
-                if token:
+                if token and huggingface:
                     # Do not forward credentials to signed CDN redirect targets.
                     request.add_unredirected_header("Authorization", "Bearer " + token)
                 with urllib.request.urlopen(request, timeout=120) as response:
