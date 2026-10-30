@@ -39,11 +39,11 @@ use std::{collections::BTreeMap, error::Error, ffi::OsString, fs, path::Path};
 type Result<T> = std::result::Result<T, Box<dyn Error>>;
 
 /// Schema id of a plan document.
-pub const PLAN_SCHEMA: &str = "window-plan/1";
+pub const PLAN_SCHEMA: &str = "window-plan/2";
 /// Schema id of a diff document.
 pub const DIFF_SCHEMA: &str = "window-diff/1";
 /// Schema id mixed into every checkpoint key.
-pub const KEY_SCHEMA: &str = "window-key/1";
+pub const KEY_SCHEMA: &str = "window-key/2";
 /// Seed derivation scheme recorded in every plan.
 pub const SEED_SCHEME: &str = "window-seed-increment/1";
 /// Upper bound on windows in one plan; larger requests are refused.
@@ -458,6 +458,18 @@ impl Plan {
     /// Refuses edited windows, keys, hashes or schema ids. Model files are not
     /// consulted; see [`Plan::verify_in`].
     pub fn verify(&self) -> Result<()> {
+        if self.schema != PLAN_SCHEMA {
+            return Err(if self.schema.starts_with("window-plan/") {
+                format!(
+                    "plan schema {} is superseded by {PLAN_SCHEMA} (the model-hash `verified` flag now \
+                     changes checkpoint keys), re-plan",
+                    self.schema
+                )
+            } else {
+                format!("unsupported plan schema {}", self.schema)
+            }
+            .into());
+        }
         let rebuilt = build(&self.request)?;
         if rebuilt != *self {
             return Err(
@@ -1156,6 +1168,44 @@ mod tests {
 
     fn read_plan_file(dir: &Path, name: &str) -> Plan {
         serde_json::from_slice(&fs::read(dir.join(name)).unwrap()).unwrap()
+    }
+
+    #[test]
+    fn a_plan_from_the_superseded_schema_is_refused_with_a_replan_message() {
+        let mut plan = build(&Request {
+            profile: Profile::ltx(),
+            total_frames: 20,
+            max_window: 9,
+            history_len: 1,
+            master_seed: 3,
+            seed_overrides: Default::default(),
+            hashes: Hashes {
+                input_sha256: "1".repeat(64),
+                prompt_sha256: "2".repeat(64),
+                settings_sha256: "3".repeat(64),
+                models: vec![ModelFile {
+                    path: "m.safetensors".into(),
+                    sha256: "a".repeat(64),
+                    verified: false,
+                }],
+            },
+        })
+        .unwrap();
+        plan.verify().unwrap();
+        plan.schema = "window-plan/1".into();
+        let err = plan.verify().unwrap_err().to_string();
+        assert!(
+            err.contains("superseded") && err.contains("re-plan"),
+            "{err}"
+        );
+        assert!(!err.contains("edited or stale"), "{err}");
+        plan.schema = "other/9".into();
+        assert!(
+            plan.verify()
+                .unwrap_err()
+                .to_string()
+                .contains("unsupported")
+        );
     }
 
     #[test]

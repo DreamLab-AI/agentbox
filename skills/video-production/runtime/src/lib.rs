@@ -1,6 +1,6 @@
 //! Shared validation and exchange helpers for scene-directed production tools.
 //!
-//! * [`calibration`] — calibration claims honoured only with hashed evidence.
+//! * [`acceptance`] — receipts never back acceptance; calibrated claims are refused.
 //! * [`clock`] — exact rational frame-clock arithmetic and duration policy.
 //! * [`paths`] — production-root resolution and root-relative receipt paths.
 //! * [`comfy`] — hash-verified upload to a ComfyUI-compatible service.
@@ -11,7 +11,7 @@
 //! * [`seam_qa`] — measured seam checks against a local baseline.
 //! * [`render_cache`] — complete render-cache assembly after a scoped edit.
 //! * [`stitch`] — frame-exact stitch, copied audio and retake planning.
-pub mod calibration;
+pub mod acceptance;
 pub mod clock;
 pub mod comfy;
 pub mod guide;

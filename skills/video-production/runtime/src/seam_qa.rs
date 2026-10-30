@@ -12,9 +12,9 @@
 //! ([`LOCAL_OFFSETS`]), so a slow lighting ramp that changes the look on every
 //! frame does not read as a defect at the join.
 //!
-//! Thresholds are configuration ([`Thresholds`]), carry a provenance string and
-//! a `calibrated` flag; while uncalibrated, a pass is reported only as
-//! `provisional` and never backs acceptance.
+//! Thresholds are configuration ([`Thresholds`]) and carry a provenance string.
+//! A verdict is a measurement: the receipt is always `provisional`, never backs
+//! acceptance, and says `acceptance: editorial` ([`crate::acceptance`]).
 //!
 //! Pixels and samples come from [`crate::media`]; the picture statistics are
 //! computed on a downscaled (at most 480 px wide) RGB decode.
@@ -24,7 +24,7 @@
 use crate::{
     clock::RationalRate,
     comfy::sha256_hex,
-    media::{self, PixelFormat},
+    media::{self, Colour, PixelFormat},
     paths::{Root, absolute_paths},
 };
 use serde::{Deserialize, Serialize};
@@ -60,18 +60,18 @@ pub struct Asset {
     pub sha256: String,
 }
 
-/// Threshold set with its provenance and calibration state.
+/// Threshold set with its provenance.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct Thresholds {
     /// Where these numbers came from.
     pub provenance: String,
-    /// Whether the numbers were calibrated on this estate's own footage. A
-    /// `true` claim is refused unless `calibration` substantiates it.
+    /// Removed legacy field: any `true` is refused ([`crate::acceptance`]).
+    #[serde(default, skip_serializing)]
     pub calibrated: bool,
-    /// Hashed `threshold-calibration/1` record substantiating `calibrated`.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub calibration: Option<crate::calibration::Evidence>,
+    /// Removed legacy field: any value is refused ([`crate::acceptance`]).
+    #[serde(default, skip_serializing)]
+    pub calibration: Option<Value>,
     /// Largest allowed pop ratio (seam frame difference / local median).
     pub pop_ratio: f64,
     /// Largest allowed absolute saturation step (HSV S, 0-255).
@@ -173,6 +173,10 @@ pub struct Overlap {
     /// The previous segment's media, whose last `frames` frames are carried.
     #[serde(default)]
     pub reference: Option<Asset>,
+    /// YUV matrix and range of the `reference` when its container does not
+    /// tag them. Must agree with any tag it does carry.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub colour: Option<Colour>,
 }
 
 /// One join to measure.
@@ -194,6 +198,10 @@ pub struct Config {
     pub schema: String,
     /// The assembled cut under test.
     pub cut: Asset,
+    /// YUV matrix and range of the cut when it is untagged. An untagged YUV
+    /// cut without this is refused, never decoded with ffmpeg's guess.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub colour: Option<Colour>,
     /// The joins to measure.
     pub seams: Vec<SeamSpec>,
     /// Threshold set.
@@ -291,7 +299,7 @@ pub fn frame_stats(rgb: &[u8], width: usize, height: usize) -> FrameStats {
 }
 
 /// Decode `path` at the analysis size and compute every frame's statistics.
-pub fn analyze_video(path: &std::path::Path) -> Result<Analysis> {
+pub fn analyze_video(path: &std::path::Path, colour: Option<&Colour>) -> Result<Analysis> {
     let p = media::probe(path)?;
     let (w, h) = if p.width > ANALYSIS_WIDTH {
         let h = (u64::from(p.height) * u64::from(ANALYSIS_WIDTH)).div_ceil(u64::from(p.width));
@@ -301,7 +309,7 @@ pub fn analyze_video(path: &std::path::Path) -> Result<Analysis> {
     };
     let mut out = Analysis::default();
     let mut prev: Option<Vec<u8>> = None;
-    media::for_each_frame(path, PixelFormat::Rgb24, Some((w, h)), |f| {
+    media::for_each_frame_as(path, PixelFormat::Rgb24, Some((w, h)), colour, |f| {
         out.stats.push(frame_stats(&f.data, w as usize, h as usize));
         out.diffs.push(match &prev {
             None => 0.0,
@@ -605,13 +613,18 @@ pub fn psnr(a: &[u8], b: &[u8]) -> f64 {
 
 /// Per-frame PSNR of the cut's `frames` frames before `seam` against the
 /// `frames` frames from `seam`, for an overlap declared without a reference.
-pub fn overlap_psnr_in_cut(cut: &std::path::Path, seam: u64, frames: u64) -> Result<Vec<f64>> {
+pub fn overlap_psnr_in_cut(
+    cut: &std::path::Path,
+    cut_colour: Option<&Colour>,
+    seam: u64,
+    frames: u64,
+) -> Result<Vec<f64>> {
     if frames == 0 || frames > seam {
         return Err("overlap exceeds the frames before the seam".into());
     }
     let mut before = Vec::new();
     let mut values = Vec::new();
-    media::for_each_frame(cut, PixelFormat::Rgb24, None, |f| {
+    media::for_each_frame_as(cut, PixelFormat::Rgb24, None, cut_colour, |f| {
         if f.index >= seam - frames && f.index < seam {
             before.push(f.data);
         } else if f.index >= seam && f.index < seam + frames {
@@ -625,25 +638,26 @@ pub fn overlap_psnr_in_cut(cut: &std::path::Path, seam: u64, frames: u64) -> Res
 /// Per-frame PSNR of the last `frames` frames of `reference` against the
 /// `frames` frames of `cut` starting at `seam`, both at native size.
 pub fn overlap_psnr(
-    cut: &std::path::Path,
-    reference: &std::path::Path,
+    cut: (&std::path::Path, Option<&Colour>),
+    reference: (&std::path::Path, Option<&Colour>),
     seam: u64,
     frames: u64,
 ) -> Result<Vec<f64>> {
+    let ((cut, cut_colour), (reference, reference_colour)) = (cut, reference);
     let ref_count = media::probe(reference)?.frames;
     if frames == 0 || frames > ref_count {
         return Err("overlap exceeds the reference clip".into());
     }
     let first_ref = ref_count - frames;
     let mut carried = Vec::new();
-    media::for_each_frame(reference, PixelFormat::Rgb24, None, |f| {
+    media::for_each_frame_as(reference, PixelFormat::Rgb24, None, reference_colour, |f| {
         if f.index >= first_ref {
             carried.push(f.data);
         }
         Ok(())
     })?;
     let mut values = Vec::new();
-    media::for_each_frame(cut, PixelFormat::Rgb24, None, |f| {
+    media::for_each_frame_as(cut, PixelFormat::Rgb24, None, cut_colour, |f| {
         if f.index >= seam && f.index < seam + frames {
             let other = &carried[(f.index - seam) as usize];
             if other.len() != f.data.len() {
@@ -687,17 +701,30 @@ pub fn run(root: &Root, config: &Config) -> Result<Value> {
         return Err(format!("config schema must be {CONFIG_SCHEMA}").into());
     }
     let t = &config.thresholds;
-    let calibration = crate::calibration::honour(
-        root,
-        "seam-qa",
-        &t.provenance,
-        t.calibrated,
-        t.calibration.as_ref(),
-    )?;
-    let calibrated = calibration.is_some();
+    crate::acceptance::refuse_calibration("seam-qa", t.calibrated, t.calibration.is_some())?;
     let cut = checked(root, &config.cut)?;
     let probe = media::probe(&cut)?;
-    let analysis = analyze_video(&cut)?;
+    let cut_colour = Colour::resolve(&probe, config.colour.as_ref(), "cut")?;
+    // Resolve every overlap reference up front so an untagged one is a
+    // refusal, not a seam that quietly reports BLOCKED.
+    let mut references = Vec::new();
+    for spec in &config.seams {
+        if let Some(Overlap {
+            reference: Some(r),
+            colour,
+            ..
+        }) = &spec.overlap
+        {
+            let path = checked(root, r)?;
+            let resolved = Colour::resolve(
+                &media::probe(&path)?,
+                colour.as_ref(),
+                &format!("overlap reference {}", r.path.display()),
+            )?;
+            references.push((spec.frame, path, resolved));
+        }
+    }
+    let analysis = analyze_video(&cut, cut_colour.as_ref())?;
     let n = analysis.stats.len() as u64;
     if n != probe.frames {
         return Err("decoded frame count differs between probe and analysis".into());
@@ -753,8 +780,21 @@ pub fn run(root: &Root, config: &Config) -> Result<Value> {
                         return Err("overlap runs past the end of the cut".into());
                     }
                     match &ov.reference {
-                        Some(r) => overlap_psnr(&cut, &checked(root, r)?, spec.frame, ov.frames),
-                        None => overlap_psnr_in_cut(&cut, spec.frame, ov.frames),
+                        Some(_) => {
+                            let (_, path, colour) = references
+                                .iter()
+                                .find(|(frame, ..)| *frame == spec.frame)
+                                .ok_or("overlap reference was not resolved")?;
+                            overlap_psnr(
+                                (&cut, cut_colour.as_ref()),
+                                (path, colour.as_ref()),
+                                spec.frame,
+                                ov.frames,
+                            )
+                        }
+                        None => {
+                            overlap_psnr_in_cut(&cut, cut_colour.as_ref(), spec.frame, ov.frames)
+                        }
                     }
                 })();
                 match result {
@@ -771,7 +811,7 @@ pub fn run(root: &Root, config: &Config) -> Result<Value> {
                             },
                             "psnr_db": values, "min_db": min,
                             "verdict": if pass { "PASS" } else { "FAIL" },
-                            "provisional": pass && !calibrated});
+                            "provisional": true});
                     }
                     Err(e) => blocked = Some(format!("overlap not measurable: {e}")),
                 }
@@ -786,7 +826,7 @@ pub fn run(root: &Root, config: &Config) -> Result<Value> {
         record["fails"] = json!(fails);
         record["blocked_reason"] = json!(blocked);
         record["verdict"] = json!(verdict);
-        record["provisional"] = json!(verdict == "PASS" && !calibrated);
+        record["provisional"] = json!(true);
         seams.push(record);
     }
     let overall = if seams.is_empty() {
@@ -806,10 +846,9 @@ pub fn run(root: &Root, config: &Config) -> Result<Value> {
         "thresholds": t,
         "seams": seams,
         "verdict": overall,
-        "calibration": calibration,
-        "provisional": overall == "PASS" && !calibrated,
-        "acceptance_backing": overall == "PASS" && calibrated,
+        "colour": {"cut": cut_colour, "declared": config.colour.is_some()},
     });
+    crate::acceptance::stamp(&mut receipt);
     root.relativise(&mut receipt)?;
     if !absolute_paths(&receipt).is_empty() {
         return Err("receipt would contain a host path".into());
@@ -840,8 +879,17 @@ mod tests {
         Config {
             schema: CONFIG_SCHEMA.into(),
             cut: asset(root, cut),
+            colour: Some(declared()),
             seams,
             thresholds: Thresholds::kinoloom_uncalibrated(),
+        }
+    }
+
+    /// The lavfi fixtures are untagged YUV, so tests declare their colour.
+    fn declared() -> Colour {
+        Colour {
+            matrix: "bt709".into(),
+            range: "tv".into(),
         }
     }
 
@@ -862,6 +910,65 @@ mod tests {
     }
 
     #[test]
+    fn an_untagged_yuv_cut_or_reference_is_refused_unless_colour_is_declared() {
+        let s = Scratch::new("seam-colour");
+        lavfi(
+            &s.path("cut.mkv"),
+            &[&format!("color={SIZE}:d=1.6,{NOISE}")],
+            &["-c:v", "ffv1", "-pix_fmt", "yuv420p"],
+        );
+        lavfi(
+            &s.path("ref.mkv"),
+            &[&format!("color={SIZE}:d=1.6,{NOISE}")],
+            &["-c:v", "ffv1", "-pix_fmt", "yuv420p"],
+        );
+        let root = Root::new(&s.0).unwrap();
+        let mut c = config(&root, "cut.mkv", vec![seam(25)]);
+        c.colour = None;
+        let err = run(&root, &c).unwrap_err().to_string();
+        assert!(err.contains("untagged"), "{err}");
+        // A cut declaration alone does not cover an untagged overlap reference.
+        let mut c = config(&root, "cut.mkv", vec![seam(25)]);
+        c.seams[0].overlap = Some(Overlap {
+            frames: 5,
+            reference: Some(asset(&root, "ref.mkv")),
+            colour: None,
+        });
+        let err = run(&root, &c).unwrap_err().to_string();
+        assert!(
+            err.contains("overlap reference") && err.contains("untagged"),
+            "{err}"
+        );
+        c.seams[0].overlap.as_mut().unwrap().colour = Some(declared());
+        let r = run(&root, &c).unwrap();
+        assert_eq!(r["colour"]["cut"]["matrix"], "bt709");
+        assert_eq!(r["colour"]["declared"], true);
+    }
+
+    #[test]
+    fn the_declared_matrix_and_range_reach_the_decoder() {
+        let s = Scratch::new("seam-colour-decode");
+        lavfi(
+            &s.path("cut.mkv"),
+            &["color=c=0x4080c0:s=96x64:r=25:d=0.4"],
+            &["-c:v", "ffv1", "-pix_fmt", "yuv420p"],
+        );
+        let path = s.path("cut.mkv");
+        let analyse = |matrix: &str, range: &str| {
+            let colour = Colour {
+                matrix: matrix.into(),
+                range: range.into(),
+            };
+            analyze_video(&path, Some(&colour)).unwrap().stats[0].l
+        };
+        // Same bytes, different declared interpretation, different measured lightness.
+        let (tv, pc) = (analyse("bt709", "tv"), analyse("bt709", "pc"));
+        assert!((tv - pc).abs() > 0.1, "{tv} {pc}");
+        let (m709, m601) = (analyse("bt709", "tv"), analyse("smpte170m", "tv"));
+        assert!((m709 - m601).abs() > 0.1, "{m709} {m601}");
+    }
+
+    #[test]
     fn hard_colour_step_fails() {
         let s = Scratch::new("seam-hard");
         let cut = s.path("cut.mkv");
@@ -879,8 +986,9 @@ mod tests {
                 && f.contains(&"lightness".into()),
             "{f:?}"
         );
-        assert_eq!(r["provisional"], false);
+        assert_eq!(r["provisional"], true);
         assert_eq!(r["acceptance_backing"], false);
+        assert_eq!(r["acceptance"], "editorial");
     }
 
     #[test]
@@ -901,25 +1009,23 @@ mod tests {
         assert_eq!(r["verdict"], "PASS", "{r:#}");
         assert_eq!(r["provisional"], true);
         assert_eq!(r["acceptance_backing"], false);
-        // A bare `calibrated: true` is a config claim, not evidence: refused.
+        assert_eq!(r["acceptance"], "editorial");
+        // A stale calibration claim is refused, never silently ignored.
         let mut claimed = config(&root, "cut.mkv", vec![seam(25)]);
         claimed.thresholds.calibrated = true;
-        assert!(run(&root, &claimed).is_err());
-        // With a hashed calibration record for this tool and provenance it counts.
-        let record = serde_json::to_vec(&json!({"schema":crate::calibration::SCHEMA,
-            "tool":"seam-qa","provenance":claimed.thresholds.provenance}))
+        let err = run(&root, &claimed).unwrap_err().to_string();
+        assert!(err.contains("calibrated acceptance was removed"), "{err}");
+        let mut field = config(&root, "cut.mkv", vec![seam(25)]);
+        field.thresholds.calibration = Some(json!({"path":"cal.json","sha256":"ab"}));
+        assert!(run(&root, &field).is_err());
+        let parsed = serde_json::from_value::<Config>(json!({
+            "schema": CONFIG_SCHEMA, "cut": asset(&root, "cut.mkv"), "colour": declared(),
+            "seams": [{"frame": 25}],
+            "thresholds": {"provenance":"p","calibrated":true,"pop_ratio":1.3,"d_sat":2.0,
+                "d_l":1.5,"d_contrast":1.5,"detail_lo":0.85,"detail_hi":1.15,
+                "audio_step_db":1.5,"audio_click":3.0,"overlap_psnr":32.0}}))
         .unwrap();
-        std::fs::write(s.path("cal.json"), &record).unwrap();
-        claimed.thresholds.calibration = Some(crate::calibration::Evidence {
-            path: "cal.json".into(),
-            sha256: sha256_hex(&record),
-        });
-        let r = run(&root, &claimed).unwrap();
-        assert_eq!(
-            (r["provisional"].clone(), r["acceptance_backing"].clone()),
-            (json!(false), json!(true))
-        );
-        assert_eq!(r["calibration"]["path"], "cal.json");
+        assert!(run(&root, &parsed).is_err());
     }
 
     #[test]
@@ -960,6 +1066,7 @@ mod tests {
             let ov = Overlap {
                 frames: 5,
                 reference: Some(asset(&root, reference)),
+                colour: Some(declared()),
             };
             config(
                 &root,
@@ -998,7 +1105,7 @@ mod tests {
             .unwrap();
         assert!(status.success());
         let length_only: Config = serde_json::from_value(json!({
-            "schema": CONFIG_SCHEMA, "cut": asset(&root, "selfcut.mkv"),
+            "schema": CONFIG_SCHEMA, "cut": asset(&root, "selfcut.mkv"), "colour": declared(),
             "seams": [{"frame": 30, "overlap": {"frames": 5}}],
             "thresholds": Thresholds::kinoloom_uncalibrated()}))
         .unwrap();

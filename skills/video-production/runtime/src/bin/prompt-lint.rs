@@ -1,7 +1,7 @@
 //! Lint film and performance plans before any GPU spend.
 //!
 //! Exit status: 0 when there is no error-severity finding (a warning-only run
-//! passes; an uncalibrated threshold set marks the pass `provisional`), 1 when
+//! passes; every receipt is `provisional` and `acceptance: editorial`), 1 when
 //! any rule of error severity fires, 2 for usage or input problems.
 use serde_json::{Value, json};
 use std::{ffi::OsString, fs, io::Write, path::Path, process::ExitCode};
@@ -22,7 +22,7 @@ At least one of --film / --performance is required. Paths are relative to the
 production root. The receipt (JSON) goes to --out (must not exist) or stdout.
 Exit: 0 no errors, 1 error findings, 2 bad usage/input.
 
-  --config        prompt-lint-config/1: thresholds, provenance, calibrated, rule severities
+  --config        prompt-lint-config/1: thresholds, provenance, rule severities
   --annotations   prompt-lint-annotations/1: cast look cards, emotion observations,
                   scene/location of segments (enables the look/emotion/continuity rules)
 ";
@@ -127,15 +127,7 @@ fn run() -> Result<ExitCode> {
         skipped.extend(s);
     }
 
-    let calibration = video_production_runtime::calibration::honour(
-        &root,
-        "prompt-lint",
-        &config.provenance,
-        config.calibrated,
-        config.calibration.as_ref(),
-    )
-    .map_err(|e| e.to_string())?;
-    let out = receipt(&config, calibration, inputs, &findings, &skipped);
+    let out = receipt(&config, inputs, &findings, &skipped);
     let text = serde_json::to_string_pretty(&out).map_err(|e| e.to_string())? + "\n";
     match opts.get("--out") {
         Some(p) => {

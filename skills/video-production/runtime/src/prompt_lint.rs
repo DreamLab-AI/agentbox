@@ -10,8 +10,8 @@
 //! scene or location change.
 //!
 //! Rules, severities and thresholds are configuration ([`Config`]); the
-//! built-in threshold set is `calibrated: false`, so a clean run is only a
-//! *provisional* pass and must not back acceptance.
+//! receipt is always `provisional` and never backs acceptance: a clean run is
+//! a measurement and acceptance is editorial ([`crate::acceptance`]).
 //!
 //! Our schemas have no concept of emotion intensity, cast look cards or
 //! scene/location, so those rules read a small separate
@@ -174,12 +174,12 @@ pub struct Config {
     pub schema: String,
     /// Where the thresholds come from.
     pub provenance: String,
-    /// False until the thresholds are measured; a pass is then provisional.
-    /// A `true` claim is refused unless `calibration` substantiates it.
+    /// Removed legacy field: any `true` is refused ([`crate::acceptance`]).
+    #[serde(default, skip_serializing)]
     pub calibrated: bool,
-    /// Hashed `threshold-calibration/1` record substantiating `calibrated`.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub calibration: Option<crate::calibration::Evidence>,
+    /// Removed legacy field: any value is refused ([`crate::acceptance`]).
+    #[serde(default, skip_serializing)]
+    pub calibration: Option<Value>,
     /// Numeric limits.
     pub thresholds: Thresholds,
     /// Per-rule severity overrides (rule id to severity).
@@ -214,6 +214,11 @@ impl Config {
 
     /// Reject a wrong schema or an unknown rule id in `severities`.
     pub fn validate(&self) -> Result<(), String> {
+        crate::acceptance::refuse_calibration(
+            "prompt-lint",
+            self.calibrated,
+            self.calibration.is_some(),
+        )?;
         if self.schema != "prompt-lint-config/1" {
             return Err(format!("Unsupported config schema {}", self.schema));
         }
@@ -811,29 +816,17 @@ pub fn lint_performance(
     Ok((sink.findings, skipped))
 }
 
-/// Assemble the JSON receipt. `inputs` maps a role to `{path, sha256}`;
-/// `calibration` is the record [`crate::calibration::honour`] verified, if any.
-pub fn receipt(
-    config: &Config,
-    calibration: Option<Value>,
-    inputs: Value,
-    findings: &[Finding],
-    skipped: &[String],
-) -> Value {
+/// Assemble the JSON receipt. `inputs` maps a role to `{path, sha256}`.
+pub fn receipt(config: &Config, inputs: Value, findings: &[Finding], skipped: &[String]) -> Value {
     let errors = findings
         .iter()
         .filter(|f| f.severity == Severity::Error)
         .count();
     let warnings = findings.len() - errors;
     let verdict = if errors > 0 { "FAIL" } else { "PASS" };
-    json!({
+    let mut out = json!({
         "schema": "prompt-lint/1",
         "verdict": verdict,
-        // An uncalibrated threshold set, or a run that skipped rules, can never
-        // back acceptance: part of the plan was not judged.
-        "provisional": verdict == "PASS" && (calibration.is_none() || !skipped.is_empty()),
-        "acceptance_backing": verdict == "PASS" && calibration.is_some() && skipped.is_empty(),
-        "calibration": calibration,
         "errors": errors,
         "warnings": warnings,
         "inputs": inputs,
@@ -843,7 +836,9 @@ pub fn receipt(
         })).collect::<Vec<_>>(),
         "skipped_rules": skipped,
         "findings": findings,
-    })
+    });
+    crate::acceptance::stamp(&mut out);
+    out
 }
 
 #[cfg(test)]
@@ -1306,22 +1301,17 @@ mod tests {
     }
 
     #[test]
-    fn verdict_is_provisional_until_calibrated_and_fails_on_errors() {
+    fn every_receipt_is_editorial_and_fails_on_errors() {
         let cfg = Config::default();
-        let ok = receipt(&cfg, None, json!({}), &[], &[]);
-        assert_eq!(
-            (ok["verdict"].as_str(), ok["provisional"].as_bool()),
-            (Some("PASS"), Some(true))
-        );
-        assert_eq!(ok["acceptance_backing"], json!(false));
-        let verified = json!({"path":"cal.json","sha256":"ab"});
-        let backed = receipt(&cfg, Some(verified), json!({}), &[], &[]);
+        let ok = receipt(&cfg, json!({}), &[], &[]);
+        assert_eq!(ok["verdict"], "PASS");
         assert_eq!(
             (
-                backed["provisional"].clone(),
-                backed["acceptance_backing"].clone()
+                ok["provisional"].clone(),
+                ok["acceptance_backing"].clone(),
+                ok["acceptance"].clone()
             ),
-            (json!(false), json!(true))
+            (json!(true), json!(false), json!("editorial"))
         );
         let warn = Finding {
             rule: "ref-unused".into(),
@@ -1330,30 +1320,32 @@ mod tests {
             message: "m".into(),
         };
         assert_eq!(
-            receipt(&cfg, None, json!({}), std::slice::from_ref(&warn), &[])["verdict"],
+            receipt(&cfg, json!({}), std::slice::from_ref(&warn), &[])["verdict"],
             "PASS"
         );
         let err = Finding {
             severity: Severity::Error,
             ..warn
         };
-        let r = receipt(&cfg, None, json!({}), &[err], &[]);
-        assert_eq!(
-            (r["verdict"].as_str(), r["provisional"].as_bool()),
-            (Some("FAIL"), Some(false))
-        );
+        let r = receipt(&cfg, json!({}), &[err], &[]);
+        assert_eq!(r["verdict"], "FAIL");
+        assert_eq!(r["acceptance_backing"], false);
+        assert_eq!(r["acceptance"], "editorial");
     }
 
     #[test]
-    fn skipped_rules_make_a_calibrated_pass_provisional() {
-        let cfg = Config::default();
-        let verified = json!({"path":"cal.json","sha256":"ab"});
-        let skipped = ["emotion-jump".to_string()];
-        let r = receipt(&cfg, Some(verified), json!({}), &[], &skipped);
-        assert_eq!(
-            (r["provisional"].clone(), r["acceptance_backing"].clone()),
-            (json!(true), json!(false))
-        );
+    fn calibrated_true_or_a_calibration_field_is_refused() {
+        let base = json!({"schema":"prompt-lint-config/1"});
+        let with = |k: &str, v: Value| {
+            let mut c = base.clone();
+            c[k] = v;
+            Config::from_value(c)
+        };
+        let err = with("calibrated", json!(true)).unwrap_err();
+        assert!(err.contains("calibrated acceptance was removed"), "{err}");
+        let err = with("calibration", json!({"path":"c.json","sha256":"ab"})).unwrap_err();
+        assert!(err.contains("acceptance is editorial"), "{err}");
+        assert!(with("calibrated", json!(false)).is_ok());
     }
 
     #[test]

@@ -64,37 +64,39 @@ fn help_and_usage_errors() {
 }
 
 #[test]
-fn a_bare_calibrated_claim_config_is_refused_and_skipped_rules_stay_provisional() {
+fn calibration_claims_are_refused_and_the_receipt_is_editorial() {
     let dir = scratch("bare");
     fs::write(dir.join("ok.json"), film(100)).unwrap();
     fs::write(dir.join("bare.json"), r#"{"calibrated":true}"#).unwrap();
     let (code, _) = lint(&dir, &["--film", "ok.json", "--config", "bare.json"]);
     assert_eq!(code, 2, "a config without schema must be refused");
-    // A calibrated set whose run skipped rules (no annotations) still cannot back acceptance.
-    let mut cal = serde_json::json!({"schema":"threshold-calibration/1","tool":"prompt-lint",
-        "provenance":"estate"});
-    cal["x"] = 1.into();
-    let bytes = serde_json::to_vec(&cal).unwrap();
-    fs::write(dir.join("cal.json"), &bytes).unwrap();
-    let digest = {
-        let out = Command::new("sha256sum")
-            .arg(dir.join("cal.json"))
-            .output()
-            .unwrap();
-        String::from_utf8(out.stdout).unwrap()[..64].to_owned()
+    let cfg = |extra: serde_json::Value| {
+        let mut c = serde_json::json!({"schema":"prompt-lint-config/1","provenance":"estate"});
+        c.as_object_mut()
+            .unwrap()
+            .extend(extra.as_object().unwrap().clone());
+        c.to_string()
     };
     fs::write(
-        dir.join("good.json"),
-        serde_json::json!({"schema":"prompt-lint-config/1","provenance":"estate","calibrated":true,
-            "calibration":{"path":"cal.json","sha256":digest}})
-        .to_string(),
+        dir.join("true.json"),
+        cfg(serde_json::json!({"calibrated":true})),
     )
     .unwrap();
+    let (code, _) = lint(&dir, &["--film", "ok.json", "--config", "true.json"]);
+    assert_eq!(code, 2, "calibrated: true must be refused");
+    fs::write(
+        dir.join("field.json"),
+        cfg(serde_json::json!({"calibration":{"path":"c.json","sha256":"ab"}})),
+    )
+    .unwrap();
+    let (code, _) = lint(&dir, &["--film", "ok.json", "--config", "field.json"]);
+    assert_eq!(code, 2, "a calibration field must be refused");
+    fs::write(dir.join("good.json"), cfg(serde_json::json!({}))).unwrap();
     let (code, out) = lint(&dir, &["--film", "ok.json", "--config", "good.json"]);
     assert_eq!(code, 0, "{out}");
     let r: serde_json::Value = serde_json::from_str(&out).unwrap();
-    assert!(!r["skipped_rules"].as_array().unwrap().is_empty());
     assert_eq!(r["provisional"], true, "{r:#}");
     assert_eq!(r["acceptance_backing"], false);
+    assert_eq!(r["acceptance"], "editorial");
     fs::remove_dir_all(dir).unwrap();
 }

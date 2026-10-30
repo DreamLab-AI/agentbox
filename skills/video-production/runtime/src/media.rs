@@ -103,6 +103,19 @@ pub struct Colour {
     pub range: String,
 }
 
+/// Map an ffprobe `color_space` tag to a [`Colour::matrix`] name.
+fn tag_matrix(space: &str) -> Result<&'static str> {
+    Ok(match space {
+        "bt709" => "bt709",
+        "bt470bg" => "bt470",
+        "smpte170m" => "smpte170m",
+        "smpte240m" => "smpte240m",
+        "fcc" => "fcc",
+        "bt2020nc" => "bt2020",
+        other => return Err(format!("unsupported tagged colour space {other}").into()),
+    })
+}
+
 impl Colour {
     /// Check that both fields name something the decoder understands.
     pub fn validate(&self) -> Result<()> {
@@ -130,15 +143,7 @@ impl Colour {
         let (Some(space), Some(range)) = (&probe.color_space, &probe.color_range) else {
             return Ok(None);
         };
-        let matrix = match space.as_str() {
-            "bt709" => "bt709",
-            "bt470bg" => "bt470",
-            "smpte170m" => "smpte170m",
-            "smpte240m" => "smpte240m",
-            "fcc" => "fcc",
-            "bt2020nc" => "bt2020",
-            other => return Err(format!("unsupported tagged colour space {other}").into()),
-        };
+        let matrix = tag_matrix(space)?;
         let colour = Colour {
             matrix: matrix.into(),
             range: range.clone(),
@@ -159,6 +164,29 @@ impl Colour {
             return Ok(None);
         }
         let tagged = Colour::from_tags(probe).map_err(|e| format!("{what}: {e}"))?;
+        // A declaration must also agree with a *partial* tag: a lone range or
+        // matrix tag is still the file's own statement.
+        if let Some(d) = declared {
+            if let Some(range) = &probe.color_range
+                && *range != d.range
+            {
+                return Err(format!(
+                    "{what}: declared colour range {} contradicts its tagged range {range}",
+                    d.range
+                )
+                .into());
+            }
+            if let Some(space) = &probe.color_space {
+                let matrix = tag_matrix(space).map_err(|e| format!("{what}: {e}"))?;
+                if matrix != d.matrix {
+                    return Err(format!(
+                        "{what}: declared colour matrix {} contradicts its tagged colour space {space}",
+                        d.matrix
+                    )
+                    .into());
+                }
+            }
+        }
         match (declared, tagged) {
             (Some(d), Some(t)) if *d != t => Err(format!(
                 "{what}: declared colour {}/{} contradicts its tags {}/{}",
@@ -527,6 +555,48 @@ pub mod testutil {
 mod tests {
     use super::testutil::*;
     use super::*;
+
+    #[test]
+    fn a_declaration_must_agree_with_a_partial_tag() {
+        let probe = |space: Option<&str>, range: Option<&str>| Probe {
+            rate: RationalRate::new(25, 1).unwrap(),
+            frames: 1,
+            width: 2,
+            height: 2,
+            pix_fmt: "yuv420p".into(),
+            color_space: space.map(str::to_owned),
+            color_range: range.map(str::to_owned),
+            color_primaries: None,
+            color_transfer: None,
+            sar: None,
+            rotation: 0,
+            audio_rate: None,
+            audio_channels: None,
+        };
+        let decl = |matrix: &str, range: &str| Colour {
+            matrix: matrix.into(),
+            range: range.into(),
+        };
+        // Declaring pc on a tv-tagged source with no matrix tag was a silent pass.
+        let err = Colour::resolve(&probe(None, Some("tv")), Some(&decl("bt709", "pc")), "seg")
+            .unwrap_err()
+            .to_string();
+        assert!(err.contains("range"), "{err}");
+        let err = Colour::resolve(
+            &probe(Some("bt709"), None),
+            Some(&decl("bt601", "tv")),
+            "seg",
+        )
+        .unwrap_err()
+        .to_string();
+        assert!(err.contains("matrix"), "{err}");
+        // Agreeing with the partial tag is accepted; no tags at all accepts any declaration.
+        let ok = Colour::resolve(&probe(None, Some("tv")), Some(&decl("bt709", "tv")), "seg");
+        assert_eq!(ok.unwrap(), Some(decl("bt709", "tv")));
+        assert!(Colour::resolve(&probe(None, None), Some(&decl("bt709", "pc")), "seg").is_ok());
+        // An undeclared partial tag is still refused (never guessed).
+        assert!(Colour::resolve(&probe(None, Some("tv")), None, "seg").is_err());
+    }
 
     #[test]
     fn probe_counts_decoded_frames_and_audio() {
