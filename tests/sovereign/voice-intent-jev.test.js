@@ -13,6 +13,16 @@ const voiceIntentRoutes = require('../../management-api/routes/voice-intent');
 const { parseIntent } = require('../../management-api/lib/voice-intent');
 const vj = require('../../management-api/lib/voice-intent-jev');
 
+// Hermetic: the container exports live System One settings (AGENTBOX_JEV_*,
+// AGENTBOX_SYSTEM_ONE_*, TYPESAFE_API_KEY). The default-path tests below must not
+// reach the real proxy, so strip them for this file and restore afterwards.
+const SYSTEM_ONE_ENV = /^(AGENTBOX_JEV_|AGENTBOX_SYSTEM_ONE_|AGENTBOX_SKILL_ROUTE_|TYPESAFE_API_KEY$|SUBQ_API_KEY$)/;
+const savedEnv = {};
+beforeAll(() => {
+  for (const k of Object.keys(process.env)) if (SYSTEM_ONE_ENV.test(k)) { savedEnv[k] = process.env[k]; delete process.env[k]; }
+});
+afterAll(() => { Object.assign(process.env, savedEnv); });
+
 const ISSUER = 'a'.repeat(64);
 const SPEAKER = 'b'.repeat(64);
 const ACTOR = 'c'.repeat(64);

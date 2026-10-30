@@ -10,6 +10,16 @@ const Fastify = require('../../management-api/node_modules/fastify');
 const approvalsRoutes = require('../../management-api/routes/approvals');
 const rv = require('../../management-api/lib/approval-review-jev');
 
+// Hermetic: the container exports live System One settings (AGENTBOX_JEV_*,
+// AGENTBOX_SYSTEM_ONE_*, TYPESAFE_API_KEY). The default-path tests below must not
+// reach the real proxy, so strip them for this file and restore afterwards.
+const SYSTEM_ONE_ENV = /^(AGENTBOX_JEV_|AGENTBOX_SYSTEM_ONE_|AGENTBOX_SKILL_ROUTE_|TYPESAFE_API_KEY$|SUBQ_API_KEY$)/;
+const savedEnv = {};
+beforeAll(() => {
+  for (const k of Object.keys(process.env)) if (SYSTEM_ONE_ENV.test(k)) { savedEnv[k] = process.env[k]; delete process.env[k]; }
+});
+afterAll(() => { Object.assign(process.env, savedEnv); });
+
 const logger = { debug() {}, info() {}, warn() {}, error() {} };
 const LOCAL = {
   AGENTBOX_JEV_APPROVAL_REVIEW: '1', AGENTBOX_SYSTEM_ONE_PROXY: '1',
