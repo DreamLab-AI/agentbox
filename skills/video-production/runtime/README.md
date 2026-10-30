@@ -22,12 +22,16 @@ relative to it. Paths outside it are rejected.
 |---|---|
 | `film-bake` | Prepare guides and anchor/video ComfyUI graphs for a whole film, then assemble hash-verified outputs (`prepare`, `videos`, `assemble`). |
 | `contract-check` | Check a gate ledger: traceability, safe package paths, hash-backed `PASS` evidence, honest verdicts. |
-| `render-cache` | Assemble a complete render cache after a scoped scene edit, within an explicit allowed frame scope. |
+| `render-cache` | Assemble a complete render cache after a scoped scene edit, within an explicit allowed frame scope (`--allow`, or `--allow-from-diff` with a `window-diff/1` planned for the same frame count). |
 | `review-cut` | Assemble a fixed-clock diagnostic edit from hashed media and producer receipts. |
 | `dialogue-bake` | Import recorded takes, derive Rhubarb mouth cues, mix audio sample-exactly and report invalidated shots. |
 | `performance-prompts` | Compile authored performance phases into timed video prompts bound to a scene timeline. |
 | `guide-check` | Verify a guide video's decoded clock and that its padding holds the last delivery frame. |
 | `scene-exchange` | Validate a software-independent scene and compile observed views into prompt data. |
+| `seam-qa` | Measure every join (look, detail, audio, overlap fidelity) against a local baseline; uncalibrated thresholds give only a provisional PASS. |
+| `stitch` | Frame-exact `assemble` and `retake` (trim + linear blend, one bt709 encode, approved audio copied by packet hash) and `plan-retake` geometry. |
+| `window-plan` | Plan generation windows on a model grid with chained checkpoint keys (`plan`), and diff two plans into a re-render scope (`diff`). |
+| `prompt-lint` | Static reference, start-image, look, emotion, continuity and take-cap checks over film and performance plans before GPU spend. |
 | `art-extract`, `masked-composite`, `planar-art`, `surface-masks`, `surface-graphs` | Artwork extraction, masked repair, planar art compositing, surface masks and their graphs; configs listed in their source headers. |
 
 ## Clock (`src/clock.rs`)

@@ -50,6 +50,19 @@ Headline third-party / vendored components
       PII redaction layer; vendored from upstream privacy-filter; license
       compatible with AGPL-3.0-only on combined-work consumption.
 
+  • Kinoloom QA logic                           MIT (adapted)
+      Seam metrics, identity/drift gating, opening-frame selection and prompt
+      lint rules adapted into skills/video-production/runtime (seam_qa.rs,
+      prompt_lint.rs) and comfyui-sidecar/nodes/agentbox_video (identity.py).
+      Copyright (c) 2026 Kinoloom contributors; MIT licence text retained at
+      https://github.com/harlixay7/Kinoloom/blob/main/LICENSE. Ideas from
+      H3STUDIOFILM (GPL-3.0) were re-specified clean-room; no H3 code is
+      included (ADR-2156).
+
+  • OpenCV Zoo face models                      MIT / Apache-2.0 (downloaded)
+      YuNet (MIT) and SFace (Apache-2.0), fetched at runtime into the ComfyUI
+      models volume by the face-identity provisioning profile; not redistributed.
+
   • Skills directory (skills/*)                 Various third-party
       Each skill in `skills/` is a third-party SDK or template authored
       upstream. Their licenses are retained as published; consult each
