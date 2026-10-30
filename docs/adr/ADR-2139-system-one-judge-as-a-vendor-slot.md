@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 29a4b49391b98d92f4c242b64143ad8eb867d246
+verified_commit: 59589fb3f4bcac2c03c0a2ccaed5110d9ee73709
 verified_paths: [agentbox.toml, crates/system-one/system-one-proxy/src/server.rs, crates/system-one/system-one-proxy/src/key.rs, services/agentbox-manifest/src/system_one.rs, config/entrypoint-unified.sh, config/hooks/lib/skill-route.cjs, config/seal-bootstrap.sh, lib/system-one-proxy.nix, flake.nix, scripts/agentbox-config-validate.js, agentbox.sh]
 owner: jjohare
 review_trigger: SubQ Snap leaving public preview or changing its price, retention default or the Decisions request shape; a Kev, Clef or pplx-decider release that serves /v1/systemone on a 9B-class checkpoint; a system-one-eval run on the ADR-2089 corpus that moves any backend by more than 5 points; the first compaction replay whose keep-rate is above 5%
@@ -306,3 +306,5 @@ Because the proxy rewrites `model` to the active backend's (checked: a request n
 bogus model returned `jev-1.14.0`), one backend switch now reroutes every consumer.
 
 Re-verified 2026-10-30 at `29a4b4939`: the amendment of 2026-10-30 above is this change (network-declared bind, local_only list, projection of every consumer to the selected backend); proxy 16 tests, agentbox-manifest 205 tests.
+
+Re-verified 2026-10-30 at `59589fb3f`: server.rs gains `browser_shaped` (403 for an Origin header or a non-JSON content type, before any upstream call; recorded in the amendment above) and replaces a manual checked division with `checked_div` in the metrics mean. 17 proxy tests, clippy -D warnings clean. `check-ports-loopback` records the proxy as a sanctioned docker-network listener.
