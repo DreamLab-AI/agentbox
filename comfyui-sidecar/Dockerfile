@@ -28,6 +28,10 @@ RUN --mount=type=cache,target=/root/.cache/pip pip install --timeout 180 --retri
 # `gsplat_cuda`, and the devel image has nvcc, so a JIT build would otherwise pass unnoticed).
 ARG SPEDE=1
 ARG GSPLAT_REV=937e29912570c372bed6747a5c9bf85fed877bae
+# torch 2.14's cpp_extension builds with -std=c++20 and its c10 headers need it;
+# gsplat 1.5.3 hard-codes -std=c++17 after NVCC_FLAGS (setup.py:72), so the nvcc pass
+# fails on c10/core/SymFloat.h. gsplat is Apache-2.0: patch that one flag and assert the
+# patch applied. SpEdE itself stays unmodified (AGPL).
 RUN --mount=type=cache,target=/root/.cache/pip if [ "$SPEDE" = "1" ]; then \
       set -eux; \
       apt-get update && apt-get install -y --no-install-recommends build-essential && rm -rf /var/lib/apt/lists/*; \
@@ -36,6 +40,9 @@ RUN --mount=type=cache,target=/root/.cache/pip if [ "$SPEDE" = "1" ]; then \
         && git remote add origin https://github.com/nerfstudio-project/gsplat.git \
         && git fetch --depth 1 origin ${GSPLAT_REV} && git checkout --detach FETCH_HEAD \
         && git submodule update --init --recursive --depth 1; \
+      grep -q '"-std=c++17"' /tmp/gsplat-src/setup.py; \
+      sed -i 's/"-std=c++17"/"-std=c++20"/' /tmp/gsplat-src/setup.py; \
+      grep -q '"-std=c++20"' /tmp/gsplat-src/setup.py; \
       test -f /tmp/gsplat-src/gsplat/cuda/csrc/third_party/glm/glm/glm.hpp; \
       TORCH_CUDA_ARCH_LIST="8.6;8.9" MAX_JOBS=4 pip install --no-build-isolation --no-deps /tmp/gsplat-src; \
       cd / && rm -rf /tmp/gsplat-src; \
