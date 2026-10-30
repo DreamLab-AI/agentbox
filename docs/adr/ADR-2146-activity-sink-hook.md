@@ -2,12 +2,12 @@
 id: ADR-2146
 title: Agent activity leaves through one generic, manifest-gated, fail-open sink hook
 date: 2026-10-17
-decision_status: proposed
+decision_status: accepted
 implementation_status: complete
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: 67ab0c5414f8e71c13978e1d5a3b5423316cd65f
+verified_commit: e786197ccb9f56c638d4b0181e77f33ab38b7db9
 verified_paths: [config/hooks/activity-sink.cjs, config/entrypoint-unified.sh, services/agentbox-manifest/src/stacks.rs, services/agentbox-manifest/src/stacks_env.rs, tests/config/activity-sink.test.js, config/egress-policy.json]
 owner: jjohare
 review_trigger: a second consumer of the sink, a change to the wire body, a new event or tool class, moving the token under role isolation (ADR-2122), or any change to the ADR-2026 redactor
@@ -102,3 +102,11 @@ Re-verified 2026-10-29 at `00039efb1e4a70402df86ad19cf76894fe3b9a8f` for ADR-215
 
 
 Security follow-up re-verified 2026-10-29 at `7d8c3b2dfe165f4ab3f8a5e4f62b8294ea7b155d`: the changed hunks drop privilege before workspace credential writes, replace credentials atomically, reject typed-decision redirects and retain the timeout through response parsing. The stalled-body, planted-symlink and HTTP307 regressions pass. These strengthen the existing boundaries; status axes and activation limits are unchanged. The original Deepsec report remains BLOCK with a separate remediation receipt, not a claimed clean rescan.
+
+## Close-out 2026-10-30
+
+`proposed → accepted` under the close-out rubric (code landed on main), re-verified at `e786197ccb9f56c638d4b0181e77f33ab38b7db9`. `implementation_status: complete` and `activation_status: inactive` are unchanged: the gate is off in the running manifest.
+
+- `NODE_PATH=…/node_modules jest --rootDir . --testMatch '**/tests/config/activity-sink.test.js'` → `Tests: 38 passed, 38 total`.
+- `git diff --stat 67ab0c541..e786197cc -- <the six verified_paths>` → empty: nothing this record governs changed since its previous verification.
+- `grep -A4 '^\[integrations.activity_sink\]' /opt/agentbox/agentbox.toml` → `enabled = false`, `url = ""`, so no route is registered and `inactive` is honest. `activation_status` moves when a consumer (Codescape) sets `url` and a token path.

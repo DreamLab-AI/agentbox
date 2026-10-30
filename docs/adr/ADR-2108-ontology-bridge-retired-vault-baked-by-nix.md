@@ -3,12 +3,12 @@ id: ADR-2108
 title: ontology-bridge is retired; the vault binary is baked by Nix
 date: 2026-09-22
 decision_status: accepted
-implementation_status: partial
-activation_status: staged
+implementation_status: complete
+activation_status: live
 supersedes: [ADR-2022, ADR-2054]
 superseded_by: []
-verified_commit: 4fb44b789fa51f31b380dfbe7a0f79ebaf87ff67
-verified_paths: []               # armed in the landing commit — see Verification
+verified_commit: e786197ccb9f56c638d4b0181e77f33ab38b7db9
+verified_paths: [lib/vault.nix, flake.nix, agentbox.toml, schema/agentbox.toml.schema.json, config/entrypoint-unified.sh, mcp/mcp.json, services/agentbox-manifest/tests/golden, management-api/lib/ontology-propose.js]
 owner: jjohare
 review_trigger: crates/vault being pushed to a remote (flip the flake input off the absolute path), a `vault --version` gate failure at boot, a request to re-register any deleted server, or `vault` shipping (re-point ontology-monitor/typed-spawn/ontology-workingset off lib/ontology-local.js and delete it)
 repo: agentbox
@@ -225,3 +225,14 @@ old extraction plan only. It leaves the accepted CLI-door, manifest path
 authority, governed writes and immutable Nix packaging requirements intact.
 Agentbox repinning and runtime acceptance remain separately tracked in ADR-2136;
 publication alone does not retire the current source pin or read-only helpers.
+
+## Close-out 2026-10-30
+
+`partial/staged → complete/live`, verified at `e786197ccb9f56c638d4b0181e77f33ab38b7db9`. The only gap Verification named was the Nix build ("the crate does not exist yet and this container cannot run `nix`"). That build now exists and is the running binary. `verified_paths` is armed with the list Verification prescribed.
+
+- Running image: `.agentbox-build/active.json` (host, read via the project bind) records `sourceCommit` `e786197ccb9f56c638d4b0181e77f33ab38b7db9`, `sourceDirty: false`, `delivery: registry`, `activatedAt` 2026-10-30T14:22:59.281Z, `imageId` `sha256:9776d2fc515c…`; `docker inspect agentbox --format '{{.Image}}'` and `$AGENTBOX_IMAGE_HASH` both return `sha256:9776d2fc515c5922cde9f7791248f731416192a6b4a66e8d6d06b15bfd5c892d`. The running container therefore runs main at `e786197cc`.
+- `docker logs agentbox 2>&1 | grep '\[5d/8\] vault'` (the check this record names) → `[5d/8] vault OK — vault 0.1.0 (/opt/agentbox/bin/vault)`.
+- `vault --version` → `vault 0.1.0`, resolved from `/nix/store/83ilg82h5ar8vvnqqzysamvxc08iycxq-vault-0.1.0/bin`.
+- Deletions hold on main: `mcp/servers/ontology-bridge.js` and `mcp/servers/ontology-local.cjs` are absent; `grep -c ontology-bridge mcp/mcp.json` and the baked `/opt/agentbox/mcp/mcp.json` → 1 each, the `decision-tools` description that records the retirement. `lib/ontology-local.js` survives at `mcp/servers/lib/ontology-local.js` as the read-only library this Decision keeps on purpose.
+
+Not claimed: the review-trigger follow-on (re-point `ontology-monitor`, `typed-spawn` and `ontology-workingset` off `ontology-local.js`); ADR-2136 still owns that. Found while verifying, and outside this record's Decision: the baked `vault 0.1.0` no longer has `find`/`retrieve`/`tree`/`edit`/`create`/`apply` ("Moved: … now live in the `ontomark` CLI"), while `flake.nix:950-953` still says vault keeps them. ADR-2109's close-out records the consumer impact.

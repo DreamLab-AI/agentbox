@@ -4,7 +4,7 @@ title: Separate non-disruptive image preparation from scoped runtime activation
 date: 2026-10-06
 decision_status: accepted
 implementation_status: complete
-activation_status: staged
+activation_status: live
 supersedes: []
 superseded_by: []
 verified_commit: 358e5d32c81e8a4259d754568919a962461b9a31
@@ -178,3 +178,13 @@ Re-verified 2026-10-23 at `951ada931e235ad45b61b2bef90b7e5c76f8d76c`: flake.nix 
 
 
 Re-verified 2026-10-29 at `00039efb1e4a70402df86ad19cf76894fe3b9a8f` for ADR-2155. Reviewed the typed-decision activation diff against this record: the changed manifest, bootstrap, catalogue or source-pin hunks do not alter its governing boundary. Existing status axes and runtime evidence limits are retained. No image or service activation is claimed.
+
+## Close-out 2026-10-30 — activation
+
+`activation_status: staged → live`. The Verification section's missing item, "a real host `prepare`/`activate` cycle", has now run on the host and is the delivery path of the running container.
+
+- Running image: `.agentbox-build/active.json` (host, read via the project bind) records `sourceCommit` `e786197ccb9f56c638d4b0181e77f33ab38b7db9`, `sourceDirty: false`, `delivery: registry`, `activatedAt` 2026-10-30T14:22:59.281Z, `imageId` `sha256:9776d2fc515c…`; `docker inspect agentbox --format '{{.Image}}'` and `$AGENTBOX_IMAGE_HASH` both return `sha256:9776d2fc515c5922cde9f7791248f731416192a6b4a66e8d6d06b15bfd5c892d`. The running container therefore runs main at `e786197cc`.
+- The same receipt records `preparedStartedAt` 2026-10-30T14:13:43Z, `createdAt` 14:22:04Z, and `seconds` `{build: 125.452, pushOrStream: 9.961, pull: 61.258, smokeAndVerify: 0.521, deliveryAndSmoke: 71.968}`; `candidate.json` sits beside it and generation directories are retained.
+- `docker images | grep recovery` lists `agentbox:recovery-7fb68740e2f3` (the scoped-activation recovery tag).
+
+Implementation axis and `verified_commit` are unchanged; the timings are one cycle, not a benchmark.

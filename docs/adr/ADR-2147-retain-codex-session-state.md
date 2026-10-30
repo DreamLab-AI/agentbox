@@ -4,7 +4,7 @@ title: Retain Codex session state in a named volume
 date: 2026-10-21
 decision_status: accepted
 implementation_status: complete
-activation_status: staged
+activation_status: live
 supersedes: []
 superseded_by: []
 verified_commit: 358e5d32c81e8a4259d754568919a962461b9a31
@@ -87,3 +87,13 @@ Re-verified 2026-10-23 at `951ada931e235ad45b61b2bef90b7e5c76f8d76c`: flake.nix 
 
 
 Re-verified 2026-10-29 at `00039efb1e4a70402df86ad19cf76894fe3b9a8f` for ADR-2155. Reviewed the typed-decision activation diff against this record: the changed manifest, bootstrap, catalogue or source-pin hunks do not alter its governing boundary. Existing status axes and runtime evidence limits are retained. No image or service activation is claimed.
+
+## Close-out 2026-10-30 — activation
+
+`activation_status: staged → live`. The Codex home is the named volume on the running container, and session state survived a container replacement.
+
+- Running image: `.agentbox-build/active.json` (host, read via the project bind) records `sourceCommit` `e786197ccb9f56c638d4b0181e77f33ab38b7db9`, `sourceDirty: false`, `delivery: registry`, `activatedAt` 2026-10-30T14:22:59.281Z, `imageId` `sha256:9776d2fc515c…`; `docker inspect agentbox --format '{{.Image}}'` and `$AGENTBOX_IMAGE_HASH` both return `sha256:9776d2fc515c5922cde9f7791248f731416192a6b4a66e8d6d06b15bfd5c892d`. The running container therefore runs main at `e786197cc`.
+- `findmnt -no SOURCE,FSTYPE,TARGET /home/devuser/.codex` → `/dev/nvme0n1p1[/docker/volumes/agentbox-codex-home/_data] ext4 /home/devuser/.codex` (no tmpfs); `docker inspect agentbox` mounts list `agentbox-codex-home -> /home/devuser/.codex`, `agentbox-codex-packages -> /home/devuser/.codex/packages` and the `auth.json` bind separately.
+- `find ~/.codex/sessions -name '*.jsonl' | wc -l` → 46; `find … ! -newermt '2026-10-30 14:22' | wc -l` → 46 (all predate the 14:22 recreate); the oldest is dated 2026-10-21, the migration day.
+
+Implementation axis and `verified_commit` are unchanged.
