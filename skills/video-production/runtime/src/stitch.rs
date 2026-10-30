@@ -873,6 +873,12 @@ fn deliver(
         } else {
             min_psnr_over(&dest, &original, &ranges, original_colour.as_ref())
         };
+        // The original was hashed, then reopened for the PSNR read: re-hash it so
+        // a swap in between (e.g. for the delivery itself) cannot read as 99 dB.
+        if let Err(error) = sources_unchanged(&[(original.clone(), input.original.sha256.as_str())])
+        {
+            return Err(discard(&dest, error));
+        }
         let worst = match outcome {
             Ok(w) if w >= thresholds.min_unchanged_psnr_db => w,
             Ok(w) => {
