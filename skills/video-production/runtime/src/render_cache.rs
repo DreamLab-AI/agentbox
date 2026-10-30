@@ -4,7 +4,9 @@
 //! verifies the lineage and every selected PNG before copying. The expected
 //! scope is an input (`--allow START..END`, half-open, repeatable), not a
 //! constant: the revision may only change frames inside the allowed intervals.
-//! Frame count and frame rate come from the parent receipt.
+//! `--allow-from-diff DIFF_JSON` adds the `invalidated_intervals` of a
+//! `window-plan diff` report to the same scope. Frame count and frame rate come
+//! from the parent receipt.
 //!
 //! A revision report must carry `schema: "render-revision/2"` and:
 //! `source_unchanged`, `scope_unchanged` (both `true`), `source_world_sha256`,
@@ -62,6 +64,30 @@ pub fn parse_allow(text: &str) -> Result<FrameInterval> {
         start.trim().parse()?,
         end.trim().parse()?,
     )?)
+}
+
+/// Read the allowed scope from a `window-diff/1` report (see
+/// [`crate::windows::diff`]): its `invalidated_intervals`, in delivery frames.
+///
+/// ```
+/// use video_production_runtime::render_cache::allowed_from_diff;
+/// let diff = serde_json::json!({"schema":"window-diff/1","invalidated_intervals":[[90,121]]});
+/// assert_eq!(allowed_from_diff(&diff).unwrap()[0].len(), 31);
+/// assert!(allowed_from_diff(&serde_json::json!({"schema":"other"})).is_err());
+/// ```
+pub fn allowed_from_diff(diff: &Value) -> Result<Vec<FrameInterval>> {
+    if diff["schema"] != "window-diff/1" {
+        return Err("--allow-from-diff expects a window-diff/1 report".into());
+    }
+    diff["invalidated_intervals"]
+        .as_array()
+        .ok_or("diff has no invalidated_intervals")?
+        .iter()
+        .map(|pair| {
+            let pair: [u64; 2] = serde_json::from_value(pair.clone())?;
+            Ok(FrameInterval::try_from(pair)?)
+        })
+        .collect()
 }
 
 /// Check the revision against both receipts and the allowed scope, returning
@@ -139,8 +165,16 @@ pub fn run(mut args: Vec<OsString>) -> Result<()> {
         args.remove(i);
         allowed.push(parse_allow(text.to_str().ok_or("--allow must be UTF-8")?)?);
     }
+    while let Some(i) = args.iter().position(|a| a == "--allow-from-diff") {
+        if i + 1 >= args.len() {
+            return Err("--allow-from-diff needs a window-diff JSON".into());
+        }
+        let path = root.resolve(Path::new(&args.remove(i + 1)))?;
+        args.remove(i);
+        allowed.extend(allowed_from_diff(&read(&path)?)?);
+    }
     if args.len() != 5 {
-        return Err("usage: render-cache [--root DIR] --allow START..END PARENT_DIR REVISION_JSON PATCH_DIR WORLD NEW_DIR".into());
+        return Err("usage: render-cache [--root DIR] (--allow START..END | --allow-from-diff DIFF_JSON) PARENT_DIR REVISION_JSON PATCH_DIR WORLD NEW_DIR".into());
     }
     let at = |i: usize| root.resolve(Path::new(&args[i]));
     let (parent_dir, revision_path, patch_dir, world, output) =
@@ -235,6 +269,25 @@ mod tests {
         let allowed = [FrameInterval::new(3, 5).unwrap()];
         let changed = validate_revision(&parent, &patch, &revision, &world, &allowed).unwrap();
         assert_eq!(changed, BTreeSet::from([3, 4]));
+    }
+
+    #[test]
+    fn a_window_diff_report_serves_as_the_allowed_scope() {
+        let (parent, patch, revision, world) = fixture();
+        let diff = json!({"schema":"window-diff/1","invalidated_intervals":[[3,5]]});
+        let allowed = allowed_from_diff(&diff).unwrap();
+        let changed = validate_revision(&parent, &patch, &revision, &world, &allowed).unwrap();
+        assert_eq!(changed, BTreeSet::from([3, 4]));
+        let narrow = json!({"schema":"window-diff/1","invalidated_intervals":[[3,4]]});
+        let allowed = allowed_from_diff(&narrow).unwrap();
+        assert!(validate_revision(&parent, &patch, &revision, &world, &allowed).is_err());
+        let empty = json!({"schema":"window-diff/1","invalidated_intervals":[]});
+        assert!(allowed_from_diff(&empty).unwrap().is_empty());
+        assert!(allowed_from_diff(&json!({"schema":"x","invalidated_intervals":[]})).is_err());
+        assert!(
+            allowed_from_diff(&json!({"schema":"window-diff/1","invalidated_intervals":[[5,3]]}))
+                .is_err()
+        );
     }
 
     #[test]
