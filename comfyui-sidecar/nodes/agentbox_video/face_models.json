@@ -1,0 +1,27 @@
+{
+  "schema": "agentbox-face-models/1",
+  "target_dir": "/opt/ComfyUI/models/agentbox_face",
+  "source_repository": "https://github.com/opencv/opencv_zoo",
+  "source_commit": "48b10fa505aeb51fbd127fc60a5c660040e823b7",
+  "note": "Weights are never baked into the image or committed. Download into target_dir; identity.py refuses any file whose sha256 differs.",
+  "models": {
+    "detector": {
+      "name": "YuNet face detector (2023mar)",
+      "file": "face_detection_yunet_2023mar.onnx",
+      "url": "https://github.com/opencv/opencv_zoo/raw/48b10fa505aeb51fbd127fc60a5c660040e823b7/models/face_detection_yunet/face_detection_yunet_2023mar.onnx",
+      "sha256": "8f2383e4dd3cfbb4553ea8718107fc0423210dc964f9f4280604804ed2552fa4",
+      "bytes": 232589,
+      "licence": "MIT",
+      "licence_url": "https://github.com/opencv/opencv_zoo/blob/48b10fa505aeb51fbd127fc60a5c660040e823b7/models/face_detection_yunet/LICENSE"
+    },
+    "recogniser": {
+      "name": "SFace face recogniser (2021dec)",
+      "file": "face_recognition_sface_2021dec.onnx",
+      "url": "https://github.com/opencv/opencv_zoo/raw/48b10fa505aeb51fbd127fc60a5c660040e823b7/models/face_recognition_sface/face_recognition_sface_2021dec.onnx",
+      "sha256": "0ba9fbfa01b5270c96627c4ef784da859931e02f04419c829e83484087c34e79",
+      "bytes": 38696353,
+      "licence": "Apache-2.0",
+      "licence_url": "https://github.com/opencv/opencv_zoo/blob/48b10fa505aeb51fbd127fc60a5c660040e823b7/models/face_recognition_sface/LICENSE"
+    }
+  }
+}
