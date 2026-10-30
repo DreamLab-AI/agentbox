@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: d4fefe8691fcfe2c627e21a3ddeb869590bd30a1
+verified_commit: ed921e56b6ec21959188b08275314d3f1670efd5
 verified_paths: [flake.nix, comfyui-sidecar/Dockerfile, docker-compose.comfyui.yml, docker-compose.gui-tools.yml, gui-tools-sidecar, skills/blender/tools, skills/comfyui/mcp-server, skills/comfyui/scripts, skills/comfyui/models/stopmotion-candidates.json]
 owner: jjohare
 review_trigger: media control-plane protocol, sidecar dependencies, workflow state handling or model provisioning changes
@@ -16,6 +16,10 @@ domain: BASELINE-container
 ---
 
 # ADR-2148: Typed remote media control planes alongside existing bridges
+
+## Re-verification — 2026-10-30 at ed921e56b (empty ComfyUI POST bodies)
+
+The client now treats an empty 200 body from `/queue`, `/interrupt` and `/free` as success. Owned-job cancel still sends `queue delete` or an id-scoped interrupt, never a bare `/interrupt`; history stays the terminal authority; no weights in the image.
 
 ## Re-verification — 2026-10-30 at d4fefe869 (gsplat C++20 flag)
 

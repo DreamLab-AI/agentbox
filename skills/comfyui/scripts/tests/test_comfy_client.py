@@ -44,7 +44,11 @@ class HarnessTest(unittest.TestCase):
                 length = int(self.headers["Content-Length"])
                 if self.path in ("/free", "/interrupt", "/queue"):
                     owner.log.append(("POST", self.path, json.loads(self.rfile.read(length))))
-                    return self.reply({})
+                    # Real ComfyUI answers these with 200 and an empty body, no JSON.
+                    self.send_response(200)
+                    self.send_header("Content-Length", "0")
+                    self.end_headers()
+                    return None
                 owner.posts += 1
                 owner.submission = json.loads(self.rfile.read(length))
                 journal = json.loads(owner.receipt.read_text())
@@ -389,6 +393,12 @@ class HarnessTest(unittest.TestCase):
         self.assertEqual(self.client.cancel(self.receipt)["action"], "interrupt")
         self.assertEqual([e for e in self.log if e[0] == "POST"], [("POST", "/interrupt", {"prompt_id": "job-123"})])
         self.assertEqual(json.loads(self.receipt.read_text())["cancel_requested"], "interrupt")
+
+    def test_malformed_non_empty_body_still_raises(self):
+        with mock.patch("urllib.request.urlopen") as urlopen:
+            urlopen.return_value.__enter__.return_value.read.return_value = b"<html>not json"
+            with self.assertRaises(comfy.ComfyError):
+                self.client.request("/queue")
 
     def test_cancel_refuses_when_running_job_is_foreign(self):
         self.client.submit(GRAPH, self.receipt)

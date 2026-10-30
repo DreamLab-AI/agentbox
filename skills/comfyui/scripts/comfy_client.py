@@ -230,7 +230,9 @@ class Client:
             headers={"Content-Type": "application/json"})
         try:
             with urllib.request.urlopen(request, timeout=timeout or self.request_timeout) as response:
-                return json.load(response)
+                body = response.read()
+            # ComfyUI acknowledges /queue, /interrupt and /free with 200 and an empty body.
+            return json.loads(body) if body.strip() else {}
         except urllib.error.HTTPError as error:
             detail = error.read(8192).decode(errors="replace")
             raise ComfyError(f"HTTP {error.code} {path}: {detail}") from error
