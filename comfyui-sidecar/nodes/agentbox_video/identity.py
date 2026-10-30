@@ -29,7 +29,7 @@ import json
 import os
 import sys
 from collections import deque
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, fields
 from pathlib import Path
 from typing import Callable, Iterable, Iterator, Optional, Protocol, Sequence
 
@@ -62,27 +62,36 @@ class ThresholdSet:
     min_judged_frames: int = 2
     provenance: str = "kinoloom-ltx-uncalibrated"
     calibrated: bool = False
-    #: Verified ``{path, sha256}`` of a ``threshold-calibration/1`` record.
+    #: Verified ``{path, sha256}`` of a ``threshold-calibration/2`` record.
     calibration: Optional[dict] = None
 
     def __post_init__(self):
         # ``calibrated`` is a claim anyone can write in a config file; it only
-        # counts with a record that from_dict has verified.
-        if self.calibrated and not (self.calibration or {}).get("verified"):
-            raise CalibrationError("calibrated: true needs a verified calibration record (use from_dict with base_dir)")
+        # counts with a record that from_dict has verified, and the record is
+        # bound to *these* values: a set altered after verification (replace(),
+        # direct construction with a forged marker) no longer matches its digest.
+        if self.calibrated:
+            cal = self.calibration or {}
+            if not cal.get("verified"):
+                raise CalibrationError("calibrated: true needs a verified calibration record (use from_dict with base_dir)")
+            if cal.get("thresholds_sha256") != thresholds_digest(effective_thresholds(self)):
+                raise CalibrationError("these thresholds differ from the ones the calibration record binds")
 
     @classmethod
     def from_dict(cls, d: Optional[dict], base_dir=None) -> "ThresholdSet":
         """Build a set from config; a calibrated claim is checked against its record.
 
         ``calibration`` is ``{path, sha256}`` relative to ``base_dir`` (the
-        thresholds file's directory). The record must hash to ``sha256`` and be
-        ``threshold-calibration/1`` for tool ``identity`` and this provenance.
+        thresholds file's directory). The record must hash to ``sha256``, be
+        ``threshold-calibration/2`` for tool ``identity`` and this provenance,
+        bind these exact threshold values through ``thresholds_sha256``, and
+        list non-empty ``evidence`` files that exist and match their hashes.
         """
         known = {k: v for k, v in (d or {}).items() if k in cls.__dataclass_fields__}
         claim = known.pop("calibration", None)
         if known.get("calibrated"):
-            known["calibration"] = _verify_calibration(claim, base_dir, known.get("provenance", cls.provenance))
+            probe = cls(**{**known, "calibrated": False})
+            known["calibration"] = _verify_calibration(claim, base_dir, probe)
         return cls(**known)
 
 
@@ -90,15 +99,47 @@ class CalibrationError(ValueError):
     """A calibrated claim without matching, hashed evidence."""
 
 
-def _verify_calibration(claim, base_dir, provenance):
+CALIBRATION_SCHEMA = "threshold-calibration/2"
+_UNBOUND = ("calibrated", "calibration")
+
+
+def effective_thresholds(th: "ThresholdSet") -> dict:
+    """The threshold values a calibration binds: every field except ``calibrated``/``calibration``.
+
+    Numbers are normalised to their declared type so ``0`` and ``0.0`` hash alike.
+    """
+    out = {}
+    for f in fields(th):
+        if f.name in _UNBOUND:
+            continue
+        v = getattr(th, f.name)
+        out[f.name] = float(v) if isinstance(f.default, float) else int(v) if isinstance(f.default, int) \
+            and not isinstance(f.default, bool) else v
+    return out
+
+
+def thresholds_digest(effective: dict) -> str:
+    """sha256 of the canonical JSON (sorted keys, no spaces, UTF-8) of ``effective``."""
+    raw = json.dumps(effective, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+
+def _resolve_under(base: Path, rel, what: str) -> Path:
+    if not isinstance(rel, str) or not rel:
+        raise CalibrationError(f"{what} needs a path")
+    path = (base / rel).resolve()
+    if base != path and base not in path.parents:
+        raise CalibrationError(f"{what} path escapes {base}")
+    return path
+
+
+def _verify_calibration(claim, base_dir, th: "ThresholdSet"):
     if not isinstance(claim, dict) or not claim.get("path") or not claim.get("sha256"):
         raise CalibrationError("calibrated: true needs a calibration {path, sha256} record")
     if base_dir is None:
         raise CalibrationError("a calibration record needs a base directory to resolve against")
     base = Path(base_dir).resolve()
-    path = (base / claim["path"]).resolve()
-    if base != path and base not in path.parents:
-        raise CalibrationError(f"calibration path escapes {base}")
+    path = _resolve_under(base, claim["path"], "calibration")
     try:
         data = path.read_bytes()
     except OSError as e:
@@ -110,10 +151,29 @@ def _verify_calibration(claim, base_dir, provenance):
         record = json.loads(data)
     except ValueError as e:
         raise CalibrationError(f"calibration record is not JSON: {e}") from e
+    if not isinstance(record, dict):
+        raise CalibrationError("calibration record must be a JSON object")
     if (record.get("schema"), record.get("tool"), record.get("provenance")) != (
-            "threshold-calibration/1", "identity", provenance):
-        raise CalibrationError("calibration record must be threshold-calibration/1 for tool identity and this provenance")
-    return {"path": str(claim["path"]), "sha256": digest, "verified": True}
+            CALIBRATION_SCHEMA, "identity", th.provenance):
+        raise CalibrationError(f"calibration record must be {CALIBRATION_SCHEMA} for tool identity and this provenance")
+    bound = thresholds_digest(effective_thresholds(th))
+    if record.get("thresholds_sha256") != bound:
+        raise CalibrationError(f"calibration record binds thresholds {record.get('thresholds_sha256')}, "
+                               f"not these ({bound})")
+    evidence = record.get("evidence")
+    if not isinstance(evidence, list) or not evidence:
+        raise CalibrationError("calibration record needs non-empty evidence [{path, sha256}]")
+    for item in evidence:
+        if not isinstance(item, dict) or not isinstance(item.get("sha256"), str):
+            raise CalibrationError("calibration evidence entries must be {path, sha256}")
+        ep = _resolve_under(base, item.get("path"), "calibration evidence")
+        try:
+            got = hashlib.sha256(ep.read_bytes()).hexdigest()
+        except OSError as e:
+            raise CalibrationError(f"calibration evidence unreadable: {e}") from e
+        if got != item["sha256"]:
+            raise CalibrationError(f"calibration evidence {item['path']} hashes to {got}, not {item['sha256']}")
+    return {"path": str(claim["path"]), "sha256": digest, "verified": True, "thresholds_sha256": bound}
 
 
 # ---------------------------------------------------------------- embedders
@@ -323,16 +383,19 @@ def identity_score(frames: Iterable[np.ndarray], refs: dict, embedder: Embedder,
     named, routed to human review). A two-shot where the other actor is simply
     the better match also trips this: it fails towards review, never towards a pass.
 
-    Verdict is ``not_judged`` when fewer than ``th.min_judged_frames`` of the last
-    frames hold a face at or above the size floor (one good frame is not enough), or
-    ``expected_cast`` has no reference. Otherwise ``FAIL`` under ``min_similarity``
-    (routed to human review) and ``PASS`` with ``provisional`` true while the
-    threshold set is uncalibrated.
+    Verdict is ``not_judged`` when fewer than ``th.min_judged_frames`` (capped at
+    ``last_n``) of the last frames hold a face at or above the size floor, or
+    ``expected_cast`` has no reference. A frame counts as *judged* only when its
+    best match clears ``min_similarity``; the verdict is ``FAIL`` unless at least
+    ``min_judged_frames`` frames match *and* they are a strict majority of the
+    frames holding a face (one good frame among strangers is not a pass).
+    ``PASS`` is ``provisional`` while the set is uncalibrated, and never backs
+    acceptance without ``expected_cast``.
     """
     th = th or ThresholdSet()
     tail = list(deque(frames, maxlen=max(1, th.last_n)))
     per = [frame_best(embedder, f, refs, th) for f in tail]
-    judged_frames = sum(1 for p in per if p["best"] is not None)
+    face_frames = sum(1 for p in per if p["best"] is not None)
     swap = None
     if expected_cast is None:
         scores = [p["best"] for p in per if p["best"] is not None]
@@ -350,6 +413,14 @@ def identity_score(frames: Iterable[np.ndarray], refs: dict, embedder: Embedder,
             if others[rival] > best + th.swap_margin:
                 swap = {"expected": expected_cast, "matched": rival,
                         "expected_score": best, "matched_score": others[rival]}
+    # A frame is "judged" only when the face in it matches: its score clears min_similarity.
+    # Strangers with faces count towards face_frames, not towards the match.
+    frame_scores = ([p["best"] for p in per] if expected_cast is None
+                    else [p["per_cast"].get(expected_cast) for p in per])
+    judged_frames = sum(1 for v in frame_scores if v is not None and v >= th.min_similarity)
+    # last_n=1 asks for a one-frame verdict, so the floor cannot exceed the window; a clip shorter
+    # than last_n stays below it and is not_judged.
+    need = min(th.min_judged_frames, max(1, th.last_n))
     detail = None
     if not refs:
         verdict, reason = "not_judged", "no reference portrait with a face"
@@ -357,13 +428,16 @@ def identity_score(frames: Iterable[np.ndarray], refs: dict, embedder: Embedder,
         verdict, reason = "not_judged", f"expected cast {expected_cast!r} has no reference portrait with a face"
     elif best is None:
         verdict, reason = "not_judged", "no face at or above the size floor in the last frames"
-    elif judged_frames < th.min_judged_frames:
-        verdict, reason = "not_judged", (f"only {judged_frames} of {len(tail)} frames held a face at or above the "
-                                         f"size floor; {th.min_judged_frames} needed")
+    elif face_frames < need:
+        verdict, reason = "not_judged", (f"only {face_frames} of {len(tail)} frames held a face at or above the "
+                                         f"size floor; {need} needed")
     elif swap:
         verdict, reason = "FAIL", "identity_swap"
         detail = (f"expected {swap['expected']} (best cosine {swap['expected_score']:.3f}) but "
                   f"{swap['matched']} matches better ({swap['matched_score']:.3f}, margin {th.swap_margin})")
+    elif best >= th.min_similarity and (judged_frames < need or judged_frames * 2 <= face_frames):
+        verdict, reason = "FAIL", (f"only {judged_frames} of {face_frames} frames with a face matched at or above "
+                                   f"{th.min_similarity}; need {need} and a majority")
     elif best >= th.min_similarity:
         verdict, reason = "PASS", None
     else:
@@ -371,13 +445,19 @@ def identity_score(frames: Iterable[np.ndarray], refs: dict, embedder: Embedder,
     report = {
         "schema": SCHEMA, "kind": "identity_score", "verdict": verdict,
         "provisional": (verdict == "PASS" and not th.calibrated),
-        "acceptance_backing": bool(verdict == "PASS" and th.calibrated),
+        # A gate that does not know who should be on screen cannot back acceptance.
+        "acceptance_backing": bool(verdict == "PASS" and th.calibrated and expected_cast is not None),
         "score": best, "frames_considered": len(tail), "judged_frames": judged_frames,
+        "face_frames": face_frames, "effective_min_judged_frames": need,
         "per_frame": per, "thresholds": asdict(th),
     }
     if expected_cast is not None:
         report["expected_cast"] = expected_cast
         report["matched_cast"] = swap["matched"] if swap else None
+    if expected_cast is None:
+        report["acceptance_blocked"] = "no expected_cast"
+        if verdict == "PASS":
+            reason = "no expected_cast"
     if reason:
         report["reason"] = reason
     if detail:
@@ -572,12 +652,15 @@ def _parse_refs(items: Sequence[str], embedder: Embedder) -> dict:
 
 def _thresholds(args) -> ThresholdSet:
     d = json.loads(Path(args.thresholds).read_text()) if args.thresholds else {}
-    if args.last_n is not None:
-        d["last_n"] = args.last_n
-    if args.swap_margin is not None:
-        d["swap_margin"] = args.swap_margin
-    if args.min_judged_frames is not None:
-        d["min_judged_frames"] = args.min_judged_frames
+    if not isinstance(d, dict):
+        raise CalibrationError("thresholds file must be a JSON object")
+    overrides = {"last_n": args.last_n, "swap_margin": args.swap_margin,
+                 "min_judged_frames": args.min_judged_frames}
+    given = {k: v for k, v in overrides.items() if v is not None}
+    if given and d.get("calibrated"):
+        raise CalibrationError(f"{', '.join(sorted(given))} cannot override a calibrated threshold set; "
+                               "calibrate the new values instead")
+    d.update(given)
     base = Path(args.thresholds).resolve().parent if args.thresholds else None
     return ThresholdSet.from_dict(d, base_dir=base)
 

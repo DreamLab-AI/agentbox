@@ -74,7 +74,7 @@ def _bbox_correlation(prev, cur, mask, d):
     return v if np.isfinite(v) else -1.0
 
 
-def _scale_probe(prev, cur, mask, d, cfg, step):
+def _scale_probe(prev, cur, mask, d, cfg, step, base_scale=1.0):
     """Refuse a translation-only step when another scale explains the subject better.
 
     The median and template paths assume scale 1.0 without measuring it. Resample the
@@ -82,6 +82,9 @@ def _scale_probe(prev, cur, mask, d, cfg, step):
     centre) and correlate it with the previous bbox. If a scale outside the allowed
     ``[scale_min, scale_max]`` beats scale 1.0 by ``scale_probe_margin``, the subject
     has grown or shrunk and a 1.0 mask would under- or over-cover it.
+
+    ``base_scale`` is the scale already measured (the cumulative transform's); probes are
+    taken relative to it, so a zoom tracked correctly earlier is not mistaken for unmeasured growth.
     """
     ys, xs = np.nonzero(mask)
     x0, x1, y0, y1 = int(xs.min()), int(xs.max()) + 1, int(ys.min()), int(ys.max()) + 1
@@ -102,15 +105,16 @@ def _scale_probe(prev, cur, mask, d, cfg, step):
         v = float(cv2.matchTemplate(patch, tpl, cv2.TM_CCOEFF_NORMED).max())
         return v if np.isfinite(v) else -1.0
 
-    base = corr(1.0)
+    base = corr(base_scale)
     best_s, best = 1.0, base
     for s in cfg.scale_probes:
-        c = corr(s)
+        c = corr(base_scale * s)
         if c > best:
             best_s, best = s, c
     if best_s != 1.0 and best > base + cfg.scale_probe_margin and not (cfg.scale_min <= best_s <= cfg.scale_max):
         raise TrackingError(f"step {step}: scale {best_s:.2f} outside [{cfg.scale_min}, {cfg.scale_max}] "
-                            f"(unmeasured; bbox correlation {best:.3f} vs {base:.3f} at 1.0)")
+                            f"(unmeasured, relative to measured {base_scale:.3f}; bbox correlation {best:.3f} "
+                            f"vs {base:.3f} at 1.0)")
 
 
 def _step(prev, cur, mask, cfg, step):
@@ -195,7 +199,9 @@ def track_mask(frames, seed_mask, config=None, return_log=False):
         if scale is None:
             # Unmeasured step: also probe against the seed at the cumulative translation, so growth
             # spread over several in-bound steps cannot add up unseen.
-            _scale_probe(seed_gray, cur, seed, (cum @ seed_centre - seed_centre)[:2], cfg, i)
+            # Relative to the cumulative scale already measured by earlier LK steps.
+            measured = float(np.sqrt(abs(np.linalg.det(cum[:2, :2]))))
+            _scale_probe(seed_gray, cur, seed, (cum @ seed_centre - seed_centre)[:2], cfg, i, measured)
         mask = cv2.warpAffine(seed, cum[:2], (w, h), flags=cv2.INTER_NEAREST, borderValue=0)
         log.append({"step": i, "method": method, "scale": scale, "scale_measured": scale is not None, "area": _check_area(mask, cfg, i)})
         out.append(mask)
