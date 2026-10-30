@@ -124,14 +124,17 @@ impl Thresholds {
 }
 
 /// A declared overlap: the first `frames` frames of the segment starting at
-/// the seam are carried over from the end of `reference` (the previous segment).
+/// the seam are carried over from the end of the previous segment. With a
+/// `reference` (the previous segment's media) the last `frames` frames of it are
+/// compared; without one, the cut's own `frames` frames before the seam are.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct Overlap {
     /// Number of carried frames.
     pub frames: u64,
     /// The previous segment's media, whose last `frames` frames are carried.
-    pub reference: Asset,
+    #[serde(default)]
+    pub reference: Option<Asset>,
 }
 
 /// One join to measure.
@@ -346,6 +349,8 @@ pub struct VideoMetrics {
     pub local_median_diff: f64,
     /// `diff / local_median_diff`, or `None` when the local picture is static.
     pub pop_ratio: Option<f64>,
+    /// Median pop ratio at the baseline offsets, if any were measurable.
+    pub pop_local: Option<f64>,
     /// Saturation step.
     pub d_sat: Step,
     /// Lightness step.
@@ -358,21 +363,32 @@ pub struct VideoMetrics {
     pub detail_local: Option<f64>,
 }
 
+// Adapted from Kinoloom (MIT), tool/seam_qa.py (seam_metrics).
 /// Measure the picture around `frame` (which must satisfy `2 <= frame < len - 2`).
 pub fn video_metrics(a: &Analysis, frame: u64) -> VideoMetrics {
     let rows = &a.stats;
     let b = frame as i64;
     let at = |i: i64| a.diffs.get(i.max(0) as usize).copied();
-    let local: Vec<f64> = ((b - 12).max(1)..b - 1)
-        .chain(b + 2..b + 13)
-        .filter_map(at)
-        .collect();
-    let med = median(&mut local.clone()).unwrap_or(0.0);
+    let local_median = |c: i64| {
+        let local: Vec<f64> = ((c - 12).max(1)..c - 1)
+            .chain(c + 2..c + 13)
+            .filter_map(at)
+            .collect();
+        median(&mut local.clone()).unwrap_or(0.0)
+    };
+    let med = local_median(b);
     let diff = a.diffs[frame as usize];
     let near: Vec<i64> = LOCAL_OFFSETS
         .iter()
         .map(|k| b + k)
         .filter(|&p| p >= 6 && p <= rows.len() as i64 - 6)
+        .collect();
+    let mut pops: Vec<f64> = near
+        .iter()
+        .filter_map(|&p| {
+            let m = local_median(p);
+            (m > 1e-6).then(|| a.diffs[p as usize] / m)
+        })
         .collect();
     let mk = |pick: Pick| {
         let value = step(rows, b, pick);
@@ -393,6 +409,7 @@ pub fn video_metrics(a: &Analysis, frame: u64) -> VideoMetrics {
         diff,
         local_median_diff: med,
         pop_ratio: (med > 1e-6).then(|| diff / med),
+        pop_local: median(&mut pops),
         d_sat: mk(|s| s.sat),
         d_l: mk(|s| s.l),
         d_contrast: mk(|s| s.contrast),
@@ -401,12 +418,17 @@ pub fn video_metrics(a: &Analysis, frame: u64) -> VideoMetrics {
     }
 }
 
+// Adapted from Kinoloom (MIT), tool/seam_qa.py (seam_metrics, judge_seam).
 /// Names of the picture checks that fail for `m` under `t`.
 pub fn judge_video(m: &VideoMetrics, t: &Thresholds) -> Vec<&'static str> {
     let mut fails = Vec::new();
-    // Pop: above the gate and above the multiplier times a typical frame step is
-    // already what the ratio expresses, so the gate alone applies.
-    if m.pop_ratio.is_some_and(|p| p > t.pop_ratio) {
+    // Adapted from Kinoloom (MIT), tool/seam_qa.py (judge_seam); the pop ratio is
+    // additionally held to the local baseline rule.
+    if m.pop_ratio.is_some_and(|p| {
+        p > t
+            .pop_ratio
+            .max(t.baseline_multiplier * m.pop_local.unwrap_or(0.0))
+    }) {
         fails.push("pop");
     }
     for (step, gate, name) in [
@@ -454,6 +476,7 @@ fn rms_db(x: &[f32]) -> f64 {
     20.0 * ms.sqrt().max(1e-6).log10()
 }
 
+// Adapted from Kinoloom (MIT), tool/seam_qa.py (audio_seam).
 /// Level step and click at `seam` (a sample index) of mono `audio` at `rate` Hz.
 pub fn audio_metrics(audio: &[f32], rate: u32, seam: usize, silence_dbfs: f64) -> AudioMetrics {
     let w = (rate as usize / 10).max(1);
@@ -520,6 +543,25 @@ pub fn psnr(a: &[u8], b: &[u8]) -> f64 {
     } else {
         10.0 * (255.0f64 * 255.0 / mse).log10()
     }
+}
+
+/// Per-frame PSNR of the cut's `frames` frames before `seam` against the
+/// `frames` frames from `seam`, for an overlap declared without a reference.
+pub fn overlap_psnr_in_cut(cut: &std::path::Path, seam: u64, frames: u64) -> Result<Vec<f64>> {
+    if frames == 0 || frames > seam {
+        return Err("overlap exceeds the frames before the seam".into());
+    }
+    let mut before = Vec::new();
+    let mut values = Vec::new();
+    media::for_each_frame(cut, PixelFormat::Rgb24, None, |f| {
+        if f.index >= seam - frames && f.index < seam {
+            before.push(f.data);
+        } else if f.index >= seam && f.index < seam + frames {
+            values.push(round3(psnr(&before[(f.index - seam) as usize], &f.data)));
+        }
+        Ok(())
+    })?;
+    Ok(values)
 }
 
 /// Per-frame PSNR of the last `frames` frames of `reference` against the
@@ -611,7 +653,7 @@ pub fn run(root: &Root, config: &Config) -> Result<Value> {
         let mut fails: Vec<String> = Vec::new();
         let mut blocked: Option<String> = None;
         let mut record = json!({"frame": spec.frame});
-        if spec.frame < 2 || spec.frame + 2 > n {
+        if spec.frame < 2 || spec.frame + 2 >= n {
             blocked = Some(format!(
                 "seam frame {} is outside the measurable range 2..{}",
                 spec.frame,
@@ -640,12 +682,15 @@ pub fn run(root: &Root, config: &Config) -> Result<Value> {
         }
         match (&spec.overlap, &blocked) {
             (Some(ov), None) => {
-                let result = checked(root, &ov.reference).and_then(|reference| {
+                let result = (|| {
                     if spec.frame + ov.frames > n {
                         return Err("overlap runs past the end of the cut".into());
                     }
-                    overlap_psnr(&cut, &reference, spec.frame, ov.frames)
-                });
+                    match &ov.reference {
+                        Some(r) => overlap_psnr(&cut, &checked(root, r)?, spec.frame, ov.frames),
+                        None => overlap_psnr_in_cut(&cut, spec.frame, ov.frames),
+                    }
+                })();
                 match result {
                     Ok(values) => {
                         let min = values.iter().copied().fold(f64::INFINITY, f64::min);
@@ -654,8 +699,13 @@ pub fn run(root: &Root, config: &Config) -> Result<Value> {
                             fails.push("overlap_psnr".into());
                         }
                         record["overlap"] = json!({"frames": ov.frames,
-                            "reference": {"path": root.rel(&ov.reference.path)?, "sha256": ov.reference.sha256},
-                            "psnr_db": values, "min_db": min, "verdict": if pass { "PASS" } else { "FAIL" }});
+                            "reference": match &ov.reference {
+                                Some(r) => json!({"path": root.rel(&r.path)?, "sha256": r.sha256}),
+                                None => json!("self: frames before the seam"),
+                            },
+                            "psnr_db": values, "min_db": min,
+                            "verdict": if pass { "PASS" } else { "FAIL" },
+                            "provisional": pass && !t.calibrated});
                     }
                     Err(e) => blocked = Some(format!("overlap not measurable: {e}")),
                 }
@@ -830,7 +880,7 @@ mod tests {
         let with = |reference: &str| {
             let ov = Overlap {
                 frames: 5,
-                reference: asset(&root, reference),
+                reference: Some(asset(&root, reference)),
             };
             config(
                 &root,
@@ -844,6 +894,7 @@ mod tests {
         let good = run(&root, &with("ref.mkv")).unwrap();
         let o = &good["seams"][0]["overlap"];
         assert_eq!(o["verdict"], "PASS", "{good:#}");
+        assert_eq!(o["provisional"], true);
         assert!(
             o["min_db"].as_f64().unwrap() >= 32.0 && o["psnr_db"].as_array().unwrap().len() == 5
         );
@@ -853,6 +904,27 @@ mod tests {
         let mut too_long = with("ref.mkv");
         too_long.seams[0].overlap.as_mut().unwrap().frames = 999;
         assert_eq!(run(&root, &too_long).unwrap()["verdict"], "BLOCKED");
+        // Length-only declaration: the cut's own frames before the seam are the carried ones.
+        let status = Command::new("ffmpeg")
+            .args(["-nostdin", "-v", "error", "-y", "-i"])
+            .arg(s.path("ref.mkv"))
+            .args([
+                "-filter_complex",
+                "[0:v]trim=end_frame=30,setpts=PTS-STARTPTS[a];[0:v]trim=start_frame=25:end_frame=30,setpts=PTS-STARTPTS[b];[a][b]concat=n=2:v=1:a=0",
+                "-c:v",
+                "ffv1",
+            ])
+            .arg(s.path("selfcut.mkv"))
+            .status()
+            .unwrap();
+        assert!(status.success());
+        let length_only: Config = serde_json::from_value(json!({
+            "schema": CONFIG_SCHEMA, "cut": asset(&root, "selfcut.mkv"),
+            "seams": [{"frame": 30, "overlap": {"frames": 5}}],
+            "thresholds": Thresholds::kinoloom_uncalibrated()}))
+        .unwrap();
+        let own = run(&root, &length_only).unwrap();
+        assert_eq!(own["seams"][0]["overlap"]["verdict"], "PASS", "{own:#}");
     }
 
     fn tone_clip(path: &std::path::Path, expr: &str) {
