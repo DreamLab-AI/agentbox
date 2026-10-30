@@ -172,8 +172,10 @@ normalise_registry() { # <table.json> <plan.tsv>
     | if ([.roles[].uid] | any(. as $u | $reserved | index($u))) then error("a role uid is reserved (reserved_ids)") else . end
     | ($classes[0].classes.ROLE | to_entries | map({name: .key, role: .value.role})) as $role_env
     | .secrets_root as $sr
-    | ([.groups // [] | .[] | .owner as $o | {path: ($sr + "/" + .name), group: .name, gid,
-         owner: $o}]) as $sockdirs
+    # A devuser-owned group (ab-sessions, ADR-2153) has no secrets directory: the plan
+    # emits none, so only role-owned groups have a socket dir to check (ADR-2122).
+    | ([.groups // [] | .[] | select($roles_uid[.owner] != null) | .owner as $o
+         | {path: ($sr + "/" + .name), group: .name, gid, owner: $o}]) as $sockdirs
     | {source: $src, schema: .schema, reserved_ids: ($reserved),
        classified_root_env: [$role_env[] | select(.role == "root") | {name, holder: "root"}],
        socket_dirs: [$sockdirs[] | . as $d | . + {owner_uid: ($roles_uid[$d.owner] // null)}],
