@@ -60,8 +60,12 @@ pub struct Asset {
 pub struct Thresholds {
     /// Where these numbers came from.
     pub provenance: String,
-    /// Whether the numbers were calibrated on this estate's own footage.
+    /// Whether the numbers were calibrated on this estate's own footage. A
+    /// `true` claim is refused unless `calibration` substantiates it.
     pub calibrated: bool,
+    /// Hashed `threshold-calibration/1` record substantiating `calibrated`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub calibration: Option<crate::calibration::Evidence>,
     /// Largest allowed pop ratio (seam frame difference / local median).
     pub pop_ratio: f64,
     /// Largest allowed absolute saturation step (HSV S, 0-255).
@@ -107,6 +111,7 @@ impl Thresholds {
         Self {
             provenance: "kinoloom-seam-qa-uncalibrated".into(),
             calibrated: false,
+            calibration: None,
             pop_ratio: 1.30,
             d_sat: 2.0,
             d_l: 1.5,
@@ -629,6 +634,14 @@ pub fn run(root: &Root, config: &Config) -> Result<Value> {
         return Err(format!("config schema must be {CONFIG_SCHEMA}").into());
     }
     let t = &config.thresholds;
+    let calibration = crate::calibration::honour(
+        root,
+        "seam-qa",
+        &t.provenance,
+        t.calibrated,
+        t.calibration.as_ref(),
+    )?;
+    let calibrated = calibration.is_some();
     let cut = checked(root, &config.cut)?;
     let probe = media::probe(&cut)?;
     let analysis = analyze_video(&cut)?;
@@ -705,7 +718,7 @@ pub fn run(root: &Root, config: &Config) -> Result<Value> {
                             },
                             "psnr_db": values, "min_db": min,
                             "verdict": if pass { "PASS" } else { "FAIL" },
-                            "provisional": pass && !t.calibrated});
+                            "provisional": pass && !calibrated});
                     }
                     Err(e) => blocked = Some(format!("overlap not measurable: {e}")),
                 }
@@ -720,7 +733,7 @@ pub fn run(root: &Root, config: &Config) -> Result<Value> {
         record["fails"] = json!(fails);
         record["blocked_reason"] = json!(blocked);
         record["verdict"] = json!(verdict);
-        record["provisional"] = json!(verdict == "PASS" && !t.calibrated);
+        record["provisional"] = json!(verdict == "PASS" && !calibrated);
         seams.push(record);
     }
     let overall = if seams.is_empty() {
@@ -740,8 +753,9 @@ pub fn run(root: &Root, config: &Config) -> Result<Value> {
         "thresholds": t,
         "seams": seams,
         "verdict": overall,
-        "provisional": overall == "PASS" && !t.calibrated,
-        "acceptance_backing": overall == "PASS" && t.calibrated,
+        "calibration": calibration,
+        "provisional": overall == "PASS" && !calibrated,
+        "acceptance_backing": overall == "PASS" && calibrated,
     });
     root.relativise(&mut receipt)?;
     if !absolute_paths(&receipt).is_empty() {
@@ -834,13 +848,25 @@ mod tests {
         assert_eq!(r["verdict"], "PASS", "{r:#}");
         assert_eq!(r["provisional"], true);
         assert_eq!(r["acceptance_backing"], false);
-        let mut calibrated = config(&root, "cut.mkv", vec![seam(25)]);
-        calibrated.thresholds.calibrated = true;
-        let r = run(&root, &calibrated).unwrap();
+        // A bare `calibrated: true` is a config claim, not evidence: refused.
+        let mut claimed = config(&root, "cut.mkv", vec![seam(25)]);
+        claimed.thresholds.calibrated = true;
+        assert!(run(&root, &claimed).is_err());
+        // With a hashed calibration record for this tool and provenance it counts.
+        let record = serde_json::to_vec(&json!({"schema":crate::calibration::SCHEMA,
+            "tool":"seam-qa","provenance":claimed.thresholds.provenance}))
+        .unwrap();
+        std::fs::write(s.path("cal.json"), &record).unwrap();
+        claimed.thresholds.calibration = Some(crate::calibration::Evidence {
+            path: "cal.json".into(),
+            sha256: sha256_hex(&record),
+        });
+        let r = run(&root, &claimed).unwrap();
         assert_eq!(
             (r["provisional"].clone(), r["acceptance_backing"].clone()),
             (json!(false), json!(true))
         );
+        assert_eq!(r["calibration"]["path"], "cal.json");
     }
 
     #[test]

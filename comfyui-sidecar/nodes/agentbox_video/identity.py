@@ -57,11 +57,58 @@ class ThresholdSet:
     drift_min_sim: float = 0.15
     provenance: str = "kinoloom-ltx-uncalibrated"
     calibrated: bool = False
+    #: Verified ``{path, sha256}`` of a ``threshold-calibration/1`` record.
+    calibration: Optional[dict] = None
+
+    def __post_init__(self):
+        # ``calibrated`` is a claim anyone can write in a config file; it only
+        # counts with a record that from_dict has verified.
+        if self.calibrated and not (self.calibration or {}).get("verified"):
+            raise CalibrationError("calibrated: true needs a verified calibration record (use from_dict with base_dir)")
 
     @classmethod
-    def from_dict(cls, d: Optional[dict]) -> "ThresholdSet":
+    def from_dict(cls, d: Optional[dict], base_dir=None) -> "ThresholdSet":
+        """Build a set from config; a calibrated claim is checked against its record.
+
+        ``calibration`` is ``{path, sha256}`` relative to ``base_dir`` (the
+        thresholds file's directory). The record must hash to ``sha256`` and be
+        ``threshold-calibration/1`` for tool ``identity`` and this provenance.
+        """
         known = {k: v for k, v in (d or {}).items() if k in cls.__dataclass_fields__}
+        claim = known.pop("calibration", None)
+        if known.get("calibrated"):
+            known["calibration"] = _verify_calibration(claim, base_dir, known.get("provenance", cls.provenance))
         return cls(**known)
+
+
+class CalibrationError(ValueError):
+    """A calibrated claim without matching, hashed evidence."""
+
+
+def _verify_calibration(claim, base_dir, provenance):
+    if not isinstance(claim, dict) or not claim.get("path") or not claim.get("sha256"):
+        raise CalibrationError("calibrated: true needs a calibration {path, sha256} record")
+    if base_dir is None:
+        raise CalibrationError("a calibration record needs a base directory to resolve against")
+    base = Path(base_dir).resolve()
+    path = (base / claim["path"]).resolve()
+    if base != path and base not in path.parents:
+        raise CalibrationError(f"calibration path escapes {base}")
+    try:
+        data = path.read_bytes()
+    except OSError as e:
+        raise CalibrationError(f"calibration record unreadable: {e}") from e
+    digest = hashlib.sha256(data).hexdigest()
+    if digest != claim["sha256"]:
+        raise CalibrationError(f"calibration record hashes to {digest}, not {claim['sha256']}")
+    try:
+        record = json.loads(data)
+    except ValueError as e:
+        raise CalibrationError(f"calibration record is not JSON: {e}") from e
+    if (record.get("schema"), record.get("tool"), record.get("provenance")) != (
+            "threshold-calibration/1", "identity", provenance):
+        raise CalibrationError("calibration record must be threshold-calibration/1 for tool identity and this provenance")
+    return {"path": str(claim["path"]), "sha256": digest, "verified": True}
 
 
 # ---------------------------------------------------------------- embedders
@@ -423,7 +470,8 @@ def _thresholds(args) -> ThresholdSet:
     d = json.loads(Path(args.thresholds).read_text()) if args.thresholds else {}
     if args.last_n is not None:
         d["last_n"] = args.last_n
-    return ThresholdSet.from_dict(d)
+    base = Path(args.thresholds).resolve().parent if args.thresholds else None
+    return ThresholdSet.from_dict(d, base_dir=base)
 
 
 def main(argv: Optional[Sequence[str]] = None, embedder: Optional[Embedder] = None) -> int:
@@ -454,7 +502,11 @@ def main(argv: Optional[Sequence[str]] = None, embedder: Optional[Embedder] = No
     except ModelFilesError as e:
         print(json.dumps({"schema": SCHEMA, "verdict": "BLOCKED", "error": str(e)}, indent=2))
         return 2
-    th = _thresholds(args)
+    try:
+        th = _thresholds(args)
+    except CalibrationError as e:
+        print(json.dumps({"schema": SCHEMA, "verdict": "BLOCKED", "error": str(e)}, indent=2))
+        return 2
     if args.cmd == "score":
         rep = identity_score(read_video_frames(args.video), _parse_refs(args.ref, emb), emb, th)
         rep["input"] = {"video": args.video}

@@ -276,10 +276,25 @@ pub fn gate(
         }
         Ok((probe, tags))
     })();
-    if checked.is_err() {
-        let _ = fs::remove_file(output);
+    checked.map_err(|error| discard(output, error))
+}
+
+/// Remove a failed output (file or directory) and return `error`, extended
+/// when the removal itself fails so a rejected file is never left silently.
+fn discard(path: &Path, error: Box<dyn Error>) -> Box<dyn Error> {
+    let removed = if path.is_dir() {
+        fs::remove_dir_all(path)
+    } else {
+        fs::remove_file(path)
+    };
+    match removed {
+        Err(e) if e.kind() != std::io::ErrorKind::NotFound => format!(
+            "{error}; the rejected output {} could not be removed: {e}",
+            path.display()
+        )
+        .into(),
+        _ => error,
     }
-    checked
 }
 
 fn encode(
@@ -402,8 +417,7 @@ pub fn assemble(root: &Root, plan: &StitchPlan, out_dir: &Path) -> Result<Value>
     let expected = plan.expected_frames();
     let encoded = encode(plan, &paths, size, audio_path.as_deref(), &dest);
     if let Err(error) = encoded {
-        let _ = fs::remove_file(&dest);
-        return Err(error);
+        return Err(discard(&dest, error));
     }
     let (probe, tags) = gate(&dest, expected, plan.rate, size, audio_hashes.as_deref())?;
     Ok(json!({"schema":"stitch-result/1","rate":plan.rate,
@@ -520,8 +534,12 @@ pub struct RetakeThresholds {
     pub min_unchanged_psnr_db: f64,
     /// Where the numbers come from.
     pub provenance: String,
-    /// Whether the numbers were calibrated on real footage.
+    /// Whether the numbers were calibrated on real footage. A `true` claim is
+    /// refused unless `calibration` substantiates it.
     pub calibrated: bool,
+    /// Hashed `threshold-calibration/1` record substantiating `calibrated`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub calibration: Option<crate::calibration::Evidence>,
 }
 
 impl Default for RetakeThresholds {
@@ -530,6 +548,7 @@ impl Default for RetakeThresholds {
             min_unchanged_psnr_db: 35.0,
             provenance: "uncalibrated-default".into(),
             calibrated: false,
+            calibration: None,
         }
     }
 }
@@ -710,10 +729,7 @@ pub fn run(mut args: Vec<OsString>) -> Result<()> {
     let bytes = fs::read(&plan_path)?;
     fs::create_dir(&out_dir)?;
     let outcome = deliver(&root, &command, &bytes, &plan_path, &out_dir);
-    if outcome.is_err() {
-        let _ = fs::remove_dir_all(&out_dir);
-    }
-    let frames = outcome?;
+    let frames = outcome.map_err(|error| discard(&out_dir, error))?;
     println!("{frames}-frame stitch assembled and gated");
     Ok(())
 }
@@ -735,6 +751,13 @@ fn deliver(
     let dest = out_dir.join("stitched.mp4");
     if let Some(input) = &retake {
         let thresholds = input.thresholds.clone().unwrap_or_default();
+        let calibration = crate::calibration::honour(
+            root,
+            "stitch",
+            &thresholds.provenance,
+            thresholds.calibrated,
+            thresholds.calibration.as_ref(),
+        )?;
         let original = verified(root, &input.original)?;
         let ranges = input.unchanged();
         let outcome = if ranges.is_empty() {
@@ -745,18 +768,18 @@ fn deliver(
         let worst = match outcome {
             Ok(w) if w >= thresholds.min_unchanged_psnr_db => w,
             Ok(w) => {
-                let _ = fs::remove_file(&dest);
-                return Err(format!("unchanged frames drifted: min PSNR {w:.2} dB").into());
+                let error = format!("unchanged frames drifted: min PSNR {w:.2} dB").into();
+                return Err(discard(&dest, error));
             }
             Err(error) => {
-                let _ = fs::remove_file(&dest);
-                return Err(error);
+                return Err(discard(&dest, error));
             }
         };
         receipt["retake"] = json!({"frames":input.frames,"retake":input.retake,
             "generation":input.generation,"overlap":input.overlap,"unchanged_ranges":ranges,
             "unchanged_check":{"method":"re-decoded PSNR against the original (lossy yuv420p delivery, so not bit-exact)",
-                "min_psnr_db":worst,"thresholds":thresholds,"provisional":!thresholds.calibrated}});
+                "min_psnr_db":worst,"thresholds":thresholds,"calibration":calibration,
+                "provisional":calibration.is_none()}});
     }
     let frames = receipt["frames"]["decoded"].as_u64().unwrap_or(0);
     receipt["plan"] = json!({"path":root.rel(plan_path)?,"sha256":sha256_hex(bytes)});
@@ -986,6 +1009,32 @@ mod tests {
         let err = assemble(&root, &p, &s.path("out2")).unwrap_err();
         assert!(err.to_string().contains("re-encoded"), "{err}");
         assert!(!s.path("out2/stitched.mp4").exists());
+    }
+
+    #[test]
+    fn discard_reports_an_output_it_could_not_remove() {
+        use std::os::unix::fs::PermissionsExt;
+        let s = Scratch::new("stitch-discard");
+        let gone = discard(&s.path("absent.mp4"), "gate failed".into()).to_string();
+        assert_eq!(gone, "gate failed");
+        let file = s.path("bad.mp4");
+        fs::write(&file, b"x").unwrap();
+        assert_eq!(
+            discard(&file, "gate failed".into()).to_string(),
+            "gate failed"
+        );
+        assert!(!file.exists());
+        let locked = s.path("locked");
+        fs::create_dir(&locked).unwrap();
+        let stuck = locked.join("bad.mp4");
+        fs::write(&stuck, b"x").unwrap();
+        fs::set_permissions(&locked, fs::Permissions::from_mode(0o555)).unwrap();
+        let message = discard(&stuck, "gate failed".into()).to_string();
+        fs::set_permissions(&locked, fs::Permissions::from_mode(0o755)).unwrap();
+        assert!(
+            message.starts_with("gate failed; the rejected output"),
+            "{message}"
+        );
     }
 
     #[test]

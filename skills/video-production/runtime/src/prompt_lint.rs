@@ -175,7 +175,11 @@ pub struct Config {
     /// Where the thresholds come from.
     pub provenance: String,
     /// False until the thresholds are measured; a pass is then provisional.
+    /// A `true` claim is refused unless `calibration` substantiates it.
     pub calibrated: bool,
+    /// Hashed `threshold-calibration/1` record substantiating `calibrated`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub calibration: Option<crate::calibration::Evidence>,
     /// Numeric limits.
     pub thresholds: Thresholds,
     /// Per-rule severity overrides (rule id to severity).
@@ -188,6 +192,7 @@ impl Default for Config {
             schema: "prompt-lint-config/1".into(),
             provenance: "kinoloom-prompt-lint-uncalibrated".into(),
             calibrated: false,
+            calibration: None,
             thresholds: Thresholds::default(),
             severities: BTreeMap::new(),
         }
@@ -794,8 +799,15 @@ pub fn lint_performance(
     Ok((sink.findings, skipped))
 }
 
-/// Assemble the JSON receipt. `inputs` maps a role to `{path, sha256}`.
-pub fn receipt(config: &Config, inputs: Value, findings: &[Finding], skipped: &[String]) -> Value {
+/// Assemble the JSON receipt. `inputs` maps a role to `{path, sha256}`;
+/// `calibration` is the record [`crate::calibration::honour`] verified, if any.
+pub fn receipt(
+    config: &Config,
+    calibration: Option<Value>,
+    inputs: Value,
+    findings: &[Finding],
+    skipped: &[String],
+) -> Value {
     let errors = findings
         .iter()
         .filter(|f| f.severity == Severity::Error)
@@ -806,7 +818,9 @@ pub fn receipt(config: &Config, inputs: Value, findings: &[Finding], skipped: &[
         "schema": "prompt-lint/1",
         "verdict": verdict,
         // An uncalibrated threshold set can never back acceptance.
-        "provisional": verdict == "PASS" && !config.calibrated,
+        "provisional": verdict == "PASS" && calibration.is_none(),
+        "acceptance_backing": verdict == "PASS" && calibration.is_some(),
+        "calibration": calibration,
         "errors": errors,
         "warnings": warnings,
         "inputs": inputs,
@@ -1281,16 +1295,20 @@ mod tests {
     #[test]
     fn verdict_is_provisional_until_calibrated_and_fails_on_errors() {
         let cfg = Config::default();
-        let ok = receipt(&cfg, json!({}), &[], &[]);
+        let ok = receipt(&cfg, None, json!({}), &[], &[]);
         assert_eq!(
             (ok["verdict"].as_str(), ok["provisional"].as_bool()),
             (Some("PASS"), Some(true))
         );
-        let mut calibrated = cfg.clone();
-        calibrated.calibrated = true;
+        assert_eq!(ok["acceptance_backing"], json!(false));
+        let verified = json!({"path":"cal.json","sha256":"ab"});
+        let backed = receipt(&cfg, Some(verified), json!({}), &[], &[]);
         assert_eq!(
-            receipt(&calibrated, json!({}), &[], &[])["provisional"],
-            json!(false)
+            (
+                backed["provisional"].clone(),
+                backed["acceptance_backing"].clone()
+            ),
+            (json!(false), json!(true))
         );
         let warn = Finding {
             rule: "ref-unused".into(),
@@ -1299,14 +1317,14 @@ mod tests {
             message: "m".into(),
         };
         assert_eq!(
-            receipt(&cfg, json!({}), std::slice::from_ref(&warn), &[])["verdict"],
+            receipt(&cfg, None, json!({}), std::slice::from_ref(&warn), &[])["verdict"],
             "PASS"
         );
         let err = Finding {
             severity: Severity::Error,
             ..warn
         };
-        let r = receipt(&cfg, json!({}), &[err], &[]);
+        let r = receipt(&cfg, None, json!({}), &[err], &[]);
         assert_eq!(
             (r["verdict"].as_str(), r["provisional"].as_bool()),
             (Some("FAIL"), Some(false))

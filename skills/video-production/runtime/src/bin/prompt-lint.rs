@@ -129,7 +129,15 @@ fn run() -> Result<ExitCode> {
         skipped.extend(s);
     }
 
-    let out = receipt(&config, inputs, &findings, &skipped);
+    let calibration = video_production_runtime::calibration::honour(
+        &root,
+        "prompt-lint",
+        &config.provenance,
+        config.calibrated,
+        config.calibration.as_ref(),
+    )
+    .map_err(|e| e.to_string())?;
+    let out = receipt(&config, calibration, inputs, &findings, &skipped);
     let text = serde_json::to_string_pretty(&out).map_err(|e| e.to_string())? + "\n";
     match opts.get("--out") {
         Some(p) => {
