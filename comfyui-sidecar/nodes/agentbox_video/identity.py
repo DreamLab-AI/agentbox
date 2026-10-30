@@ -10,8 +10,9 @@ in ``face_models.json`` with a pinned URL and sha256 and refused on mismatch.
 
 A face is judged only when its height is at least ``min_face_frac`` of the
 frame's short side; otherwise the result is ``not_judged``, never a pass.
-Thresholds are configuration with provenance and ``calibrated: false``; a PASS
-on an uncalibrated set is ``provisional`` and must not back acceptance. A FAIL
+Thresholds are configuration with provenance. Every result is a measurement:
+``provisional`` is always true, ``acceptance_backing`` always false and
+``acceptance`` is ``"editorial"`` (calibrated acceptance was removed, ADR-2163). A FAIL
 routes to human review, not to an automatic retake.
 
 Adapted from Kinoloom (MIT), tool/qa_director.py (best-of-last-N cosine, 12%
@@ -62,58 +63,28 @@ class ThresholdSet:
     min_judged_frames: int = 2
     provenance: str = "kinoloom-ltx-uncalibrated"
     calibrated: bool = False
-    #: Verified ``{path, sha256}`` of a ``threshold-calibration/1`` record.
+    #: Removed (ADR-2163): any value is refused. Kept so a config that still carries it fails loudly.
     calibration: Optional[dict] = None
 
     def __post_init__(self):
-        # ``calibrated`` is a claim anyone can write in a config file; it only
-        # counts with a record that from_dict has verified.
-        if self.calibrated and not (self.calibration or {}).get("verified"):
-            raise CalibrationError("calibrated: true needs a verified calibration record (use from_dict with base_dir)")
+        # Calibrated acceptance was removed: a threshold set is a measurement
+        # configuration only, whatever a config file claims about it.
+        if self.calibrated or self.calibration is not None:
+            raise CalibrationError(CALIBRATION_REMOVED)
 
     @classmethod
     def from_dict(cls, d: Optional[dict], base_dir=None) -> "ThresholdSet":
-        """Build a set from config; a calibrated claim is checked against its record.
+        """Build a set from config; ``calibrated`` and ``calibration`` are refused outright."""
+        if not isinstance(d, (dict, type(None))):
+            raise CalibrationError("thresholds must be a JSON object")
+        return cls(**{k: v for k, v in (d or {}).items() if k in cls.__dataclass_fields__})
 
-        ``calibration`` is ``{path, sha256}`` relative to ``base_dir`` (the
-        thresholds file's directory). The record must hash to ``sha256`` and be
-        ``threshold-calibration/1`` for tool ``identity`` and this provenance.
-        """
-        known = {k: v for k, v in (d or {}).items() if k in cls.__dataclass_fields__}
-        claim = known.pop("calibration", None)
-        if known.get("calibrated"):
-            known["calibration"] = _verify_calibration(claim, base_dir, known.get("provenance", cls.provenance))
-        return cls(**known)
+
+CALIBRATION_REMOVED = "calibrated acceptance was removed (ADR-2163); acceptance is editorial"
 
 
 class CalibrationError(ValueError):
-    """A calibrated claim without matching, hashed evidence."""
-
-
-def _verify_calibration(claim, base_dir, provenance):
-    if not isinstance(claim, dict) or not claim.get("path") or not claim.get("sha256"):
-        raise CalibrationError("calibrated: true needs a calibration {path, sha256} record")
-    if base_dir is None:
-        raise CalibrationError("a calibration record needs a base directory to resolve against")
-    base = Path(base_dir).resolve()
-    path = (base / claim["path"]).resolve()
-    if base != path and base not in path.parents:
-        raise CalibrationError(f"calibration path escapes {base}")
-    try:
-        data = path.read_bytes()
-    except OSError as e:
-        raise CalibrationError(f"calibration record unreadable: {e}") from e
-    digest = hashlib.sha256(data).hexdigest()
-    if digest != claim["sha256"]:
-        raise CalibrationError(f"calibration record hashes to {digest}, not {claim['sha256']}")
-    try:
-        record = json.loads(data)
-    except ValueError as e:
-        raise CalibrationError(f"calibration record is not JSON: {e}") from e
-    if (record.get("schema"), record.get("tool"), record.get("provenance")) != (
-            "threshold-calibration/1", "identity", provenance):
-        raise CalibrationError("calibration record must be threshold-calibration/1 for tool identity and this provenance")
-    return {"path": str(claim["path"]), "sha256": digest, "verified": True}
+    """A threshold set claimed calibration, which no longer exists."""
 
 
 # ---------------------------------------------------------------- embedders
@@ -323,16 +294,18 @@ def identity_score(frames: Iterable[np.ndarray], refs: dict, embedder: Embedder,
     named, routed to human review). A two-shot where the other actor is simply
     the better match also trips this: it fails towards review, never towards a pass.
 
-    Verdict is ``not_judged`` when fewer than ``th.min_judged_frames`` of the last
-    frames hold a face at or above the size floor (one good frame is not enough), or
-    ``expected_cast`` has no reference. Otherwise ``FAIL`` under ``min_similarity``
-    (routed to human review) and ``PASS`` with ``provisional`` true while the
-    threshold set is uncalibrated.
+    Verdict is ``not_judged`` when fewer than ``th.min_judged_frames`` (capped at
+    ``last_n``) of the last frames hold a face at or above the size floor, or
+    ``expected_cast`` has no reference. A frame counts as *judged* only when its
+    best match clears ``min_similarity``; the verdict is ``FAIL`` unless at least
+    ``min_judged_frames`` frames match *and* they are a strict majority of the
+    frames holding a face (one good frame among strangers is not a pass).
+    ``PASS`` is always ``provisional``; acceptance is editorial.
     """
     th = th or ThresholdSet()
     tail = list(deque(frames, maxlen=max(1, th.last_n)))
     per = [frame_best(embedder, f, refs, th) for f in tail]
-    judged_frames = sum(1 for p in per if p["best"] is not None)
+    face_frames = sum(1 for p in per if p["best"] is not None)
     swap = None
     if expected_cast is None:
         scores = [p["best"] for p in per if p["best"] is not None]
@@ -350,6 +323,14 @@ def identity_score(frames: Iterable[np.ndarray], refs: dict, embedder: Embedder,
             if others[rival] > best + th.swap_margin:
                 swap = {"expected": expected_cast, "matched": rival,
                         "expected_score": best, "matched_score": others[rival]}
+    # A frame is "judged" only when the face in it matches: its score clears min_similarity.
+    # Strangers with faces count towards face_frames, not towards the match.
+    frame_scores = ([p["best"] for p in per] if expected_cast is None
+                    else [p["per_cast"].get(expected_cast) for p in per])
+    judged_frames = sum(1 for v in frame_scores if v is not None and v >= th.min_similarity)
+    # last_n=1 asks for a one-frame verdict, so the floor cannot exceed the window; a clip shorter
+    # than last_n stays below it and is not_judged.
+    need = min(th.min_judged_frames, max(1, th.last_n))
     detail = None
     if not refs:
         verdict, reason = "not_judged", "no reference portrait with a face"
@@ -357,27 +338,32 @@ def identity_score(frames: Iterable[np.ndarray], refs: dict, embedder: Embedder,
         verdict, reason = "not_judged", f"expected cast {expected_cast!r} has no reference portrait with a face"
     elif best is None:
         verdict, reason = "not_judged", "no face at or above the size floor in the last frames"
-    elif judged_frames < th.min_judged_frames:
-        verdict, reason = "not_judged", (f"only {judged_frames} of {len(tail)} frames held a face at or above the "
-                                         f"size floor; {th.min_judged_frames} needed")
+    elif face_frames < need:
+        verdict, reason = "not_judged", (f"only {face_frames} of {len(tail)} frames held a face at or above the "
+                                         f"size floor; {need} needed")
     elif swap:
         verdict, reason = "FAIL", "identity_swap"
         detail = (f"expected {swap['expected']} (best cosine {swap['expected_score']:.3f}) but "
                   f"{swap['matched']} matches better ({swap['matched_score']:.3f}, margin {th.swap_margin})")
+    elif best >= th.min_similarity and (judged_frames < need or judged_frames * 2 <= face_frames):
+        verdict, reason = "FAIL", (f"only {judged_frames} of {face_frames} frames with a face matched at or above "
+                                   f"{th.min_similarity}; need {need} and a majority")
     elif best >= th.min_similarity:
         verdict, reason = "PASS", None
     else:
         verdict, reason = "FAIL", "best similarity under threshold"
     report = {
         "schema": SCHEMA, "kind": "identity_score", "verdict": verdict,
-        "provisional": (verdict == "PASS" and not th.calibrated),
-        "acceptance_backing": bool(verdict == "PASS" and th.calibrated),
+        "provisional": True, "acceptance_backing": False, "acceptance": "editorial",
         "score": best, "frames_considered": len(tail), "judged_frames": judged_frames,
+        "face_frames": face_frames, "effective_min_judged_frames": need,
         "per_frame": per, "thresholds": asdict(th),
     }
     if expected_cast is not None:
         report["expected_cast"] = expected_cast
         report["matched_cast"] = swap["matched"] if swap else None
+    if expected_cast is None and verdict == "PASS":
+        reason = "no expected_cast"  # a note: the gate did not know who should be on screen
     if reason:
         report["reason"] = reason
     if detail:
@@ -425,7 +411,7 @@ def drift_report(frames: Iterable[np.ndarray], link_starts: Sequence[int], refs:
             summary[name] = {"sim_first": seen[0]["sim"], "sim_last": seen[-1]["sim"],
                              "change": round(seen[-1]["sim"] - seen[0]["sim"], 4)}
     return {"schema": SCHEMA, "kind": "drift_report", "every": every, "links": links,
-            "summary": summary, "gate": False, "thresholds": asdict(th)}
+            "summary": summary, "gate": False, "acceptance": "editorial", "thresholds": asdict(th)}
 
 
 def choose_opening_frame(candidates: Sequence[np.ndarray], refs: dict, embedder: Embedder,
@@ -456,13 +442,15 @@ def choose_opening_frame(candidates: Sequence[np.ndarray], refs: dict, embedder:
                        "_rank": (1, likeness) if complete else (0, max(scored) if scored else -1.0)})
     if not scores:
         return {"schema": SCHEMA, "kind": "opening_frame", "chosen": None, "weak": True,
-                "scores": [], "thresholds": asdict(th)}
+                "scores": [], "thresholds": asdict(th), "provisional": True,
+                "acceptance_backing": False, "acceptance": "editorial"}
     best = max(scores, key=lambda s: s["_rank"])
     weak = best["likeness"] is None or best["likeness"] < th.weak_below
     for s in scores:
         s.pop("_rank")
     return {"schema": SCHEMA, "kind": "opening_frame", "chosen": best["index"], "weak": weak,
-            "likeness": best["likeness"], "scores": scores, "provisional": not th.calibrated,
+            "likeness": best["likeness"], "scores": scores, "provisional": True,
+            "acceptance_backing": False, "acceptance": "editorial",
             "thresholds": asdict(th)}
 
 
@@ -572,14 +560,14 @@ def _parse_refs(items: Sequence[str], embedder: Embedder) -> dict:
 
 def _thresholds(args) -> ThresholdSet:
     d = json.loads(Path(args.thresholds).read_text()) if args.thresholds else {}
-    if args.last_n is not None:
-        d["last_n"] = args.last_n
-    if args.swap_margin is not None:
-        d["swap_margin"] = args.swap_margin
-    if args.min_judged_frames is not None:
-        d["min_judged_frames"] = args.min_judged_frames
-    base = Path(args.thresholds).resolve().parent if args.thresholds else None
-    return ThresholdSet.from_dict(d, base_dir=base)
+    if not isinstance(d, dict):
+        raise CalibrationError("thresholds file must be a JSON object")
+    if d.get("calibrated") or d.get("calibration") is not None:
+        raise CalibrationError(CALIBRATION_REMOVED)
+    overrides = {"last_n": args.last_n, "swap_margin": args.swap_margin,
+                 "min_judged_frames": args.min_judged_frames}
+    d.update({k: v for k, v in overrides.items() if v is not None})
+    return ThresholdSet.from_dict(d)
 
 
 def main(argv: Optional[Sequence[str]] = None, embedder: Optional[Embedder] = None) -> int:

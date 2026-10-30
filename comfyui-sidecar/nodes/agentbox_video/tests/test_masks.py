@@ -181,3 +181,51 @@ class UnmeasuredScaleTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class CumulativeMeasuredScaleTests(unittest.TestCase):
+    def test_measured_zoom_followed_by_median_step_is_not_refused(self):
+        # LK measures 1.05 per step (in bounds); the last step falls to median motion. The cumulative
+        # scale of 1.05**3.7 ~ 1.2155 was measured, so the unmeasured step must be probed relative to it.
+        frames, truth = scene(5, step=(0, 0), size=40, start=(44, 28))
+        c = (W / 2, H / 2)
+        zoomed = [frames[0]]
+        for k in range(1, 5):
+            zoomed.append(cv2.warpAffine(frames[0], cv2.getRotationMatrix2D(c, 0, 1.05 ** k), (W, H)))
+        real = masks._step
+        calls = {"n": 0}
+
+        def stubbed(prev, cur, mask, cfg, step):
+            calls["n"] += 1
+            if step < 4:
+                m = cv2.getRotationMatrix2D(c, 0, 1.05)
+                return m, "lk_affine", 1.05
+            return np.array([[1, 0, 0], [0, 1, 0]], dtype=np.float64), "median", None
+
+        masks._step = stubbed
+        try:
+            out, log = masks.track_mask(zoomed, truth[0], return_log=True)
+        finally:
+            masks._step = real
+        self.assertEqual(len(out), 5)
+        self.assertEqual(log[4]["method"], "median")
+
+    def test_uncontrolled_growth_after_measured_steps_is_still_refused(self):
+        frames, truth = scene(4, step=(0, 0), size=40, start=(44, 28))
+        c = (W / 2, H / 2)
+        # measured 1.05 per step, but the subject really grows 1.30x at the last (unmeasured) step
+        zoomed = [frames[0]] + [cv2.warpAffine(frames[0], cv2.getRotationMatrix2D(c, 0, s), (W, H))
+                                for s in (1.05, 1.1025, 1.1025 * 1.3)]
+        real = masks._step
+
+        def stubbed(prev, cur, mask, cfg, step):
+            if step < 3:
+                return cv2.getRotationMatrix2D(c, 0, 1.05), "lk_affine", 1.05
+            return np.array([[1, 0, 0], [0, 1, 0]], dtype=np.float64), "median", None
+
+        masks._step = stubbed
+        try:
+            with self.assertRaisesRegex(masks.TrackingError, "scale"):
+                masks.track_mask(zoomed, truth[0])
+        finally:
+            masks._step = real
