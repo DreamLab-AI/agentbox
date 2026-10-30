@@ -73,9 +73,9 @@ class ThresholdSet:
             raise CalibrationError(CALIBRATION_REMOVED)
         # One frame never carries an identity verdict, and the window must cover the floor.
         if self.min_judged_frames < 2:
-            raise ValueError(f"min_judged_frames must be at least 2, got {self.min_judged_frames}")
+            raise ThresholdError(f"min_judged_frames must be at least 2, got {self.min_judged_frames}")
         if self.last_n < self.min_judged_frames:
-            raise ValueError(f"last_n ({self.last_n}) must be at least min_judged_frames ({self.min_judged_frames})")
+            raise ThresholdError(f"last_n ({self.last_n}) must be at least min_judged_frames ({self.min_judged_frames})")
 
     @classmethod
     def from_dict(cls, d: Optional[dict], base_dir=None) -> "ThresholdSet":
@@ -88,7 +88,11 @@ class ThresholdSet:
 CALIBRATION_REMOVED = "calibrated acceptance was removed (ADR-2163); acceptance is editorial"
 
 
-class CalibrationError(ValueError):
+class ThresholdError(ValueError):
+    """A threshold set is invalid; the CLI reports it as BLOCKED."""
+
+
+class CalibrationError(ThresholdError):
     """A threshold set claimed calibration, which no longer exists."""
 
 
@@ -609,7 +613,7 @@ def main(argv: Optional[Sequence[str]] = None, embedder: Optional[Embedder] = No
         return 2
     try:
         th = _thresholds(args)
-    except CalibrationError as e:
+    except ThresholdError as e:
         print(json.dumps({"schema": SCHEMA, "verdict": "BLOCKED", "error": str(e)}, indent=2))
         return 2
     if args.cmd == "score":

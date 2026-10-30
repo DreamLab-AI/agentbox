@@ -11,10 +11,9 @@ import numpy as np
 from agentbox_video import identity as idn
 from agentbox_video.identity import FaceHit, ThresholdSet
 
-MODELS = Path(os.environ.get(
-    "AGENTBOX_FACE_MODELS",
-    "/home/devuser/workspace/.tmp/claude-1000/-home-devuser-workspace-project-agentbox/"
-    "8e5ee8e6-393a-4975-8c1f-fd9eb14ce188/scratchpad/face-models"))
+# Real-model tests run where the face models are provisioned (the sidecar default) or
+# where AGENTBOX_FACE_MODELS points; elsewhere they skip.
+MODELS = Path(os.environ.get("AGENTBOX_FACE_MODELS", idn.DEFAULT_MODELS_DIR))
 
 
 def unit(*v):
@@ -259,7 +258,8 @@ class CalibrationRemovedTests(unittest.TestCase):
 
     def test_cli_prints_blocked_not_a_traceback(self):
         import contextlib, io
-        for body in ({"calibrated": True}, {"calibration": {"path": "c.json", "sha256": "0"}}, [1, 2]):
+        for body in ({"calibrated": True}, {"calibration": {"path": "c.json", "sha256": "0"}}, [1, 2],
+                     {"min_judged_frames": 1}, {"last_n": 1}):
             with tempfile.TemporaryDirectory() as d:
                 Path(d, "th.json").write_text(json.dumps(body))
                 buf = io.StringIO()
@@ -269,6 +269,13 @@ class CalibrationRemovedTests(unittest.TestCase):
                 out = json.loads(buf.getvalue())
                 self.assertEqual(out["verdict"], "BLOCKED")
                 self.assertTrue(out["error"])
+
+    def test_cli_last_n_override_below_the_floor_is_blocked(self):
+        import contextlib, io
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            rc = idn.main(["--last-n", "1", "opening"], embedder=FakeEmbedder({}))
+        self.assertEqual((rc, json.loads(buf.getvalue())["verdict"]), (2, "BLOCKED"))
 
     def test_every_report_is_editorial(self):
         e = FakeEmbedder({1: [(50, ALICE)]})
