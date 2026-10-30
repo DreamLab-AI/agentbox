@@ -1,5 +1,5 @@
 ---
-id: ADR-2156
+id: ADR-2163
 title: Video production gains measured seam, window, stitch, lint and identity tooling, with every borrowed threshold provisional
 date: 2026-10-30
 decision_status: proposed
@@ -15,7 +15,7 @@ repo: agentbox
 domain: GOVERNANCE-capabilities
 ---
 
-# ADR-2156 — Video production gains measured seam, window, stitch, lint and identity tooling, with every borrowed threshold provisional
+# ADR-2163 — Video production gains measured seam, window, stitch, lint and identity tooling, with every borrowed threshold provisional
 
 ## Context
 This amends ADR-2150 (adds tools and gates inside its evidence discipline; its decision stands). ADR-2150's toolkit verified hashes, clocks and receipts but had no measurement at a cut, no plan for windowed long generations, no frame-exact join and no pre-GPU lint. Two third-party ComfyUI film projects were mined on 2026-10-30: H3STUDIOFILM (`h3-relay` and retouch nodes GPL-3.0, no root licence; MiniMax H3 model, which DreamLab is permitted to use and holds) and Kinoloom (MIT; LTX-based). Their failure notes recorded concrete defects this estate would repeat: `xfade` exporting 123 of 124 frames, seconds-to-frames rounding moving retakes by two frames at 24 fps, V3 `COMBO` menus reporting an installed model missing, and a global `interrupt()` on timeout. Their numeric gates were tuned on one author's material and are unvalidated here.

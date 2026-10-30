@@ -65,7 +65,7 @@ You are expected to improve the workflows as stacks evolve. Propose and apply ch
 
 ## Evidence and acceptance
 
-Every gate verdict is PASS, FAIL, BLOCKED, NOT_RUN or NOT_APPLICABLE. NOT_RUN never becomes PASS. A PASS from uncalibrated, borrowed thresholds (`provisional: true`) warns and routes to review; it never backs acceptance (ADR-2156). Acceptance requires `build-with-quality`'s cross-vendor evidence auditor; a same-family audit is recorded as degraded and cannot back acceptance. The producer never signs the auditor field. Read [quality](references/quality.md) for the gate list and counterexamples.
+Every gate verdict is PASS, FAIL, BLOCKED, NOT_RUN or NOT_APPLICABLE. NOT_RUN never becomes PASS. A PASS from uncalibrated, borrowed thresholds (`provisional: true`) warns and routes to review; it never backs acceptance (ADR-2163). Acceptance requires `build-with-quality`'s cross-vendor evidence auditor; a same-family audit is recorded as degraded and cannot back acceptance. The producer never signs the auditor field. Read [quality](references/quality.md) for the gate list and counterexamples.
 
 ## References and when to read them
 

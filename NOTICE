@@ -57,7 +57,7 @@ Headline third-party / vendored components
       Copyright (c) 2026 Kinoloom contributors; MIT licence text retained at
       https://github.com/harlixay7/Kinoloom/blob/main/LICENSE. Ideas from
       H3STUDIOFILM (GPL-3.0) were re-specified clean-room; no H3 code is
-      included (ADR-2156).
+      included (ADR-2163).
 
   • OpenCV Zoo face models                      MIT / Apache-2.0 (downloaded)
       YuNet (MIT) and SFace (Apache-2.0), fetched at runtime into the ComfyUI

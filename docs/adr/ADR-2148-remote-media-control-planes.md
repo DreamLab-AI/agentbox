@@ -17,7 +17,7 @@ domain: BASELINE-container
 
 # ADR-2148: Typed remote media control planes alongside existing bridges
 
-## Re-verification — 2026-10-30 at 5a6bf94c5 (ADR-2156 tooling)
+## Re-verification — 2026-10-30 at 5a6bf94c5 (ADR-2163 tooling)
 
 Reviewed the governed-path diff from `358e5d32c` to `5a6bf94c5395c494d9a14f70c6b888d7f1497239`. The changes stay inside this record's decision:
 - History remains the terminal authority. The new Python `cancel` deletes or interrupts only an owned `prompt_id` and never issues a bare interrupt.
