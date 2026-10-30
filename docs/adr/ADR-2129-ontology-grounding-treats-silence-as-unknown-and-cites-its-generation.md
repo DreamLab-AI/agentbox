@@ -10,7 +10,7 @@ superseded_by: []
 verified_commit: e8d59c23c265b9a8e1f055884b1b9721299aa614
 verified_paths: [skills/ontology-augment/scripts/ontology-augment.sh, skills/ontology-augment/SKILL.md, skills/ontology-augment/references/REFERENCE.md, skills/ontology-augment/references/EXAMPLES.md, tests/skills/ontology-augment-grounding.test.sh]
 owner: jjohare
-review_trigger: VisionClaw ADR-2128 (versionIRI) or ADR-2127 (tri-valued answers) landing; an agent decision traced to an empty Loom or vault result; the ontology-augment skill's output format changing
+review_trigger: VisionClaw ADR-2128 (versionIRI) or ADR-2127 (tri-valued answers) landing; an agent decision traced to an empty Loom or vault result; the ontology-augment skill's output format changing; the first session on a booted image whose ontology-augment output cites its generation (activation → live)
 repo: agentbox
 domain: GOVERNANCE-capabilities
 ---

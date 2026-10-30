@@ -3,12 +3,12 @@ id: ADR-2136
 title: Pin the shared ontology toolchain independently of the host application
 date: 2026-10-11
 decision_status: proposed
-implementation_status: none
+implementation_status: partial
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: "not applicable — Agentbox repin remains proposed"
-verified_paths: []
+verified_commit: e786197ccb9f56c638d4b0181e77f33ab38b7db9
+verified_paths: [lib/ontomark.nix]
 owner: jjohare
 review_trigger: Before shared workspace extraction or any consumer dependency or generation migration
 repo: agentbox
@@ -93,3 +93,11 @@ Owner decisions, with evidence in [Ontomark ADR-OM-005](https://github.com/Dream
 - **Change.** `vaultSrc` moves to VisionClaw `4fe620296a8266e47f96b106aadd15a513082b97` (on `main` upstream) in `flake.nix` and `flake.lock`. The lock's `narHash` was computed outside Nix by serialising the GitHub source tree in NAR format; the same procedure reproduces the previous lock entry's hash exactly. The `whelk` git dependency is unchanged, so `lib/vault.nix`'s `outputHashes` stand.
 - **Evidence at the new pin.** `cargo test -p vault` passes: 384 tests, 0 failures, across 11 test targets. The binary built from it validates the corpus and agrees with ontomark 0.4.0 on every summary figure: 9546 pages, 9546 with ontology, 9244 public, 0 errors, 28875 warnings, and the two sorted issue lists are identical entry for entry (31253 issues by path, code, line and message). That also answers estate register ER-12: the two frontmatter parsers do not disagree on the real corpus.
 - **Not yet true.** The image has not been rebuilt. The owner rebuilds from the host shell; until then the running `vault` remains the broken one.
+
+## Close-out 2026-10-30
+
+`implementation_status: none → partial`, verified at `e786197ccb9f56c638d4b0181e77f33ab38b7db9`. `decision_status` stays `proposed`, as this record says, and `activation_status` stays `inactive` because the repin itself has not happened.
+
+- `flake.nix:948-959` bakes `ontomarkPkg = import ./lib/ontomark.nix` beside `vaultPkg` under the same gate, and the comment there calls it "agentbox ADR-2136 first step". `lib/ontomark.nix` exists on main.
+- In the running image, built from `e786197cc` (receipt `.agentbox-build/active.json`, `sourceDirty: false`), `command -v ontomark` → `/nix/store/h0x241pq9mqv9mhb0p2v869nn564b9vf-ontomark-0.6.0/bin/ontomark`.
+- Not done: Decision 1's repin of the `vault` source and the preservation of the `vault` command contract. The current `vaultSrc` already drops `find`/`retrieve`/`tree`/`edit`/`create`/`apply` (see ADR-2109's close-out), which breaks that contract for the management-api governance path.

@@ -10,7 +10,7 @@ superseded_by: []
 verified_commit: 21769a881315a246afaa6e9d0b39daf4ec39b5bc
 verified_paths: [services/dream-engine/src/engine.rs, services/dream-engine/src/candidate_flow.rs, services/dream-engine/src/prompt.rs, services/dream-engine/src/prompt/nightly.tmpl]
 owner: jjohare
-review_trigger: the dream engine gaining a tool-using (agentic) model call, or a month of nights in which repair.json records more NO-PATCH/absent outcomes than recovered patches
+review_trigger: the dream engine gaining a tool-using (agentic) model call, or a month of nights in which repair.json records more NO-PATCH/absent outcomes than recovered patches; the first live dream night on a rebuilt image (activation → live)
 repo: agentbox
 domain: GOVERNANCE-capabilities
 lineage: amends legacy ADR-061 (dream ACCEPT persisted as a draft PR — the typed ```dream-patch contract); builds on ADR-2024 (evidence-gated acceptance) and ADR-070 (self-GC evidence governance)

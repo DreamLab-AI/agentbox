@@ -10,7 +10,7 @@ superseded_by: []
 verified_commit: d0e9ca7865c7e120bd657b0ffc66e54b043dfa1a
 verified_paths: [services/agentbox-manifest/src/system_one.rs, config/hooks/lib/jev-option.cjs, tests/system-one/consumer-activation.test.mjs]
 owner: operator
-review_trigger: Image activation or changes to consumer locality or acceptance thresholds
+review_trigger: a passing acceptance run per docs/reference/system-one-activation.md on the booted image, memory recall included once its six frozen fixture IDs resolve (activation → live); changes to consumer locality or acceptance thresholds
 repo: agentbox
 ---
 

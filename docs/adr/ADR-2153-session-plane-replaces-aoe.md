@@ -10,7 +10,7 @@ superseded_by: []
 verified_commit: 67ab0c5414f8e71c13978e1d5a3b5423316cd65f
 verified_paths: [services/agentbox-sessions, config/session-plane, lib/agentbox-sessions.nix, flake.nix, flake.lock, agentbox.toml, config/entrypoint-unified.sh, config/role-accounts.json, config/custody/session-plane-acl.json, config/tab0-bridge, config/nostr-gateway/gateway.cjs, config/nip98-proxy, config/tmux-autostart.sh, config/hooks/session-state.cjs, config/registered-hooks.txt, scripts/session-provision.mjs, scripts/session-control.cjs, scripts/activation/session-plane-cutover.mjs, scripts/activation/session-plane-acceptance.mjs, management-api/lib/system-manifest.js, schema/agentbox.toml.schema.json, services/agentbox-manifest/src/stacks.rs, services/agentbox-manifest/src/stacks_env.rs, tests/cli/session-launch-contract.test.mjs, tests/cli/session-control.test.cjs, tests/config/session-plane-notify.test.sh]
 owner: jjohare
-review_trigger: the session-plane daemon lands, or any AoE consumer below is found to have been missed
+review_trigger: Antigravity signed in and OpenRouter answering the canned round trip (closes §11 acceptance → implementation complete); the agentbox-aoe-profiles mount migration; any AoE consumer found to have been missed
 repo: agentbox
 ---
 
@@ -208,3 +208,15 @@ Re-verified 2026-10-30 at `29a4b4939`: the agentbox.toml delta is three lines in
 Re-verified 2026-10-30 at `cd3a29899`: the delta in schema/agentbox.toml.schema.json is [system_one] only (new `network` and `local_only` properties; `bind` admits 0.0.0.0/RFC 1918); management-api/lib/system-manifest.js gains one entry, `system-one-network`; scripts/agentbox-config-validate.js changes only the [system_one] E080 bind rule. This record's sections are untouched.
 
 Re-verified 2026-10-30 at d0e9ca786: the only change to the governed paths is the new `[system_one].skill_list_at_least` key and its schema property (router runner-up listing, ADR-2091); no section this record governs changed.
+
+## Close-out 2026-10-30 — status check, no axis change
+
+Status stays `accepted / partial / live`. The old trigger ("the session-plane daemon lands") has fired, so `review_trigger` now names the events that close the remaining gap.
+
+- Running image: `.agentbox-build/active.json` (host, read via the project bind) records `sourceCommit` `e786197ccb9f56c638d4b0181e77f33ab38b7db9`, `sourceDirty: false`, `delivery: registry`, `activatedAt` 2026-10-30T14:22:59.281Z, `imageId` `sha256:9776d2fc515c…`; `docker inspect agentbox --format '{{.Image}}'` and `$AGENTBOX_IMAGE_HASH` both return `sha256:9776d2fc515c5922cde9f7791248f731416192a6b4a66e8d6d06b15bfd5c892d`. The running container therefore runs main at `e786197cc`.
+- `supervisorctl status agentbox-sessions` → `RUNNING pid 491, uptime 5:00:52`. `ls -l /run/agentbox-sessions/sessions.sock` → `srw-rw---- devuser ab-sessions`.
+- `agentbox-sessions list` → eight rows: seven seeds (`abs_*`, `origin: seed`) plus `tab0` (`agentbox:0`, `origin: external`). `antigravity` is `blocked: You are currently not signed in`; `codex`, `deepseek`, `loom-raw`, `openrouter`, `router`, `tab0` and `zai` are `idle`. `agentbox-sessions call '{"op":"list"}'` returns the same set with `"ok":true`.
+- `command -v aoe` → not found; `ss -ltn | grep -c ':9095 '` → 0.
+- `git grep -nE '\baoe\b|agent-of-empires|aoe-curl|aoe-serve' -- ':!docs' ':!*.md'` at `e786197cc` finds no live consumer, only residue: the retained `aoe-profiles` volume (`docker-compose.yml:144,194`, `flake.nix:3868,3906`, by design in the cutover section); stale help text naming `/aoe/*` routes (`agentbox.sh:2767,2841`); a stale apply-catalogue summary (`schema/agentbox.toml.apply.json:92`); stale comments (`config/entrypoint-unified.sh:1516`, `management-api/middleware/auth.js:23`, `management-api/routes/sessions-boundary.js:10`); the `aoe-hooks` prune rule (`config/registered-hooks.txt:53-54`); the one-shot `scripts/activation/session-plane-cutover.mjs:6`; and the CI test that guards the no-attach invariant (`.github/workflows/invariants.yml:85`).
+
+Remaining gap (why `partial` stays): §11 all-seed acceptance. Antigravity needs operator sign-in. OpenRouter now reports `idle`, but no round trip was sent from this close-out, so its 401 is not shown fixed. The session-boundary HTTP 500 (`RedactionShapeError`) is not visible in the `supervisorctl tail` window of this boot, which is not evidence of a fix.

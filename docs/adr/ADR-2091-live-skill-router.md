@@ -4,7 +4,7 @@ title: Route each turn to a skill with one typed judgement, failing open to the 
 date: 2026-09-16
 decision_status: accepted
 implementation_status: complete
-activation_status: staged
+activation_status: live
 supersedes: []
 superseded_by: []
 verified_commit: 3b498088e5a35e78158a9eb8d6f0266996d31f82
@@ -246,3 +246,13 @@ Re-verified 2026-10-29 at `00039efb1e4a70402df86ad19cf76894fe3b9a8f` for ADR-215
 
 
 Security follow-up re-verified 2026-10-29 at `7d8c3b2dfe165f4ab3f8a5e4f62b8294ea7b155d`: the changed hunks drop privilege before workspace credential writes, replace credentials atomically, reject typed-decision redirects and retain the timeout through response parsing. The stalled-body, planted-symlink and HTTP307 regressions pass. These strengthen the existing boundaries; status axes and activation limits are unchanged. The original Deepsec report remains BLOCK with a separate remediation receipt, not a claimed clean rescan.
+
+## Close-out 2026-10-30 — activation
+
+`activation_status: staged → live`. The condition above ("the hook is registered in the running container … and becomes the baked path at the next boot") holds on the booted image.
+
+- Running image: `.agentbox-build/active.json` (host, read via the project bind) records `sourceCommit` `e786197ccb9f56c638d4b0181e77f33ab38b7db9`, `sourceDirty: false`, `delivery: registry`, `activatedAt` 2026-10-30T14:22:59.281Z, `imageId` `sha256:9776d2fc515c…`; `docker inspect agentbox --format '{{.Image}}'` and `$AGENTBOX_IMAGE_HASH` both return `sha256:9776d2fc515c5922cde9f7791248f731416192a6b4a66e8d6d06b15bfd5c892d`. The running container therefore runs main at `e786197cc`.
+- `jq -r '.hooks.UserPromptSubmit[]?.hooks[]?.command' ~/.claude/settings.json | grep skill-route` → `AGENTBOX_SKILL_ROUTER=jev … AGENTBOX_SKILL_ROUTE_API=http://127.0.0.1:8094/v1/systemone AGENTBOX_SYSTEM_ONE_PROXY=1 … node /opt/agentbox/config/hooks/skill-route.cjs || true` (the baked path).
+- `jq -r 'select(.ts>="2026-10-30T14:23")|.outcome' ~/.claude/skill-route.jsonl | sort | uniq -c` → `47 routed`, `14 skipped` since boot; last line `outcome: routed`, `model: jev-1.14.0`, `scope: registered`, 318 ms.
+
+Implementation axis and `verified_commit` are unchanged; this is an activation receipt only. Accuracy against the 85 % trigger is not re-measured here.

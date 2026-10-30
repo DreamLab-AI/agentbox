@@ -100,3 +100,15 @@ Four commits change the governed mechanism, in `management-api/lib/ontology-appl
 Decision points 1, 3 (edit path), 4, 5, 7, 8, 9, 10 and 11 still hold. Decision 2's environment list was already incomplete at the anchor (`vaultEnv`, `:67-80`, also passes `VAULT_REPO` and, when set, `VAULT_NOSTR_SECRET`/`VAULT_RELAY_URL`). Decision 6 names the old URL rule. Nothing records the amend apply, the roster gate or the commit step. Points 2 and 6 are corrected, and points 12-14 are added.
 
 `node --test management-api/tests/{ontology-apply,ontology-propose-vault}.test.js` passes 81 of 81 at `cca7ea3b1`, with `js-yaml` resolved from the main checkout's `node_modules`. The title and status axes are unchanged.
+
+## Close-out 2026-10-30 — trigger fired, gap moved, no axis change
+
+Status stays `accepted / partial / staged`. Both halves of `review_trigger` have fired, and that exposed a regression in the binary this record invokes.
+
+- `vault` is on PATH in the running image (built from `e786197cc`; receipt `.agentbox-build/active.json`, `sourceDirty: false`). `vault --version` → `vault 0.1.0`.
+- The Loom deploys `/loom/attest`: `curl -s -o /dev/null -w '%{http_code}' http://192.168.2.132:8084/loom/attest` → `405` (the route exists and is POST-only); an unknown `/loom/…` path → `404`.
+- **Regression:** the baked vault no longer carries the verbs this handler spawns. `vault --help` ends `Moved: find, retrieve, tree, edit, create and apply now live in the ontomark CLI`. `vault find --query x --json` → exit 2, `error: unrecognized subcommand 'find'`. `vault edit --help` → exit 2. The handler still spawns them through `vaultBin()` (`management-api/lib/ontology-apply.js:151-153`, default `vault`): `find` at `:221`, `edit` at `:420`, `create` at `:478` and `apply` at `:668`. The running management-api environment sets `VAULT_REPO` but no `VAULT_BIN` (read from `/proc/<pid>/environ`), and the baked `ontology-apply.js` is byte-identical to main (`git diff --no-index` empty). The signer-roster gate does not mask this: `AGENTBOX_FORUM_GOVERNANCE_SIGNERS` is set in the running management-api environment, so a human-signed Promote, Demote, create or amend passes the roster and fails at the spawn. The bug is live, not latent. It also breaks ADR-2136 Decision 1 ("preserve the `vault` command contract or ship an explicitly versioned transition"), so it is accidental drift, not a supersession. `flake.nix:950-953` still says "vault keeps the governance verbs (find, retrieve, tree, edit, propose)", which is no longer true at the current `vaultSrc` pin.
+- `ontomark 0.6.0` is baked beside it (`/nix/store/h0x241pq…-ontomark-0.6.0/bin/ontomark`), and `ontomark edit --help` answers `Guarded mutation; refused without --expect`. The fix is to re-point these four calls (and `local-process-manager.js`'s comments) at `ontomark` with its argv verified, or to pin a vault that keeps the verbs. That is a runtime change, so it is out of scope for a doc close-out.
+
+Remaining gap: the four spawns above, then an `E2E_REAL_VAULT=1` run against the baked binaries.
+
