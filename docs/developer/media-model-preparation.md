@@ -127,3 +127,13 @@ Import success and a verified model file do not prove generation quality or
 compatibility with other attention patches. Evaluate the supplied standalone
 workflow before combining it with Layout-to-Render. Both upstream package and
 model card declare GPL-3.0; retain their licence material.
+
+## Optional ComfyUI-SpEdE (Gaussian-splat remove, extract, replace)
+
+The ComfyUI image bakes `Burgstall-labs/ComfyUI-SpEdE` (AGPL-3.0-or-later) at
+`78b2a011ae8c47e702b25759c95d140784da97ce`, unmodified, on a CUDA 13.0.3 devel base with
+gsplat 1.5.3 built ahead of time (`--build-arg SPEDE=0` skips both). The `spede` and
+`spede-replace` profiles add the SAM 3.1, Qwen-Image 2.1 (non-commercial), MoGe-3 and TripoSplat
+weights to the models volume. Run `docker exec -i comfyui bash -s < comfyui-sidecar/verify-spede.sh`
+after the host rebuild. Details, the probe manifest and the untested points are in
+`skills/comfyui/references/spede.md`.

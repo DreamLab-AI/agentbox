@@ -9,8 +9,9 @@ ahead of time for sm_86 and sm_89 (RTX A6000, RTX 6000 Ada). Attribution is in `
 It edits a 3D Gaussian-splat scene (a 3DGS PLY plus a camera pack) from ComfyUI graphs:
 select an object with SAM 3.1, then **extract** it, **remove** it (Qwen-Image 2.1 repair, MoGe-3
 depth, depth-driven Gaussian births), or **replace** it (TripoSplat object registered into the
-scene). Results are judged by gates: G1, G2, G3 (geometry and render checks on the edit), H1
-(held-out cameras outside the mask) and K1. The all-around fill has an independent and a
+scene). Every step is judged by a gate (upstream's names): G1 removal residual, G2 depth
+alignment (depth fill) or plane evidence (planar patch), G3 rendered patch against Qwen's edit,
+H1 other cameras unchanged outside the mask, K1 clean extraction. A failed gate stops the job. The all-around fill has an independent and a
 progressive method. The experimental orbit (MiniMax H3 ref2va) is not provisioned here.
 
 ## Build and gate

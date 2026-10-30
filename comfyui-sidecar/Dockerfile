@@ -35,8 +35,8 @@ RUN --mount=type=cache,target=/root/.cache/pip if [ "$SPEDE" = "1" ]; then \
       git init /tmp/gsplat-src && cd /tmp/gsplat-src \
         && git remote add origin https://github.com/nerfstudio-project/gsplat.git \
         && git fetch --depth 1 origin ${GSPLAT_REV} && git checkout --detach FETCH_HEAD \
-        && git submodule update --init --recursive --depth 1 \
-        && test -f gsplat/cuda/csrc/third_party/glm/glm/glm.hpp; \
+        && git submodule update --init --recursive --depth 1; \
+      test -f /tmp/gsplat-src/gsplat/cuda/csrc/third_party/glm/glm/glm.hpp; \
       TORCH_CUDA_ARCH_LIST="8.6;8.9" MAX_JOBS=4 pip install --no-build-isolation --no-deps /tmp/gsplat-src; \
       cd / && rm -rf /tmp/gsplat-src; \
       python -c "import torch, gsplat.csrc as csrc; from gsplat.cuda._backend import _C; assert _C is csrc and _C.__name__ == 'gsplat.csrc', _C; assert csrc.__file__.endswith('.so'), csrc.__file__; from gsplat import rasterize_to_indices_in_range; assert torch.__version__ == '2.14.0+cu130', torch.__version__; print('gsplat prebuilt:', csrc.__file__, '| torch', torch.__version__)"; \
@@ -93,12 +93,12 @@ RUN --mount=type=cache,target=/root/.cache/pip pip uninstall -y opencv-python op
     && pip install --timeout 180 --retries 10 --force-reinstall --no-deps opencv-python-headless==5.0.0.93 \
     && python -c "import cv2, numpy; print('cv2', cv2.__version__, 'numpy', numpy.__version__)"
 # SpEdE leaves the venv consistent: pip check output is always printed. It is fatal only when a
-# package this change owns (gsplat, plyfile, jaxtyping, scipy, rich, ninja) is the broken subject;
-# torch, numpy, Pillow and pre-existing third-party conflicts (BFSnodes, LTXVideo, ComfyUI) are
+# package this change owns (gsplat, plyfile, jaxtyping, rich, ninja) is the broken subject;
+# torch, numpy, scipy (ComfyUI already requires it), Pillow and pre-existing third-party conflicts (BFSnodes, LTXVideo, ComfyUI) are
 # reported but must not block the image. The torch version is re-asserted after every install.
 RUN if [ "$SPEDE" = "1" ]; then \
       pip check > /tmp/pipcheck.txt 2>&1 || true; cat /tmp/pipcheck.txt; \
-      if grep -iE '^(gsplat|plyfile|jaxtyping|scipy|rich|ninja)[ =]' /tmp/pipcheck.txt; then echo 'pip check: SpEdE-owned package broken' >&2; exit 1; fi; \
+      if grep -iE '^(gsplat|plyfile|jaxtyping|rich|ninja)[ =]' /tmp/pipcheck.txt; then echo 'pip check: SpEdE-owned package broken' >&2; exit 1; fi; \
       rm -f /tmp/pipcheck.txt; \
       python -c "import torch, gsplat, scipy, plyfile, numpy, PIL, cv2; assert torch.__version__ == '2.14.0+cu130', torch.__version__; print('torch', torch.__version__, 'gsplat', gsplat.__version__, 'scipy', scipy.__version__, 'plyfile', plyfile.__version__, 'numpy', numpy.__version__, 'Pillow', PIL.__version__, 'cv2', cv2.__version__)"; \
     fi
