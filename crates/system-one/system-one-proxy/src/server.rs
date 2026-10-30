@@ -15,7 +15,7 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use axum::body::Bytes;
 use axum::extract::State;
-use axum::http::{header, HeaderValue, StatusCode};
+use axum::http::{header, HeaderMap, HeaderValue, StatusCode};
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::{Json, Router};
@@ -50,7 +50,7 @@ impl Counters {
             "ok": self.ok.load(Ordering::Relaxed),
             "errors": self.errors.load(Ordering::Relaxed),
             "total_ms": ms,
-            "mean_ms": if reqs == 0 { 0 } else { ms / reqs },
+            "mean_ms": ms.checked_div(reqs).unwrap_or(0),
             "input_tokens": toks,
             "estimated_usd": (toks as f64) / 1_000_000.0 * usd_per_mtok_in,
         })
@@ -143,7 +143,30 @@ fn locality_ok(p: &Projection, b: &Backend) -> Result<(), ProxyError> {
     Ok(())
 }
 
-async fn systemone(State(proxy): State<Shared>, body: Bytes) -> Response {
+/// True for a request only a browser would send. The proxy may listen on a private
+/// docker network that a browser sidecar shares, and a page can POST there without
+/// a CORS preflight. Every browser sends `Origin` on a cross-origin POST (`null`
+/// included); a "simple" request also carries a non-JSON content type. Consumers
+/// (reqwest, curl, Node fetch) send neither.
+fn browser_shaped(headers: &HeaderMap) -> bool {
+    if headers.contains_key(header::ORIGIN) {
+        return true;
+    }
+    headers.get(header::CONTENT_TYPE).is_some_and(|v| {
+        let v = v.to_str().unwrap_or("").to_ascii_lowercase();
+        let mime = v.split(';').next().unwrap_or("").trim();
+        mime != "application/json"
+    })
+}
+
+async fn systemone(State(proxy): State<Shared>, headers: HeaderMap, body: Bytes) -> Response {
+    if browser_shaped(&headers) {
+        return (
+            StatusCode::FORBIDDEN,
+            Json(json!({"error": "browser-originated requests are refused"})),
+        )
+            .into_response();
+    }
     let started = Instant::now();
     let p = proxy.projection();
     let name = p.active.clone();

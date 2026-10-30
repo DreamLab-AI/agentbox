@@ -248,3 +248,41 @@ fn bump(f: &std::path::Path) {
         .set_modified(later)
         .unwrap();
 }
+
+#[tokio::test]
+async fn browser_shaped_requests_are_refused_before_any_upstream_call() {
+    // The proxy can listen on the private docker network, which a browser sidecar
+    // shares; a page could POST to it without a preflight. Refuse what only a
+    // browser sends: any Origin, or a non-JSON content type (a "simple" request).
+    let (up, seen) = serve_stub().await;
+    let f = tmpfile("browser.json");
+    std::fs::write(&f, projection(up, "stub", Some(false))).unwrap();
+    let (addr, _p) = serve_proxy(&f).await;
+    let client = reqwest::Client::new();
+    let body = r#"{"model":"x","state":"s","questions":{"q":{"type":"noul","instructions":"?"}}}"#;
+    for (origin, ctype) in [
+        (Some("https://example.com"), "application/json"),
+        (Some("null"), "application/json"),
+        (None, "text/plain;charset=UTF-8"),
+        (None, "application/x-www-form-urlencoded"),
+    ] {
+        let mut rq = client
+            .post(format!("http://{addr}/v1/systemone"))
+            .header("content-type", ctype)
+            .body(body);
+        if let Some(o) = origin {
+            rq = rq.header("origin", o);
+        }
+        let r = rq.send().await.unwrap();
+        assert_eq!(r.status(), 403, "{origin:?} {ctype}");
+    }
+    // A JSON request with a charset parameter, and one with no content type, still pass.
+    for ctype in [Some("application/json; charset=utf-8"), None] {
+        let mut rq = client.post(format!("http://{addr}/v1/systemone")).body(body);
+        if let Some(c) = ctype {
+            rq = rq.header("content-type", c);
+        }
+        assert_eq!(rq.send().await.unwrap().status(), 200, "{ctype:?}");
+    }
+    assert_eq!(seen.lock().unwrap().bodies.len(), 2, "refused requests never reach the backend");
+}

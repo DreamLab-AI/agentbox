@@ -294,6 +294,14 @@ one declared case only:
   consumer with no usable local backend is switched off, never sent to the cloud.
   Data-level fences (email taint, private ontology seeds) are unchanged.
 
+Those networks include `browsercontainer`, whose Chrome loads arbitrary pages, and a page
+can POST to `agentbox:8094` without a CORS preflight. So `POST /v1/systemone` refuses with
+403, before any upstream call, any request carrying `Origin` (every browser sends it on a
+cross-origin POST, `null` included) or a content type other than `application/json`
+(`server.rs` `browser_shaped`; test `browser_shaped_requests_are_refused_before_any_upstream_call`).
+Consumers (reqwest, curl, Node fetch) send neither. Checked before the fix: a text/plain POST
+and an Origin-bearing POST were both forwarded.
+
 Because the proxy rewrites `model` to the active backend's (checked: a request naming a
 bogus model returned `jev-1.14.0`), one backend switch now reroutes every consumer.
 
