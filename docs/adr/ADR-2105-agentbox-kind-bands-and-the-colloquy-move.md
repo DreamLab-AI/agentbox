@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: d0e9ca7865c7e120bd657b0ffc66e54b043dfa1a
+verified_commit: 67ab0c5414f8e71c13978e1d5a3b5423316cd65f
 verified_paths: [crates/colloquy/colloquy-nostr/src/kinds.rs, docs/PROTOCOL-registry.md, services/nostr-pod-bridge/src/colloquy_publish.rs, agentbox.toml]
 owner: jjohare
 review_trigger: the next agentbox Nostr kind allocation, or any change to the band table in docs/PROTOCOL-registry.md
@@ -15,6 +15,12 @@ repo: agentbox
 ---
 
 # ADR-2105 — The agentbox 38xxx bands below 38400 are all reserved, so colloquy and settlement move to 38400-38499
+
+## Re-verification — 2026-10-30
+
+Reviewed the protocol-registry appendix added by ADR-2162: it is explicitly
+proposed, not implemented, and leaves the existing kind allocations unchanged.
+This re-verification does not activate federation or change this record's status.
 
 ## Re-verification — 2026-10-29 at 3b498088e (ADR-2153 cutover)
 

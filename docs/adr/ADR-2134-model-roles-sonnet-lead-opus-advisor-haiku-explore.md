@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 951ada931e235ad45b61b2bef90b7e5c76f8d76c
+verified_commit: 67ab0c5414f8e71c13978e1d5a3b5423316cd65f
 verified_paths: [services/agentbox-manifest/src/permissions.rs, agents/Explore.md, scripts/bake-ruflo-console.sh]
 owner: jjohare
 review_trigger: a Claude Code release that changes advisor pairing rules, or the ADR-2135 shadow log showing a subagent-model policy that beats this one
@@ -15,6 +15,13 @@ repo: agentbox
 ---
 
 # ADR-2134 — Model roles: Sonnet leads, an Opus advisor is on call, search fans out to Haiku
+
+## Re-verification — 2026-10-30
+
+The governed Rust files changed only through `c3a370c60` formatting. Reformatting
+the previous sources reproduced the current bytes; the governed state before
+that formatting commit matches this record's previous verification. Existing
+claims and activation status are unchanged; this is not new runtime acceptance.
 
 ## Context
 Claude Code's advisor tool (`advisorModel`, `--advisor`, `/advisor`; code.claude.com/docs/en/advisor) lets the main model consult a stronger one at decision points. The advisor must rank at or above the main model. Nothing in agentbox chose the Claude model: `model`/`effortLevel` were hand-set, ruflo's TinyDancer tiers label `agent_spawn` records that never become Claude Code subagents, `[model_routing.routes]` feeds only agentic-qe, and the ruflo-mods keyword route injected a dead `coder` recommendation every turn. A circulated "`--subagents haiku`" flag and "3× dispatcher pool" do not exist.

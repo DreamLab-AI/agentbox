@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 358e5d32c81e8a4259d754568919a962461b9a31
+verified_commit: 67ab0c5414f8e71c13978e1d5a3b5423316cd65f
 verified_paths: [config/instructions, services/agentbox-manifest/src/instructions.rs, services/agentbox-manifest/src/cred_sync.rs, config/entrypoint-unified.sh, agentbox.sh, flake.nix, docker-compose.yml, docker-compose.override.yml, tests/config/claude-home-migration.test.sh, tests/config/compose-persistence.test.cjs]
 owner: jjohare
 review_trigger: Claude Code starts reading AGENTS.md natively (drop the @AGENTS.md wrappers and the embed); or a Claude Code release changes where credentials live
@@ -16,6 +16,13 @@ domain: BASELINE-container
 ---
 
 # ADR-2118 — Own the instruction tiers and the Claude home in the repo
+
+## Re-verification — 2026-10-30
+
+The governed Rust files changed only through `c3a370c60` formatting. Reformatting
+the previous sources reproduced the current bytes; the governed state before
+that formatting commit matches this record's previous verification. Existing
+claims and activation status are unchanged; this is not new runtime acceptance.
 
 ## Re-verification — 2026-10-29 at 3b498088e (ADR-2153 cutover)
 

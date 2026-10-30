@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: 3b498088e5a35e78158a9eb8d6f0266996d31f82
+verified_commit: 67ab0c5414f8e71c13978e1d5a3b5423316cd65f
 verified_paths: [config/hooks/activity-sink.cjs, config/entrypoint-unified.sh, services/agentbox-manifest/src/stacks.rs, services/agentbox-manifest/src/stacks_env.rs, tests/config/activity-sink.test.js, config/egress-policy.json]
 owner: jjohare
 review_trigger: a second consumer of the sink, a change to the wire body, a new event or tool class, moving the token under role isolation (ADR-2122), or any change to the ADR-2026 redactor
@@ -16,6 +16,13 @@ domain: GOVERNANCE-capabilities
 ---
 
 # ADR-2146 — Agent activity leaves through one generic, manifest-gated, fail-open sink hook
+
+## Re-verification — 2026-10-30
+
+The governed Rust files changed only through `c3a370c60` formatting. Reformatting
+the previous sources reproduced the current bytes; the governed state before
+that formatting commit matches this record's previous verification. Existing
+claims and activation status are unchanged; this is not new runtime acceptance.
 
 ## Re-verification — 2026-10-29 at 3b498088e (ADR-2153 cutover)
 

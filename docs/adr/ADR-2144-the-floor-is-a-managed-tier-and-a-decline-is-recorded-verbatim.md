@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 358e5d32c81e8a4259d754568919a962461b9a31
+verified_commit: 67ab0c5414f8e71c13978e1d5a3b5423316cd65f
 verified_paths: [config/instructions/floor.md, config/hooks/decline-recorder.cjs, services/agentbox-manifest/src/instructions.rs, config/registered-hooks.txt, tests/config/decline-recorder.test.mjs, tests/config/instructions-layers.test.sh, services/agentbox-manifest/src/stacks.rs, services/agentbox-manifest/src/stacks_env.rs, flake.nix]
 owner: jjohare
 review_trigger: a Stop/SubagentStop hook that can halt a task (upgrade the exit clause to "halts the task"); a Claude Code release that changes managed CLAUDE.md, omitClaudeMd or last_assistant_message semantics; a second operator (the single-operator premise behind "the operator reads them")
@@ -15,6 +15,13 @@ repo: agentbox
 ---
 
 # ADR-2144 — The floor is a managed instruction tier, and a decline is recorded verbatim
+
+## Re-verification — 2026-10-30
+
+The governed Rust files changed only through `c3a370c60` formatting. Reformatting
+the previous sources reproduced the current bytes; the governed state before
+that formatting commit matches this record's previous verification. Existing
+claims and activation status are unchanged; this is not new runtime acceptance.
 
 ## Re-verification — 2026-10-29 at 3b498088e (ADR-2153 cutover)
 
