@@ -11,7 +11,8 @@
 //! `instructions-project`, which composes both files from the repo layers.
 
 /// Opening marker of the generated block.
-pub const BEGIN: &str = "<!-- agents-md:begin — generated from AGENTS.md at boot; edit AGENTS.md, not this block -->";
+pub const BEGIN: &str =
+    "<!-- agents-md:begin — generated from AGENTS.md at boot; edit AGENTS.md, not this block -->";
 /// Closing marker of the generated block.
 pub const END: &str = "<!-- agents-md:end -->";
 

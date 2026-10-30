@@ -93,8 +93,14 @@ fn http_entry(hub_url: &str, name: &str, stdio: &Value) -> Value {
 fn child_spec(stdio: &Value) -> Value {
     let mut s = Map::new();
     s.insert("command".into(), stdio["command"].clone());
-    s.insert("args".into(), stdio.get("args").cloned().unwrap_or_else(|| json!([])));
-    s.insert("env".into(), stdio.get("env").cloned().unwrap_or_else(|| json!({})));
+    s.insert(
+        "args".into(),
+        stdio.get("args").cloned().unwrap_or_else(|| json!([])),
+    );
+    s.insert(
+        "env".into(),
+        stdio.get("env").cloned().unwrap_or_else(|| json!({})),
+    );
     if let Some(cwd) = stdio.get("cwd") {
         s.insert("cwd".into(), cwd.clone());
     }
@@ -130,20 +136,25 @@ pub fn apply(
                         hub_servers.insert(name.clone(), child_spec(stdio));
                         report.kept.push(name.clone());
                     }
-                    None => report
-                        .skipped
-                        .push((name.clone(), "hub entry without a stored stdio definition".into())),
+                    None => report.skipped.push((
+                        name.clone(),
+                        "hub entry without a stored stdio definition".into(),
+                    )),
                 },
                 Some(_) => report
                     .skipped
                     .push((name.clone(), "not a stdio entry (left as is)".into())),
-                None => report.skipped.push((name.clone(), "absent from .mcp.json".into())),
+                None => report
+                    .skipped
+                    .push((name.clone(), "absent from .mcp.json".into())),
             }
         }
     } else {
         let names: Vec<String> = table.keys().cloned().collect();
         for name in names {
-            let Some(entry) = table.get(&name) else { continue };
+            let Some(entry) = table.get(&name) else {
+                continue;
+            };
             if !is_hub_entry(entry, hub_url, &name) {
                 continue;
             }
@@ -152,9 +163,10 @@ pub fn apply(
                     table.insert(name.clone(), stdio.clone());
                     report.restored.push(name);
                 }
-                None => report
-                    .skipped
-                    .push((name, "hub entry with no stored definition to restore".into())),
+                None => report.skipped.push((
+                    name,
+                    "hub entry with no stored definition to restore".into(),
+                )),
             }
         }
     }
@@ -234,20 +246,39 @@ mod tests {
     fn converts_stdio_entries_and_records_definitions() {
         let mut mcp = doc();
         let mut state = Map::new();
-        let (r, cfg) = apply(&mut mcp, &mut state, HUB, "127.0.0.1:9720", &names(&["consultant-codex", "perplexity", "browser-gpu", "missing"]), true);
+        let (r, cfg) = apply(
+            &mut mcp,
+            &mut state,
+            HUB,
+            "127.0.0.1:9720",
+            &names(&["consultant-codex", "perplexity", "browser-gpu", "missing"]),
+            true,
+        );
         assert_eq!(r.converted, names(&["consultant-codex", "perplexity"]));
         assert_eq!(r.skipped.len(), 2);
         let s = &mcp["mcpServers"];
         assert_eq!(s["consultant-codex"]["type"], "http");
-        assert_eq!(s["consultant-codex"]["url"], "http://127.0.0.1:9720/consultant-codex/mcp");
+        assert_eq!(
+            s["consultant-codex"]["url"],
+            "http://127.0.0.1:9720/consultant-codex/mcp"
+        );
         assert_eq!(s["consultant-codex"]["description"], "Codex consultant");
         assert!(s["consultant-codex"].get("command").is_none());
-        assert!(s["consultant-codex"].get("env").is_none(), "secrets leave .mcp.json");
-        assert_eq!(s["code-interpreter"]["command"], "python3", "unlisted stays stdio");
+        assert!(
+            s["consultant-codex"].get("env").is_none(),
+            "secrets leave .mcp.json"
+        );
+        assert_eq!(
+            s["code-interpreter"]["command"], "python3",
+            "unlisted stays stdio"
+        );
         assert_eq!(s["browser-gpu"]["type"], "sse");
         assert_eq!(state["perplexity"]["env"]["PERPLEXITY_API_KEY"], "k");
         assert_eq!(cfg["servers"]["perplexity"]["command"], "node");
-        assert_eq!(cfg["servers"]["consultant-codex"]["args"][1], "exec node x.js");
+        assert_eq!(
+            cfg["servers"]["consultant-codex"]["args"][1],
+            "exec node x.js"
+        );
         assert_eq!(cfg["bind"], "127.0.0.1:9720");
         assert!(cfg["servers"].get("code-interpreter").is_none());
     }
@@ -256,21 +287,53 @@ mod tests {
     fn second_boot_keeps_hub_entries_from_state() {
         let mut mcp = doc();
         let mut state = Map::new();
-        apply(&mut mcp, &mut state, HUB, "b", &names(&["perplexity"]), true);
+        apply(
+            &mut mcp,
+            &mut state,
+            HUB,
+            "b",
+            &names(&["perplexity"]),
+            true,
+        );
         // The upstream block is grep-guarded and leaves the http entry alone.
-        let (r, cfg) = apply(&mut mcp, &mut state, HUB, "b", &names(&["perplexity"]), true);
+        let (r, cfg) = apply(
+            &mut mcp,
+            &mut state,
+            HUB,
+            "b",
+            &names(&["perplexity"]),
+            true,
+        );
         assert_eq!(r.kept, names(&["perplexity"]));
         assert!(r.converted.is_empty());
-        assert_eq!(cfg["servers"]["perplexity"]["env"]["PERPLEXITY_API_KEY"], "k");
+        assert_eq!(
+            cfg["servers"]["perplexity"]["env"]["PERPLEXITY_API_KEY"],
+            "k"
+        );
     }
 
     #[test]
     fn refreshed_upstream_definition_wins_over_state() {
         let mut mcp = doc();
         let mut state = Map::new();
-        apply(&mut mcp, &mut state, HUB, "b", &names(&["perplexity"]), true);
-        mcp["mcpServers"]["perplexity"] = json!({"command": "node", "args": ["p2.js"], "env": {"PERPLEXITY_API_KEY": "k2"}});
-        let (r, cfg) = apply(&mut mcp, &mut state, HUB, "b", &names(&["perplexity"]), true);
+        apply(
+            &mut mcp,
+            &mut state,
+            HUB,
+            "b",
+            &names(&["perplexity"]),
+            true,
+        );
+        mcp["mcpServers"]["perplexity"] =
+            json!({"command": "node", "args": ["p2.js"], "env": {"PERPLEXITY_API_KEY": "k2"}});
+        let (r, cfg) = apply(
+            &mut mcp,
+            &mut state,
+            HUB,
+            "b",
+            &names(&["perplexity"]),
+            true,
+        );
         assert_eq!(r.converted, names(&["perplexity"]));
         assert_eq!(cfg["servers"]["perplexity"]["args"][0], "p2.js");
         assert_eq!(state["perplexity"]["env"]["PERPLEXITY_API_KEY"], "k2");
@@ -278,27 +341,51 @@ mod tests {
 
     #[test]
     fn hub_entry_without_state_is_reported_not_broken() {
-        let mut mcp = json!({"mcpServers": {"x": {"type": "http", "url": "http://127.0.0.1:9720/x/mcp"}}});
+        let mut mcp =
+            json!({"mcpServers": {"x": {"type": "http", "url": "http://127.0.0.1:9720/x/mcp"}}});
         let mut state = Map::new();
         let (r, cfg) = apply(&mut mcp, &mut state, HUB, "b", &names(&["x"]), true);
         assert_eq!(r.skipped[0].0, "x");
         assert!(cfg["servers"].as_object().unwrap().is_empty());
-        assert_eq!(mcp["mcpServers"]["x"]["type"], "http", "left for the operator to see");
+        assert_eq!(
+            mcp["mcpServers"]["x"]["type"], "http",
+            "left for the operator to see"
+        );
     }
 
     #[test]
     fn disable_restores_only_hub_entries_with_definitions() {
         let mut mcp = doc();
         let mut state = Map::new();
-        apply(&mut mcp, &mut state, HUB, "b", &names(&["perplexity", "consultant-codex"]), true);
-        mcp["mcpServers"]["orphan"] = json!({"type": "http", "url": "http://127.0.0.1:9720/orphan/mcp"});
+        apply(
+            &mut mcp,
+            &mut state,
+            HUB,
+            "b",
+            &names(&["perplexity", "consultant-codex"]),
+            true,
+        );
+        mcp["mcpServers"]["orphan"] =
+            json!({"type": "http", "url": "http://127.0.0.1:9720/orphan/mcp"});
         mcp["mcpServers"]["other-http"] = json!({"type": "http", "url": "http://elsewhere/mcp"});
         let (r, cfg) = apply(&mut mcp, &mut state, HUB, "b", &[], false);
         assert_eq!(r.restored, names(&["consultant-codex", "perplexity"]));
-        assert_eq!(r.skipped, vec![("orphan".to_string(), "hub entry with no stored definition to restore".to_string())]);
+        assert_eq!(
+            r.skipped,
+            vec![(
+                "orphan".to_string(),
+                "hub entry with no stored definition to restore".to_string()
+            )]
+        );
         assert_eq!(mcp["mcpServers"]["perplexity"]["command"], "node");
-        assert_eq!(mcp["mcpServers"]["perplexity"]["env"]["PERPLEXITY_API_KEY"], "k");
-        assert_eq!(mcp["mcpServers"]["other-http"]["url"], "http://elsewhere/mcp");
+        assert_eq!(
+            mcp["mcpServers"]["perplexity"]["env"]["PERPLEXITY_API_KEY"],
+            "k"
+        );
+        assert_eq!(
+            mcp["mcpServers"]["other-http"]["url"],
+            "http://elsewhere/mcp"
+        );
         assert!(cfg["servers"].as_object().unwrap().is_empty());
     }
 
@@ -313,10 +400,21 @@ mod tests {
         std::fs::create_dir_all(out.parent().unwrap()).unwrap();
         std::fs::write(&mcp_path, doc().to_string()).unwrap();
 
-        project(&mcp_path, &state_path, &out, HUB, "127.0.0.1:9720", &names(&["perplexity"]), true).unwrap();
-        let mcp: Value = serde_json::from_str(&std::fs::read_to_string(&mcp_path).unwrap()).unwrap();
+        project(
+            &mcp_path,
+            &state_path,
+            &out,
+            HUB,
+            "127.0.0.1:9720",
+            &names(&["perplexity"]),
+            true,
+        )
+        .unwrap();
+        let mcp: Value =
+            serde_json::from_str(&std::fs::read_to_string(&mcp_path).unwrap()).unwrap();
         assert_eq!(mcp["mcpServers"]["perplexity"]["type"], "http");
-        let st: Value = serde_json::from_str(&std::fs::read_to_string(&state_path).unwrap()).unwrap();
+        let st: Value =
+            serde_json::from_str(&std::fs::read_to_string(&state_path).unwrap()).unwrap();
         assert_eq!(st["servers"]["perplexity"]["command"], "node");
         let cfg: Value = serde_json::from_str(&std::fs::read_to_string(&out).unwrap()).unwrap();
         assert_eq!(cfg["schema"], "agentbox.mcp-hub.v1");
@@ -324,18 +422,41 @@ mod tests {
         {
             use std::os::unix::fs::PermissionsExt;
             for p in [&state_path, &out] {
-                assert_eq!(std::fs::metadata(p).unwrap().permissions().mode() & 0o777, 0o600, "{}", p.display());
+                assert_eq!(
+                    std::fs::metadata(p).unwrap().permissions().mode() & 0o777,
+                    0o600,
+                    "{}",
+                    p.display()
+                );
             }
         }
-        project(&mcp_path, &state_path, &out, HUB, "127.0.0.1:9720", &[], false).unwrap();
-        let mcp: Value = serde_json::from_str(&std::fs::read_to_string(&mcp_path).unwrap()).unwrap();
+        project(
+            &mcp_path,
+            &state_path,
+            &out,
+            HUB,
+            "127.0.0.1:9720",
+            &[],
+            false,
+        )
+        .unwrap();
+        let mcp: Value =
+            serde_json::from_str(&std::fs::read_to_string(&mcp_path).unwrap()).unwrap();
         assert_eq!(mcp["mcpServers"]["perplexity"]["command"], "node");
         let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]
     fn summary_names_what_changed() {
-        let r = Report { converted: names(&["a"]), kept: vec![], restored: vec![], skipped: vec![("b".into(), "absent".into())] };
-        assert_eq!(r.summary(true), "hub on: converted=1 kept=0 restored=0 skipped=1; converted: a; skip b (absent)");
+        let r = Report {
+            converted: names(&["a"]),
+            kept: vec![],
+            restored: vec![],
+            skipped: vec![("b".into(), "absent".into())],
+        };
+        assert_eq!(
+            r.summary(true),
+            "hub on: converted=1 kept=0 restored=0 skipped=1; converted: a; skip b (absent)"
+        );
     }
 }

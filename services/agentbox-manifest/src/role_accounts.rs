@@ -466,13 +466,18 @@ pub fn validate(t: &Table) -> Result<(), String> {
     for g in &t.groups {
         let at = format!("group {:?}", g.name);
         if !is_role_name(&g.name) {
-            errs.push(format!("{at}: names are ab-<lowercase, digits, hyphens>, at most {NAME_MAX} characters"));
+            errs.push(format!(
+                "{at}: names are ab-<lowercase, digits, hyphens>, at most {NAME_MAX} characters"
+            ));
         }
         if !names.insert(g.name.as_str()) {
             errs.push(format!("{at}: the name is already a role or group"));
         }
         if g.gid < lo || g.gid > hi {
-            errs.push(format!("{at}: gid {} is outside uid_range [{lo}, {hi}]", g.gid));
+            errs.push(format!(
+                "{at}: gid {} is outside uid_range [{lo}, {hi}]",
+                g.gid
+            ));
         }
         if reserved.contains(&g.gid) {
             errs.push(format!("{at}: gid {} is reserved", g.gid));
@@ -490,38 +495,62 @@ pub fn validate(t: &Table) -> Result<(), String> {
         // role secret its env name could clash with.
         if g.owner == DEVUSER {
             if !g.members.iter().any(|m| m == DEVUSER) {
-                errs.push(format!("{at}: owner {DEVUSER} must be a member (chgrp needs it)"));
+                errs.push(format!(
+                    "{at}: owner {DEVUSER} must be a member (chgrp needs it)"
+                ));
             }
         } else {
             match t.roles.iter().find(|r| r.name == g.owner) {
-            None => errs.push(format!("{at}: owner {:?} is not a role", g.owner)),
-            Some(r) => {
-                if !g.members.contains(&g.owner) {
-                    errs.push(format!("{at}: owner {} must be a member (chgrp needs it)", g.owner));
+                None => errs.push(format!("{at}: owner {:?} is not a role", g.owner)),
+                Some(r) => {
+                    if !g.members.contains(&g.owner) {
+                        errs.push(format!(
+                            "{at}: owner {} must be a member (chgrp needs it)",
+                            g.owner
+                        ));
+                    }
+                    if r.secrets
+                        .iter()
+                        .any(|s| s.env.as_deref() == Some(g.env.as_str()))
+                    {
+                        errs.push(format!(
+                            "{at}: env {} already names a secret of {}",
+                            g.env, g.owner
+                        ));
+                    }
                 }
-                if r.secrets.iter().any(|s| s.env.as_deref() == Some(g.env.as_str())) {
-                    errs.push(format!("{at}: env {} already names a secret of {}", g.env, g.owner));
-                }
-            }
             }
         }
         if !is_env_name(&g.env) || matches!(g.env.as_str(), "HOME" | "AGENTBOX_SECRETS_DIR") {
-            errs.push(format!("{at}: env {:?} is not a free environment name", g.env));
+            errs.push(format!(
+                "{at}: env {:?} is not a free environment name",
+                g.env
+            ));
         }
     }
     for d in &t.dirs {
         let at = format!("dir {:?}", d.path);
         if !is_plain_abs_path(&d.path) || d.path.ends_with('/') || d.path.matches('/').count() < 2 {
-            errs.push(format!("{at}: must be a plain absolute path below a top-level directory"));
+            errs.push(format!(
+                "{at}: must be a plain absolute path below a top-level directory"
+            ));
         }
         if d.path == t.secrets_root || d.path.starts_with(&format!("{}/", t.secrets_root)) {
-            errs.push(format!("{at}: secrets_root is the delivery's own; list groups there instead"));
+            errs.push(format!(
+                "{at}: secrets_root is the delivery's own; list groups there instead"
+            ));
         }
         if d.owner != "root" && d.owner != DEVUSER && !t.roles.iter().any(|r| r.name == d.owner) {
-            errs.push(format!("{at}: owner {:?} is not root, devuser or a role", d.owner));
+            errs.push(format!(
+                "{at}: owner {:?} is not root, devuser or a role",
+                d.owner
+            ));
         }
         if t.group_id(&d.group).is_none() {
-            errs.push(format!("{at}: group {:?} is not root, devuser, a role or a group", d.group));
+            errs.push(format!(
+                "{at}: group {:?} is not root, devuser, a role or a group",
+                d.group
+            ));
         }
         for sd in &d.seed {
             if !is_plain_abs_path(&sd.from)
@@ -541,8 +570,13 @@ pub fn validate(t: &Table) -> Result<(), String> {
             }
         }
         let m = d.mode.as_str();
-        if !(3..=4).contains(&m.len()) || !m.chars().all(|c| ('0'..='7').contains(&c)) || m.ends_with(['2', '3', '6', '7']) {
-            errs.push(format!("{at}: mode {m:?} must be 3-4 octal digits and not world-writable"));
+        if !(3..=4).contains(&m.len())
+            || !m.chars().all(|c| ('0'..='7').contains(&c))
+            || m.ends_with(['2', '3', '6', '7'])
+        {
+            errs.push(format!(
+                "{at}: mode {m:?} must be 3-4 octal digits and not world-writable"
+            ));
         }
     }
     for reserved_name in ["root", DEVUSER, "wheel", "nobody", "nogroup"] {
@@ -618,11 +652,20 @@ pub fn summary(t: &Table) -> String {
     }
     for g in &t.groups {
         let home = if g.owner == DEVUSER {
-            format!("socket group, created by {DEVUSER} outside {}", t.secrets_root)
+            format!(
+                "socket group, created by {DEVUSER} outside {}",
+                t.secrets_root
+            )
         } else {
             format!("{}/{}/ owned by {}", t.secrets_root, g.name, g.owner)
         };
-        out.push_str(&format!("{}\t{}\tgroup of {}\t{home}\t{}\n", g.name, g.gid, g.members.join(","), g.purpose));
+        out.push_str(&format!(
+            "{}\t{}\tgroup of {}\t{home}\t{}\n",
+            g.name,
+            g.gid,
+            g.members.join(","),
+            g.purpose
+        ));
     }
     for d in &t.dirs {
         out.push_str(&format!(
@@ -783,7 +826,12 @@ pub fn role_class_vars(path: &Path) -> Result<BTreeSet<String>, String> {
     let role = v
         .pointer("/classes/ROLE")
         .and_then(|r| r.as_object())
-        .ok_or_else(|| format!("role-accounts: {} has no classes.ROLE object", path.display()))?;
+        .ok_or_else(|| {
+            format!(
+                "role-accounts: {} has no classes.ROLE object",
+                path.display()
+            )
+        })?;
     let mut out = BTreeSet::new();
     for (name, entry) in role {
         out.insert(name.clone());
@@ -1247,10 +1295,14 @@ mod tests {
     #[test]
     fn a_devuser_program_naming_a_key_variable_without_a_role_fails_the_build() {
         for var in ["HOUSE_KEY_FILE", "SEAT_PRIVKEY_HEX", "BRIDGE_SK"] {
-            let conf = format!("{CONF}\n[program:z]\ncommand=/bin/z\nuser=devuser\nenvironment={var}=\"/x\"\n");
+            let conf = format!(
+                "{CONF}\n[program:z]\ncommand=/bin/z\nuser=devuser\nenvironment={var}=\"/x\"\n"
+            );
             let e = isolate(&small_table(), &conf).err().unwrap();
             assert!(
-                e.contains(&format!("[program:z] runs as devuser and its environment {var}")),
+                e.contains(&format!(
+                    "[program:z] runs as devuser and its environment {var}"
+                )),
                 "{var}: {e}"
             );
         }
@@ -1259,9 +1311,14 @@ mod tests {
     #[test]
     fn a_role_class_variable_marks_a_program_key_holding() {
         let conf = format!("{CONF}\n[program:z]\ncommand=/bin/z\nuser=devuser\nenvironment=OPERATOR_NOSTR_PRIVKEY=\"x\"\n");
-        assert!(isolate(&small_table(), &conf).is_ok(), "no suffix match without the classes");
+        assert!(
+            isolate(&small_table(), &conf).is_ok(),
+            "no suffix match without the classes"
+        );
         let role_vars: BTreeSet<String> = ["OPERATOR_NOSTR_PRIVKEY".to_string()].into();
-        let e = isolate_with(&small_table(), &conf, &role_vars).err().unwrap();
+        let e = isolate_with(&small_table(), &conf, &role_vars)
+            .err()
+            .unwrap();
         assert!(e.contains("OPERATOR_NOSTR_PRIVKEY (is classed ROLE"), "{e}");
     }
 
@@ -1327,7 +1384,9 @@ mod tests {
         assert!(iso
             .conf
             .contains(&format!("AGENTBOX_IDENTITY_SOCK_GID=\"{}\"", g.gid)));
-        assert!(iso.conf.contains("AGENTBOX_SECRETS_DIR=\"/run/secrets/ab-identity\""));
+        assert!(iso
+            .conf
+            .contains("AGENTBOX_SECRETS_DIR=\"/run/secrets/ab-identity\""));
         assert!(iso
             .plan
             .contains(&format!("sockdir\tab-identity-port\t960\t{}\n", g.gid)));
@@ -1377,8 +1436,15 @@ mod tests {
         validate(&t).expect("a devuser-owned group validates");
         assert!(group_lines(&t).contains("ab-s:x:969:devuser,ab-a\n"));
         let iso = isolate(&t, "[program:other]\ncommand=x\nuser=devuser\n").unwrap();
-        assert!(!iso.plan.contains("sockdir\tab-s"), "no directory inside the root-owned secrets mount");
-        assert!(summary(&t).contains("socket group, created by devuser"), "{}", summary(&t));
+        assert!(
+            !iso.plan.contains("sockdir\tab-s"),
+            "no directory inside the root-owned secrets mount"
+        );
+        assert!(
+            summary(&t).contains("socket group, created by devuser"),
+            "{}",
+            summary(&t)
+        );
     }
 
     #[test]
@@ -1394,10 +1460,19 @@ mod tests {
     #[test]
     fn the_repository_table_declares_the_session_plane_socket_group() {
         let t = table();
-        let g = t.groups.iter().find(|g| g.name == "ab-sessions").expect("ADR-2153 socket group");
+        let g = t
+            .groups
+            .iter()
+            .find(|g| g.name == "ab-sessions")
+            .expect("ADR-2153 socket group");
         assert_eq!(g.owner, "devuser");
-        assert!(g.members.iter().any(|m| m == "devuser") && g.members.iter().any(|m| m == "ab-gateway"));
-        assert!(!isolate(&t, "[program:other]\ncommand=x\nuser=devuser\n").unwrap().plan.contains("sockdir\tab-sessions"));
+        assert!(
+            g.members.iter().any(|m| m == "devuser") && g.members.iter().any(|m| m == "ab-gateway")
+        );
+        assert!(!isolate(&t, "[program:other]\ncommand=x\nuser=devuser\n")
+            .unwrap()
+            .plan
+            .contains("sockdir\tab-sessions"));
     }
 
     #[test]

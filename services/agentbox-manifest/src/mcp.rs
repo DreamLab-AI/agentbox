@@ -146,7 +146,8 @@ pub fn mirror_server(from: &Path, to: &Path, name: &str) -> Result<(), String> {
         return Ok(());
     };
     let mut dst = if to.exists() {
-        jsonio::read_opt(to).ok_or_else(|| format!("{}: unparseable, left untouched", to.display()))?
+        jsonio::read_opt(to)
+            .ok_or_else(|| format!("{}: unparseable, left untouched", to.display()))?
     } else {
         Value::Object(Map::new())
     };
@@ -161,7 +162,10 @@ pub fn mirror_server(from: &Path, to: &Path, name: &str) -> Result<(), String> {
         use std::os::unix::fs::PermissionsExt;
         let _ = std::fs::set_permissions(to, std::fs::Permissions::from_mode(0o600));
     }
-    println!("  [mcp] Mirrored {name} into {} (loads from any cwd)", to.display());
+    println!(
+        "  [mcp] Mirrored {name} into {} (loads from any cwd)",
+        to.display()
+    );
     Ok(())
 }
 
@@ -285,13 +289,24 @@ mod tests {
     fn mirror_copies_entry_and_keeps_other_user_keys() {
         let d = mirror_dir("copy");
         let (from, to) = (d.join("a.json"), d.join("u.json"));
-        std::fs::write(&from, r#"{"mcpServers":{"claude-flow":{"command":"node"},"x":{}}}"#).unwrap();
-        std::fs::write(&to, r#"{"theme":"dark","mcpServers":{"other":{"command":"y"}}}"#).unwrap();
+        std::fs::write(
+            &from,
+            r#"{"mcpServers":{"claude-flow":{"command":"node"},"x":{}}}"#,
+        )
+        .unwrap();
+        std::fs::write(
+            &to,
+            r#"{"theme":"dark","mcpServers":{"other":{"command":"y"}}}"#,
+        )
+        .unwrap();
         mirror_server(&from, &to, "claude-flow").unwrap();
         let v: Value = serde_json::from_str(&std::fs::read_to_string(&to).unwrap()).unwrap();
         assert_eq!(v["mcpServers"]["claude-flow"]["command"], "node");
         assert_eq!(v["mcpServers"]["other"]["command"], "y");
-        assert!(v["mcpServers"].get("x").is_none(), "only the named server moves");
+        assert!(
+            v["mcpServers"].get("x").is_none(),
+            "only the named server moves"
+        );
         assert_eq!(v["theme"], "dark");
     }
 
@@ -299,11 +314,19 @@ mod tests {
     fn mirror_creates_missing_destination_and_is_idempotent() {
         let d = mirror_dir("create");
         let (from, to) = (d.join("a.json"), d.join("u.json"));
-        std::fs::write(&from, r#"{"mcpServers":{"claude-flow":{"command":"node"}}}"#).unwrap();
+        std::fs::write(
+            &from,
+            r#"{"mcpServers":{"claude-flow":{"command":"node"}}}"#,
+        )
+        .unwrap();
         mirror_server(&from, &to, "claude-flow").unwrap();
         let first = std::fs::metadata(&to).unwrap().modified().unwrap();
         mirror_server(&from, &to, "claude-flow").unwrap();
-        assert_eq!(first, std::fs::metadata(&to).unwrap().modified().unwrap(), "no rewrite when equal");
+        assert_eq!(
+            first,
+            std::fs::metadata(&to).unwrap().modified().unwrap(),
+            "no rewrite when equal"
+        );
     }
 
     #[test]

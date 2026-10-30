@@ -30,7 +30,11 @@ pub fn merge(a: &Value, b: &Value, a_newer: bool) -> Value {
     match (a, b) {
         (Value::Object(x), Value::Object(y)) => {
             if let (Some(ea), Some(eb)) = (expiry(a), expiry(b)) {
-                return if ea > eb || (ea == eb && a_newer) { a.clone() } else { b.clone() };
+                return if ea > eb || (ea == eb && a_newer) {
+                    a.clone()
+                } else {
+                    b.clone()
+                };
             }
             let mut out = Map::new();
             for (k, va) in x {
@@ -65,25 +69,39 @@ struct Side {
 
 fn load(p: &Path) -> Side {
     let mtime = std::fs::metadata(p).and_then(|m| m.modified()).ok();
-    let value = std::fs::read(p).ok().and_then(|b| serde_json::from_slice(&b).ok());
-    Side { exists: mtime.is_some(), mtime: mtime.unwrap_or(SystemTime::UNIX_EPOCH), value }
+    let value = std::fs::read(p)
+        .ok()
+        .and_then(|b| serde_json::from_slice(&b).ok());
+    Side {
+        exists: mtime.is_some(),
+        mtime: mtime.unwrap_or(SystemTime::UNIX_EPOCH),
+        value,
+    }
 }
 
 fn write(p: &Path, v: &Value) -> Result<(), String> {
     use std::io::Write;
     use std::os::unix::fs::OpenOptionsExt;
     let body = serde_json::to_vec(v).map_err(|e| e.to_string())?;
-    let nonce = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH)
-        .map_err(|e| e.to_string())?.as_nanos();
+    let nonce = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .map_err(|e| e.to_string())?
+        .as_nanos();
     let tmp = p.with_extension(format!("json.cred-sync-{}-{nonce}.tmp", std::process::id()));
-    let mut file = std::fs::OpenOptions::new().write(true).create_new(true).mode(0o600)
-        .open(&tmp).map_err(|e| format!("{}: {e}", tmp.display()))?;
+    let mut file = std::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .mode(0o600)
+        .open(&tmp)
+        .map_err(|e| format!("{}: {e}", tmp.display()))?;
     let result = (|| {
         file.write_all(&body)?;
         file.sync_all()?;
         std::fs::rename(&tmp, p)
     })();
-    if result.is_err() { let _ = std::fs::remove_file(&tmp); }
+    if result.is_err() {
+        let _ = std::fs::remove_file(&tmp);
+    }
     result.map_err(|e| format!("{}: {e}", p.display()))
 }
 
@@ -117,7 +135,10 @@ pub fn sync_once(a: &Path, b: &Path) -> Result<usize, String> {
 /// exit 0 so the supervisor leaves the program stopped.
 pub fn run(a: &Path, b: &Path, interval: Duration, once: bool) -> Result<(), String> {
     if !b.parent().is_some_and(Path::is_dir) {
-        println!("  [cred-sync] no host credential bind at {} — nothing to sync", b.display());
+        println!(
+            "  [cred-sync] no host credential bind at {} — nothing to sync",
+            b.display()
+        );
         return Ok(());
     }
     let report = |r: Result<usize, String>| match r {
@@ -197,7 +218,10 @@ mod tests {
         let host: Value = serde_json::from_slice(&std::fs::read(&b).unwrap()).unwrap();
         assert_eq!(host["claudeAiOauth"]["expiresAt"], 900);
         use std::os::unix::fs::PermissionsExt;
-        assert_eq!(std::fs::metadata(&b).unwrap().permissions().mode() & 0o777, 0o600);
+        assert_eq!(
+            std::fs::metadata(&b).unwrap().permissions().mode() & 0o777,
+            0o600
+        );
         assert_eq!(sync_once(&a, &b).unwrap(), 0);
         std::fs::remove_dir_all(&d).ok();
     }
@@ -211,7 +235,10 @@ mod tests {
         assert!(a.exists());
         std::fs::write(&a, "{\"claudeAiOauth\": {").unwrap();
         assert_eq!(sync_once(&a, &b).unwrap(), 0);
-        assert_eq!(std::fs::read_to_string(&a).unwrap(), "{\"claudeAiOauth\": {");
+        assert_eq!(
+            std::fs::read_to_string(&a).unwrap(),
+            "{\"claudeAiOauth\": {"
+        );
         std::fs::remove_dir_all(&d).ok();
     }
 }

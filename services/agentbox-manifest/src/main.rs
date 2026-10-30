@@ -32,9 +32,9 @@ mod proxy;
 mod role_accounts;
 mod routing;
 mod sso;
-mod system_one;
 mod stacks;
 mod stacks_env;
+mod system_one;
 mod tomlval;
 mod tui_fields;
 mod tui_read;
@@ -209,7 +209,10 @@ enum Command {
     CredSync {
         #[arg(long, default_value = "/home/devuser/.claude/.credentials.json")]
         container: PathBuf,
-        #[arg(long, default_value = "/var/lib/agentbox/host-claude/.credentials.json")]
+        #[arg(
+            long,
+            default_value = "/var/lib/agentbox/host-claude/.credentials.json"
+        )]
         host: PathBuf,
         #[arg(long, default_value_t = 2)]
         interval_secs: u64,
@@ -493,7 +496,12 @@ fn run(cmd: Command) -> Result<(), String> {
             sso::run(&manifest, format);
             Ok(())
         }
-        Command::SystemOneProject { manifest, format, existing, switch } => {
+        Command::SystemOneProject {
+            manifest,
+            format,
+            existing,
+            switch,
+        } => {
             let format = format.parse::<system_one::Format>()?;
             // A refused switch is the one non-zero exit of this command.
             if system_one::run(&manifest, format, existing.as_deref(), switch.as_deref())
@@ -518,24 +526,24 @@ fn run(cmd: Command) -> Result<(), String> {
             );
             Ok(())
         }
-        Command::RoleAccounts { action } => match action {
-            RoleAccountsAction::Check { table } => {
-                role_accounts::load(&table).map(|t| print!("{}", role_accounts::summary(&t)))
+        Command::RoleAccounts { action } => {
+            match action {
+                RoleAccountsAction::Check { table } => {
+                    role_accounts::load(&table).map(|t| print!("{}", role_accounts::summary(&t)))
+                }
+                RoleAccountsAction::Passwd { table } => role_accounts::load(&table)
+                    .map(|t| print!("{}", role_accounts::passwd_lines(&t))),
+                RoleAccountsAction::Group { table } => role_accounts::load(&table)
+                    .map(|t| print!("{}", role_accounts::group_lines(&t))),
+                RoleAccountsAction::Isolate {
+                    table,
+                    conf,
+                    out,
+                    plan,
+                    env_classes,
+                } => role_accounts::run_isolate(&table, &conf, &out, &plan, env_classes.as_deref()),
             }
-            RoleAccountsAction::Passwd { table } => {
-                role_accounts::load(&table).map(|t| print!("{}", role_accounts::passwd_lines(&t)))
-            }
-            RoleAccountsAction::Group { table } => {
-                role_accounts::load(&table).map(|t| print!("{}", role_accounts::group_lines(&t)))
-            }
-            RoleAccountsAction::Isolate {
-                table,
-                conf,
-                out,
-                plan,
-                env_classes,
-            } => role_accounts::run_isolate(&table, &conf, &out, &plan, env_classes.as_deref()),
-        },
+        }
         Command::EmbeddingDim => {
             let mut buf = String::new();
             std::io::stdin()

@@ -58,7 +58,14 @@ use serde_json::{json, Value};
 use crate::{jsonio, tomlval};
 
 /// Modes Claude Code accepts for `permissions.defaultMode`.
-pub const MODES: &[&str] = &["default", "acceptEdits", "plan", "auto", "dontAsk", "bypassPermissions"];
+pub const MODES: &[&str] = &[
+    "default",
+    "acceptEdits",
+    "plan",
+    "auto",
+    "dontAsk",
+    "bypassPermissions",
+];
 
 /// Settings key recording which deny rules this projector owns.
 pub const MANAGED_KEY: &str = "agentboxManagedDeny";
@@ -112,21 +119,35 @@ fn family_rank(m: &str) -> Option<u8> {
 
 /// Read the role keys of `[claude_code]`. `Err` names the first invalid value.
 pub fn roles(manifest: &Value) -> Result<Roles, String> {
-    let s = |k: &str| tomlval::get(manifest, &format!("claude_code.{k}")).and_then(Value::as_str).map(str::to_owned);
-    let r = Roles { model: s("model"), effort: s("effort"), advisor: s("advisor_model") };
+    let s = |k: &str| {
+        tomlval::get(manifest, &format!("claude_code.{k}"))
+            .and_then(Value::as_str)
+            .map(str::to_owned)
+    };
+    let r = Roles {
+        model: s("model"),
+        effort: s("effort"),
+        advisor: s("advisor_model"),
+    };
     if let Some(m) = &r.model {
         if !valid_model(m) {
-            return Err(format!("[claude_code].model = {m:?} is not an alias {MODEL_ALIASES:?} or a claude-* id"));
+            return Err(format!(
+                "[claude_code].model = {m:?} is not an alias {MODEL_ALIASES:?} or a claude-* id"
+            ));
         }
     }
     if let Some(e) = &r.effort {
         if !EFFORTS.contains(&e.as_str()) {
-            return Err(format!("[claude_code].effort = {e:?} is not one of {EFFORTS:?}"));
+            return Err(format!(
+                "[claude_code].effort = {e:?} is not one of {EFFORTS:?}"
+            ));
         }
     }
     if let Some(a) = &r.advisor {
         let base = a.as_str();
-        if base != "off" && (!valid_model(base) || matches!(base, "best" | "opusplan") || base.ends_with("[1m]")) {
+        if base != "off"
+            && (!valid_model(base) || matches!(base, "best" | "opusplan") || base.ends_with("[1m]"))
+        {
             return Err(format!("[claude_code].advisor_model = {a:?} is not fable|opus|sonnet|haiku, a claude-* id or \"off\""));
         }
     }
@@ -144,17 +165,28 @@ pub fn pairing_warning(r: &Roles) -> Option<String> {
 /// Read `[claude_code]`. `None` when the section or the mode is absent (the
 /// projector then leaves every settings file alone); `Err` for an unknown mode.
 pub fn posture(manifest: &Value) -> Result<Option<Posture>, String> {
-    let Some(mode) = tomlval::get(manifest, "claude_code.permission_mode").and_then(Value::as_str) else {
+    let Some(mode) = tomlval::get(manifest, "claude_code.permission_mode").and_then(Value::as_str)
+    else {
         return Ok(None);
     };
     if !MODES.contains(&mode) {
-        return Err(format!("[claude_code].permission_mode = {mode:?} is not one of {MODES:?}"));
+        return Err(format!(
+            "[claude_code].permission_mode = {mode:?} is not one of {MODES:?}"
+        ));
     }
     let deny = tomlval::get(manifest, "claude_code.permission_deny")
         .and_then(Value::as_array)
-        .map(|a| a.iter().filter_map(Value::as_str).map(str::to_owned).collect())
+        .map(|a| {
+            a.iter()
+                .filter_map(Value::as_str)
+                .map(str::to_owned)
+                .collect()
+        })
         .unwrap_or_default();
-    Ok(Some(Posture { mode: mode.to_owned(), deny }))
+    Ok(Some(Posture {
+        mode: mode.to_owned(),
+        deny,
+    }))
 }
 
 /// Pure: apply `p` to a settings document. Returns whether anything changed.
@@ -168,12 +200,20 @@ pub fn apply(settings: &mut Value, p: &Posture) -> bool {
     let previously_managed: Vec<String> = root
         .get(MANAGED_KEY)
         .and_then(Value::as_array)
-        .map(|a| a.iter().filter_map(Value::as_str).map(str::to_owned).collect())
+        .map(|a| {
+            a.iter()
+                .filter_map(Value::as_str)
+                .map(str::to_owned)
+                .collect()
+        })
         .unwrap_or_default();
 
     match p.mode.as_str() {
         "bypassPermissions" => {
-            root.insert("skipDangerousModePermissionPrompt".into(), Value::Bool(true));
+            root.insert(
+                "skipDangerousModePermissionPrompt".into(),
+                Value::Bool(true),
+            );
         }
         "auto" => {
             root.insert("skipAutoPermissionPrompt".into(), Value::Bool(true));
@@ -191,7 +231,12 @@ pub fn apply(settings: &mut Value, p: &Posture) -> bool {
     let mut deny: Vec<String> = perms
         .get("deny")
         .and_then(Value::as_array)
-        .map(|a| a.iter().filter_map(Value::as_str).map(str::to_owned).collect())
+        .map(|a| {
+            a.iter()
+                .filter_map(Value::as_str)
+                .map(str::to_owned)
+                .collect()
+        })
         .unwrap_or_default();
     // Retract rules we added before that the manifest has since dropped;
     // anything the operator added by hand is not ours to remove.
@@ -222,10 +267,17 @@ pub fn apply_roles(settings: &mut Value, r: &Roles) -> bool {
     }
     let before = settings.clone();
     let root = settings.as_object_mut().expect("object");
-    let managed = root.get(MANAGED_ROLES_KEY).cloned().unwrap_or_else(|| json!({}));
+    let managed = root
+        .get(MANAGED_ROLES_KEY)
+        .cloned()
+        .unwrap_or_else(|| json!({}));
     let mut now_managed = serde_json::Map::new();
 
-    for (key, want) in [("model", &r.model), ("effortLevel", &r.effort), ("advisorModel", &r.advisor)] {
+    for (key, want) in [
+        ("model", &r.model),
+        ("effortLevel", &r.effort),
+        ("advisorModel", &r.advisor),
+    ] {
         match want.as_deref() {
             Some("off") => {
                 root.remove(key);
@@ -254,9 +306,15 @@ pub fn apply_roles(settings: &mut Value, r: &Roles) -> bool {
 /// Claude Code through a non-Anthropic endpoint.
 fn is_gateway(file: &Path, s: &Value) -> bool {
     let has_base = |v: &Value| {
-        v.pointer("/env/ANTHROPIC_BASE_URL").and_then(Value::as_str).is_some_and(|u| !u.trim().is_empty())
+        v.pointer("/env/ANTHROPIC_BASE_URL")
+            .and_then(Value::as_str)
+            .is_some_and(|u| !u.trim().is_empty())
     };
-    has_base(s) || file.parent().and_then(|d| jsonio::read_opt(&d.join("settings.local.json"))).is_some_and(|l| has_base(&l))
+    has_base(s)
+        || file
+            .parent()
+            .and_then(|d| jsonio::read_opt(&d.join("settings.local.json")))
+            .is_some_and(|l| has_base(&l))
 }
 
 /// Project the manifest's posture into each settings file.
@@ -304,7 +362,11 @@ pub fn run(manifest: &Path, settings: &[std::path::PathBuf], dry_run: bool) -> R
             s.get("model").and_then(Value::as_str).unwrap_or("-"),
             s.get("effortLevel").and_then(Value::as_str).unwrap_or("-"),
             s.get("advisorModel").and_then(Value::as_str).unwrap_or("-"),
-            if gateway { " (gateway: roles skipped)" } else { "" },
+            if gateway {
+                " (gateway: roles skipped)"
+            } else {
+                ""
+            },
         );
         if dry_run {
             println!("  [permissions] would set {} → {summary}", file.display());
@@ -339,8 +401,12 @@ mod tests {
 
     #[test]
     fn bypass_sets_mode_and_pre_accepts_the_dialog() {
-        let mut s = json!({"permissions": {"defaultMode": "auto", "allow": ["Read"]}, "model": "x"});
-        let p = Posture { mode: "bypassPermissions".into(), deny: vec![] };
+        let mut s =
+            json!({"permissions": {"defaultMode": "auto", "allow": ["Read"]}, "model": "x"});
+        let p = Posture {
+            mode: "bypassPermissions".into(),
+            deny: vec![],
+        };
         assert!(apply(&mut s, &p));
         assert_eq!(s["permissions"]["defaultMode"], "bypassPermissions");
         assert_eq!(s["skipDangerousModePermissionPrompt"], true);
@@ -352,13 +418,26 @@ mod tests {
     #[test]
     fn manages_only_its_own_deny_rules() {
         let mut s = json!({"permissions": {"deny": ["Bash(rm -rf /:*)"]}});
-        let with = Posture { mode: "bypassPermissions".into(), deny: vec!["Bash(ssh:*)".into()] };
+        let with = Posture {
+            mode: "bypassPermissions".into(),
+            deny: vec!["Bash(ssh:*)".into()],
+        };
         apply(&mut s, &with);
-        assert_eq!(s["permissions"]["deny"], json!(["Bash(rm -rf /:*)", "Bash(ssh:*)"]));
+        assert_eq!(
+            s["permissions"]["deny"],
+            json!(["Bash(rm -rf /:*)", "Bash(ssh:*)"])
+        );
         assert_eq!(s[MANAGED_KEY], json!(["Bash(ssh:*)"]));
-        let without = Posture { mode: "bypassPermissions".into(), deny: vec![] };
+        let without = Posture {
+            mode: "bypassPermissions".into(),
+            deny: vec![],
+        };
         apply(&mut s, &without);
-        assert_eq!(s["permissions"]["deny"], json!(["Bash(rm -rf /:*)"]), "hand-added rule survives");
+        assert_eq!(
+            s["permissions"]["deny"],
+            json!(["Bash(rm -rf /:*)"]),
+            "hand-added rule survives"
+        );
         assert!(s.get(MANAGED_KEY).is_none());
     }
 
@@ -372,7 +451,11 @@ mod tests {
         std::fs::write(&f, "{\"permissions\":{\"defaultMode\":\"auto\"}}").unwrap();
         run(&m, &[f.clone(), dir.join("absent.json")], false).unwrap();
         assert!(std::fs::read_to_string(&f).unwrap().contains("\"auto\""));
-        std::fs::write(&m, "[claude_code]\npermission_mode = \"bypassPermissions\"\n").unwrap();
+        std::fs::write(
+            &m,
+            "[claude_code]\npermission_mode = \"bypassPermissions\"\n",
+        )
+        .unwrap();
         run(&m, std::slice::from_ref(&f), false).unwrap();
         let v: Value = serde_json::from_str(&std::fs::read_to_string(&f).unwrap()).unwrap();
         assert_eq!(v["permissions"]["defaultMode"], "bypassPermissions");
@@ -381,34 +464,66 @@ mod tests {
 
     #[test]
     fn roles_validate_and_warn_on_a_weaker_advisor() {
-        let r = roles(&manifest("[claude_code]\nmodel = \"sonnet\"\neffort = \"high\"\nadvisor_model = \"opus\"\n")).unwrap();
+        let r = roles(&manifest(
+            "[claude_code]\nmodel = \"sonnet\"\neffort = \"high\"\nadvisor_model = \"opus\"\n",
+        ))
+        .unwrap();
         assert_eq!(r.model.as_deref(), Some("sonnet"));
         assert_eq!(pairing_warning(&r), None);
-        assert!(roles(&manifest("[claude_code]\neffort = \"max\"\n")).is_err(), "effortLevel rejects max");
+        assert!(
+            roles(&manifest("[claude_code]\neffort = \"max\"\n")).is_err(),
+            "effortLevel rejects max"
+        );
         assert!(roles(&manifest("[claude_code]\nmodel = \"gpt-6\"\n")).is_err());
         assert!(roles(&manifest("[claude_code]\nadvisor_model = \"opusplan\"\n")).is_err());
-        assert!(roles(&manifest("[claude_code]\nmodel = \"opus[1m]\"\nadvisor_model = \"claude-opus-5-5\"\n")).is_ok());
-        let weak = roles(&manifest("[claude_code]\nmodel = \"opus[1m]\"\nadvisor_model = \"sonnet\"\n")).unwrap();
+        assert!(roles(&manifest(
+            "[claude_code]\nmodel = \"opus[1m]\"\nadvisor_model = \"claude-opus-5-5\"\n"
+        ))
+        .is_ok());
+        let weak = roles(&manifest(
+            "[claude_code]\nmodel = \"opus[1m]\"\nadvisor_model = \"sonnet\"\n",
+        ))
+        .unwrap();
         assert!(pairing_warning(&weak).is_some());
     }
 
     #[test]
     fn roles_set_retract_only_their_own_values_and_honour_off() {
         let mut s = json!({"model": "opus[1m]", "effortLevel": "medium", "theme": "dark"});
-        let r = Roles { model: Some("sonnet".into()), effort: Some("high".into()), advisor: Some("opus".into()) };
+        let r = Roles {
+            model: Some("sonnet".into()),
+            effort: Some("high".into()),
+            advisor: Some("opus".into()),
+        };
         assert!(apply_roles(&mut s, &r));
-        assert_eq!((s["model"].as_str(), s["effortLevel"].as_str(), s["advisorModel"].as_str()), (Some("sonnet"), Some("high"), Some("opus")));
+        assert_eq!(
+            (
+                s["model"].as_str(),
+                s["effortLevel"].as_str(),
+                s["advisorModel"].as_str()
+            ),
+            (Some("sonnet"), Some("high"), Some("opus"))
+        );
         assert_eq!(s["theme"], "dark");
         assert!(!apply_roles(&mut s, &r), "idempotent");
         // Operator switches model by hand, then the manifest drops every role key.
         s["model"] = json!("fable");
         assert!(apply_roles(&mut s, &Roles::default()));
-        assert_eq!(s["model"], "fable", "a hand-changed value is not ours to retract");
+        assert_eq!(
+            s["model"], "fable",
+            "a hand-changed value is not ours to retract"
+        );
         assert!(s.get("effortLevel").is_none() && s.get("advisorModel").is_none());
         assert!(s.get(MANAGED_ROLES_KEY).is_none());
         // "off" removes a hand-set advisor too.
         s["advisorModel"] = json!("opus");
-        apply_roles(&mut s, &Roles { advisor: Some("off".into()), ..Roles::default() });
+        apply_roles(
+            &mut s,
+            &Roles {
+                advisor: Some("off".into()),
+                ..Roles::default()
+            },
+        );
         assert!(s.get("advisorModel").is_none());
     }
 
@@ -423,11 +538,20 @@ mod tests {
         std::fs::write(&root, "{}").unwrap();
         let gw = prof.join("settings.json");
         std::fs::write(&gw, "{}").unwrap();
-        std::fs::write(prof.join("settings.local.json"), "{\"env\":{\"ANTHROPIC_BASE_URL\":\"https://openrouter.ai/api\"}}").unwrap();
+        std::fs::write(
+            prof.join("settings.local.json"),
+            "{\"env\":{\"ANTHROPIC_BASE_URL\":\"https://openrouter.ai/api\"}}",
+        )
+        .unwrap();
         run(&m, &[root.clone(), gw.clone()], false).unwrap();
-        let read = |f: &Path| -> Value { serde_json::from_str(&std::fs::read_to_string(f).unwrap()).unwrap() };
+        let read = |f: &Path| -> Value {
+            serde_json::from_str(&std::fs::read_to_string(f).unwrap()).unwrap()
+        };
         let (r, g) = (read(&root), read(&gw));
-        assert_eq!((r["model"].as_str(), r["advisorModel"].as_str()), (Some("sonnet"), Some("opus")));
+        assert_eq!(
+            (r["model"].as_str(), r["advisorModel"].as_str()),
+            (Some("sonnet"), Some("opus"))
+        );
         assert_eq!(g["permissions"]["defaultMode"], "bypassPermissions");
         assert!(g.get("model").is_none() && g.get("advisorModel").is_none());
         std::fs::remove_dir_all(&dir).ok();

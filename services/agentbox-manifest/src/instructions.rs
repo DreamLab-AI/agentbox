@@ -150,12 +150,21 @@ pub fn run(
     let mut floor_fallback: Option<String> = None;
     if let Some(target) = managed_out {
         match project(layers, "floor", target, check, None, None) {
-            Ok(Outcome::Written) => println!("  [instructions] projected floor → {}", target.display()),
+            Ok(Outcome::Written) => {
+                println!("  [instructions] projected floor → {}", target.display())
+            }
             Ok(Outcome::Drift) => {
-                println!("  [instructions] DRIFT: {} differs from its floor layers", target.display());
+                println!(
+                    "  [instructions] DRIFT: {} differs from its floor layers",
+                    target.display()
+                );
                 drift = true;
             }
-            Ok(Outcome::NoLayers) => eprintln!("  [instructions] no floor layers under {} — {} left as is", layers.display(), target.display()),
+            Ok(Outcome::NoLayers) => eprintln!(
+                "  [instructions] no floor layers under {} — {} left as is",
+                layers.display(),
+                target.display()
+            ),
             Ok(Outcome::Unchanged) => {}
             Err(e) if !check => {
                 eprintln!("  [instructions] floor: {e} — falling back into the global tier");
@@ -171,7 +180,12 @@ pub fn run(
     let targets = [
         ("global", global_out, None, floor_fallback.as_deref()),
         ("workspace", Some(workspace_out), None, None),
-        ("workspace.claude", Some(workspace_claude_out), ws.as_deref(), None),
+        (
+            "workspace.claude",
+            Some(workspace_claude_out),
+            ws.as_deref(),
+            None,
+        ),
     ];
     for (tier, target, embed, prefix) in targets {
         let Some(target) = target else {
@@ -179,12 +193,21 @@ pub fn run(
             continue;
         };
         match project(layers, tier, target, check, embed, prefix) {
-            Ok(Outcome::Written) => println!("  [instructions] projected {tier} → {}", target.display()),
+            Ok(Outcome::Written) => {
+                println!("  [instructions] projected {tier} → {}", target.display())
+            }
             Ok(Outcome::Drift) => {
-                println!("  [instructions] DRIFT: {} differs from its {tier} layers", target.display());
+                println!(
+                    "  [instructions] DRIFT: {} differs from its {tier} layers",
+                    target.display()
+                );
                 drift = true;
             }
-            Ok(Outcome::NoLayers) => eprintln!("  [instructions] no {tier} layers under {} — {} left as is", layers.display(), target.display()),
+            Ok(Outcome::NoLayers) => eprintln!(
+                "  [instructions] no {tier} layers under {} — {} left as is",
+                layers.display(),
+                target.display()
+            ),
             Ok(Outcome::Unchanged) => {}
             Err(e) => {
                 eprintln!("  [instructions] {tier}: {e}");
@@ -219,8 +242,12 @@ mod tests {
 
     #[test]
     fn a_missing_local_layer_is_fine_and_both_missing_owns_nothing() {
-        assert!(compose("global", Some("x"), None).unwrap().ends_with("\nx\n"));
-        assert!(compose("global", None, Some("y")).unwrap().ends_with("\ny\n"));
+        assert!(compose("global", Some("x"), None)
+            .unwrap()
+            .ends_with("\nx\n"));
+        assert!(compose("global", None, Some("y"))
+            .unwrap()
+            .ends_with("\ny\n"));
         assert_eq!(compose("global", None, None), None);
     }
 
@@ -230,11 +257,23 @@ mod tests {
         std::fs::write(d.join("workspace.md"), "# Env\n").unwrap();
         std::fs::write(d.join("local/workspace.md"), "estate\n").unwrap();
         let out = d.join("out/AGENTS.md");
-        assert_eq!(project(&d, "workspace", &out, false, None, None).unwrap(), Outcome::Written);
-        assert_eq!(project(&d, "workspace", &out, false, None, None).unwrap(), Outcome::Unchanged);
+        assert_eq!(
+            project(&d, "workspace", &out, false, None, None).unwrap(),
+            Outcome::Written
+        );
+        assert_eq!(
+            project(&d, "workspace", &out, false, None, None).unwrap(),
+            Outcome::Unchanged
+        );
         std::fs::write(&out, "hand edit\n").unwrap();
-        assert_eq!(project(&d, "workspace", &out, true, None, None).unwrap(), Outcome::Drift);
-        assert_eq!(project(&d, "workspace", &out, false, None, None).unwrap(), Outcome::Written);
+        assert_eq!(
+            project(&d, "workspace", &out, true, None, None).unwrap(),
+            Outcome::Drift
+        );
+        assert_eq!(
+            project(&d, "workspace", &out, false, None, None).unwrap(),
+            Outcome::Written
+        );
         assert!(std::fs::read_to_string(&out).unwrap().contains("estate"));
         std::fs::remove_dir_all(&d).ok();
     }
@@ -243,8 +282,16 @@ mod tests {
     fn claude_notes_embed_the_workspace_tier_and_check_sees_no_drift() {
         let d = scratch("embed");
         std::fs::write(d.join("workspace.md"), "# Env\nfact one\n").unwrap();
-        std::fs::write(d.join("workspace.claude.md"), "# Claude notes\n\n@AGENTS.md\n\n## Browser\nskill\n").unwrap();
-        let (g, w, c) = (d.join("g/CLAUDE.md"), d.join("w/AGENTS.md"), d.join("w/CLAUDE.md"));
+        std::fs::write(
+            d.join("workspace.claude.md"),
+            "# Claude notes\n\n@AGENTS.md\n\n## Browser\nskill\n",
+        )
+        .unwrap();
+        let (g, w, c) = (
+            d.join("g/CLAUDE.md"),
+            d.join("w/AGENTS.md"),
+            d.join("w/CLAUDE.md"),
+        );
         run(&d, Some(&g), None, &w, &c, false).unwrap();
         let claude = std::fs::read_to_string(&c).unwrap();
         assert!(!claude.contains("\n@AGENTS.md\n"));
@@ -252,7 +299,10 @@ mod tests {
         assert!(!g.exists(), "global has no layers here");
         assert!(run(&d, Some(&g), None, &w, &c, true).is_ok());
         std::fs::write(d.join("local/workspace.md"), "estate\n").unwrap();
-        assert!(run(&d, Some(&g), None, &w, &c, true).is_err(), "a layer edit is drift until projected");
+        assert!(
+            run(&d, Some(&g), None, &w, &c, true).is_err(),
+            "a layer edit is drift until projected"
+        );
         run(&d, Some(&g), None, &w, &c, false).unwrap();
         assert!(std::fs::read_to_string(&c).unwrap().contains("estate"));
         std::fs::write(d.join("global.md"), "# G\n").unwrap();
@@ -266,7 +316,10 @@ mod tests {
         let d = scratch("none");
         let out = d.join("CLAUDE.md");
         std::fs::write(&out, "host-owned\n").unwrap();
-        assert_eq!(project(&d, "global", &out, false, None, None).unwrap(), Outcome::NoLayers);
+        assert_eq!(
+            project(&d, "global", &out, false, None, None).unwrap(),
+            Outcome::NoLayers
+        );
         assert_eq!(std::fs::read_to_string(&out).unwrap(), "host-owned\n");
         std::fs::remove_dir_all(&d).ok();
     }
@@ -279,16 +332,30 @@ mod tests {
         std::fs::write(d.join("global.md"), "# G\nstyle\n").unwrap();
         std::fs::write(d.join("workspace.md"), "# Env\n").unwrap();
         std::fs::write(d.join("workspace.claude.md"), "# C\n\n@AGENTS.md\n").unwrap();
-        let (g, m, w, c) = (d.join("g/CLAUDE.md"), d.join("etc/claude-code/CLAUDE.md"), d.join("w/AGENTS.md"), d.join("w/CLAUDE.md"));
+        let (g, m, w, c) = (
+            d.join("g/CLAUDE.md"),
+            d.join("etc/claude-code/CLAUDE.md"),
+            d.join("w/AGENTS.md"),
+            d.join("w/CLAUDE.md"),
+        );
         run(&d, Some(&g), Some(&m), &w, &c, false).unwrap();
         let managed = std::fs::read_to_string(&m).unwrap();
         assert!(managed.starts_with(&header("floor")));
-        assert!(managed.find("DECLINED:").unwrap() < managed.find("the owner").unwrap(), "local layer follows the tracked one");
+        assert!(
+            managed.find("DECLINED:").unwrap() < managed.find("the owner").unwrap(),
+            "local layer follows the tracked one"
+        );
         let global = std::fs::read_to_string(&g).unwrap();
-        assert!(!global.contains("DECLINED:"), "no duplicate when the managed write succeeded");
+        assert!(
+            !global.contains("DECLINED:"),
+            "no duplicate when the managed write succeeded"
+        );
         assert!(run(&d, Some(&g), Some(&m), &w, &c, true).is_ok());
         std::fs::write(d.join("floor.md"), "# Floor\nrevised\n").unwrap();
-        assert!(run(&d, Some(&g), Some(&m), &w, &c, true).is_err(), "a floor edit is drift until projected");
+        assert!(
+            run(&d, Some(&g), Some(&m), &w, &c, true).is_err(),
+            "a floor edit is drift until projected"
+        );
         std::fs::remove_dir_all(&d).ok();
     }
 
@@ -301,14 +368,25 @@ mod tests {
         std::fs::write(d.join("workspace.claude.md"), "# C\n\n@AGENTS.md\n").unwrap();
         // A regular file where the managed directory should be: create_dir_all fails.
         std::fs::write(d.join("etc"), "not a directory\n").unwrap();
-        let (g, m, w, c) = (d.join("g/CLAUDE.md"), d.join("etc/claude-code/CLAUDE.md"), d.join("w/AGENTS.md"), d.join("w/CLAUDE.md"));
+        let (g, m, w, c) = (
+            d.join("g/CLAUDE.md"),
+            d.join("etc/claude-code/CLAUDE.md"),
+            d.join("w/AGENTS.md"),
+            d.join("w/CLAUDE.md"),
+        );
         run(&d, Some(&g), Some(&m), &w, &c, false).unwrap();
         assert!(!m.exists());
         let global = std::fs::read_to_string(&g).unwrap();
         assert!(global.starts_with(&header("global")));
         let floor_at = global.find("DECLINED:").unwrap();
-        assert!(floor_at < global.find("# G\nstyle").unwrap(), "the floor is read before the working style");
-        assert!(global[..floor_at].contains(&header("floor")), "the floor keeps its own source marker");
+        assert!(
+            floor_at < global.find("# G\nstyle").unwrap(),
+            "the floor is read before the working style"
+        );
+        assert!(
+            global[..floor_at].contains(&header("floor")),
+            "the floor keeps its own source marker"
+        );
         std::fs::remove_dir_all(&d).ok();
     }
 

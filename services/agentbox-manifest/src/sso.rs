@@ -200,7 +200,10 @@ pub fn strict_host(url: &str) -> Option<(&str, String)> {
     let host = if let Some(inner) = authority.strip_prefix('[') {
         let end = inner.find(']')?;
         let (h, after) = (&inner[..end], &inner[end + 1..]);
-        if h.is_empty() || !h.chars().all(|c| c.is_ascii_hexdigit() || c == ':') || !valid_port(after) {
+        if h.is_empty()
+            || !h.chars().all(|c| c.is_ascii_hexdigit() || c == ':')
+            || !valid_port(after)
+        {
             return None;
         }
         format!("[{h}]")
@@ -209,7 +212,12 @@ pub fn strict_host(url: &str) -> Option<(&str, String)> {
             Some(i) => (&authority[..i], &authority[i..]),
             None => (authority, ""),
         };
-        if h.is_empty() || !valid_port(after) || !h.chars().all(|c| c.is_ascii_alphanumeric() || c == '.' || c == '-') {
+        if h.is_empty()
+            || !valid_port(after)
+            || !h
+                .chars()
+                .all(|c| c.is_ascii_alphanumeric() || c == '.' || c == '-')
+        {
             return None;
         }
         let labels: Vec<&str> = h.split('.').collect();
@@ -218,10 +226,14 @@ pub fn strict_host(url: &str) -> Option<(&str, String)> {
         }
         // Anything a WHATWG parser would read as a NUMBER is only accepted in
         // the one unambiguous spelling: four decimal octets without leading zeros.
-        let numeric = labels.last().is_some_and(|l| l.chars().all(|c| c.is_ascii_digit()) || l.starts_with("0x") || l.starts_with("0X"));
+        let numeric = labels.last().is_some_and(|l| {
+            l.chars().all(|c| c.is_ascii_digit()) || l.starts_with("0x") || l.starts_with("0X")
+        });
         if numeric
             && !(labels.len() == 4
-                && labels.iter().all(|l| l.parse::<u8>().is_ok() && (l == &"0" || !l.starts_with('0'))))
+                && labels
+                    .iter()
+                    .all(|l| l.parse::<u8>().is_ok() && (l == &"0" || !l.starts_with('0'))))
         {
             return None;
         }
@@ -234,7 +246,9 @@ pub fn strict_host(url: &str) -> Option<(&str, String)> {
 fn valid_port(after_host: &str) -> bool {
     match after_host.strip_prefix(':') {
         None => after_host.is_empty(),
-        Some(p) => !p.is_empty() && p.chars().all(|c| c.is_ascii_digit()) && p.parse::<u16>().is_ok(),
+        Some(p) => {
+            !p.is_empty() && p.chars().all(|c| c.is_ascii_digit()) && p.parse::<u16>().is_ok()
+        }
     }
 }
 
@@ -242,7 +256,9 @@ fn valid_port(after_host: &str) -> bool {
 /// name (a Docker service such as `systemone`). Everything else, and every
 /// URL [`strict_host`] refuses, is off-LAN.
 pub fn is_local_endpoint(endpoint: &str) -> bool {
-    let Some((_, host)) = strict_host(endpoint) else { return false };
+    let Some((_, host)) = strict_host(endpoint) else {
+        return false;
+    };
     if host == "localhost" || host == "[::1]" || host.starts_with("127.") {
         return true;
     }
@@ -250,7 +266,13 @@ pub fn is_local_endpoint(endpoint: &str) -> bool {
         let v6 = v6.trim_end_matches(']');
         let first = v6.split(':').next().unwrap_or("");
         // ULA fc00::/7 and link-local fe80::/10, by the first hextet only.
-        return first.len() == 4 && (first.starts_with("fc") || first.starts_with("fd") || first.starts_with("fe8") || first.starts_with("fe9") || first.starts_with("fea") || first.starts_with("feb"));
+        return first.len() == 4
+            && (first.starts_with("fc")
+                || first.starts_with("fd")
+                || first.starts_with("fe8")
+                || first.starts_with("fe9")
+                || first.starts_with("fea")
+                || first.starts_with("feb"));
     }
     if host.ends_with(".local") || host.ends_with(".internal") {
         return true;
@@ -289,10 +311,22 @@ mod tests {
         assert_eq!(strict_host("http://010.0.0.1/"), None);
         assert_eq!(strict_host("http://0x8.8.8.8/"), None);
         // ordinary forms
-        assert_eq!(strict_host("https://api.subq.ai/v1/systemone"), Some(("https", "api.subq.ai".into())));
-        assert_eq!(strict_host("http://systemone:8097/v1"), Some(("http", "systemone".into())));
-        assert_eq!(strict_host("http://[::1]:8094/v1"), Some(("http", "[::1]".into())));
-        assert_eq!(strict_host("http://10.0.0.1:8080/"), Some(("http", "10.0.0.1".into())));
+        assert_eq!(
+            strict_host("https://api.subq.ai/v1/systemone"),
+            Some(("https", "api.subq.ai".into()))
+        );
+        assert_eq!(
+            strict_host("http://systemone:8097/v1"),
+            Some(("http", "systemone".into()))
+        );
+        assert_eq!(
+            strict_host("http://[::1]:8094/v1"),
+            Some(("http", "[::1]".into()))
+        );
+        assert_eq!(
+            strict_host("http://10.0.0.1:8080/"),
+            Some(("http", "10.0.0.1".into()))
+        );
         assert_eq!(strict_host("http://host:99999/"), None);
         assert_eq!(strict_host("ftp://x/"), None);
     }
@@ -353,7 +387,9 @@ embeddings_model = "bge-small-en-v1.5"
     fn enabled_projects_both_consumer_names() {
         let (out, warns) = render_quiet(&manifest(ENABLED), Format::Shell);
         assert!(warns.is_empty(), "unexpected warnings: {warns:?}");
-        assert!(out.contains("export AGENTBOX_SKILL_ROUTE_API='http://systemone:8097/v1/systemone'"));
+        assert!(
+            out.contains("export AGENTBOX_SKILL_ROUTE_API='http://systemone:8097/v1/systemone'")
+        );
         assert!(out.contains("export AGENTBOX_SKILL_ROUTE_MODEL='laya-typed-decisions'"));
         assert!(out.contains("export AGENTBOX_SYSTEM_ONE_BACKEND_LOCAL=1"));
     }
