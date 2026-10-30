@@ -109,7 +109,7 @@ RUN if [ "$SPEDE" = "1" ]; then \
       pip check > /tmp/pipcheck.txt 2>&1 || true; cat /tmp/pipcheck.txt; \
       if grep -iE '^(gsplat|plyfile|jaxtyping|rich|ninja)[ =]' /tmp/pipcheck.txt; then echo 'pip check: SpEdE-owned package broken' >&2; exit 1; fi; \
       rm -f /tmp/pipcheck.txt; \
-      python -c "import torch, gsplat, scipy, plyfile, numpy, PIL, cv2; assert torch.__version__ == '2.14.0+cu130', torch.__version__; print('torch', torch.__version__, 'gsplat', gsplat.__version__, 'scipy', scipy.__version__, 'plyfile', plyfile.__version__, 'numpy', numpy.__version__, 'Pillow', PIL.__version__, 'cv2', cv2.__version__)"; \
+      python -c "import torch, gsplat, scipy, plyfile, numpy, PIL, cv2; from importlib.metadata import version; assert torch.__version__ == '2.14.0+cu130', torch.__version__; print('torch', torch.__version__, 'gsplat', gsplat.__version__, 'scipy', scipy.__version__, 'plyfile', version('plyfile'), 'numpy', numpy.__version__, 'Pillow', PIL.__version__, 'cv2', cv2.__version__)"; \
     fi
 COPY comfyui-sidecar/nodes/agentbox_video /opt/ComfyUI/custom_nodes/agentbox_video
 COPY skills/comfyui/scripts/download_video_models.py /opt/agentbox-media/scripts/download_video_models.py
