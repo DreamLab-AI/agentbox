@@ -737,6 +737,12 @@ const LISTENER_SANCTIONED = [
   { program: 'wayvnc', reason: 'ADR-2040 follow-on — VNC desktop server, unauthenticated, docker-network only; host publish is loopback-only (127.0.0.1:5901)' },
   { program: 'x11vnc', reason: 'ADR-2040 follow-on — VNC desktop server (-nopw), docker-network only; host publish is loopback-only (127.0.0.1:5901)' },
   { program: 'xvnc', reason: 'ADR-2040 follow-on — VNC desktop server (-SecurityTypes None), docker-network only; host publish is loopback-only (127.0.0.1:5901)' },
+  // system-one-proxy takes its bind from /run/agentbox/system-one.json, projected from
+  // [system_one].bind, not from a flag, so this rule cannot see it (like x11vnc). With
+  // [system_one].network = true it binds 0.0.0.0:8094 on the docker networks only, never
+  // published; it holds the vendor keys and refuses browser-shaped requests (ADR-2139
+  // amendment 2026-10-30). The proxy and the projector refuse any non-private bind.
+  { program: 'system-one-proxy', reason: 'ADR-2139 amendment 2026-10-30 — 0.0.0.0:8094 when [system_one].network = true; docker-network only, never published; refuses Origin-bearing and non-JSON requests' },
 ];
 
 // Flags whose value is a bind address.

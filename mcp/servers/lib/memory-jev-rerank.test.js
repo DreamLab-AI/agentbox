@@ -35,9 +35,19 @@ test('flag off: the pool is the limit, nothing is requested and the very same ob
   assert.equal(rr.poolFor(50, { ...LOCAL, AGENTBOX_JEV_MEMORY_POOL: '10' }), 50);
 });
 
+test('not local-only (flag unset): the proxy is used for a cloud backend, with no Authorization header', async () => {
+  const seen = [];
+  const fetchImpl = async (url, init) => { seen.push({ url, headers: init.headers }); return reply({})(); };
+  const env = { AGENTBOX_JEV_MEMORY_RERANK: '1', AGENTBOX_SYSTEM_ONE_PROXY: '1', AGENTBOX_SYSTEM_ONE_ENDPOINT: 'http://127.0.0.1:8094/v1/systemone', AGENTBOX_SYSTEM_ONE_BACKEND_LOCAL: '0' };
+  await rr.rerank(QUERY, res(), opts(env, fetchImpl));
+  assert.equal(seen.length, 1);
+  assert.equal(seen[0].url, 'http://127.0.0.1:8094/v1/systemone');
+  assert.equal(seen[0].headers.Authorization, undefined);
+});
+
 const bad = {
-  'cloud key only (local-only consumer)': [{ AGENTBOX_JEV_MEMORY_RERANK: '1', TYPESAFE_API_KEY: 'k' }, reply({})],
-  'proxy not declared local': [{ AGENTBOX_JEV_MEMORY_RERANK: '1', AGENTBOX_SYSTEM_ONE_PROXY: '1', AGENTBOX_SKILL_ROUTE_API: 'http://p' }, reply({})],
+  'cloud key only (local-only consumer)': [{ AGENTBOX_JEV_MEMORY_RERANK: '1', AGENTBOX_JEV_MEMORY_LOCAL_ONLY: '1', TYPESAFE_API_KEY: 'k' }, reply({})],
+  'proxy not declared local': [{ AGENTBOX_JEV_MEMORY_RERANK: '1', AGENTBOX_JEV_MEMORY_LOCAL_ONLY: '1', AGENTBOX_SYSTEM_ONE_PROXY: '1', AGENTBOX_SKILL_ROUTE_API: 'http://p' }, reply({})],
   'no endpoint': [{ AGENTBOX_JEV_MEMORY_RERANK: '1' }, reply({})],
   'transport error': [LOCAL, async () => { throw new Error('down'); }],
   timeout: [LOCAL, async () => { const e = new Error('a'); e.name = 'AbortError'; throw e; }],

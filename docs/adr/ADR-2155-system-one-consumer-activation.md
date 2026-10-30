@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 7d8c3b2dfe165f4ab3f8a5e4f62b8294ea7b155d
+verified_commit: d0e9ca7865c7e120bd657b0ffc66e54b043dfa1a
 verified_paths: [services/agentbox-manifest/src/system_one.rs, config/hooks/lib/jev-option.cjs, tests/system-one/consumer-activation.test.mjs]
 owner: operator
 review_trigger: Image activation or changes to consumer locality or acceptance thresholds
@@ -56,3 +56,7 @@ six frozen fixture IDs no longer resolve; this must not be represented as a pass
 
 
 Security follow-up re-verified 2026-10-29 at `7d8c3b2dfe165f4ab3f8a5e4f62b8294ea7b155d`: the changed hunks drop privilege before workspace credential writes, replace credentials atomically, reject typed-decision redirects and retain the timeout through response parsing. The stalled-body, planted-symlink and HTTP307 regressions pass. These strengthen the existing boundaries; status axes and activation limits are unchanged. The original Deepsec report remains BLOCK with a separate remediation receipt, not a claimed clean rescan.
+
+Re-verified 2026-10-30 at `29a4b4939`: AMENDED 2026-10-30 (operator): the local-only flags this record lists no longer default to 1. `[system_one].local_only` (empty by default) now drives AGENTBOX_JEV_<X>_LOCAL_ONLY for twelve consumers (the five listed here plus failure taxonomy, manifest plan, voice intent, approval review, memory rerank, headroom evidence, which were literal localOnly:true), so every consumer takes the selected backend through the proxy. The private route itself is unchanged and is used exactly for the names listed; a listed consumer with no usable local backend is off, never cloud. Data-level fences (email taint, private ontology seeds) unchanged.
+
+Re-verified 2026-10-30 at d0e9ca786: system_one.rs gains the skill_list_at_least export (verify-gated, warned when out of range). The consumer activation set and its staged status are unchanged.

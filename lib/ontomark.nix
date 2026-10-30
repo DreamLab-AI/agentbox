@@ -38,25 +38,26 @@
 { lib, pkgs, jev ? false, version ? "0.6.0"
 , hash ? "sha256-TPH5RFrK4R5ZZT8wqEpMn/2z+sSm6rbT0grBqT4Jo1c=" }:
 
-# The released 0.6.0 binary predates the Jev feature. Build the pinned upstream
-# source only for the enabled suggestion consumer; off retains the release bytes.
+# The released 0.6.0 binary predates the Jev feature. Build the pinned upstream (0.6.1:
+# ONTOMARK_JEV_ALLOW_CLOUD lifts local-only) source only for the enabled suggestion
+# consumer; off retains the release bytes.
 if jev then pkgs.rustPlatform.buildRustPackage {
   pname = "ontomark";
   inherit version;
   src = pkgs.fetchFromGitHub {
     owner = "DreamLab-AI";
     repo = "ontomark";
-    rev = "07f4c1ce6ac9e7d5c1c2169b4672ca73c54e5efa";
-    hash = "sha256-ObTA4pvmpDeeBHtzTEw5f1FWWvmFiRjjU7w55bkXlgo=";
+    rev = "13af42340448022d4d43ac349a8bb5f3ae6d1d47";
+    hash = "sha256-HMuN3L69BF0uGF0xN3TfEORG9eUHeclji0nk0gmzrCc=";
   };
-  cargoLock.lockFile = ./lockfiles/ontomark-07f4c1ce.Cargo.lock;
+  cargoLock.lockFile = ./lockfiles/ontomark-13af4234.Cargo.lock;
   buildAndTestSubdir = "crates/ontomark-cli";
   buildFeatures = [ "jev" ];
   nativeBuildInputs = [ pkgs.pkg-config ];
   buildInputs = [ pkgs.openssl ];
   doCheck = true;
   meta = with lib; {
-    description = "Ontomark CLI with local typed-decision suggestions";
+    description = "Ontomark CLI with typed-decision suggestions (System One, ADR-2139)";
     homepage = "https://github.com/DreamLab-AI/ontomark";
     license = [ licenses.mit licenses.asl20 ];
     mainProgram = "ontomark";

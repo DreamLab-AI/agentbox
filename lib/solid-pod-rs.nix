@@ -35,7 +35,7 @@
 
 let
 
-  # Pin: v0.5.0-alpha.17 (2026-10-20). JSS 0.0.221 and plugins/forge parity,
+  # Pin: 76ab7aab (v0.5.0-alpha.18 workspace, 2026-10-30; alpha.17 tag 2026-10-20). JSS 0.0.221 and plugins/forge parity,
   # the forge and kind-30618 mirror compiled in (ADR-2145), the ER-22 hardening
   # carried forward. Keep the relay substrate pin in lib/nostr-pod-bridge.nix and
   # the checked-in lockfiles in step with this source. The existing /pods/{pod}/
@@ -51,12 +51,13 @@ let
   #   3. Lockfile: `git -C ../solid-pod-rs show <tag>:Cargo.lock > lib/solid-pod-rs.cargo-lock`
   #      (upstream ships its Cargo.lock since 0.5.0; the vendored copy keeps the
   #      Nix build hermetic and byte-identical to the tag).
-  version = "0.5.0-alpha.17";
+  version = "0.5.0-alpha.18";
 
-  # alpha.17 plus the bounded Jev server integration (library substrate unchanged).
-  rev     = "45c73aa86d062b55055c5e779d74ae856522b10f";
+  # alpha.18: RustCrypto 0.14 (RUSTSEC advisories cleared), dream-cycle hardening, and
+  # SOLID_POD_JEV_ALLOW_CLOUD (proxy and TypeSafe admitted unless local-only, ADR-2139).
+  rev     = "76ab7aab3e882f32508b2461b3f51e4c09bdcfa1";
 
-  srcHash = "sha256-sgbEBtmmBZWKbsc/qsmT0FPwzbuxVPWCxO2J3QlM3qI=";
+  srcHash = "sha256-hzorf46t+nqBS4T8uNrmkwlStQjrt/MKrFtGED5/qNQ=";
 
   cargoLockFile = ./solid-pod-rs.cargo-lock;
 

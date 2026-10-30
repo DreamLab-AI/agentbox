@@ -890,7 +890,10 @@ usd_per_mtok_in = 0.042          # input price used for the /jev-checkpoints cos
 enabled = true
 local_backend = "laya"           # keyless LAN route for private-data consumers
 backend = "typesafe"               # typesafe | subq | laya | kev | any [system_one.backends.<name>]
-bind = "127.0.0.1:8094"          # loopback only; consumers run in this container
+bind = "0.0.0.0:8094"            # private docker networks only (never published); this container dials loopback
+network = true                   # host containers on visionclaw_network reach it as agentbox:8094 (ADR-2139, 2026-10-30)
+local_only = []                  # consumers pinned to local_backend for private data; empty = all take the selected backend
+skill_list_at_least = 0.6        # skill router lists runner-ups at/above this verify rate (measured 2026-10-29; needs consumers.skill_verify)
 log = "/home/devuser/.local/share/system-one-proxy/requests.jsonl"  # one line per request: backend, status, ms, tokens — never content
 
 # Each backend: url (its /v1/systemone), model, key_env (name of the env var

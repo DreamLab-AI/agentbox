@@ -73,8 +73,11 @@ pub struct Backend {
 /// The resolved, wholly valid slot.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Projection {
-    /// Proxy listen address (loopback).
+    /// Proxy listen address: loopback, or a private-network address when `network`.
     pub bind: String,
+    /// `[system_one].network = true`: consumers in other containers on the private
+    /// docker network reach the proxy (ADR-2139 amendment, 2026-10-30).
+    pub network: bool,
     /// JSONL request log path; empty disables.
     pub log: String,
     /// The active backend's name.
@@ -87,7 +90,14 @@ impl Projection {
     /// The URL every consumer is pointed at.
     #[must_use]
     pub fn endpoint(&self) -> String {
-        format!("http://{}/v1/systemone", self.bind)
+        // Consumers in this container always dial loopback, even when the proxy
+        // also listens on the docker network.
+        if is_loopback_bind(&self.bind) {
+            format!("http://{}/v1/systemone", self.bind)
+        } else {
+            let port = self.bind.rsplit_once(':').map_or("8094", |(_, p)| p);
+            format!("http://127.0.0.1:{port}/v1/systemone")
+        }
     }
 
     fn backend(&self, name: &str) -> Option<&Backend> {
@@ -96,6 +106,18 @@ impl Projection {
             .find(|(n, _)| n == name)
             .map(|(_, b)| b)
     }
+}
+
+/// A docker-network bind: the IPv4 wildcard or an RFC 1918 address (mirrors the
+/// proxy's own check, `system-one-proxy` `is_network_bind`).
+fn is_network_bind(bind: &str) -> bool {
+    let Some((host, port)) = bind.rsplit_once(':') else {
+        return false;
+    };
+    port.parse::<u16>().is_ok()
+        && host
+            .parse::<std::net::Ipv4Addr>()
+            .is_ok_and(|ip| ip.is_unspecified() || ip.is_private())
 }
 
 /// Loopback host check for `bind`.
@@ -133,9 +155,16 @@ pub fn resolve(manifest: &Value, warn: &mut dyn FnMut(String)) -> Option<Project
         .unwrap_or("")
         .trim()
         .to_string();
-    if !is_loopback_bind(&bind) {
+    let network = so.get("network").and_then(Value::as_bool).unwrap_or(false);
+    if network && !is_loopback_bind(&bind) && !is_network_bind(&bind) {
         warn(format!(
-            "[system-one] bind {bind} is not loopback — refusing to project (the proxy spends the vendor keys for whoever can reach it, E080)"
+            "[system-one] bind {bind} is not a private network address — refusing to project (network = true admits only 0.0.0.0 or RFC 1918, E080)"
+        ));
+        return None;
+    }
+    if !network && !is_loopback_bind(&bind) {
+        warn(format!(
+            "[system-one] bind {bind} is not loopback — refusing to project (the proxy spends the vendor keys for whoever can reach it; declare network = true to serve the docker network, E080)"
         ));
         return None;
     }
@@ -224,6 +253,7 @@ pub fn resolve(manifest: &Value, warn: &mut dyn FnMut(String)) -> Option<Project
     }
     Some(Projection {
         bind,
+        network,
         log,
         active,
         backends,
@@ -347,6 +377,7 @@ pub fn render_json(p: &Projection, active: &str, existing: Option<&Existing>) ->
         "version": 1,
         "enabled": true,
         "bind": p.bind,
+        "network": p.network,
         "log": p.log,
         "active": active,
         "projected_local": projected_local,
@@ -429,12 +460,25 @@ fn consumer_exports(manifest: &Value, p: &Projection, warn: &mut dyn FnMut(Strin
             tomlval::get(manifest, "system_one.consumers.skill_intent") == Some(&Value::Bool(true))
         )
     ));
+    let skill_verify =
+        tomlval::get(manifest, "system_one.consumers.skill_verify") == Some(&Value::Bool(true));
     lines.push(format!(
         "export AGENTBOX_JEV_SKILL_VERIFY={}",
-        u8::from(
-            tomlval::get(manifest, "system_one.consumers.skill_verify") == Some(&Value::Bool(true))
-        )
+        u8::from(skill_verify)
     ));
+    // The router lists runner-up skills at or above this verify rate (ADR-2091);
+    // unset keeps its code default, which never lists. Meaningless without verify.
+    if let Some(v) = tomlval::get(manifest, "system_one.skill_list_at_least") {
+        match v.as_f64().filter(|r| (0.0..=1.0).contains(r)) {
+            Some(r) if skill_verify => {
+                lines.push(format!("export AGENTBOX_JEV_SKILL_LIST_AT_LEAST={r}"))
+            }
+            Some(_) => {}
+            None => warn(format!(
+                "[system_one] skill_list_at_least = {v} is not a rate in 0..=1; not projected"
+            )),
+        }
+    }
     lines.push(format!(
         "export AGENTBOX_JEV_ONTOLOGY_RELEVANCE={}",
         u8::from(
@@ -471,53 +515,112 @@ fn consumer_exports(manifest: &Value, p: &Projection, warn: &mut dyn FnMut(Strin
         )
     ));
 
-    for key in [
-        "CONSULT",
-        "TRAJECTORY",
-        "ONTOLOGY",
-        "ONTOLOGY_PROPOSALS",
-        "GOVERNANCE_RUBRIC",
-        "DREAM_TRIAGE",
-    ] {
-        lines.push(format!("export AGENTBOX_JEV_{key}_LOCAL_ONLY=1"));
-    }
-    for (key, prefix) in [
+    // `[system_one].local_only` lists the consumers whose questions must stay on the
+    // keyless LAN route (private data). Empty by default: every consumer takes the
+    // proxy, i.e. the selected backend. A listed consumer with no usable local
+    // backend is switched off, never sent to the cloud.
+    const AGENTBOX_LOCAL: [(&str, &str); 13] = [
+        ("failure_taxonomy", "FAILURE"),
+        ("manifest_plan", "MANIFEST"),
+        ("voice_intent", "VOICE"),
+        ("approval_review", "APPROVAL"),
+        ("memory_rerank", "MEMORY"),
+        ("headroom_evidence", "HEADROOM"),
+        ("consult_advice", "CONSULT"),
+        ("trajectory_classify", "TRAJECTORY"),
+        ("ontology_relevance", "ONTOLOGY"),
+        ("ontology_rerank", "ONTOLOGY"),
+        ("ontology_proposals", "ONTOLOGY_PROPOSALS"),
+        ("governance_rubric", "GOVERNANCE_RUBRIC"),
+        ("dream_triage", "DREAM_TRIAGE"),
+    ];
+    const EXTERNAL: [(&str, &str); 5] = [
         ("visionflow_advisories", "VISIONFLOW_JEV"),
         ("website_advisories", "DREAMLAB_JEV"),
         ("solid_pod_advisories", "SOLID_POD_JEV"),
         ("vault_rank", "VISIONCLAW_JEV_PATCH_RANK"),
         ("ontomark_suggestions", "ONTOMARK_JEV"),
-    ] {
+    ];
+    let listed: Vec<String> = tomlval::get(manifest, "system_one.local_only")
+        .and_then(Value::as_array)
+        .map(|a| {
+            a.iter()
+                .filter_map(Value::as_str)
+                .map(str::to_string)
+                .collect()
+        })
+        .unwrap_or_default();
+    for name in &listed {
+        let known = AGENTBOX_LOCAL.iter().any(|(k, _)| k == name)
+            || EXTERNAL.iter().any(|(k, _)| k == name);
+        if !known {
+            warn(format!(
+                "[system-one] local_only names {name:?}, which has no private route; ignored"
+            ));
+        }
+    }
+    let is_local_only = |key: &str| listed.iter().any(|n| n == key);
+    let mut seen = Vec::new();
+    for (_, key) in AGENTBOX_LOCAL {
+        if seen.contains(&key) {
+            continue;
+        }
+        seen.push(key);
+        // ONTOLOGY_LOCAL_ONLY covers both ontology_relevance and ontology_rerank.
+        let on = AGENTBOX_LOCAL
+            .iter()
+            .any(|(c, k)| *k == key && is_local_only(c));
+        lines.push(format!(
+            "export AGENTBOX_JEV_{key}_LOCAL_ONLY={}",
+            u8::from(on)
+        ));
+    }
+    for (key, prefix) in EXTERNAL {
         let on = tomlval::get(manifest, &format!("system_one.consumers.{key}"))
             == Some(&Value::Bool(true));
+        let private = is_local_only(key);
+        let route = if private { local } else { None };
         lines.push(format!(
             "export {prefix}={}",
-            u8::from(on && local.is_some())
+            u8::from(on && (!private || local.is_some()))
         ));
         lines.push(format!(
             "export {prefix}_ENDPOINT={}",
-            shq(local.map_or("", |b| b.url.as_str()))
+            shq(route.map_or("", |b| b.url.as_str()))
         ));
         lines.push(format!(
             "export {prefix}_MODEL={}",
-            shq(local.map_or("", |b| b.model.as_str()))
+            shq(route.map_or("", |b| b.model.as_str()))
         ));
         lines.push(format!(
             "export {prefix}_LOCAL={}",
-            u8::from(local.is_some())
+            u8::from(route.is_some())
+        ));
+        lines.push(format!(
+            "export {prefix}_ALLOW_CLOUD={}",
+            u8::from(!private)
         ));
     }
+    let vault = if is_local_only("vault_rank") {
+        local
+    } else {
+        None
+    };
     lines.push(format!(
         "export VISIONCLAW_JEV_ENDPOINT={}",
-        shq(local.map_or("", |b| b.url.as_str()))
+        shq(vault.map_or("", |b| b.url.as_str()))
     ));
     lines.push(format!(
         "export VISIONCLAW_JEV_MODEL={}",
-        shq(local.map_or("", |b| b.model.as_str()))
+        shq(vault.map_or("", |b| b.model.as_str()))
     ));
     lines.push(format!(
         "export VISIONCLAW_JEV_LOCAL={}",
-        u8::from(local.is_some())
+        u8::from(vault.is_some())
+    ));
+    lines.push(format!(
+        "export VISIONCLAW_JEV_ALLOW_CLOUD={}",
+        u8::from(!is_local_only("vault_rank"))
     ));
     lines
 }
@@ -683,6 +786,111 @@ timeout_ms = 20000
     }
 
     #[test]
+    fn skill_list_at_least_projects_only_a_valid_rate_with_verify_on() {
+        let base = || {
+            let mut m = manifest(SLOT);
+            m["system_one"]["consumers"] = json!({ "skill_verify": true });
+            m
+        };
+        // Unset: nothing exported, the router keeps its code default (never list).
+        let (out, _) = quiet(&base(), Format::Shell, None, None);
+        assert!(!out.unwrap().contains("SKILL_LIST_AT_LEAST"));
+        let mut m = base();
+        m["system_one"]["skill_list_at_least"] = json!(0.6);
+        let (out, warns) = quiet(&m, Format::Shell, None, None);
+        assert!(warns.is_empty(), "{warns:?}");
+        assert!(out
+            .unwrap()
+            .contains("export AGENTBOX_JEV_SKILL_LIST_AT_LEAST=0.6"));
+        // Verify off: the list has nothing to read, so nothing is exported.
+        m["system_one"]["consumers"]["skill_verify"] = json!(false);
+        let (out, _) = quiet(&m, Format::Shell, None, None);
+        assert!(!out.unwrap().contains("SKILL_LIST_AT_LEAST"));
+        // Out of range: warned and not projected.
+        let mut bad = base();
+        bad["system_one"]["skill_list_at_least"] = json!(1.5);
+        let (out, warns) = quiet(&bad, Format::Shell, None, None);
+        assert!(!out.unwrap().contains("SKILL_LIST_AT_LEAST"));
+        assert!(
+            warns.iter().any(|w| w.contains("skill_list_at_least")),
+            "{warns:?}"
+        );
+    }
+
+    #[test]
+    fn declared_network_bind_projects_and_keeps_the_local_endpoint_on_loopback() {
+        let net = SLOT.replace("127.0.0.1:8094", "0.0.0.0:8094");
+        // Undeclared: still refused.
+        let (out, _) = quiet(&manifest(&net), Format::Shell, None, None);
+        assert_eq!(out.unwrap(), "");
+        let mut m = manifest(&net);
+        m["system_one"]["network"] = json!(true);
+        let (out, warns) = quiet(&m, Format::Shell, None, None);
+        assert!(warns.is_empty(), "{warns:?}");
+        let out = out.unwrap();
+        // Consumers in this container still dial loopback.
+        assert!(out
+            .contains("export AGENTBOX_SYSTEM_ONE_ENDPOINT='http://127.0.0.1:8094/v1/systemone'"));
+        let (json_out, _) = quiet(&m, Format::Json, None, None);
+        let v: Value = serde_json::from_str(&json_out.unwrap()).unwrap();
+        assert_eq!(v["network"], json!(true));
+        assert_eq!(v["bind"], json!("0.0.0.0:8094"));
+        // Declared but public: refused.
+        let mut public = manifest(&SLOT.replace("127.0.0.1:8094", "8.8.8.8:8094"));
+        public["system_one"]["network"] = json!(true);
+        let (out, warns) = quiet(&public, Format::Shell, None, None);
+        assert_eq!(out.unwrap(), "");
+        assert!(warns[0].contains("private network"));
+    }
+
+    #[test]
+    fn every_consumer_takes_the_proxy_unless_listed_local_only() {
+        let mut m = manifest(SLOT);
+        m["system_one"]["local_backend"] = json!("laya");
+        m["system_one"]["consumers"] = json!({"consult_advice":true, "visionflow_advisories":true, "solid_pod_advisories":true});
+        let (out, warns) = quiet(&m, Format::Shell, None, None);
+        assert!(warns.is_empty(), "{warns:?}");
+        let out = out.unwrap();
+        // Default: no consumer is pinned local; external consumers take the proxy.
+        assert!(out.contains("export AGENTBOX_JEV_CONSULT_LOCAL_ONLY=0"));
+        assert!(out.contains("export AGENTBOX_JEV_DREAM_TRIAGE_LOCAL_ONLY=0"));
+        for key in [
+            "FAILURE", "MANIFEST", "VOICE", "APPROVAL", "MEMORY", "HEADROOM",
+        ] {
+            assert!(
+                out.contains(&format!("export AGENTBOX_JEV_{key}_LOCAL_ONLY=0")),
+                "{key}"
+            );
+        }
+        assert!(out.contains("export VISIONFLOW_JEV=1"));
+        assert!(out.contains("export VISIONFLOW_JEV_ENDPOINT=''"));
+        assert!(out.contains("export VISIONFLOW_JEV_LOCAL=0"));
+        assert!(out.contains("export SOLID_POD_JEV_ALLOW_CLOUD=1"));
+        assert!(out.contains("export VISIONCLAW_JEV_LOCAL=0"));
+        // Listed: that consumer alone is pinned to the keyless LAN route.
+        m["system_one"]["local_only"] = json!(["consult_advice", "solid_pod_advisories"]);
+        let (out, warns) = quiet(&m, Format::Shell, None, None);
+        assert!(warns.is_empty(), "{warns:?}");
+        let out = out.unwrap();
+        assert!(out.contains("export AGENTBOX_JEV_CONSULT_LOCAL_ONLY=1"));
+        assert!(out.contains("export AGENTBOX_JEV_TRAJECTORY_LOCAL_ONLY=0"));
+        assert!(out.contains("export SOLID_POD_JEV_ENDPOINT='http://systemone:8097/v1/systemone'"));
+        assert!(out.contains("export SOLID_POD_JEV_LOCAL=1"));
+        assert!(out.contains("export SOLID_POD_JEV_ALLOW_CLOUD=0"));
+        assert!(out.contains("export VISIONFLOW_JEV_LOCAL=0"));
+        // A listed consumer with no usable local backend is off, never silently cloud.
+        m["system_one"]["local_backend"] = json!("subq");
+        let (out, _) = quiet(&m, Format::Shell, None, None);
+        let out = out.unwrap();
+        assert!(out.contains("export SOLID_POD_JEV=0"));
+        assert!(out.contains("export AGENTBOX_JEV_CONSULT_LOCAL_ONLY=1"));
+        // An unknown name is a warning, not a silent no-op.
+        m["system_one"]["local_only"] = json!(["consult_advise"]);
+        let (_, warns) = quiet(&m, Format::Shell, None, None);
+        assert!(warns.iter().any(|w| w.contains("consult_advise")));
+    }
+
+    #[test]
     fn local_backend_with_a_key_refuses() {
         let m = manifest(&SLOT.replace("key_env = \"\"", "key_env = \"LAYA_KEY\""));
         let (out, warns) = quiet(&m, Format::Shell, None, None);
@@ -733,7 +941,8 @@ timeout_ms = 20000
         let out = out.unwrap();
         assert!(warns.iter().any(|w| w.contains("local_backend")));
         assert!(out.contains("export AGENTBOX_SYSTEM_ONE_LOCAL_ENDPOINT=''"));
-        assert!(out.contains("export VISIONFLOW_JEV=0"));
+        // Not listed local-only: it still takes the proxy without a private route.
+        assert!(out.contains("export VISIONFLOW_JEV=1"));
     }
 
     #[test]

@@ -38,6 +38,17 @@ const base = (extra = {}) => ({ env: LOCAL, manifestPath, parseToml, validator: 
 const good = () => seq(ok({ setting: choice('desktop') }), ok({ asks: noul(0.95) }))
 const REQ = 'please turn off the desktop'
 
+test('not local-only (flag unset): the proxy is used for a cloud backend, with no Authorization header', async () => {
+  const seen = []
+  const inner = good()
+  const fetchImpl = async (url, init) => { seen.push({ url, headers: init.headers }); return inner(url, init) }
+  const env = { AGENTBOX_JEV_MANIFEST_PLAN: '1', AGENTBOX_SYSTEM_ONE_PROXY: '1', AGENTBOX_SYSTEM_ONE_ENDPOINT: 'http://127.0.0.1:8094/v1/systemone', AGENTBOX_SYSTEM_ONE_BACKEND_LOCAL: '0' }
+  await cp.plan(REQ, base({ env, fetchImpl }))
+  assert.ok(seen.length >= 1)
+  assert.equal(seen[0].url, 'http://127.0.0.1:8094/v1/systemone')
+  assert.equal(seen[0].headers.Authorization, undefined)
+})
+
 test.afterEach(() => assert.equal(fs.readFileSync(manifestPath, 'utf8'), FIXTURE, 'agentbox.toml is byte-identical'))
 
 test('request direction is parsed in code; absent or contradictory wording gives none', () => {
@@ -57,7 +68,8 @@ test('setBoolean edits only a plain boolean line in its own table, keeping the c
 const MISSES = {
   'flag off': [{ env: { ...LOCAL, AGENTBOX_JEV_MANIFEST_PLAN: '0' } }, good()],
   'flag unset': [{ env: {} }, good()],
-  'cloud key only (local-only)': [{ env: { AGENTBOX_JEV_MANIFEST_PLAN: '1', TYPESAFE_API_KEY: 'k' } }, good()],
+  'cloud key only (local-only)': [{ env: { AGENTBOX_JEV_MANIFEST_PLAN: '1', AGENTBOX_JEV_MANIFEST_LOCAL_ONLY: '1', TYPESAFE_API_KEY: 'k' } }, good()],
+  'proxy not declared local (local-only)': [{ env: { AGENTBOX_JEV_MANIFEST_PLAN: '1', AGENTBOX_JEV_MANIFEST_LOCAL_ONLY: '1', AGENTBOX_SYSTEM_ONE_PROXY: '1', AGENTBOX_SYSTEM_ONE_ENDPOINT: 'http://p/v1/systemone' } }, good()],
   'no endpoint': [{ env: { AGENTBOX_JEV_MANIFEST_PLAN: '1' } }, good()],
   'transport error': [{}, async () => { throw new Error('down') }],
   timeout: [{}, async () => { const e = new Error('a'); e.name = 'AbortError'; throw e }],

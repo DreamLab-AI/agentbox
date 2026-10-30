@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 358e5d32c81e8a4259d754568919a962461b9a31
+verified_commit: d0e9ca7865c7e120bd657b0ffc66e54b043dfa1a
 verified_paths: [agentbox.toml, crates/system-one/system-one-proxy/src/server.rs, crates/system-one/system-one-proxy/src/key.rs, services/agentbox-manifest/src/system_one.rs, config/entrypoint-unified.sh, config/hooks/lib/skill-route.cjs, config/seal-bootstrap.sh, lib/system-one-proxy.nix, flake.nix, scripts/agentbox-config-validate.js, agentbox.sh]
 owner: jjohare
 review_trigger: SubQ Snap leaving public preview or changing its price, retention default or the Decisions request shape; a Kev, Clef or pplx-decider release that serves /v1/systemone on a 9B-class checkpoint; a system-one-eval run on the ADR-2089 corpus that moves any backend by more than 5 points; the first compaction replay whose keep-rate is above 5%
@@ -270,3 +270,45 @@ the live proxy after the switch returned HTTP 200 from model `jev-1.14.0`. factr
 `x-system-one-backend` / `x-system-one-model` headers, so a later switch is visible in the
 decision log without a restart. Not checked: the per-consumer accuracy comparison decision 4
 asks for before adoption; this is a return to the incumbent, not an adoption.
+
+## Amendment (2026-10-30): one route for every consumer, served on the private docker network
+
+Operator decision: every System One consumer, in this container and in the host
+containers, takes the selected backend (`typesafe`) through this proxy. Local routing
+stays wired as an explicit opt-in for private data. Decision 1's "loopback" is relaxed in
+one declared case only:
+
+- `[system_one].network = true` lets `bind` be the IPv4 wildcard or an RFC 1918 address
+  (`system-one-proxy` `config.rs` `is_network_bind`, mirrored in `agentbox-manifest`
+  `system_one.rs`). Without it the proxy and the projector still refuse any non-loopback
+  bind. The port is never published (`check-ports-loopback` is unchanged), so the listener
+  is reachable only from the docker networks agentbox joins; host containers on
+  `visionclaw_network` dial `http://agentbox:8094/v1/systemone`. Consequence the operator
+  accepted: any container on those networks can spend the vendor key. Consumers in this
+  container still dial loopback (`Projection::endpoint`).
+- `[system_one].local_only = []` names the consumers pinned to `local_backend` (the
+  keyless LAN route). Empty by default. The projector emits `AGENTBOX_JEV_<X>_LOCAL_ONLY`
+  for the twelve agentbox consumers from that list (they were six hard-coded `=1` flags
+  plus six literal `localOnly: true` call sites), and for the five external consumers
+  stops projecting the laya `_ENDPOINT/_MODEL/_LOCAL` and emits `_ALLOW_CLOUD=1`. A listed
+  consumer with no usable local backend is switched off, never sent to the cloud.
+  Data-level fences (email taint, private ontology seeds) are unchanged.
+
+Those networks include `browsercontainer`, whose Chrome loads arbitrary pages, and a page
+can POST to `agentbox:8094` without a CORS preflight. So `POST /v1/systemone` refuses with
+403, before any upstream call, any request carrying `Origin` (every browser sends it on a
+cross-origin POST, `null` included) or a content type other than `application/json`
+(`server.rs` `browser_shaped`; test `browser_shaped_requests_are_refused_before_any_upstream_call`).
+Consumers (reqwest, curl, Node fetch) send neither. Checked before the fix: a text/plain POST
+and an Origin-bearing POST were both forwarded.
+
+Because the proxy rewrites `model` to the active backend's (checked: a request naming a
+bogus model returned `jev-1.14.0`), one backend switch now reroutes every consumer.
+
+Re-verified 2026-10-30 at `29a4b4939`: the amendment of 2026-10-30 above is this change (network-declared bind, local_only list, projection of every consumer to the selected backend); proxy 16 tests, agentbox-manifest 205 tests.
+
+Re-verified 2026-10-30 at `59589fb3f`: server.rs gains `browser_shaped` (403 for an Origin header or a non-JSON content type, before any upstream call; recorded in the amendment above) and replaces a manual checked division with `checked_div` in the metrics mean. 17 proxy tests, clippy -D warnings clean. `check-ports-loopback` records the proxy as a sanctioned docker-network listener.
+
+Re-verified 2026-10-30 at `cd3a29899`: agentbox-config-validate.js E080 now admits a private bind only with network = true, mirroring the proxy and projector (ADR-2139 amendment 2026-10-30); the shipped manifest validates.
+
+Re-verified 2026-10-30 at d0e9ca786: adds `[system_one].skill_list_at_least` (0..=1, shipped 0.6). The projector exports AGENTBOX_JEV_SKILL_LIST_AT_LEAST only with consumers.skill_verify on and warns on an out-of-range value; it tunes how many runner-up skills the router lists and changes no route, backend or locality claim here.

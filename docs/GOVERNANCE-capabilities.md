@@ -199,13 +199,17 @@ guarded the same way; a post-hook can still rewrite what an earlier guard approv
   fail-open as before; the budget is read from the engine's `/v1/models`, never configured.
   Gate off ⇒ both consumers keep today's cloud configuration byte-for-byte. Not measured yet:
   `activation_status: inactive` until a run against the ADR-2089 baseline exists.
-- **System One vendor slot** (ADR-2139) — `[system_one]` puts ONE loopback proxy,
+- **System One vendor slot** (ADR-2139) — `[system_one]` puts ONE proxy,
   `system-one-proxy` (`crates/system-one/system-one-proxy`, `[program:system-one-proxy]`,
-  default `127.0.0.1:8094`), in front of all three typed-decision consumers (router,
-  factrail, jev-checkpoints) and forwards `POST /v1/systemone` to the backend named by
+  loopback by default; `network = true` admits a private docker-network bind, never
+  published, so host containers reach it as `agentbox:8094` — 2026-10-30 amendment),
+  in front of every typed-decision consumer (router, factrail, jev-checkpoints, the
+  `[system_one.consumers]` options and the host services; `local_only` pins named
+  consumers to the keyless LAN route, empty by default) and forwards `POST /v1/systemone` to the backend named by
   `backend` out of `[system_one.backends.*]`: `typesafe` (Jev), `subq` (SubQ Snap, measured
   2026-10-12 at parity with Jev on the ADR-2089 corpus, 93.0% both, and on 466 recorded
-  compaction judgements; selected as the running backend), `laya` (the ADR-2094 façade) and
+  compaction judgements; the running backend 2026-10-12 to 2026-10-29, when the operator
+  reselected `typesafe`), `laya` (the ADR-2094 façade) and
   `kev` (a local Kev-9B server). Invariants: the proxy's ONLY configuration is
   `/run/agentbox/system-one.json`, written by `agentbox-manifest system-one-project` at boot
   and rewritten in place by `./agentbox.sh systemone backend <name>`; a vendor key is read

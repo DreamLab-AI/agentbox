@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * AB-12-S1-01 — the Jev option on operator voice intents. Off by default; local-only; runs only
+ * AB-12-S1-01 — the Jev option on operator voice intents. Off by default; local-only only when AGENTBOX_JEV_VOICE_LOCAL_ONLY=1; runs only
  * after speaker, mandate and target checks; may annotate or ABSTAIN, never choose a verb, a
  * subject or a target. Fallback cases assert the route's response is the one it gave before.
  * Mocked transport throughout.
@@ -12,6 +12,16 @@ const { createMandate, signMandate } = require('../../management-api/lib/mandate
 const voiceIntentRoutes = require('../../management-api/routes/voice-intent');
 const { parseIntent } = require('../../management-api/lib/voice-intent');
 const vj = require('../../management-api/lib/voice-intent-jev');
+
+// Hermetic: the container exports live System One settings (AGENTBOX_JEV_*,
+// AGENTBOX_SYSTEM_ONE_*, TYPESAFE_API_KEY). The default-path tests below must not
+// reach the real proxy, so strip them for this file and restore afterwards.
+const SYSTEM_ONE_ENV = /^(AGENTBOX_JEV_|AGENTBOX_SYSTEM_ONE_|AGENTBOX_SKILL_ROUTE_|TYPESAFE_API_KEY$|SUBQ_API_KEY$)/;
+const savedEnv = {};
+beforeAll(() => {
+  for (const k of Object.keys(process.env)) if (SYSTEM_ONE_ENV.test(k)) { savedEnv[k] = process.env[k]; delete process.env[k]; }
+});
+afterAll(() => { Object.assign(process.env, savedEnv); });
 
 const ISSUER = 'a'.repeat(64);
 const SPEAKER = 'b'.repeat(64);
@@ -34,8 +44,8 @@ describe('lib/voice-intent-jev — fallback equivalence', () => {
   const misses = {
     'flag off': [{ ...LOCAL, AGENTBOX_JEV_VOICE_INTENT: '0' }, ok({ family: fam('delete'), verb_ok: noul(0) })],
     'flag unset': [{}, ok({})],
-    'cloud key only (local-only consumer)': [{ AGENTBOX_JEV_VOICE_INTENT: '1', TYPESAFE_API_KEY: 'k' }, ok({})],
-    'proxy not declared local': [{ AGENTBOX_JEV_VOICE_INTENT: '1', AGENTBOX_SYSTEM_ONE_PROXY: '1', AGENTBOX_SKILL_ROUTE_API: 'http://p' }, ok({})],
+    'cloud key only (local-only consumer)': [{ AGENTBOX_JEV_VOICE_INTENT: '1', AGENTBOX_JEV_VOICE_LOCAL_ONLY: '1', TYPESAFE_API_KEY: 'k' }, ok({})],
+    'proxy not declared local': [{ AGENTBOX_JEV_VOICE_INTENT: '1', AGENTBOX_JEV_VOICE_LOCAL_ONLY: '1', AGENTBOX_SYSTEM_ONE_PROXY: '1', AGENTBOX_SKILL_ROUTE_API: 'http://p' }, ok({})],
     'transport error': [strict, async () => { throw new Error('down'); }],
     timeout: [strict, async () => { const e = new Error('a'); e.name = 'AbortError'; throw e; }],
     'http 500': [strict, async () => ({ ok: false, status: 500, json: async () => ({}) })],
@@ -48,6 +58,19 @@ describe('lib/voice-intent-jev — fallback equivalence', () => {
   for (const [name, [env, fetchImpl]] of Object.entries(misses)) {
     it(`${name}: resolves null`, async () => { expect(await run(T, env, fetchImpl)).toBeNull(); });
   }
+});
+
+describe('lib/voice-intent-jev — not local-only (flag unset)', () => {
+  it('uses the proxy for a cloud backend, with no Authorization header', async () => {
+    const seen = [];
+    const inner = ok({ family: fam('delete'), verb_ok: noul(0.9) });
+    const fetchImpl = async (url, init) => { seen.push({ url, headers: init.headers }); return inner(); };
+    const env = { AGENTBOX_JEV_VOICE_INTENT: '1', AGENTBOX_SYSTEM_ONE_PROXY: '1', AGENTBOX_SYSTEM_ONE_ENDPOINT: 'http://127.0.0.1:8094/v1/systemone', AGENTBOX_SYSTEM_ONE_BACKEND_LOCAL: '0' };
+    await run('delete the node about old prototype', env, fetchImpl);
+    expect(seen.length).toBe(1);
+    expect(seen[0].url).toBe('http://127.0.0.1:8094/v1/systemone');
+    expect(seen[0].headers.Authorization).toBeUndefined();
+  });
 });
 
 describe('lib/voice-intent-jev — wire shape and decisions', () => {
