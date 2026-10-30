@@ -81,7 +81,13 @@ const GLM_DEFAULT_MODEL = 'glm-5.3';
 // shards feed the Gemini audit, so "the last GLM review of this shard" is well defined.
 const DEFAULT_SHARD_TOKENS = 150000;
 const GLM_MAX_OUTPUT_TOKENS = 32000;
-const GLM_TRIAGE_MAX_OUTPUT_TOKENS = 1500;
+// GLM thinks by default and the thinking counts against max_tokens, and an explicit thinking
+// budget does not bound it. Measured 2026-10-30 on real triage prompts: 1,680 to 3,521 output
+// tokens for a two-line verdict, and over 8,192 on some (11 of 16 calls in a rerun at 8,192 still
+// ended at max_tokens with no text). At 1,500 most calls failed. So triage gets the same cap as
+// the review path (one empty reply in 125 ledgered review calls). The 1,536 floor is necessary, not
+// sufficient; GLM is billed under the Z.AI plan, so the cap costs nothing.
+const GLM_TRIAGE_MAX_OUTPUT_TOKENS = GLM_MAX_OUTPUT_TOKENS;
 const MAX_DIFF_BYTES = 40000;
 const MAX_TOPIC_BYTES = 60000;
 const MAX_TRIAGE_TOPICS = 60;
@@ -994,7 +1000,7 @@ module.exports = {
   readSection, loadConfig, discoverRepos, isLinkedWorktree, hasCorpus, readLocalFile, resolveRepos, createResolver, parseSources, loadTopics,
   triageCandidates, changedByRepo, headsOf, reposOf, buildShards, shardChangedTopics, readLedger, appendLedger, monthToDateUsd,
   ledgerPath, decideGemini, estimateGeminiUsd, actualGeminiUsd, packUnchanged, isHighSeverity, parseVerdict, zaiSettings, glm,
-  triage, reviewGlm, auditGemini, mergeReviews, statusOf, main, parseArgs, DEFAULTS, GEMINI_USD_PER_M,
+  triage, reviewGlm, auditGemini, mergeReviews, statusOf, main, parseArgs, DEFAULTS, GEMINI_USD_PER_M, GLM_TRIAGE_MAX_OUTPUT_TOKENS,
 };
 
 if (require.main === module) {

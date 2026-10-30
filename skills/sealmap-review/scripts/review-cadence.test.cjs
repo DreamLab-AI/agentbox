@@ -377,6 +377,9 @@ test('triage: the first run baselines every repository and spends nothing; the n
   assert.match(md.split('## Still accurate')[1], /core\/01-a\.md/);
   assert.match(seen[0].url, /\/v1\/messages$/);
   assert.equal(seen[0].headers.authorization, 'Bearer secret-key-value');
+  // Reasoning models spend the cap on thinking first; below the estate floor the reply comes back empty.
+  for (const s of seen) assert.ok(s.body.max_tokens >= 16384, `triage max_tokens ${s.body.max_tokens} leaves no room after thinking`);
+  assert.equal(seen[0].body.max_tokens, C.GLM_TRIAGE_MAX_OUTPUT_TOKENS);
   const prompts = seen.map((s) => s.body.messages[0].content).join('\n');
   assert.match(prompts, /fn a\(\) \{ x\(\) \}/, 'the diff comes from alpha\'s history');
   assert.match(prompts, /fn i\(\) \{ y\(\) \}/, 'and from the nested repository\'s history');
