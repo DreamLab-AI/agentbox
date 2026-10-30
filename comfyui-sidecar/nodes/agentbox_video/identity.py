@@ -82,6 +82,9 @@ class ThresholdSet:
         """Build a set from config; ``calibrated`` and ``calibration`` are refused outright."""
         if not isinstance(d, (dict, type(None))):
             raise CalibrationError("thresholds must be a JSON object")
+        # The key's presence is the claim: an explicit null is refused too.
+        if d and "calibration" in d:
+            raise CalibrationError(CALIBRATION_REMOVED)
         return cls(**{k: v for k, v in (d or {}).items() if k in cls.__dataclass_fields__})
 
 

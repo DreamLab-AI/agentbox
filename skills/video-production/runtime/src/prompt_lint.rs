@@ -178,7 +178,11 @@ pub struct Config {
     #[serde(default, skip_serializing)]
     pub calibrated: bool,
     /// Removed legacy field: any value is refused ([`crate::acceptance`]).
-    #[serde(default, skip_serializing)]
+    #[serde(
+        default,
+        skip_serializing,
+        deserialize_with = "crate::acceptance::present"
+    )]
     pub calibration: Option<Value>,
     /// Numeric limits.
     pub thresholds: Thresholds,
@@ -1346,6 +1350,9 @@ mod tests {
         let err = with("calibration", json!({"path":"c.json","sha256":"ab"})).unwrap_err();
         assert!(err.contains("acceptance is editorial"), "{err}");
         assert!(with("calibrated", json!(false)).is_ok());
+        // An explicit null is still a claim of the removed field, not its absence.
+        let err = with("calibration", Value::Null).unwrap_err();
+        assert!(err.contains("acceptance is editorial"), "{err}");
     }
 
     #[test]

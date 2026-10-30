@@ -270,6 +270,10 @@ class CalibrationRemovedTests(unittest.TestCase):
                 self.assertEqual(out["verdict"], "BLOCKED")
                 self.assertTrue(out["error"])
 
+    def test_an_explicit_null_calibration_field_is_still_refused(self):
+        with self.assertRaises(idn.CalibrationError):
+            ThresholdSet.from_dict({"calibration": None})
+
     def test_cli_last_n_override_below_the_floor_is_blocked(self):
         import contextlib, io
         buf = io.StringIO()

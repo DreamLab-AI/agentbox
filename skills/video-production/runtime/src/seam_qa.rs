@@ -70,7 +70,11 @@ pub struct Thresholds {
     #[serde(default, skip_serializing)]
     pub calibrated: bool,
     /// Removed legacy field: any value is refused ([`crate::acceptance`]).
-    #[serde(default, skip_serializing)]
+    #[serde(
+        default,
+        skip_serializing,
+        deserialize_with = "crate::acceptance::present"
+    )]
     pub calibration: Option<Value>,
     /// Largest allowed pop ratio (seam frame difference / local median).
     pub pop_ratio: f64,
@@ -1026,6 +1030,16 @@ mod tests {
                 "audio_step_db":1.5,"audio_click":3.0,"overlap_psnr":32.0}}))
         .unwrap();
         assert!(run(&root, &parsed).is_err());
+        // An explicit `"calibration": null` is the removed field, not its absence.
+        let null_field = serde_json::from_value::<Config>(json!({
+            "schema": CONFIG_SCHEMA, "cut": asset(&root, "cut.mkv"), "colour": declared(),
+            "seams": [{"frame": 25}],
+            "thresholds": {"provenance":"p","calibration":null,"pop_ratio":1.3,"d_sat":2.0,
+                "d_l":1.5,"d_contrast":1.5,"detail_lo":0.85,"detail_hi":1.15,
+                "audio_step_db":1.5,"audio_click":3.0,"overlap_psnr":32.0}}))
+        .unwrap();
+        let err = run(&root, &null_field).unwrap_err().to_string();
+        assert!(err.contains("acceptance is editorial"), "{err}");
     }
 
     #[test]

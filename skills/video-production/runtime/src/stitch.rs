@@ -618,7 +618,11 @@ pub struct RetakeThresholds {
     #[serde(default, skip_serializing)]
     pub calibrated: bool,
     /// Removed legacy field: any value is refused ([`crate::acceptance`]).
-    #[serde(default, skip_serializing)]
+    #[serde(
+        default,
+        skip_serializing,
+        deserialize_with = "crate::acceptance::present"
+    )]
     pub calibration: Option<serde_json::Value>,
 }
 
@@ -1430,6 +1434,7 @@ mod tests {
                 "cal-field",
                 json!({"calibration":{"path":"c.json","sha256":"ab"}}),
             ),
+            ("cal-null", json!({"calibration":null})),
         ] {
             let mut thresholds = json!({"min_unchanged_psnr_db":35.0,"provenance":"x"});
             thresholds

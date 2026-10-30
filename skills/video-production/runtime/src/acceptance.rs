@@ -36,6 +36,29 @@ pub fn refuse_calibration(
     Ok(())
 }
 
+/// Deserialize a legacy field so that its mere presence is visible, including an
+/// explicit `null` (which plain `Option` would read as absent).
+///
+/// Use with `#[serde(default, deserialize_with = "crate::acceptance::present")]`.
+///
+/// ```
+/// #[derive(serde::Deserialize)]
+/// struct T {
+///     #[serde(default, deserialize_with = "video_production_runtime::acceptance::present")]
+///     calibration: Option<serde_json::Value>,
+/// }
+/// let t: T = serde_json::from_str(r#"{"calibration": null}"#).unwrap();
+/// assert!(t.calibration.is_some());
+/// let t: T = serde_json::from_str("{}").unwrap();
+/// assert!(t.calibration.is_none());
+/// ```
+pub fn present<'de, D>(d: D) -> Result<Option<serde_json::Value>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    <serde_json::Value as serde::Deserialize>::deserialize(d).map(Some)
+}
+
 /// Stamp a receipt as measurement-only: provisional, never acceptance-backing.
 ///
 /// ```
