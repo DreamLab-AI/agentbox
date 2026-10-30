@@ -241,3 +241,17 @@ template-literal URNs remain prohibited.
   `receipt` whose payload names the chain URN, the parent outpoint and the claim height).
 
 Resolvability stays best-effort via `/v1/uri/<urn>` (307/404/410), as for every other kind.
+
+## Data-space federation — mesh reader, node key and the `dataspace` crossing, PROPOSED 2026-10-30
+
+**`decision_status: proposed` ([ADR-2162](adr/ADR-2162-the-mesh-block-gets-one-reader-pinned-peers-a-node-key-and-the-dataspace-crossing.md), VisionClaw ADR-2161). Not implemented; nothing below is live.** The rows above are unchanged.
+
+| Contract | Proposed | Acceptance |
+|---|---|---|
+| `[mesh]` reader | The mesh service (reusing `nostr-bbs-mesh`, AGPL-3.0-only) is the sole reader; `[[mesh.peers]]` = `{pubkey, relay, endpoint, origin}`; `allowed_remote_dids` derived from `peers` | Config test: peers and DIDs agree; every `relay` is `wss://` |
+| Peer projection | Read-only `/run/agentbox/mesh-peers.json` consumed by VisionClaw | Pinned by the operator; no trust-on-first-use, no discovery |
+| Node federation key | Independent seed under `/run/secrets/<role>/`; never `identity.env`, `AGENTBOX_PRIVKEY_HEX` or `VISIONCLAW_NOSTR_PRIVKEY` | One per node (ADR-2162 D4). Names data spaces; signs only kind-30078 catalogues (`d` = `visionclaw:dataspace:<space-id>`, with `rev`) and the three IS-Envelope types `dataspace_announce`, `link_notice` and `retraction` (the catalogue is not an envelope; an announce references it). An active catalogue's endpoint must equal the configured peer endpoint; a valid withdrawal carries none. VisionClaw holds no federation key and signs through the mesh service's uid-gated local socket |
+| URN crossing | `dataspace` → `urn:visionclaw:dataspace:<node-key-hex>:<space-id>` (amends ADR-2061 by one row) | JS arm, Rust arm and a paired fixture row; VisionClaw refuses until its submodule pin lands |
+| Graph content | Never carried on the mesh; viewers read the home node directly under its ACL | `federated_kinds` unchanged |
+
+Scope is same-operator federation only. Cross-operator peering remains parked under ADR-2025 and ADR-2101.
