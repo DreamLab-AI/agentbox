@@ -22,12 +22,16 @@ relative to it. Paths outside it are rejected.
 |---|---|
 | `film-bake` | Prepare guides and anchor/video ComfyUI graphs for a whole film, then assemble hash-verified outputs (`prepare`, `videos`, `assemble`). |
 | `contract-check` | Check a gate ledger: traceability, safe package paths, hash-backed `PASS` evidence, honest verdicts. |
-| `render-cache` | Assemble a complete render cache after a scoped scene edit, within an explicit allowed frame scope. |
+| `render-cache` | Assemble a complete render cache after a scoped scene edit, within an explicit allowed frame scope (`--allow`, or `--allow-from-diff` with a `window-diff/1` planned for the same frame count). |
 | `review-cut` | Assemble a fixed-clock diagnostic edit from hashed media and producer receipts. |
 | `dialogue-bake` | Import recorded takes, derive Rhubarb mouth cues, mix audio sample-exactly and report invalidated shots. |
 | `performance-prompts` | Compile authored performance phases into timed video prompts bound to a scene timeline. |
 | `guide-check` | Verify a guide video's decoded clock and that its padding holds the last delivery frame. |
 | `scene-exchange` | Validate a software-independent scene and compile observed views into prompt data. |
+| `seam-qa` | Measure every join (look, detail, audio, overlap fidelity) against a local baseline; a PASS is a measurement and acceptance is editorial; static shots fall back to absolute floors. |
+| `stitch` | Frame-exact `assemble` and `retake` (trim + linear blend, one bt709 encode, approved audio copied by packet hash) and `plan-retake` geometry. |
+| `window-plan` | Plan generation windows on a model grid with chained checkpoint keys (`plan`), and diff two plans into a re-render scope (`diff`). |
+| `prompt-lint` | Static reference, start-image, look, emotion, continuity and take-cap checks over film and performance plans before GPU spend. |
 | `art-extract`, `masked-composite`, `planar-art`, `surface-masks`, `surface-graphs` | Artwork extraction, masked repair, planar art compositing, surface masks and their graphs; configs listed in their source headers. |
 
 ## Clock (`src/clock.rs`)
@@ -147,3 +151,7 @@ Evidence is checked for existence and hash only; gates are not re-run.
 ## Tests
 
 `cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test && cargo doc --no-deps`.
+
+## Calibration evidence
+
+Calibrated acceptance was removed (ADR-2163): every receipt from `seam-qa`, `prompt-lint` and `stitch` is `provisional: true`, `acceptance_backing: false`, `acceptance: "editorial"`; verdicts are measurements. A config with `calibrated: true` or a `calibration` field is refused ("calibrated acceptance was removed (ADR-2163); acceptance is editorial"). Threshold sets keep their `provenance`. Each tool refuses that stale configuration with its own error exit: `prompt-lint` 2, `seam-qa` 3 (its 2 means BLOCKED/NOT_RUN), `stitch` 1. Decode refuses untagged YUV (unless a stitch segment, the `seam-qa` cut, or a `seam-qa` overlap reference declares `colour: {matrix, range}`; a declaration that contradicts any present tag, even a lone range tag, is refused), and refuses HDR transfers, BT.2020, display rotation and non-square SAR. `stitch assemble` measures frame count, rate, colour and audio only, so run `seam-qa` on the cut before editorial review. Sources are re-hashed after the encode and a changed one discards the output. `window-plan --model PATH=HEX` re-hashes the file; `--model-hash-unverified` is the escape for weights not on this box. `render-cache --allow-from-diff` requires the parent receipt's `plan_hash` and `plan_final_key` (record them with `--plan`) and both `--old-plan` and `--new-plan`, which re-run the diff; it cannot be combined with manual `--allow` ranges; only the new plan's models are compared with disk (the old plan's weights may have been overwritten). Plans are `window-plan/2` (keys `window-key/2`); older plans are refused with a re-plan message.

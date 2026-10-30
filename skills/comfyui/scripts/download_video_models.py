@@ -89,6 +89,73 @@ LTX25_LAYOUT_MODELS = [dict(LTX25_MODELS[0],
     file="diffusion_models/ltx-2.5-22b-distilled-transformer-comfy-int8-convrot.safetensors",
     sha256="c4279eeff115cbeaca494bd2183e7d768c38fe85a184dc6afbb7159157c44334")] + LTX25_MODELS[1:]
 PROFILES["ltx25-layout"] = LTX25_LAYOUT_MODELS
+
+# Permissive face models for the agentbox_video identity nodes; mirrors
+# comfyui-sidecar/nodes/agentbox_video/face_models.json (a test keeps them equal).
+OPENCV_ZOO = "https://github.com/opencv/opencv_zoo/raw/48b10fa505aeb51fbd127fc60a5c660040e823b7/models"
+PROFILES["face-identity"] = [
+    dict(repo="opencv/opencv_zoo", revision="48b10fa505aeb51fbd127fc60a5c660040e823b7",
+         file="face_detection_yunet_2023mar.onnx", directory="agentbox_face", size=232589,
+         url=f"{OPENCV_ZOO}/face_detection_yunet/face_detection_yunet_2023mar.onnx",
+         sha256="8f2383e4dd3cfbb4553ea8718107fc0423210dc964f9f4280604804ed2552fa4"),
+    dict(repo="opencv/opencv_zoo", revision="48b10fa505aeb51fbd127fc60a5c660040e823b7",
+         file="face_recognition_sface_2021dec.onnx", directory="agentbox_face", size=38696353,
+         url=f"{OPENCV_ZOO}/face_recognition_sface/face_recognition_sface_2021dec.onnx",
+         sha256="0ba9fbfa01b5270c96627c4ef784da859931e02f04419c829e83484087c34e79"),
+]
+# ComfyUI-SpEdE (Gaussian-splat remove/extract/replace) weights. Revision, size and sha256 come from
+# the Hugging Face API (revision/main for the commit, tree/<sha> for the LFS oid and size), not from
+# the SpEdE README. `directory` is the ComfyUI models/ sub-folder the loader node reads; the file
+# names are the ones SpEdE's workflows/*.json put in UNETLoader/VAELoader/CLIPLoader/etc. The
+# experimental orbit (MiniMax H3 ref2va) is deliberately excluded. See manifests/spede.json.
+SAM31_REV = "7bb8374780a725b4353ed31f3a9395c9742b5621"
+QWEN21_REV = "aacf31a6d48e707f352ecba714cee0680da3479b"
+MOGE_REV = "1484985258ba7ef45c314144fcf0e90924ffbf44"
+TRIPOSPLAT_REV = "56a96e603204ec410c4da60c13ea4fa09a2169a9"
+SPEDE_MODELS = [
+    # Licence: SAM License (Meta).
+    dict(repo="Comfy-Org/sam3.1", revision=SAM31_REV,
+         file="checkpoints/sam3.1_multiplex_fp16.safetensors", directory="checkpoints",
+         size=1745546848, sha256="9ba99c92703c2e8b4f47de2d34a539bb8e18923049e238b780d70dbe6368eb03"),
+    # Licence for the four Qwen-Image 2.1 files below: Qwen-Image 2.1 Research License
+    # (NON-COMMERCIAL). The Qwen3-VL 8B encoder ships with Qwen-Image 2.1 and is treated the same.
+    dict(repo="Comfy-Org/Qwen-Image-2.1", revision=QWEN21_REV,
+         file="diffusion_models/qwen_image_2.1_int8_convrot.safetensors", directory="diffusion_models",
+         size=7256783064, sha256="cb74113cb03faecd79611b01fd7fd642f0aa60d6f0b95086abee214d75eaa57d"),
+    dict(repo="Comfy-Org/Qwen-Image-2.1", revision=QWEN21_REV,
+         file="diffusion_models/qwen_image_2.1_turbo_int8_convrot.safetensors", directory="diffusion_models",
+         size=7256787829, sha256="8144a0182964aa8403ad6dbc011db837304167d235161b9aabaa8532e967314c"),
+    dict(repo="Comfy-Org/Qwen-Image-2.1", revision=QWEN21_REV,
+         file="text_encoders/qwen3vl_8b_int8_convrot.safetensors", directory="text_encoders",
+         size=9350798360, sha256="8bfd0f6e12abf2d2d697ecc888e5e90b0d6741d6708f05799f53afa560452e8f"),
+    dict(repo="Comfy-Org/Qwen-Image-2.1", revision=QWEN21_REV,
+         file="vae/qwen_image_2.1_vae_bf16.safetensors", directory="vae",
+         size=675509688, sha256="bb21f7473051e1ac368515dd3f2e15cd44d7a11748ee8823e1ddca3e4876b7c9"),
+    # Licence: MIT (Microsoft MoGe-3). Read by LoadMoGeModel from the geometry_estimation folder.
+    dict(repo="Comfy-Org/MoGe", revision=MOGE_REV,
+         file="geometry_estimation/moge_3_vitl_fp16.safetensors", directory="geometry_estimation",
+         size=740652334, sha256="52ad9a13037a28fd65003cae7df056c8f903f5aed2c3a5c802be0f5c74a6a7b8"),
+]
+SPEDE_REPLACE_MODELS = [
+    # Licence: MIT (TripoSplat, VAST-AI; code and weights).
+    dict(repo="VAST-AI/TripoSplat", revision=TRIPOSPLAT_REV,
+         file="diffusion_models/triposplat_fp16.safetensors", directory="diffusion_models",
+         size=741106994, sha256="c870b97ac1d6bc9177608a5ec625e19ef9f3c5019aa68f64b0fb7803abcd6d20"),
+    dict(repo="VAST-AI/TripoSplat", revision=TRIPOSPLAT_REV,
+         file="vae/triposplat_vae_decoder_fp16.safetensors", directory="vae",
+         size=576148442, sha256="ed0d0c3d43b599e326845d0ec70f3cf77be9a55e2d97627ac3b34d2830763cc8"),
+    # Licence: DINOv3 License (Meta; use restrictions apply, review before commercial use).
+    dict(repo="VAST-AI/TripoSplat", revision=TRIPOSPLAT_REV,
+         file="clip_vision/dino_v3_vit_h.safetensors", directory="clip_vision",
+         size=1681247696, sha256="a29ef35101a16966972a0d50732a6f3a608ff7cfffb2afa9bbe9007cb842cc53"),
+    # Licence: Apache-2.0 (FLUX.2 VAE only; FLUX.2 [dev] itself is non-commercial).
+    dict(repo="VAST-AI/TripoSplat", revision=TRIPOSPLAT_REV,
+         file="vae/flux2-vae.safetensors", directory="vae",
+         size=336213556, sha256="d64f3a68e1cc4f9f4e29b6e0da38a0204fe9a49f2d4053f0ec1fa1ca02f9c4b5"),
+]
+PROFILES["spede"] = SPEDE_MODELS
+# Self-sufficient superset (like h3-reference): Replace also runs SAM, Qwen and the text encoder.
+PROFILES["spede-replace"] = SPEDE_MODELS + SPEDE_REPLACE_MODELS
 CAMPAIGN_PATH = Path(os.environ.get("COMFY_MODEL_MANIFEST", str(Path(__file__).resolve().parents[1] / "models" / "stopmotion-candidates.json")))
 CAMPAIGN = json.loads(CAMPAIGN_PATH.read_text()) if CAMPAIGN_PATH.is_file() else {}
 for profile_name, record in CAMPAIGN.get("profiles", {}).items():
@@ -149,6 +216,15 @@ def verified(path, model):
     return digest.hexdigest() == model["sha256"]
 
 
+def model_url(model):
+    """Return ``(url, is_huggingface)``; only Hugging Face URLs may carry HF_TOKEN."""
+    if "url" in model:
+        if not model["url"].startswith("https://"):
+            raise ValueError(f"model URL must be https: {model['url']}")
+        return model["url"], False
+    return f'https://huggingface.co/{model["repo"]}/resolve/{model["revision"]}/{model["file"]}', True
+
+
 def download(model, root, retries=5, reserve_bytes=0):
     target = root / model["directory"] / Path(model["file"]).name
     target.parent.mkdir(parents=True, exist_ok=True)
@@ -159,7 +235,7 @@ def download(model, root, retries=5, reserve_bytes=0):
             print(f"Verified existing {target}", flush=True)
             return target
         partial = target.with_suffix(target.suffix + ".part")
-        url = f'https://huggingface.co/{model["repo"]}/resolve/{model["revision"]}/{model["file"]}'
+        url, huggingface = model_url(model)
         for attempt in range(retries):
             offset = partial.stat().st_size if partial.exists() else 0
             if offset >= model["size"]:
@@ -179,7 +255,7 @@ def download(model, root, retries=5, reserve_bytes=0):
                 token_file = Path(os.environ.get("HF_TOKEN_PATH", str(Path.home() / ".cache/huggingface/token")))
                 if not token and token_file.is_file():
                     token = token_file.read_text().strip()
-                if token:
+                if token and huggingface:
                     # Do not forward credentials to signed CDN redirect targets.
                     request.add_unredirected_header("Authorization", "Bearer " + token)
                 with urllib.request.urlopen(request, timeout=120) as response:

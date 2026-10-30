@@ -37,6 +37,7 @@ pub fn check_video_padding(
                 "-of",
                 "json",
             ])
+            .args(crate::media::SAFE_INPUT)
             .arg(path),
     )?;
     let probe = serde_json::from_slice::<Value>(&bytes)?["streams"][0].clone();
@@ -50,9 +51,12 @@ pub fn check_video_padding(
     {
         return Err("guide decoded clock/frame count differs".into());
     }
+    crate::media::probe(path)?.require_upright_square()?;
     let hash_bytes = output(
         Command::new("ffmpeg")
-            .args(["-nostdin", "-v", "error", "-i"])
+            .args(["-nostdin", "-v", "error"])
+            .args(crate::media::SAFE_INPUT)
+            .arg("-i")
             .arg(path)
             .args(["-map", "0:v:0", "-f", "framehash", "-hash", "sha256", "-"]),
     )?;

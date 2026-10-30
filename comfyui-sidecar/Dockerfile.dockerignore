@@ -1,6 +1,11 @@
 **
 !comfyui-sidecar/
 !comfyui-sidecar/Dockerfile
+!comfyui-sidecar/nodes/
+!comfyui-sidecar/nodes/agentbox_video/
+!comfyui-sidecar/nodes/agentbox_video/**
+**/__pycache__/
+**/*.pyc
 !skills/
 !skills/comfyui/
 !skills/comfyui/scripts/

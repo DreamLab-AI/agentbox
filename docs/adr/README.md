@@ -59,7 +59,7 @@ detect changes to files it already lists — it is structurally blind to **addit
 is exactly how a new crate landed unlicensed under ADR-2030 while the record still read as
 verified and its `review_trigger` ("any new crate under `services/`") sat unactioned.
 
-_143 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
+_144 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
 
 | ID | Title | Domain | Date | Decision | Impl | Activation | Supersedes | Superseded by | Owner | Repo |
 |----|-------|--------|------|----------|------|------------|------------|---------------|-------|------|
@@ -206,3 +206,4 @@ _143 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
 | [ADR-2153](ADR-2153-session-plane-replaces-aoe.md) | Replace Agent of Empires with an owned, tmux-backed session plane that reconciles to the manifest | — | 2026-10-28 | accepted | partial | live | ADR-2002, ADR-2063, ADR-2079 | — | jjohare | agentbox |
 | [ADR-2154](ADR-2154-pele-renders-mermaid-in-the-image.md) | Render Mermaid in the image with a pinned Pele, replacing the browsercontainer renderer | BASELINE-container | 2026-10-29 | accepted | partial | staged | ADR-2152 | — | jjohare | agentbox |
 | [ADR-2155](ADR-2155-system-one-consumer-activation.md) | Activate typed-decision consumers with a separate private route | — | 2026-10-29 | accepted | complete | staged | — | — | operator | agentbox |
+| [ADR-2163](ADR-2163-video-production-seam-window-identity-tooling.md) | Video production gains measured seam, window, stitch, lint and identity tooling, with every borrowed threshold provisional | GOVERNANCE-capabilities | 2026-10-30 | proposed | partial | staged | — | — | jjohare | agentbox |

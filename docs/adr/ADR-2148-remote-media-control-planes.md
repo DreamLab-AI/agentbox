@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 358e5d32c81e8a4259d754568919a962461b9a31
+verified_commit: 310fa19a04ba8c56b5f571ea4cc50435585a44dd
 verified_paths: [flake.nix, comfyui-sidecar/Dockerfile, docker-compose.comfyui.yml, docker-compose.gui-tools.yml, gui-tools-sidecar, skills/blender/tools, skills/comfyui/mcp-server, skills/comfyui/scripts, skills/comfyui/models/stopmotion-candidates.json]
 owner: jjohare
 review_trigger: media control-plane protocol, sidecar dependencies, workflow state handling or model provisioning changes
@@ -16,6 +16,23 @@ domain: BASELINE-container
 ---
 
 # ADR-2148: Typed remote media control planes alongside existing bridges
+
+## Re-verification — 2026-10-30 at b0c9f064e (SpEdE, review fixes)
+
+Re-stamped at 310fa19a0 after pinning the gsplat build tools and plyfile; no invariant changed.
+
+Re-checked after the SpEdE node pack, the CUDA 13.0 base move and two review-fix rounds. Weights stay out of the image: the Dockerfile copies only the provisioning script, and the new `spede`, `spede-replace` and `face-identity` profiles download at pinned revisions with sha256. Cancellation stays job-scoped (`comfy_client.py` `cancel`: queue-delete when pending, `/interrupt` with the receipt's `prompt_id` when running, refused for a foreign running job). `safe_free` is best effort and reports `success:false` when skipped or when a job appeared; `HF_TOKEN` is sent only to Hugging Face URLs and never on redirects.
+
+## Re-verification — 2026-10-30 at 5a6bf94c5 (ADR-2163 tooling)
+
+Reviewed the governed-path diff from `358e5d32c` to `5a6bf94c5395c494d9a14f70c6b888d7f1497239`. The changes stay inside this record's decision:
+- History remains the terminal authority. The new Python `cancel` deletes or interrupts only an owned `prompt_id` and never issues a bare interrupt.
+- Idle-model unloading is strengthened: `safe_free` requires an idle queue before and after `/free` and issues one free.
+- Live node-schema discovery gains a manifest capability snapshot that reads both `COMBO` wire forms, polled after `/system_stats`.
+- The sidecar image gains the `agentbox_video` node pack and swaps the GUI OpenCV wheel for `opencv-python-headless==5.0.0.93`. No weights or credentials are baked in.
+- Model provisioning stays pinned and hash-verified: a `face-identity` profile (opencv_zoo YuNet/SFace) is added, and explicit-URL downloads never carry `HF_TOKEN`.
+
+Validation: `test_comfy_client.py` and `test_download_video_models.py` (29 OK), `server.test.js` (9/9) and the node pack (55 OK). The image rebuild and live sidecar are not re-run, so this does not claim new runtime acceptance.
 
 ## Re-verification — 2026-10-29 at 3b498088e (ADR-2153 cutover)
 

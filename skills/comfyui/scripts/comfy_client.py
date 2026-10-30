@@ -40,6 +40,69 @@ def atomic_json(path, value):
             os.unlink(temporary)
 
 
+GIB = 1024 ** 3
+
+
+def combo_choices(definition):
+    """Return the choice list of an /object_info input definition, or None if it is not a combo.
+
+    Two wire forms exist: legacy ``[[choice, ...], {...}]`` and current
+    ``["COMBO", {"options": [...]}]``. The string "COMBO" is a type tag, never a choice.
+    """
+    if not isinstance(definition, (list, tuple)) or not definition:
+        return None
+    head = definition[0]
+    if isinstance(head, list):
+        return head
+    if head == "COMBO":
+        meta = definition[1] if len(definition) > 1 and isinstance(definition[1], dict) else {}
+        options = meta.get("options", [])
+        return options if isinstance(options, list) else []
+    return None
+
+
+def capability_snapshot(manifest, nodes):
+    """Check a requirement manifest against /object_info; every item is PASS or BLOCKED.
+
+    manifest = {"required_nodes": [Class, ...], "required_models": {"Class.input": [file, ...]}}
+    """
+    manifest = manifest or {}
+    items = []
+    for name in manifest.get("required_nodes", []):
+        ok = name in nodes
+        items.append({"kind": "node", "name": name, "status": "PASS" if ok else "BLOCKED",
+                      **({} if ok else {"reason": "node not installed"})})
+    for key, files in manifest.get("required_models", {}).items():
+        kind, _, field = key.partition(".")
+        schema = nodes.get(kind)
+        choices = None
+        reason = None
+        if schema is None:
+            reason = f"node {kind} not installed"
+        else:
+            inputs = schema.get("input", {})
+            definition = {**inputs.get("required", {}), **inputs.get("optional", {})}.get(field)
+            choices = combo_choices(definition)
+            if definition is None:
+                reason = f"input {field} not found on {kind}"
+            elif choices is None:
+                reason = f"input {field} on {kind} is not a combo"
+        for file in files:
+            blocked = reason or (None if file in choices else "file not offered by server")
+            items.append({"kind": "model", "name": key, "file": file, "status": "BLOCKED" if blocked else "PASS",
+                          **({"reason": blocked} if blocked else {})})
+    return {"status": "BLOCKED" if any(i["status"] == "BLOCKED" for i in items) else "PASS", "items": items}
+
+
+def vram_summary(stats):
+    """Free/total VRAM in bytes of the freest device, or None when the server reports none."""
+    devices = [d for d in (stats or {}).get("devices", []) if isinstance(d, dict) and isinstance(d.get("vram_free"), (int, float))]
+    if not devices:
+        return None
+    best = max(devices, key=lambda d: d["vram_free"])
+    return {"device": best.get("name"), "free": best["vram_free"], "total": best.get("vram_total")}
+
+
 def validate_graph(graph, nodes):
     """Check API shape and available node schemas; server remains final validator."""
     errors = []
@@ -151,19 +214,22 @@ def validate_graph(graph, nodes):
 
 
 class Client:
-    def __init__(self, url=None, request_timeout=30):
+    def __init__(self, url=None, request_timeout=30, stats_timeout=5, object_info_timeout=60, vram_floor_bytes=2 * GIB):
         self.url = (url or os.environ.get("COMFYUI_URL", "http://comfyui:8188")).rstrip("/")
         parsed = urllib.parse.urlsplit(self.url)
         if parsed.scheme not in ("http", "https") or not parsed.netloc or parsed.query or parsed.fragment:
             raise ComfyError("ComfyUI URL must be an HTTP(S) base URL")
         self.request_timeout = request_timeout
+        self.stats_timeout = stats_timeout
+        self.object_info_timeout = object_info_timeout
+        self.vram_floor_bytes = vram_floor_bytes
 
-    def request(self, path, payload=None):
+    def request(self, path, payload=None, timeout=None):
         request = urllib.request.Request(self.url + path,
             data=None if payload is None else json.dumps(payload).encode(),
             headers={"Content-Type": "application/json"})
         try:
-            with urllib.request.urlopen(request, timeout=self.request_timeout) as response:
+            with urllib.request.urlopen(request, timeout=timeout or self.request_timeout) as response:
                 return json.load(response)
         except urllib.error.HTTPError as error:
             detail = error.read(8192).decode(errors="replace")
@@ -171,12 +237,96 @@ class Client:
         except (OSError, ValueError) as error:
             raise ComfyError(f"Request failed {path}: {error}") from error
 
+    def object_info(self):
+        return self.request("/object_info", timeout=self.object_info_timeout)
+
     def health(self):
-        return {"url": self.url, "system_stats": self.request("/system_stats"),
-                "node_count": len(self.request("/object_info"))}
+        stats = self.request("/system_stats", timeout=self.stats_timeout)
+        return {"url": self.url, "system_stats": stats, "node_count": len(self.object_info())}
+
+    def probe(self, manifest=None):
+        """Cheap /system_stats first (short timeout); the slow /object_info only if that answered.
+
+        Never raises: an unreachable or slow server yields a BLOCKED snapshot.
+        """
+        try:
+            stats = self.request("/system_stats", timeout=self.stats_timeout)
+        except ComfyError as error:
+            return {"url": self.url, "status": "BLOCKED", "stage": "system_stats", "reason": str(error), "items": []}
+        try:
+            nodes = self.object_info()
+        except ComfyError as error:
+            return {"url": self.url, "status": "BLOCKED", "stage": "object_info", "reason": str(error),
+                    "vram": vram_summary(stats), "items": []}
+        return {"url": self.url, "stage": "complete", "vram": vram_summary(stats), "node_count": len(nodes),
+                **capability_snapshot(manifest, nodes)}
 
     def validate(self, graph):
-        return validate_graph(graph, self.request("/object_info"))
+        return validate_graph(graph, self.object_info())
+
+    def safe_free(self, settle_s=1.5):
+        """Unload models only on an idle queue. /free is asynchronous, so settle, then re-read state.
+
+        Best effort, not a guarantee. A job can arrive between the idle check and
+        ``/free``; ComfyUI applies the free flags between prompts, so that race does not
+        kill the job, but the unload may then hit a different job's models or be deferred.
+        At most one /free is ever issued, even if a job shows up meanwhile.
+
+        ``success`` is true only for a clean free: not skipped and no job appeared
+        meanwhile. ``settle_s`` is the wait before ``vram_after`` is read (tests pass 0).
+        """
+        def busy(queue):
+            return bool(queue.get("queue_running") or queue.get("queue_pending"))
+        queue = self.request("/queue")
+        if busy(queue):
+            return {"success": False, "skipped": True, "reason": "queue is not idle",
+                    "running": len(queue.get("queue_running", [])), "pending": len(queue.get("queue_pending", []))}
+        before = vram_summary(self.request("/system_stats", timeout=self.stats_timeout))
+        self.request("/free", {"unload_models": True, "free_memory": True})
+        time.sleep(max(settle_s, 0))
+        after_queue = self.request("/queue")
+        after = vram_summary(self.request("/system_stats", timeout=self.stats_timeout))
+        appeared = busy(after_queue)
+        return {"success": not appeared, "skipped": False, "free_requests": 1, "vram_before": before,
+                "vram_after": after, "job_appeared_meanwhile": appeared}
+
+    def vram_headroom(self):
+        """Pre-submit VRAM check. Warns, never blocks; an unreadable server is recorded as unknown."""
+        try:
+            summary = vram_summary(self.request("/system_stats", timeout=self.stats_timeout))
+        except ComfyError as error:
+            return {"checked": False, "reason": str(error), "warning": False}
+        if summary is None:
+            return {"checked": False, "reason": "server reports no VRAM", "warning": False}
+        return {"checked": True, "floor_bytes": self.vram_floor_bytes, **summary,
+                "warning": summary["free"] < self.vram_floor_bytes}
+
+    def cancel(self, receipt_path):
+        """Cancel only the job in the receipt: queue-delete when pending, id-scoped interrupt when running.
+
+        Never sends a bare /interrupt. History stays the terminal authority, so the
+        receipt records the request, not an outcome.
+        """
+        receipt = json.loads(Path(receipt_path).read_text())
+        if receipt.get("url") != self.url:
+            raise ComfyError("Receipt belongs to a different ComfyUI URL")
+        prompt_id = receipt.get("prompt_id")
+        if not prompt_id:
+            raise ComfyError("Receipt has no prompt_id; nothing owned to cancel")
+        queue = self.request("/queue")
+        def holds(key):
+            return any(isinstance(row, list) and len(row) > 1 and row[1] == prompt_id for row in queue.get(key, []))
+        if holds("queue_pending"):
+            self.request("/queue", {"delete": [prompt_id]})
+            action = "queue_delete"
+        elif holds("queue_running"):
+            self.request("/interrupt", {"prompt_id": prompt_id})
+            action = "interrupt"
+        else:
+            return {"cancelled": False, "prompt_id": prompt_id, "reason": "job is not queued or running; check history"}
+        receipt.update(cancel_requested=action, cancel_requested_at=time.time())
+        atomic_json(receipt_path, receipt)
+        return {"cancelled": True, "prompt_id": prompt_id, "action": action}
 
     def submit(self, graph, receipt_path):
         self.validate(graph)
@@ -190,7 +340,8 @@ class Client:
             raise ComfyError(f"Receipt exists; inspect/resume it: {receipt_path}") from error
         receipt = {"version": 1, "url": self.url, "client_id": str(uuid.uuid4()),
                    "workflow_sha256": hashlib.sha256(json.dumps(graph, sort_keys=True).encode()).hexdigest(),
-                   "state": "submitting", "created_at": time.time(), "workflow": graph}
+                   "state": "submitting", "created_at": time.time(), "workflow": graph,
+                   "vram_headroom": self.vram_headroom()}
         atomic_json(receipt_path, receipt)
         try:
             result = self.request("/prompt", {"prompt": graph, "client_id": receipt["client_id"]})
@@ -286,11 +437,18 @@ def main():
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("health")
     commands.add_parser("object-info")
+    probe = commands.add_parser("probe")
+    probe.add_argument("--manifest", help="JSON {required_nodes, required_models}")
+    safe_free = commands.add_parser("safe-free", help="best-effort unload on an idle queue; exit 3 if skipped or a job appeared")
+    safe_free.add_argument("--settle-s", type=float, default=1.5, help="wait before re-reading VRAM (default 1.5)")
+    cancel = commands.add_parser("cancel")
+    cancel.add_argument("receipt")
     validate = commands.add_parser("validate")
     validate.add_argument("workflow")
     submit = commands.add_parser("submit")
     submit.add_argument("workflow")
     submit.add_argument("--receipt", required=True)
+    submit.add_argument("--vram-floor-gib", type=float, default=2.0)
     resume = commands.add_parser("resume")
     resume.add_argument("receipt")
     resume.add_argument("--timeout", type=float, default=600)
@@ -300,14 +458,26 @@ def main():
     download.add_argument("--outdir", required=True)
     args = parser.parse_args()
     try:
-        receipt = json.loads(Path(args.receipt).read_text()) if args.command in ("resume", "download") else None
-        client = Client(args.url or (receipt or {}).get("url"))
+        receipt = json.loads(Path(args.receipt).read_text()) if args.command in ("resume", "download", "cancel") else None
+        client = Client(args.url or (receipt or {}).get("url"), vram_floor_bytes=int(getattr(args, "vram_floor_gib", 2.0) * GIB))
         if receipt and client.url != receipt.get("url"):
             raise ComfyError("Receipt belongs to a different ComfyUI URL")
         if args.command == "health":
             result = client.health()
         elif args.command == "object-info":
-            result = client.request("/object_info")
+            result = client.object_info()
+        elif args.command == "probe":
+            result = client.probe(json.loads(Path(args.manifest).read_text()) if args.manifest else None)
+            if result["status"] == "BLOCKED":
+                print(json.dumps(result, indent=2))
+                return 1
+        elif args.command == "safe-free":
+            result = client.safe_free(settle_s=args.settle_s)
+            if not result["success"]:
+                print(json.dumps(result, indent=2))
+                return 3
+        elif args.command == "cancel":
+            result = client.cancel(args.receipt)
         elif args.command in ("validate", "submit"):
             graph = json.loads(Path(args.workflow).read_text())
             result = client.validate(graph) if args.command == "validate" else client.submit(graph, args.receipt)

@@ -1,0 +1,236 @@
+import unittest
+
+import cv2
+import numpy as np
+
+from agentbox_video import masks
+
+H, W = 96, 128
+
+
+def scene(n, step=(3, 2), size=24, start=(20, 20), seed=0):
+    rng = np.random.default_rng(seed)
+    bg = rng.integers(0, 256, (H, W), dtype=np.uint8)
+    bg = cv2.GaussianBlur(bg, (0, 0), 1.0)
+    patch = cv2.GaussianBlur(rng.integers(0, 256, (size, size), dtype=np.uint8), (0, 0), 1.0)
+    frames, truth = [], []
+    for i in range(n):
+        f = bg.copy()
+        x, y = start[0] + step[0] * i, start[1] + step[1] * i
+        f[y:y + size, x:x + size] = patch
+        t = np.zeros((H, W), np.uint8)
+        t[y:y + size, x:x + size] = 1
+        frames.append(np.dstack([f] * 3))
+        truth.append(t)
+    return frames, truth
+
+
+def iou(a, b):
+    return (a & b).sum() / max(1, (a | b).sum())
+
+
+class MaskTests(unittest.TestCase):
+    def test_tracks_translation(self):
+        frames, truth = scene(10)
+        out, log = masks.track_mask(frames, truth[0], return_log=True)
+        self.assertEqual(out.shape[0], len(frames))
+        for i in range(len(frames)):
+            self.assertGreater(iou(out[i], truth[i]), 0.9, f"frame {i}")
+        self.assertTrue(all(e["method"] == "lk_affine" for e in log[1:]))
+
+    def test_mask_count_equals_frame_count(self):
+        for n in (1, 2, 7):
+            frames, truth = scene(n)
+            self.assertEqual(len(masks.track_mask(frames, truth[0])), n)
+
+    def test_float_frames_accepted(self):
+        frames, truth = scene(5)
+        out = masks.track_mask([f.astype(np.float32) / 255 for f in frames], truth[0])
+        self.assertGreater(iou(out[4], truth[4]), 0.9)
+
+    def test_median_fallback(self):
+        frames, truth = scene(6)
+        cfg = masks.TrackerConfig(min_affine_points=10**6)
+        out, log = masks.track_mask(frames, truth[0], cfg, return_log=True)
+        self.assertTrue(all(e["method"] == "median" for e in log[1:]))
+        self.assertGreater(iou(out[5], truth[5]), 0.9)
+
+    def test_template_fallback_tracks(self):
+        frames, truth = scene(6)
+        cfg = masks.TrackerConfig(min_points=10**6)
+        out, log = masks.track_mask(frames, truth[0], cfg, return_log=True)
+        self.assertTrue(all(e["method"] == "template" for e in log[1:]))
+        self.assertGreater(iou(out[5], truth[5]), 0.9)
+
+    def test_template_floor_fail_closed(self):
+        frames, truth = scene(3)
+        noise = np.random.default_rng(99).integers(0, 256, frames[1].shape, dtype=np.uint8)
+        frames[1] = noise
+        cfg = masks.TrackerConfig(min_points=10**6)
+        with self.assertRaises(masks.TrackingError):
+            masks.track_mask(frames, truth[0], cfg)
+        # floor is configuration: the same pair passes with a floor of -1
+        masks.track_mask(frames, truth[0], masks.TrackerConfig(min_points=10**6, template_floor=-1.0, area_min=0))
+
+    def test_scale_jump_fail_closed(self):
+        frames, truth = scene(2, step=(0, 0))
+        big = cv2.warpAffine(frames[0], cv2.getRotationMatrix2D((W / 2, H / 2), 0, 1.15), (W, H))
+        with self.assertRaisesRegex(masks.TrackingError, "scale"):
+            masks.track_mask([frames[0], big], truth[0])
+
+    def test_large_scale_jump_fail_closed_whatever_the_path(self):
+        # 1.3x is beyond what LK measures, so the step falls to median motion, which
+        # cannot see scale; the correlation check must still stop it.
+        frames, truth = scene(2, step=(0, 0))
+        big = cv2.warpAffine(frames[0], cv2.getRotationMatrix2D((W / 2, H / 2), 0, 1.3), (W, H))
+        with self.assertRaises(masks.TrackingError):
+            masks.track_mask([frames[0], big], truth[0])
+
+    def test_threshold_report_carries_provenance(self):
+        rep = masks.threshold_report(masks.TrackerConfig())
+        self.assertEqual((rep["calibrated"], rep["provisional"]), (False, True))
+        self.assertEqual(rep["acceptance"], "editorial")
+        self.assertTrue(rep["provenance"])
+
+    def test_a_calibrated_tracker_config_is_refused(self):
+        with self.assertRaisesRegex(ValueError, "acceptance is editorial"):
+            masks.TrackerConfig(calibrated=True)
+
+    def test_area_blowup_fail_closed(self):
+        frames, truth = scene(1, step=(0, 0), size=40, start=(44, 28))
+        seq = [frames[0]]
+        for k in range(1, 12):
+            seq.append(cv2.warpAffine(seq[-1], cv2.getRotationMatrix2D((64, 48), 0, 1.07), (W, H)))
+        cfg = masks.TrackerConfig(area_max=0.3)
+        with self.assertRaisesRegex(masks.TrackingError, "area"):
+            masks.track_mask(seq, truth[0], cfg)
+
+    def test_area_floor_fail_closed(self):
+        frames, truth = scene(2)
+        with self.assertRaisesRegex(masks.TrackingError, "area"):
+            masks.track_mask(frames, truth[0], masks.TrackerConfig(area_min=0.9))
+
+    def test_bad_seed_shape(self):
+        frames, _ = scene(2)
+        with self.assertRaises(ValueError):
+            masks.track_mask(frames, np.zeros((5, 5)))
+
+
+def disc_scene(radii, centre=(64, 48), seed=3):
+    """Flat-colour discs (no interior corners) on a textured background, one radius per frame."""
+    rng = np.random.default_rng(seed)
+    bg = cv2.GaussianBlur(rng.integers(0, 256, (H, W), dtype=np.uint8), (0, 0), 1.0)
+    frames, truth = [], []
+    for r in radii:
+        f = bg.copy()
+        cv2.circle(f, centre, int(round(r)), 250, -1)
+        t = np.zeros((H, W), np.uint8)
+        cv2.circle(t, centre, int(round(r)), 1, -1)
+        frames.append(np.dstack([f] * 3))
+        truth.append(t)
+    return frames, truth
+
+
+class UnmeasuredScaleTests(unittest.TestCase):
+    def test_growing_disc_is_not_tracked_at_scale_one(self):
+        # A flat disc has no corners, so the tracker falls to template matching, which
+        # cannot measure scale. A 1.2x growth must be refused, not tracked at 1.0.
+        frames, truth = disc_scene([12, 12, 14.4, 14.4])
+        with self.assertRaisesRegex(masks.TrackingError, r"scale .*\(unmeasured"):
+            masks.track_mask(frames, truth[0])
+
+    def test_gradual_growth_over_a_few_frames_is_refused(self):
+        # ~1.063x per step to 1.2x overall: each step alone is inside the scale bound.
+        frames, truth = disc_scene([12, 12.75, 13.5, 14.4])
+        with self.assertRaisesRegex(masks.TrackingError, "scale"):
+            masks.track_mask(frames, truth[0])
+
+    def test_growing_disc_median_path_is_refused_too(self):
+        frames, truth = disc_scene([12, 14.4])
+        cfg = masks.TrackerConfig(min_points=1, min_affine_points=10**6, corner_erode=0)
+        with self.assertRaisesRegex(masks.TrackingError, "unmeasured"):
+            masks.track_mask(frames, truth[0], cfg)
+
+    def test_unmeasured_scale_is_logged_as_null(self):
+        frames, truth = scene(4)
+        cfg = masks.TrackerConfig(min_points=10**6)  # template path
+        _, log = masks.track_mask(frames, truth[0], cfg, return_log=True)
+        for e in log[1:]:
+            self.assertIsNone(e["scale"])
+            self.assertFalse(e["scale_measured"])
+        cfg = masks.TrackerConfig(min_affine_points=10**6)  # median path
+        _, log = masks.track_mask(frames, truth[0], cfg, return_log=True)
+        for e in log[1:]:
+            self.assertEqual(e["method"], "median")
+            self.assertIsNone(e["scale"])
+            self.assertFalse(e["scale_measured"])
+
+    def test_measured_scale_is_logged(self):
+        frames, truth = scene(4)
+        _, log = masks.track_mask(frames, truth[0], return_log=True)
+        for e in log[1:]:
+            self.assertTrue(e["scale_measured"])
+            self.assertAlmostEqual(e["scale"], 1.0, places=1)
+
+    def test_static_disc_still_tracks_on_template_path(self):
+        frames, truth = disc_scene([12, 12, 12])
+        out, log = masks.track_mask(frames, truth[0], return_log=True)
+        self.assertGreater(iou(out[2], truth[2]), 0.9)
+        self.assertFalse(log[1]["scale_measured"])
+
+    def test_probe_is_configuration(self):
+        rep = masks.threshold_report(masks.TrackerConfig())
+        self.assertIn("scale_probe_margin", rep)
+        self.assertIn("scale_probes", rep)
+
+
+if __name__ == "__main__":
+    unittest.main()
+
+
+class CumulativeMeasuredScaleTests(unittest.TestCase):
+    def test_measured_zoom_followed_by_median_step_is_not_refused(self):
+        # LK measures 1.05 per step (in bounds); the last step falls to median motion. The cumulative
+        # scale of 1.05**3.7 ~ 1.2155 was measured, so the unmeasured step must be probed relative to it.
+        frames, truth = scene(5, step=(0, 0), size=40, start=(44, 28))
+        c = (W / 2, H / 2)
+        zoomed = [frames[0]]
+        for k in range(1, 5):
+            zoomed.append(cv2.warpAffine(frames[0], cv2.getRotationMatrix2D(c, 0, 1.05 ** k), (W, H)))
+        real = masks._step
+        calls = {"n": 0}
+
+        def stubbed(prev, cur, mask, cfg, step):
+            calls["n"] += 1
+            if step < 4:
+                m = cv2.getRotationMatrix2D(c, 0, 1.05)
+                return m, "lk_affine", 1.05
+            return np.array([[1, 0, 0], [0, 1, 0]], dtype=np.float64), "median", None
+
+        masks._step = stubbed
+        try:
+            out, log = masks.track_mask(zoomed, truth[0], return_log=True)
+        finally:
+            masks._step = real
+        self.assertEqual(len(out), 5)
+        self.assertEqual(log[4]["method"], "median")
+
+    def test_uncontrolled_growth_after_measured_steps_is_still_refused(self):
+        frames, truth = scene(4, step=(0, 0), size=40, start=(44, 28))
+        c = (W / 2, H / 2)
+        # measured 1.05 per step, but the subject really grows 1.30x at the last (unmeasured) step
+        zoomed = [frames[0]] + [cv2.warpAffine(frames[0], cv2.getRotationMatrix2D(c, 0, s), (W, H))
+                                for s in (1.05, 1.1025, 1.1025 * 1.3)]
+        real = masks._step
+
+        def stubbed(prev, cur, mask, cfg, step):
+            if step < 3:
+                return cv2.getRotationMatrix2D(c, 0, 1.05), "lk_affine", 1.05
+            return np.array([[1, 0, 0], [0, 1, 0]], dtype=np.float64), "median", None
+
+        masks._step = stubbed
+        try:
+            with self.assertRaisesRegex(masks.TrackingError, "scale"):
+                masks.track_mask(zoomed, truth[0])
+        finally:
+            masks._step = real
