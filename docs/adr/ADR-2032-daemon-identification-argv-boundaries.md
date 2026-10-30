@@ -10,7 +10,7 @@ superseded_by: []
 verified_commit: 044f1d689569572417a98f91afcf744fc2ca2385
 verified_paths: [services/agentbox-ops/src/procs.rs, services/agentbox-ops/src/bin/ruflo-daemon-gc.rs]
 owner: jjohare
-review_trigger: a new daemon launcher shape (new package path, wrapper script or runtime flags), any new binary that signals processes, or adoption of pidfd-based identity
+review_trigger: a new daemon launcher shape (new package path, wrapper script or runtime flags), any new binary that signals processes, or adoption of pidfd-based identity; activation — a signalling-caller inventory covering every estate reaper, and the rebuilt agentbox-ops binaries exercised against a live daemon
 repo: agentbox
 ---
 

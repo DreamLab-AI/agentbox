@@ -4,7 +4,7 @@ title: One writer for the pod inbox — the Rust pod bridge, not the JS relay co
 date: 2026-09-05
 decision_status: accepted
 implementation_status: complete
-activation_status: staged
+activation_status: live
 supersedes: []
 superseded_by: []
 verified_commit: e070514d808b218574403377fb75e0e1a0a256b3
@@ -124,3 +124,11 @@ empty.
   edit was reviewed by reading scope rather than evaluated; `podBridgeEnabled`
   is defined in the same `let` as `relayImpl`, which the same env list already
   interpolates.
+
+## Close-out 2026-10-30 — staged → live
+
+Running image `sha256:9776d2fc515c5922cde9f7791248f731416192a6b4a66e8d6d06b15bfd5c892d` (`GET :9090/health` `image_hash`), booted 2026-10-30 14:22Z. The baked JS under `management-api/{lib,server.js}`, `mcp/servers`, `config/hooks` and `scripts` is byte-identical to `e786197ccb9f56c638d4b0181e77f33ab38b7db9` (sha256 of every file present in both trees: 96 same, 0 different).
+- `tr '\0' '\n' < /proc/446/environ` (management-api) → `AGENTBOX_POD_INBOX_WRITER=rust-pod-bridge`, `AGENTBOX_RELAY_POD_BRIDGE=true`, `AGENTBOX_RELAY_IMPL=nostr-rs-relay`: the flake projection this record waits for is in the running process.
+- `ps -eo pid,args` → pid 453 `…/nostr-pod-bridge-0.1.0/bin/nostr-pod-bridge` (supervisor program `nostr-relay`, RUNNING).
+- `/opt/agentbox/management-api/server.js:1405-1415` reads that variable and passes `writeInbox: !podBridgeOwnsInbox`, so the JS consumer runs delegated and the Rust bridge is the single inbox writer.
+- The baked `management-api/lib/relay-consumer.js` is a build-time copy of `mcp/nostr-bridge/relay-consumer.js` (identical sha256).

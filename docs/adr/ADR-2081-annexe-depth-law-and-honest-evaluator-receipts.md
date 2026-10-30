@@ -10,7 +10,7 @@ superseded_by: []
 verified_commit: 21769a881315a246afaa6e9d0b39daf4ec39b5bc
 verified_paths: [services/dream-engine/src/engine.rs, services/dream-engine/src/runner.rs, services/dream-engine/src/dispatch.rs, services/dream-engine/src/candidate_flow.rs]
 owner: jjohare
-review_trigger: next dream-engine image rebuild (activation of the supervised loop), or any change to annexe layout or receipt classification
+review_trigger: first nightly dream-engine run on the rebuilt image (live supervised binary carries 'bash -o pipefail -c', checked 2026-10-30) whose receipts show the annexe depth layout and a pipefail-graded evaluator — that receipt moves this to live; or any change to annexe layout or receipt classification
 repo: agentbox
 ---
 

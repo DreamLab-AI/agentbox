@@ -3,12 +3,12 @@ id: ADR-2055
 title: Describe opf-router as the privacy-filter sidecar on its own port, never as a facade on the Loom's
 date: 2026-09-05
 decision_status: accepted
-implementation_status: partial
+implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 89301ec7c911eab270c00a0cf81596d0d4f15535
-verified_paths: []
+verified_commit: e786197ccb9f56c638d4b0181e77f33ab38b7db9
+verified_paths: [docs/BASELINE-container.md]
 owner: jjohare
 review_trigger: a change to [privacy_filter].port, to the [program:opf-router] supervisor block, or to the BASELINE-container supervised-program table
 repo: agentbox
@@ -97,3 +97,11 @@ Verification ran on the **uncommitted working tree** above
   `nostr-gateway` cited `:1567`, actual `[program:nostr-gateway]` at `:1809` (+242);
   `jupyter-lab` cited `:1610`, actual at `:1852` (+242);
   `opf-router` cited `:1873`, actual at `:2143` (+270).
+
+## Close-out 2026-10-30 — partial → complete
+
+The routed BASELINE edit has landed (`f8e61efac`, 2026-09-05, re-checked at `e786197ccb9f56c638d4b0181e77f33ab38b7db9`):
+- `docs/BASELINE-container.md:94` → ``| `opf-router` | privacy-filter redaction sidecar (legacy ADR-008), gate `[privacy_filter]` | `127.0.0.1:9092` |``.
+- `grep -n 8084 docs/BASELINE-container.md` → only the changelog lines 28 and 327, which record this correction. No row describes a supervised program serving `:8084`.
+- The supervised-services table cites `[program:<name>]`, not line numbers (changelog 0.3.0, line 28). `grep -n 'flake.nix:[0-9]'` → two citations outside the table (lines 127 and 141).
+- Live: `ss -ltnp` → `127.0.0.1:9092` held by `python3.12` pid 922 (`opf-router`), and nothing listening on `:8084`.

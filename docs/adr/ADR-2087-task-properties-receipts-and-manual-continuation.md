@@ -10,7 +10,7 @@ superseded_by: []
 verified_commit: dfe78f0766e52ae6cfbae32c395e22c9590d6785
 verified_paths: [management-api/lib/task-properties.js, management-api/lib/authority.js, management-api/lib/authority-journal.js, management-api/lib/governance-receipt-publisher.js, management-api/lib/governance-manual-continue.js, management-api/lib/governance-application-receipts.js, management-api/lib/dream-ledger.js, management-api/routes/broker-bridge.js, management-api/routes/llm-marketplace.js, mcp/servers/governance-bridge.js, services/dream-engine/src/records.rs, scripts/activation/adr-2087-check.sh]
 owner: jjohare
-review_trigger: nostr-bbs-core publishing TaskProperties (the schema this stamps against), agentbox authority_class gaining a third class, or the forum receipts endpoint changing shape
+review_trigger: nostr-bbs-core publishing TaskProperties (the schema this stamps against), agentbox authority_class gaining a third class, or the forum receipts endpoint changing shape; activation — scripts/activation/adr-2087-check.sh exiting 0 on the running image (2026-10-30 it exits 1 — B4 deny not journalled once, B5/C2 audit chain does not verify — and B7 has no posted receipt)
 repo: agentbox
 ---
 

@@ -10,7 +10,7 @@ superseded_by: []
 verified_commit: 89301ec7c911eab270c00a0cf81596d0d4f15535
 verified_paths: []
 owner: jjohare
-review_trigger: A new supervised program that binds a network interface, or any proposal to set --auth none / an empty auth token on one
+review_trigger: A new supervised program that binds a network interface, or any proposal to set --auth none / an empty auth token on one; activation — a boot-minted VNC credential replacing Xvnc -SecurityTypes None on 0.0.0.0:5901 and removal of the three listener-gate sanctions
 repo: agentbox
 domain: BASELINE-container
 lineage: extends ADR-2013 (loopback-only compose publishes) from the publish plane to the listener plane; ADR-2003 (gate both package set and supervisor block); precedent [program:aoe-serve] token auth

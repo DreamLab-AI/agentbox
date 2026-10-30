@@ -4,7 +4,7 @@ title: The governed server projects one pinned Ruflo capability; memory never cr
 date: 2026-09-07
 decision_status: accepted
 implementation_status: complete
-activation_status: staged
+activation_status: live
 supersedes: []
 superseded_by: []
 verified_commit: 3b498088e5a35e78158a9eb8d6f0266996d31f82
@@ -263,3 +263,7 @@ Re-verified 2026-10-29 at `00039efb1e4a70402df86ad19cf76894fe3b9a8f` for ADR-215
 
 
 Security follow-up re-verified 2026-10-29 at `7d8c3b2dfe165f4ab3f8a5e4f62b8294ea7b155d`: the changed hunks drop privilege before workspace credential writes, replace credentials atomically, reject typed-decision redirects and retain the timeout through response parsing. The stalled-body, planted-symlink and HTTP307 regressions pass. These strengthen the existing boundaries; status axes and activation limits are unchanged. The original Deepsec report remains BLOCK with a separate remediation receipt, not a claimed clean rescan.
+
+## Close-out 2026-10-30 — staged → live
+
+The record's activation event was the next image rebuild. Executed against the baked server on the running image: `node /opt/agentbox/mcp/servers/ruvector-mcp.cjs` with the `claude-flow` env from `/home/devuser/workspace/.mcp.json`, JSON-RPC `initialize` then `tools/list` → 56 tools. Besides the native stubs and the ten governed `memory_*` tools, the list carries the projected Ruflo capability: `agent_execute agent_terminate agent_status agent_list agent_pool agent_health agent_update agent_logs swarm_pheromone_update swarm_pheromone_status swarm_shutdown swarm_health` and the `rure_*` set (8 tools). That matches the running manifest's `orchestration_tools = "swarm,agent,rure"` (`/etc/agentbox.toml:456`). No forwarded `memory_*` tool is present. The proxy's denial of a forwarded `memory_*` call was not re-exercised here.

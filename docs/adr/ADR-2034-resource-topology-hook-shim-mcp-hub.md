@@ -10,7 +10,7 @@ superseded_by: []
 verified_commit: 89301ec7c911eab270c00a0cf81596d0d4f15535
 verified_paths: []
 owner: jjohare
-review_trigger: first host rebuild after 2026-09-05 (records verified_commit and the measured acceptance numbers in docs/reference/resource-topology-2026-09.md §5), or any change to ruflo hook wiring, the [resources] table, or the hub server list
+review_trigger: measured acceptance numbers in docs/reference/resource-topology-2026-09.md §5 recorded on the running image (2026-10-30 — `curl -s 127.0.0.1:9720/health | jq '.servers|keys|length'` = 8, target 10; dream-engine nice 6 not 10), or any change to ruflo hook wiring, the [resources] table, or the hub server list
 repo: agentbox
 domain: BASELINE-container
 ---

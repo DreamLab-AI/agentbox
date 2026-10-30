@@ -4,7 +4,7 @@ title: Skills carry one authoring contract, discovery is generated, and both har
 date: 2026-09-09
 decision_status: accepted
 implementation_status: partial
-activation_status: staged
+activation_status: live
 supersedes: []
 superseded_by: []
 verified_commit: 57a92a402372ef125d43920d6ddbe3d100e498c9
@@ -77,3 +77,12 @@ Master copy only; activation is the next image rebuild. At the landing commit:
 → all pass; `node scripts/skill-count-check.js` → ok; `node skills/gen-routing-table.mjs
 --check` → current; `bash -n config/entrypoint-unified.sh` → clean. Audit evidence: `docs/archive/skills-audit-2026-09-09/` (fact sheet, fixer brief, per-batch
 `findings/*.json` with file:line per finding, cited standards brief); summary in `CHANGELOG.md` (2026-09-09).
+
+## Close-out 2026-10-30 — activation staged → live (implementation stays partial)
+
+The record's activation event was the next image rebuild. On the running image (booted 2026-10-30 14:22Z):
+- `sha256sum` of `skills/registered-skills.txt`, `skills/codex-registered-skills.txt` and `skills/skill-router/references/routing-table.md` under `/opt/agentbox` matches `e786197ccb9f56c638d4b0181e77f33ab38b7db9` for all three.
+- `comm -3 <(manifest) <(ls ~/.claude/skills)` and the same for `~/.codex/skills`: every manifest skill is registered in both harnesses. Codex holds exactly its manifest set. Claude also holds five unmanaged entries (`ontology-core`, `ontology-enrich`, `synced`, `SKILL-DIRECTORY.md`, `env.sample`), which `scripts/reconcile-skills.sh:12` deliberately leaves alone.
+- `readlink ~/.claude/skills/browser` → `/opt/agentbox/skills/browser`; `readlink ~/.codex/skills/skill-router` → `/opt/agentbox/skills/skill-router`. Registration reconciles from the baked tree.
+- At `e786197ccb9f56c638d4b0181e77f33ab38b7db9`: `bash skills/lint-skills.sh` → `OK — skills estate clean (131 skills, …, 29 warnings)`; `node skills/gen-routing-table.mjs --check` → `routing-table.md is current`.
+`implementation_status` stays `partial` because two Consequences follow-ups are still open. `grep -c 'openai-codex/mcp-server\|codex-mcp-server' flake.nix` → 5, so the Codex MCP closure is not retired. `agentbox.toml` has no `[skills.linkedin]`, `[skills.reddit]` or `[skills.notebooklm]` gate.

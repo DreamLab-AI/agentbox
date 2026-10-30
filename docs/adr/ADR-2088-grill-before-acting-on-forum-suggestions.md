@@ -4,7 +4,7 @@ title: JunkieJarvis grills the author before acting on an unclear forum item
 date: 2026-09-15
 decision_status: accepted
 implementation_status: complete
-activation_status: staged
+activation_status: live
 supersedes: []
 superseded_by: []
 verified_commit: 16139219351978674a549ea943f6005f8010f7b1
@@ -181,3 +181,11 @@ Re-verified by `git diff e434a7a59..275e12356 -- <verified_paths>`. No re-implem
 ## Re-verification — 2026-10-21
 
 The identity addition accepts signed epoch tickets against an explicit group binding and store owner, subscribes to the optional inbox recipient, and authenticates the seal before routing. Key material never reaches the model; all 47 zone-key tests pass. Proxy authentication and clarification matching are unchanged. Manifest validation, the 95 catalogue gates, 45 agent-reconciliation checks and 25 role-supervisor checks pass. This is source verification; image activation and live checks remain separate deployment evidence.
+
+## Close-out 2026-10-30 — staged → live
+
+The DM leg was waiting for the rebuilt image to bake `junkiejarvis = true`. On the running image:
+- `grep -n '^junkiejarvis' /etc/agentbox.toml` → `50:junkiejarvis = true`; `:63 junkiejarvis_clarify_before_acting = true`.
+- `/var/log/management-api.log`, 2026-10-30T14:22:47Z (pid 446): `junkiejarvis: started` (provider ollama), `junkiejarvis watching — gift-wrapped DMs (#p) + kind-42 mentions`, `junkiejarvis published kind-0 profile`.
+- `management-api/lib/junkiejarvis-clarify.js` and `junkiejarvis-agent.js` in the image are byte-identical to `e786197ccb9f56c638d4b0181e77f33ab38b7db9`.
+No clarifying DM was triggered for this close-out; the gate logic is covered by the tests above.

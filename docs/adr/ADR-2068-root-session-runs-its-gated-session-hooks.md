@@ -4,7 +4,7 @@ title: A session-boundary gate binds every session class, root included, and ret
 date: 2026-09-05
 decision_status: accepted
 implementation_status: complete
-activation_status: staged
+activation_status: live
 supersedes: []
 superseded_by: []
 verified_commit: e070514d808b218574403377fb75e0e1a0a256b3
@@ -75,3 +75,12 @@ original bytes exactly; gate off against a `settings.json` that never had the
 hook creates no keys; the mode string is honoured. The third case initially
 failed — the off path left an empty `env: {}` behind — and the code was fixed to
 delete an emptied `env` map before the case passed.
+
+## Close-out 2026-10-30 — staged → live
+
+The record's activation event was the next container boot. On the running image (booted 2026-10-30 14:22Z):
+- `sha256sum /opt/agentbox/config/entrypoint-unified.sh config/entrypoint-unified.sh` → both `825b1d7f292c0ca4…` at `e786197ccb9f56c638d4b0181e77f33ab38b7db9`.
+- `/etc/agentbox.toml` `[ontology_monitor]` → `enabled = true`, `mode = "publish"`.
+- `/var/log/bootstrap.log` (this boot, mtime 2026-10-30 14:23:07Z) → `[ontology] ontology-monitor hook already registered`. The gated root-session block ran on this boot with the gate on.
+- `jq '.env, .hooks.SessionEnd' /home/devuser/.claude/settings.json` (root session) → `AGENTBOX_ONTOLOGY_MONITOR=1`, `AGENTBOX_ONTOLOGY_MONITOR_MODE=publish` (the block rewrites these on every on-boot), and a `SessionEnd` command `node /home/devuser/workspace/project/agentbox/config/hooks/ontology-monitor.cjs || true`. That hook entry predates this boot. The block writes `/opt/agentbox/config/hooks/ontology-monitor.cjs` (`config/entrypoint-unified.sh:1752`) but detects registration by substring (`MARKER = 'ontology-monitor.cjs'`, `:1759`), so it accepted the existing workspace-path entry rather than rewriting it.
+Not exercised live: the gate-off retraction path (covered by the fixture cases above); flipping the gate on the operator's box was out of scope.

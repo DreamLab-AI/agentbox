@@ -4,7 +4,7 @@ title: deepsec is the executed Security gate of build-with-quality, baked as a m
 date: 2026-09-05
 decision_status: accepted
 implementation_status: partial
-activation_status: staged
+activation_status: live
 supersedes: []
 superseded_by: []
 verified_commit: d0e9ca7865c7e120bd657b0ffc66e54b043dfa1a
@@ -437,3 +437,10 @@ Re-verified 2026-10-30 at `29a4b4939`: the agentbox.toml delta is three lines in
 Re-verified 2026-10-30 at `cd3a29899`: the delta in schema/agentbox.toml.schema.json is [system_one] only (new `network` and `local_only` properties; `bind` admits 0.0.0.0/RFC 1918); management-api/lib/system-manifest.js gains one entry, `system-one-network`; scripts/agentbox-config-validate.js changes only the [system_one] E080 bind rule. This record's sections are untouched.
 
 Re-verified 2026-10-30 at d0e9ca786: the only change to the governed paths is the new `[system_one].skill_list_at_least` key and its schema property (router runner-up listing, ADR-2091); no section this record governs changed.
+
+## Close-out 2026-10-30 — activation staged → live (implementation stays partial)
+
+Activation waited for the rebuild and a real `--diff` receipt. Both exist now:
+- `deepsec --version` → `2.3.10` from `/nix/store/z5xpqmf1…-deepsec-2.3.10/bin/deepsec`, and `/etc/agentbox.toml:2519-2520` `[security.deepsec] enabled = true`.
+- Receipt `/home/devuser/workspace/QR-WASM/.deepsec-gate/reports/20261027T212112Z/receipt.json` → `gate: deepsec`, `mode: diff`, `deepsec_version: 2.3.10`, `policy_source: /etc/agentbox.toml`, `fail_on: HIGH`, `deepsec_exit: 1`, `result: BLOCK`, `candidates: 13`, clean tree at `8ec1397f6`. This is a real diff-mode gate run on the baked CLI, and it blocked.
+`implementation_status` stays `partial` because a `--full` pass and the labelled-PR CI run (`.github/workflows/deepsec.yml`) remain unexecuted.

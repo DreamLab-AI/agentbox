@@ -4,7 +4,7 @@ title: Serve the briefing workflow (brief, execute, debrief) from management-api
 date: 2026-09-05
 decision_status: accepted
 implementation_status: complete
-activation_status: staged
+activation_status: live
 supersedes: []
 superseded_by: []
 verified_commit: e070514d808b218574403377fb75e0e1a0a256b3
@@ -96,3 +96,10 @@ implementation is uncommitted at time of writing, so re-verify at the landing co
   real `ManagementApiClient` against a mock origin that replies with exactly this route's JSON;
   `cargo fmt --all --check` → clean.
 - `grep -n "briefing" management-api/server.js` → registration at `server.js:1181`.
+
+## Close-out 2026-10-30 — staged → live
+
+Running image `sha256:9776d2fc515c5922cde9f7791248f731416192a6b4a66e8d6d06b15bfd5c892d` (`GET :9090/health` `image_hash`), booted 2026-10-30 14:22Z. The baked JS under `management-api/{lib,server.js}`, `mcp/servers`, `config/hooks` and `scripts` is byte-identical to `e786197ccb9f56c638d4b0181e77f33ab38b7db9` (sha256 of every file present in both trees: 96 same, 0 different). `management-api/routes/*.js` also match.
+- `curl -X POST :9090/v1/briefs` (bearer, body `{}`) → 400 `body must have required property 'content'`; `/v1/briefs/x/execute` → 400 `…'brief_path'`; `/v1/briefs/x/debrief` → 400 `…'role_responses'`; control `/v1/nonexistent-zz` → 404. The three routes are mounted and schema-validating on the running management-api (pid 446).
+- `GET :9090/health` → `adapters.pods: healthy`, `beads: healthy`, `events: healthy`, so the routes do not self-gate 503.
+No brief was written: a full create/execute/debrief round trip would mutate the operator's pod and work ledger, so it was not run.

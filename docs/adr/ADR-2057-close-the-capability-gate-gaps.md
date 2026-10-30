@@ -4,7 +4,7 @@ title: Close the capability-gate gaps for podcast-cron, harness and precedent
 date: 2026-09-05
 decision_status: accepted
 implementation_status: complete
-activation_status: staged
+activation_status: live
 supersedes: []
 superseded_by: []
 verified_commit: 08e817f394a908264c378745193bf7a0bbf6ec0e
@@ -178,3 +178,11 @@ Consequently the *Consequences* note stands as written: anyone who had set
 `[skills.harness]`/`[skills.precedent]` `enabled = false` and never noticed it was
 ignored will now, on a fresh workspace, stop getting those MCP servers. That is the
 intended outcome.
+
+## Close-out 2026-10-30 — staged → live
+
+The podcast gate waited on a rebuild. On the running image:
+- `/etc/agentbox.toml:1188` `[skills.podcast_ingest]` → `enabled = true` (15th line of the section). `/etc/supervisord.conf:454` carries `[program:podcast-cron]`, and `supervisorctl status podcast-cron` → `RUNNING pid 980`.
+- Gap 4 is live end to end: `[skills.harness] template_dir = "/home/devuser/workspace/VisionFlow/docs/engineering/templates"`, and `/proc/15359/environ` (the hub-run `node /opt/agentbox/mcp/servers/harness-bridge.js`) carries `HARNESS_TEMPLATE_DIR` with that exact value.
+- The precedent surface no longer exists: `70d017a3b` (2026-09-14, ADR-2061) retired the precedent system, so `grep -c 'skills.precedent'` over `agentbox.toml` and `config/entrypoint-unified.sh` is 0, and no `precedent*` server exists under `mcp/servers` or `/opt/agentbox/mcp`. Its gap is closed by removal. What remains is a stale name: `flake.nix:233` still lists `"precedent-bridge"` in the `mcpHubServers` default list (overridden by `[resources.mcp_hub]`; the live hub serves 8 servers, none of them precedent), and `flake.nix:1377`/`:2255` mention it in comments.
+Not exercised live: a gate-off boot. The narrower-than-acceptance notes above still stand.

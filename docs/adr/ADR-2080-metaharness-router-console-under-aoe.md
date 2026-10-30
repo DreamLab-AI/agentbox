@@ -10,7 +10,7 @@ superseded_by: []
 verified_commit: cda60e7a0d04a1436d2cdd83779c49745a4efb96
 verified_paths: []
 owner: jjohare
-review_trigger: the next ruflo pin (re-verify the tarball still omits assets/model-router and task-embedder still imports @xenova/transformers — either fix retires half of this record); a week of console ledger rows (feed ADR-2079's spike); any request to route non-public work through it
+review_trigger: the next ruflo pin (re-verify the tarball still omits assets/model-router and task-embedder still imports @xenova/transformers — either fix retires half of this record); a week of console ledger rows (feed ADR-2079's spike); any request to route non-public work through it; activation — owner ruling on acceptance item 3 (router.sh:79 pins tier public, so the wrapper cannot exit on private; console.mjs exits 1) — items 1, 2 and 4 passed on the running image 2026-10-30
 repo: agentbox
 domain: GOVERNANCE-capabilities
 lineage: ADR-2079 (AoE is the dispatch plane; this is its Phase 0 — the first labelled, audited, privacy-pinned dispatch to a non-Claude backend chosen by a learned router); legacy ADR-041 (the aqe projection stays); ADR-2031 (dated tariffs); ADR-2070 (raw Loom door never auto-routed); ADR-2026 (egress switch honoured); upstream ruflo ADR-148/149/150 and metaharness ADR-040/043 (the router and its promotion gate).
