@@ -27,7 +27,7 @@
 use crate::{
     clock::RationalRate,
     comfy::sha256_hex,
-    media::{self, PixelFormat},
+    media::{self, Colour, PixelFormat},
     paths::{Root, take_root_option},
 };
 use serde::{Deserialize, Serialize};
@@ -78,6 +78,10 @@ pub struct Segment {
     pub media: Asset,
     /// Half-open `[start, end)` source frame interval.
     pub keep: [u64; 2],
+    /// Declared YUV colour of the source, required when it carries no complete
+    /// colour tags (and then never guessed); must agree with complete tags.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub colour: Option<Colour>,
 }
 
 /// The approved audio track, muxed bit-exactly.
@@ -167,6 +171,7 @@ fn verified(root: &Root, asset: &Asset) -> Result<PathBuf> {
 fn compose(
     plan: &StitchPlan,
     paths: &[PathBuf],
+    colours: &[Option<Colour>],
     mut sink: impl FnMut(&[u8]) -> Result<()>,
 ) -> Result<u64> {
     let mut carry: Vec<Vec<u8>> = Vec::new();
@@ -179,27 +184,33 @@ fn compose(
         let mut next_carry = Vec::new();
         let mut done = false;
         let mut seen = 0u64;
-        let result = media::for_each_frame(&paths[i], PixelFormat::Rgb24, None, |frame| {
-            if frame.index < a {
-                return Ok(());
-            }
-            if frame.index >= b {
-                done = true;
-                return Err("segment complete".into());
-            }
-            let k = frame.index - a;
-            seen += 1;
-            if k < left {
-                sink(&blend_frame(&carry[k as usize], &frame.data, k, left))?;
-                emitted += 1;
-            } else if k >= len - right {
-                next_carry.push(frame.data);
-            } else {
-                sink(&frame.data)?;
-                emitted += 1;
-            }
-            Ok(())
-        });
+        let result = media::for_each_frame_as(
+            &paths[i],
+            PixelFormat::Rgb24,
+            None,
+            colours[i].as_ref(),
+            |frame| {
+                if frame.index < a {
+                    return Ok(());
+                }
+                if frame.index >= b {
+                    done = true;
+                    return Err("segment complete".into());
+                }
+                let k = frame.index - a;
+                seen += 1;
+                if k < left {
+                    sink(&blend_frame(&carry[k as usize], &frame.data, k, left))?;
+                    emitted += 1;
+                } else if k >= len - right {
+                    next_carry.push(frame.data);
+                } else {
+                    sink(&frame.data)?;
+                    emitted += 1;
+                }
+                Ok(())
+            },
+        );
         match result {
             Ok(_) => {}
             Err(_) if done => {}
@@ -239,7 +250,8 @@ fn colour_tags(path: &Path) -> Result<Value> {
 }
 
 /// Post-encode gate. On any mismatch the output is deleted and an error
-/// returned. Checks decoded frame count, rational rate, canvas, BT.709 tags and
+/// returned. Checks decoded frame count, rational rate, canvas, BT.709 tags, the
+/// declared `tv` range, pixel format and
 /// (when `audio` is given) copied audio packet hashes.
 pub fn gate(
     output: &Path,
@@ -264,6 +276,8 @@ pub fn gate(
             ("color_space", "bt709"),
             ("color_primaries", "bt709"),
             ("color_transfer", "bt709"),
+            ("color_range", "tv"),
+            ("pix_fmt", "yuv420p"),
         ] {
             if tags[key] != want {
                 return Err(format!("output {key} is {}, expected {want}", tags[key]).into());
@@ -300,6 +314,7 @@ fn discard(path: &Path, error: Box<dyn Error>) -> Box<dyn Error> {
 fn encode(
     plan: &StitchPlan,
     paths: &[PathBuf],
+    colours: &[Option<Colour>],
     size: (u32, u32),
     audio: Option<&Path>,
     dest: &Path,
@@ -347,7 +362,7 @@ fn encode(
         .stderr(Stdio::piped());
     let mut child = command.spawn()?;
     let mut stdin = child.stdin.take().ok_or("ffmpeg stdin unavailable")?;
-    let composed = compose(plan, paths, |frame| {
+    let composed = compose(plan, paths, colours, |frame| {
         stdin.write_all(frame).map_err(Into::into)
     });
     drop(stdin);
@@ -366,11 +381,31 @@ fn encode(
 pub fn assemble(root: &Root, plan: &StitchPlan, out_dir: &Path) -> Result<Value> {
     plan.validate()?;
     let mut paths = Vec::new();
+    let mut colours = Vec::new();
     let mut size = None;
     let mut segments = Vec::new();
     for (i, segment) in plan.segments.iter().enumerate() {
         let path = verified(root, &segment.media)?;
         let probe = media::probe(&path)?;
+        let what = format!("segment {}", segment.id);
+        probe
+            .require_upright_square()
+            .map_err(|e| format!("{what}: {e}"))?;
+        let colour = Colour::resolve(&probe, segment.colour.as_ref(), &what)?;
+        if let Some(t) = probe.color_transfer.as_deref()
+            && matches!(t, "smpte2084" | "arib-std-b67")
+        {
+            return Err(format!(
+                "{what}: HDR transfer {t} cannot be stitched into a BT.709 delivery"
+            )
+            .into());
+        }
+        if probe.color_primaries.as_deref() == Some("bt2020") {
+            return Err(format!(
+                "{what}: BT.2020 primaries cannot be stitched into a BT.709 delivery"
+            )
+            .into());
+        }
         if probe.rate != plan.rate {
             return Err(format!(
                 "segment {} rate {} differs from plan",
@@ -389,10 +424,15 @@ pub fn assemble(root: &Root, plan: &StitchPlan, out_dir: &Path) -> Result<Value>
         segments.push(
             json!({"id":segment.id,"media":{"path":root.rel(&segment.media.path)?,
             "sha256":segment.media.sha256},"keep":segment.keep,
+            "colour":{"declared":segment.colour.is_some(),"used":colour,
+                "tags":{"color_space":probe.color_space,"color_range":probe.color_range,
+                    "color_primaries":probe.color_primaries,"color_transfer":probe.color_transfer,
+                    "pix_fmt":probe.pix_fmt}},
             "overlap_in":if i>0 {plan.overlaps[i-1]} else {0},
             "overlap_out":plan.overlaps.get(i).copied().unwrap_or(0)}),
         );
         paths.push(path);
+        colours.push(colour);
     }
     let size = size.ok_or("no segments")?;
     let mut audio_hashes = None;
@@ -415,7 +455,7 @@ pub fn assemble(root: &Root, plan: &StitchPlan, out_dir: &Path) -> Result<Value>
     }
     let dest = out_dir.join("stitched.mp4");
     let expected = plan.expected_frames();
-    let encoded = encode(plan, &paths, size, audio_path.as_deref(), &dest);
+    let encoded = encode(plan, &paths, &colours, size, audio_path.as_deref(), &dest);
     if let Err(error) = encoded {
         return Err(discard(&dest, error));
     }
@@ -429,7 +469,7 @@ pub fn assemble(root: &Root, plan: &StitchPlan, out_dir: &Path) -> Result<Value>
         "colour":{"matrix":"bt709","range":"tv","probed":tags},
         "audio":audio_record,
         "output":{"path":root.rel(&dest)?,"sha256":sha256_hex(&fs::read(&dest)?),"probe":probe},
-        "status":"PASS"}))
+        "status":"PASS","provisional":false,"acceptance_backing":true}))
 }
 
 /// Result of [`plan_retake`].
@@ -517,6 +557,12 @@ pub struct RetakeInput {
     /// Optional approved audio.
     #[serde(default)]
     pub audio: Option<AudioSpec>,
+    /// Declared colour of the original clip when it is not completely tagged.
+    #[serde(default)]
+    pub original_colour: Option<Colour>,
+    /// Declared colour of the generated clip when it is not completely tagged.
+    #[serde(default)]
+    pub generated_colour: Option<Colour>,
     /// Optional unchanged-range PSNR gate configuration.
     #[serde(default)]
     pub thresholds: Option<RetakeThresholds>,
@@ -572,20 +618,36 @@ impl RetakeInput {
     pub fn to_stitch(&self) -> Result<StitchPlan> {
         self.validate()?;
         let ([g0, g1], n, o) = (self.generation, self.frames, self.overlap);
-        let part = |id: &str, media: &Asset, keep: [u64; 2]| Segment {
+        let part = |id: &str, media: &Asset, keep: [u64; 2], colour: &Option<Colour>| Segment {
             id: id.into(),
             media: media.clone(),
             keep,
+            colour: colour.clone(),
         };
         let mut segments = Vec::new();
         let mut overlaps = Vec::new();
         if g0 > 0 {
-            segments.push(part("original-head", &self.original, [0, g0 + o]));
+            segments.push(part(
+                "original-head",
+                &self.original,
+                [0, g0 + o],
+                &self.original_colour,
+            ));
             overlaps.push(o);
         }
-        segments.push(part("generated", &self.generated, [0, g1 - g0]));
+        segments.push(part(
+            "generated",
+            &self.generated,
+            [0, g1 - g0],
+            &self.generated_colour,
+        ));
         if g1 < n {
-            segments.push(part("original-tail", &self.original, [g1 - o, n]));
+            segments.push(part(
+                "original-tail",
+                &self.original,
+                [g1 - o, n],
+                &self.original_colour,
+            ));
             overlaps.push(o);
         }
         Ok(StitchPlan {
@@ -623,14 +685,22 @@ fn psnr(a: &[u8], b: &[u8]) -> f64 {
 /// Minimum PSNR (dB) between the decoded `delivered` and `original` frames over
 /// `ranges`. Both are decoded at full size in lockstep; the delivery is lossy,
 /// so unchanged frames are compared by re-decoding, not by bit-exact hashes.
-pub fn min_psnr_over(delivered: &Path, original: &Path, ranges: &[[u64; 2]]) -> Result<f64> {
+///
+/// `original_colour` is the resolved colour of the original (see
+/// [`Colour::resolve`]), so it is decoded exactly as the stitch decoded it.
+pub fn min_psnr_over(
+    delivered: &Path,
+    original: &Path,
+    ranges: &[[u64; 2]],
+    original_colour: Option<&Colour>,
+) -> Result<f64> {
     let wanted = |i: u64| ranges.iter().any(|r| i >= r[0] && i < r[1]);
     let (tx, rx) = mpsc::sync_channel::<(u64, Vec<u8>)>(2);
     let mut worst = 100.0f64;
     let mut compared = 0u64;
     let outcome = std::thread::scope(|scope| {
         let reader = scope.spawn(move || {
-            media::for_each_frame(original, PixelFormat::Rgb24, None, |f| {
+            media::for_each_frame_as(original, PixelFormat::Rgb24, None, original_colour, |f| {
                 if wanted(f.index) {
                     tx.send((f.index, f.data))
                         .map_err(|_| "comparison stopped")?;
@@ -759,11 +829,16 @@ fn deliver(
             thresholds.calibration.as_ref(),
         )?;
         let original = verified(root, &input.original)?;
+        let original_colour = Colour::resolve(
+            &media::probe(&original)?,
+            input.original_colour.as_ref(),
+            "original",
+        )?;
         let ranges = input.unchanged();
         let outcome = if ranges.is_empty() {
             Ok(100.0)
         } else {
-            min_psnr_over(&dest, &original, &ranges)
+            min_psnr_over(&dest, &original, &ranges, original_colour.as_ref())
         };
         let worst = match outcome {
             Ok(w) if w >= thresholds.min_unchanged_psnr_db => w,
@@ -780,6 +855,13 @@ fn deliver(
             "unchanged_check":{"method":"re-decoded PSNR against the original (lossy yuv420p delivery, so not bit-exact)",
                 "min_psnr_db":worst,"thresholds":thresholds,"calibration":calibration,
                 "provisional":calibration.is_none()}});
+        if calibration.is_none() {
+            // The unchanged-range threshold is uncalibrated: the delivery cannot
+            // back acceptance, and its top-level status says so.
+            receipt["status"] = json!("PASS_PROVISIONAL");
+            receipt["provisional"] = json!(true);
+            receipt["acceptance_backing"] = json!(false);
+        }
     }
     let frames = receipt["frames"]["decoded"].as_u64().unwrap_or(0);
     receipt["plan"] = json!({"path":root.rel(plan_path)?,"sha256":sha256_hex(bytes)});
@@ -813,6 +895,7 @@ mod tests {
             id: id.into(),
             media: asset(root, name),
             keep,
+            colour: None,
         }
     }
 
@@ -833,7 +916,12 @@ mod tests {
                 "color=c={colour}:s=64x48:r=25:d={}",
                 f64::from(frames) / 25.0
             )],
-            &["-c:v", "ffv1"],
+            &[
+                "-vf",
+                "setparams=colorspace=bt709:color_primaries=bt709:color_trc=bt709:range=tv",
+                "-c:v",
+                "ffv1",
+            ],
         );
     }
 
@@ -935,13 +1023,11 @@ mod tests {
         assert!(gate(&out, 10, rate, (64, 48), None).is_ok());
         assert!(gate(&out, 11, rate, (64, 48), None).is_err());
         assert!(!out.exists(), "frame mismatch must delete the output");
-        run_ffmpeg(&[
-            "-i",
-            s.path("a.mkv").to_str().unwrap(),
-            "-c:v",
-            "libx264",
-            out.to_str().unwrap(),
-        ]);
+        lavfi(
+            &out,
+            &["color=c=gray:s=64x48:r=25:d=0.4"],
+            &["-c:v", "libx264", "-pix_fmt", "yuv420p"],
+        );
         let err = gate(&out, 10, rate, (64, 48), None).unwrap_err();
         assert!(err.to_string().contains("color_space"), "{err}");
         assert!(!out.exists(), "untagged output must be deleted");
@@ -1052,6 +1138,108 @@ mod tests {
         assert_eq!(receipt["colour"]["matrix"], "bt709");
     }
 
+    /// Two clips with byte-identical coded pixels; only the colour tags differ.
+    fn tagged_and_untagged(s: &Scratch) {
+        lavfi(
+            &s.path("plain.mp4"),
+            &["color=c=0xc02040:s=64x48:r=25:d=1.2,noise=alls=14:allf=t:all_seed=7"],
+            &["-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "12"],
+        );
+        run_ffmpeg(&[
+            "-i",
+            s.path("plain.mp4").to_str().unwrap(),
+            "-c",
+            "copy",
+            "-bsf:v",
+            "h264_metadata=colour_primaries=1:transfer_characteristics=1:matrix_coefficients=1:video_full_range_flag=0",
+            s.path("tagged.mp4").to_str().unwrap(),
+        ]);
+    }
+
+    fn colour_plan(s: &Scratch, declaration: Option<Value>) -> StitchPlan {
+        let mut b = json!({"id":"b","media":asset(&s.0, "plain.mp4"),"keep":[0,20]});
+        if let Some(d) = declaration {
+            b["colour"] = d;
+        }
+        serde_json::from_value(json!({"schema":STITCH_SCHEMA,"rate":25,
+            "segments":[{"id":"a","media":asset(&s.0, "tagged.mp4"),"keep":[0,20]}, b],
+            "overlaps":[0]}))
+        .unwrap()
+    }
+
+    fn mean_rgb(frame: &[u8]) -> [f64; 3] {
+        let n = (frame.len() / 3) as f64;
+        let mut sum = [0.0; 3];
+        for px in frame.as_chunks::<3>().0 {
+            for (c, v) in sum.iter_mut().zip(px) {
+                *c += f64::from(*v);
+            }
+        }
+        sum.map(|v| v / n)
+    }
+
+    #[test]
+    fn untagged_colour_is_refused_unless_declared_and_the_declaration_drives_the_decode() {
+        let s = Scratch::new("stitch-untagged");
+        tagged_and_untagged(&s);
+        let root = Root::new(&s.0).unwrap();
+        fs::create_dir(s.path("o1")).unwrap();
+        let err = assemble(&root, &colour_plan(&s, None), &s.path("o1"))
+            .unwrap_err()
+            .to_string();
+        assert!(err.contains("untagged") && err.contains("colour"), "{err}");
+        let join = |dir: &str, decl: Value| {
+            fs::create_dir(s.path(dir)).unwrap();
+            let r = assemble(&root, &colour_plan(&s, Some(decl)), &s.path(dir)).unwrap();
+            assert_eq!(r["segments"][1]["colour"]["declared"], true);
+            let f = rgb_frames(&s.path(&format!("{dir}/stitched.mp4")));
+            let (a, b) = (mean_rgb(&f[10]), mean_rgb(&f[30]));
+            (0..3).map(|i| (a[i] - b[i]).abs()).fold(0.0, f64::max)
+        };
+        // Declared as the tagged clip's own colour: the join is continuous.
+        let step = join("o2", json!({"matrix":"bt709","range":"tv"}));
+        assert!(step < 4.0, "join colour step {step}");
+        // A different declared matrix is applied, not ignored.
+        let wrong = join("o3", json!({"matrix":"bt601","range":"tv"}));
+        assert!(
+            wrong > 6.0,
+            "bt601 decode should visibly differ, got {wrong}"
+        );
+        // A declaration that contradicts complete tags is refused.
+        let mut p = colour_plan(&s, None);
+        p.segments[0].colour =
+            serde_json::from_value(json!({"matrix":"bt601","range":"tv"})).unwrap();
+        fs::create_dir(s.path("o4")).unwrap();
+        let err = assemble(&root, &p, &s.path("o4")).unwrap_err().to_string();
+        assert!(err.contains("contradicts"), "{err}");
+    }
+
+    #[test]
+    fn output_gate_checks_the_declared_range_and_pixel_format() {
+        let s = Scratch::new("stitch-range");
+        solid(&s, "a.mkv", "gray", 10);
+        let out = s.path("full.mp4");
+        run_ffmpeg(&[
+            "-i",
+            s.path("a.mkv").to_str().unwrap(),
+            "-vf",
+            "scale=out_range=pc,setparams=colorspace=bt709:color_primaries=bt709:color_trc=bt709:range=pc",
+            "-c:v",
+            "libx264",
+            "-pix_fmt",
+            "yuvj420p",
+            "-color_range",
+            "pc",
+            out.to_str().unwrap(),
+        ]);
+        let rate = RationalRate::new(25, 1).unwrap();
+        let err = gate(&out, 10, rate, (64, 48), None)
+            .unwrap_err()
+            .to_string();
+        assert!(err.contains("color_range"), "{err}");
+        assert!(!out.exists());
+    }
+
     #[test]
     fn invalid_plans_are_refused() {
         let s = Scratch::new("stitch-invalid");
@@ -1133,6 +1321,8 @@ mod tests {
             original: asset(root, "orig.mkv"),
             generated: asset(root, "gen.mkv"),
             audio: None,
+            original_colour: None,
+            generated_colour: None,
             thresholds: None,
         }
     }
@@ -1182,6 +1372,10 @@ mod tests {
             serde_json::from_slice(&fs::read(s.path("out/complete.json")).unwrap()).unwrap();
         assert_eq!(receipt["frames"]["decoded"], 40);
         assert_eq!(receipt["retake"]["unchanged_check"]["provisional"], true);
+        // An uncalibrated unchanged-range threshold makes the whole delivery provisional.
+        assert_eq!(receipt["status"], "PASS_PROVISIONAL", "{receipt:#}");
+        assert_eq!(receipt["provisional"], true);
+        assert_eq!(receipt["acceptance_backing"], false);
         assert!(
             receipt["retake"]["unchanged_check"]["min_psnr_db"]
                 .as_f64()
@@ -1212,9 +1406,9 @@ mod tests {
             "ffv1",
             delivered.to_str().unwrap(),
         ]);
-        let worst = min_psnr_over(&delivered, &original, &[[0, 5]]).unwrap();
+        let worst = min_psnr_over(&delivered, &original, &[[0, 5]], None).unwrap();
         assert!(worst < 20.0, "{worst}");
-        assert!(min_psnr_over(&original, &original, &[[0, 5], [30, 40]]).unwrap() >= 99.0);
+        assert!(min_psnr_over(&original, &original, &[[0, 5], [30, 40]], None).unwrap() >= 99.0);
     }
 
     #[test]
@@ -1233,6 +1427,8 @@ mod tests {
             original: fake.clone(),
             generated: fake.clone(),
             audio: None,
+            original_colour: None,
+            generated_colour: None,
             thresholds: None,
         };
         let head = input(&plan_retake(25, [0, 10], 4, 5, 4).unwrap())

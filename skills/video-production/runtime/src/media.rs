@@ -37,10 +37,143 @@ pub struct Probe {
     pub width: u32,
     /// Coded height in pixels.
     pub height: u32,
+    /// Pixel format of the stream (`pix_fmt`).
+    pub pix_fmt: String,
+    /// Tagged matrix coefficients (`color_space`); `None` when untagged or `unknown`.
+    pub color_space: Option<String>,
+    /// Tagged range (`tv` or `pc`); `None` when untagged or `unknown`.
+    pub color_range: Option<String>,
+    /// Tagged colour primaries; `None` when untagged or `unknown`.
+    pub color_primaries: Option<String>,
+    /// Tagged transfer characteristics; `None` when untagged or `unknown`.
+    pub color_transfer: Option<String>,
+    /// Sample aspect ratio when the stream declares one other than 1:1.
+    pub sar: Option<(u32, u32)>,
+    /// Display rotation in degrees from the display-matrix side data or the
+    /// `rotate` tag; `0` when none is present.
+    pub rotation: i32,
     /// Audio sample rate, if an audio stream exists.
     pub audio_rate: Option<u32>,
     /// Audio channel count, if an audio stream exists.
     pub audio_channels: Option<u32>,
+}
+
+impl Probe {
+    /// Whether the stream is stored as RGB (or a family without a YUV matrix),
+    /// so no matrix is needed to decode it.
+    pub fn is_rgb(&self) -> bool {
+        [
+            "rgb", "bgr", "gbr", "argb", "abgr", "0rgb", "0bgr", "pal8", "gray",
+        ]
+        .iter()
+        .any(|p| self.pix_fmt.starts_with(p))
+    }
+
+    /// Refuse a source whose display geometry differs from its coded geometry.
+    ///
+    /// The raw frame size used for piping is the coded size, but ffmpeg
+    /// autorotates and ignores sample aspect ratio when decoding, so a rotated
+    /// source would be re-read with its rows reinterpreted (equal byte count,
+    /// scrambled picture). Refusing is the fail-closed choice.
+    pub fn require_upright_square(&self) -> Result<()> {
+        if self.rotation.rem_euclid(360) != 0 {
+            return Err(format!(
+                "source carries a {} degree display rotation; re-encode it upright before use",
+                self.rotation
+            )
+            .into());
+        }
+        if let Some((n, d)) = self.sar {
+            return Err(format!(
+                "source has a non-square sample aspect ratio {n}:{d}; re-encode it with square pixels before use"
+            )
+            .into());
+        }
+        Ok(())
+    }
+}
+
+/// YUV-to-RGB interpretation of a source, declared or taken from its tags.
+#[derive(Clone, Debug, PartialEq, Eq, serde::Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct Colour {
+    /// Matrix coefficients: `bt709`, `bt601`, `smpte170m`, `bt470`, `smpte240m`, `fcc` or `bt2020`.
+    pub matrix: String,
+    /// Quantisation range: `tv` (limited) or `pc` (full).
+    pub range: String,
+}
+
+impl Colour {
+    /// Check that both fields name something the decoder understands.
+    pub fn validate(&self) -> Result<()> {
+        if ![
+            "bt709",
+            "bt601",
+            "smpte170m",
+            "bt470",
+            "smpte240m",
+            "fcc",
+            "bt2020",
+        ]
+        .contains(&self.matrix.as_str())
+        {
+            return Err(format!("unsupported colour matrix {}", self.matrix).into());
+        }
+        if !["tv", "pc"].contains(&self.range.as_str()) {
+            return Err(format!("colour range must be tv or pc, not {}", self.range).into());
+        }
+        Ok(())
+    }
+
+    /// The colour a probe's tags state, if they state both matrix and range.
+    pub fn from_tags(probe: &Probe) -> Result<Option<Colour>> {
+        let (Some(space), Some(range)) = (&probe.color_space, &probe.color_range) else {
+            return Ok(None);
+        };
+        let matrix = match space.as_str() {
+            "bt709" => "bt709",
+            "bt470bg" => "bt470",
+            "smpte170m" => "smpte170m",
+            "smpte240m" => "smpte240m",
+            "fcc" => "fcc",
+            "bt2020nc" => "bt2020",
+            other => return Err(format!("unsupported tagged colour space {other}").into()),
+        };
+        let colour = Colour {
+            matrix: matrix.into(),
+            range: range.clone(),
+        };
+        colour.validate()?;
+        Ok(Some(colour))
+    }
+
+    /// Settle how `probe`'s source is decoded: a declaration must agree with
+    /// any complete tags; absent a declaration the tags are used; an untagged
+    /// YUV source without a declaration is refused rather than guessed.
+    /// RGB-stored sources need no matrix and resolve to `None`.
+    pub fn resolve(probe: &Probe, declared: Option<&Colour>, what: &str) -> Result<Option<Colour>> {
+        if let Some(d) = declared {
+            d.validate()?;
+        }
+        if probe.is_rgb() {
+            return Ok(None);
+        }
+        let tagged = Colour::from_tags(probe).map_err(|e| format!("{what}: {e}"))?;
+        match (declared, tagged) {
+            (Some(d), Some(t)) if *d != t => Err(format!(
+                "{what}: declared colour {}/{} contradicts its tags {}/{}",
+                d.matrix, d.range, t.matrix, t.range
+            )
+            .into()),
+            (Some(d), _) => Ok(Some(d.clone())),
+            (None, Some(t)) => Ok(Some(t)),
+            (None, None) => Err(format!(
+                "{what}: colour is untagged (color_space {:?}, color_range {:?}); declare colour {{matrix, range}} for it",
+                probe.color_space, probe.color_range
+            )
+            .into()),
+        }
+    }
 }
 
 fn parse_rate(text: &str) -> Option<RationalRate> {
@@ -59,7 +192,7 @@ pub fn probe(path: &Path) -> Result<Probe> {
                 "-select_streams",
                 "v:0",
                 "-show_entries",
-                "stream=r_frame_rate,nb_read_frames,width,height",
+                "stream=r_frame_rate,nb_read_frames,width,height,pix_fmt,sample_aspect_ratio,color_space,color_range,color_primaries,color_transfer:stream_side_data:stream_tags=rotate",
                 "-of",
                 "json",
             ])
@@ -75,6 +208,26 @@ pub fn probe(path: &Path) -> Result<Probe> {
         .and_then(|s| s.parse().ok())
         .ok_or("decoded frame count unavailable")?;
     let dim = |key: &str| v[key].as_u64().and_then(|n| u32::try_from(n).ok());
+    let tag = |key: &str| {
+        v[key]
+            .as_str()
+            .filter(|t| !t.is_empty() && *t != "unknown" && *t != "unspecified")
+            .map(str::to_owned)
+    };
+    let sar = v["sample_aspect_ratio"]
+        .as_str()
+        .and_then(|t| t.split_once(':'))
+        .and_then(|(n, d)| Some((n.parse::<u32>().ok()?, d.parse::<u32>().ok()?)))
+        .filter(|(n, d)| n != d && *n != 0 && *d != 0);
+    let side = v["side_data_list"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .find_map(|d| d["rotation"].as_f64());
+    let legacy = v["tags"]["rotate"]
+        .as_str()
+        .and_then(|t| t.parse::<f64>().ok());
+    let rotation = side.or(legacy).unwrap_or(0.0).round() as i32;
     let audio: Value = serde_json::from_slice(&output(
         Command::new("ffprobe")
             .args([
@@ -95,6 +248,13 @@ pub fn probe(path: &Path) -> Result<Probe> {
         frames,
         width: dim("width").ok_or("video width unavailable")?,
         height: dim("height").ok_or("video height unavailable")?,
+        pix_fmt: v["pix_fmt"].as_str().unwrap_or_default().to_owned(),
+        color_space: tag("color_space"),
+        color_range: tag("color_range"),
+        color_primaries: tag("color_primaries"),
+        color_transfer: tag("color_transfer"),
+        sar,
+        rotation,
         audio_rate: a["sample_rate"].as_str().and_then(|s| s.parse().ok()),
         audio_channels: a["channels"].as_u64().and_then(|n| u32::try_from(n).ok()),
     })
@@ -143,19 +303,32 @@ pub struct Frame {
 /// Decode every frame of the first video stream, optionally scaled to
 /// `size` (width, height) with an area filter, calling `visit` per frame.
 /// Frames are streamed, never all held in memory. Returns the frame count.
+///
+/// Sources with a display rotation or a non-square sample aspect ratio are
+/// refused (see [`Probe::require_upright_square`]). The YUV-to-RGB matrix is
+/// ffmpeg's own choice from the stream tags; use [`for_each_frame_as`] to pass
+/// an explicit one.
 pub fn for_each_frame(
     path: &Path,
     format: PixelFormat,
     size: Option<(u32, u32)>,
+    visit: impl FnMut(Frame) -> Result<()>,
+) -> Result<u64> {
+    for_each_frame_as(path, format, size, None, visit)
+}
+
+/// [`for_each_frame`] with an explicit source [`Colour`]: the scale filter gets
+/// `in_color_matrix` and `in_range`, so the decode is never a guess.
+pub fn for_each_frame_as(
+    path: &Path,
+    format: PixelFormat,
+    size: Option<(u32, u32)>,
+    colour: Option<&Colour>,
     mut visit: impl FnMut(Frame) -> Result<()>,
 ) -> Result<u64> {
-    let (width, height) = match size {
-        Some(s) => s,
-        None => {
-            let p = probe(path)?;
-            (p.width, p.height)
-        }
-    };
+    let source = probe(path)?;
+    source.require_upright_square()?;
+    let (width, height) = size.unwrap_or((source.width, source.height));
     if width == 0 || height == 0 {
         return Err("frame size must be non-zero".into());
     }
@@ -164,8 +337,17 @@ pub fn for_each_frame(
         .args(["-nostdin", "-v", "error", "-i"])
         .arg(path)
         .args(["-map", "0:v:0", "-fps_mode", "passthrough"]);
+    let mut scale = Vec::new();
     if size.is_some() {
-        command.args(["-vf", &format!("scale={width}:{height}:flags=area")]);
+        scale.push(format!("{width}:{height}:flags=area"));
+    }
+    if let Some(c) = colour {
+        c.validate()?;
+        let range = if c.range == "pc" { "jpeg" } else { "mpeg" };
+        scale.push(format!("in_color_matrix={}:in_range={range}", c.matrix));
+    }
+    if !scale.is_empty() {
+        command.args(["-vf", &format!("scale={}", scale.join(":"))]);
     }
     command
         .args(["-f", "rawvideo", "-pix_fmt", format.name(), "-"])
@@ -262,6 +444,7 @@ fn framehash_lines(text: &str) -> Vec<String> {
 
 /// SHA-256 of every decoded video frame, in decode order.
 pub fn video_frame_hashes(path: &Path) -> Result<Vec<String>> {
+    probe(path)?.require_upright_square()?;
     let text = String::from_utf8(output(
         Command::new("ffmpeg")
             .args(["-nostdin", "-v", "error", "-i"])
@@ -440,6 +623,85 @@ mod tests {
         assert_eq!(video_frame_hashes(&a).unwrap().len(), 10);
         let pcm = decode_audio_s16(&a, 8000, 1).unwrap();
         assert!(pcm.len() >= 3000 && pcm.iter().any(|&x| x.unsigned_abs() > 1000));
+    }
+
+    fn ffmpeg_run(args: &[&str]) {
+        let mut c = Command::new("ffmpeg");
+        c.args(["-nostdin", "-v", "error", "-y"]).args(args);
+        output(&mut c).unwrap();
+    }
+
+    #[test]
+    fn rotated_and_non_square_sources_are_refused_everywhere_frames_are_decoded() {
+        let s = Scratch::new("media-geometry");
+        let base = s.path("base.mp4");
+        lavfi(
+            &base,
+            &["color=c=0x806040:s=64x48:r=25:d=0.4,noise=alls=14:allf=t:all_seed=7"],
+            &["-c:v", "libx264", "-pix_fmt", "yuv420p"],
+        );
+        let rotated = s.path("rot.mp4");
+        ffmpeg_run(&[
+            "-display_rotation",
+            "90",
+            "-i",
+            base.to_str().unwrap(),
+            "-c",
+            "copy",
+            rotated.to_str().unwrap(),
+        ]);
+        let skewed = s.path("sar.mp4");
+        lavfi(
+            &skewed,
+            &["color=c=0x806040:s=64x48:r=25:d=0.4,setsar=2/1"],
+            &["-c:v", "libx264", "-pix_fmt", "yuv420p"],
+        );
+        assert_eq!(probe(&rotated).unwrap().rotation, 90);
+        assert_eq!(probe(&skewed).unwrap().sar, Some((2, 1)));
+        for clip in [&rotated, &skewed] {
+            let e = for_each_frame(clip, PixelFormat::Rgb24, None, |_| Ok(()))
+                .unwrap_err()
+                .to_string();
+            assert!(e.contains("rotation") || e.contains("sample aspect"), "{e}");
+            let e = for_each_frame(clip, PixelFormat::Gray, Some((8, 8)), |_| Ok(()))
+                .unwrap_err()
+                .to_string();
+            assert!(e.contains("rotation") || e.contains("sample aspect"), "{e}");
+            assert!(video_frame_hashes(clip).is_err());
+        }
+        // The unrotated, square-pixel original still decodes.
+        assert_eq!(
+            for_each_frame(&base, PixelFormat::Rgb24, None, |_| Ok(())).unwrap(),
+            10
+        );
+    }
+
+    #[test]
+    fn colour_tags_are_probed_and_untagged_yuv_is_reported_as_such() {
+        let s = Scratch::new("media-colour");
+        let plain = s.path("plain.mp4");
+        lavfi(
+            &plain,
+            &["color=c=0x806040:s=64x48:r=25:d=0.2"],
+            &["-c:v", "libx264", "-pix_fmt", "yuv420p"],
+        );
+        let tagged = s.path("tagged.mp4");
+        ffmpeg_run(&[
+            "-i",
+            plain.to_str().unwrap(),
+            "-c",
+            "copy",
+            "-bsf:v",
+            "h264_metadata=colour_primaries=1:transfer_characteristics=1:matrix_coefficients=1:video_full_range_flag=0",
+            tagged.to_str().unwrap(),
+        ]);
+        let (p, t) = (probe(&plain).unwrap(), probe(&tagged).unwrap());
+        assert_eq!(p.color_space, None);
+        assert_eq!(t.color_space.as_deref(), Some("bt709"));
+        assert_eq!(t.color_range.as_deref(), Some("tv"));
+        assert_eq!(t.color_primaries.as_deref(), Some("bt709"));
+        assert_eq!(t.color_transfer.as_deref(), Some("bt709"));
+        assert!(!p.is_rgb());
     }
 
     #[test]

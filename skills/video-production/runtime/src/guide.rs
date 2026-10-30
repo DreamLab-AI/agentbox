@@ -50,6 +50,7 @@ pub fn check_video_padding(
     {
         return Err("guide decoded clock/frame count differs".into());
     }
+    crate::media::probe(path)?.require_upright_square()?;
     let hash_bytes = output(
         Command::new("ffmpeg")
             .args(["-nostdin", "-v", "error", "-i"])

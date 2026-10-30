@@ -200,6 +200,18 @@ impl Default for Config {
 }
 
 impl Config {
+    /// Parse a configuration document. Unlike [`Default`], a file must name its
+    /// `schema`: a file holding only `{"calibrated": true}` would otherwise
+    /// inherit the default thresholds and read as a deliberate configuration.
+    pub fn from_value(value: Value) -> Result<Self, String> {
+        if value.get("schema").is_none() {
+            return Err("config must name its schema (prompt-lint-config/1)".into());
+        }
+        let config: Self = serde_json::from_value(value).map_err(|e| e.to_string())?;
+        config.validate()?;
+        Ok(config)
+    }
+
     /// Reject a wrong schema or an unknown rule id in `severities`.
     pub fn validate(&self) -> Result<(), String> {
         if self.schema != "prompt-lint-config/1" {
@@ -817,9 +829,10 @@ pub fn receipt(
     json!({
         "schema": "prompt-lint/1",
         "verdict": verdict,
-        // An uncalibrated threshold set can never back acceptance.
-        "provisional": verdict == "PASS" && calibration.is_none(),
-        "acceptance_backing": verdict == "PASS" && calibration.is_some(),
+        // An uncalibrated threshold set, or a run that skipped rules, can never
+        // back acceptance: part of the plan was not judged.
+        "provisional": verdict == "PASS" && (calibration.is_none() || !skipped.is_empty()),
+        "acceptance_backing": verdict == "PASS" && calibration.is_some() && skipped.is_empty(),
         "calibration": calibration,
         "errors": errors,
         "warnings": warnings,
@@ -1329,6 +1342,24 @@ mod tests {
             (r["verdict"].as_str(), r["provisional"].as_bool()),
             (Some("FAIL"), Some(false))
         );
+    }
+
+    #[test]
+    fn skipped_rules_make_a_calibrated_pass_provisional() {
+        let cfg = Config::default();
+        let verified = json!({"path":"cal.json","sha256":"ab"});
+        let skipped = ["emotion-jump".to_string()];
+        let r = receipt(&cfg, Some(verified), json!({}), &[], &skipped);
+        assert_eq!(
+            (r["provisional"].clone(), r["acceptance_backing"].clone()),
+            (json!(true), json!(false))
+        );
+    }
+
+    #[test]
+    fn from_value_requires_a_schema() {
+        assert!(Config::from_value(json!({"calibrated":true})).is_err());
+        assert!(Config::from_value(json!({"schema":"prompt-lint-config/1"})).is_ok());
     }
 
     #[test]

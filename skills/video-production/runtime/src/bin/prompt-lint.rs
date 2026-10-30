@@ -85,9 +85,7 @@ fn run() -> Result<ExitCode> {
         Some(p) => {
             let (v, sha) = read_json(p)?;
             note("config", p, &sha)?;
-            let c: Config = serde_json::from_value(v).map_err(|e| format!("{p}: {e}"))?;
-            c.validate()?;
-            c
+            Config::from_value(v).map_err(|e| format!("{p}: {e}"))?
         }
         None => Config::default(),
     };

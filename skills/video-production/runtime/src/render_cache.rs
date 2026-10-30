@@ -16,6 +16,7 @@ use crate::{
     clock::{FrameInterval, rate_from_receipt},
     comfy::sha256_hex,
     paths::{Root, take_root_option},
+    windows::{self, Plan},
 };
 use serde_json::{Value, json};
 use std::{
@@ -105,6 +106,80 @@ pub fn diff_matches_parent(diff: &Value, parent_frames: u64) -> Result<()> {
     Ok(())
 }
 
+fn text<'a>(value: &'a Value, key: &str, what: &str) -> Result<&'a str> {
+    value[key]
+        .as_str()
+        .ok_or_else(|| format!("{what} has no {key}").into())
+}
+
+/// Require the diff to describe the parent cache's own plan.
+///
+/// Frame count alone cannot tell two cuts of the same length apart. The diff
+/// must name the plan it was computed from (`old_plan_hash`, geometry, and
+/// `old_final_key`, which chains the input, prompt, settings, model and seeds),
+/// and the parent receipt must have recorded the same `plan_hash` and
+/// `plan_final_key` (see `--plan`). A parent that recorded none is refused.
+pub fn diff_binds_parent(diff: &Value, parent: &Value) -> Result<()> {
+    for (diff_key, parent_key) in [
+        ("old_plan_hash", "plan_hash"),
+        ("old_final_key", "plan_final_key"),
+    ] {
+        let wanted = text(diff, diff_key, "window diff")?;
+        let recorded = text(parent, parent_key, "parent cache receipt").map_err(|_| {
+            format!("parent cache receipt records no {parent_key}; re-run it with --plan PLAN_JSON")
+        })?;
+        if wanted != recorded {
+            return Err(format!(
+                "window diff was computed from a different plan than the parent cache ({parent_key} {recorded} != {wanted})"
+            )
+            .into());
+        }
+    }
+    Ok(())
+}
+
+/// Recompute the diff of `old` against `new` and require the supplied report to
+/// agree on its identity and scope, so a hand-edited report is refused.
+pub fn diff_matches_plans(diff: &Value, old: &Plan, new: &Plan, root: &Root) -> Result<()> {
+    let fresh = windows::diff_in(old, new, Some(root))?;
+    for key in [
+        "schema",
+        "old_plan_hash",
+        "new_plan_hash",
+        "old_final_key",
+        "new_final_key",
+        "delivery_frames",
+        "invalidated_intervals",
+    ] {
+        if diff[key] != fresh[key] {
+            return Err(format!("window diff {key} does not match the supplied plans").into());
+        }
+    }
+    Ok(())
+}
+
+fn take_path(args: &mut Vec<OsString>, name: &str, root: &Root) -> Result<Option<PathBuf>> {
+    let Some(i) = args.iter().position(|a| a == name) else {
+        return Ok(None);
+    };
+    if i + 1 >= args.len() {
+        return Err(format!("{name} needs a path").into());
+    }
+    let path = root.resolve(Path::new(&args.remove(i + 1)))?;
+    args.remove(i);
+    Ok(Some(path))
+}
+
+fn load_plan(path: &Path, root: &Root) -> Result<Plan> {
+    let plan: Plan = read_as(path)?;
+    plan.verify_in(Some(root))?;
+    Ok(plan)
+}
+
+fn read_as<T: serde::de::DeserializeOwned>(path: &Path) -> Result<T> {
+    Ok(serde_json::from_slice(&fs::read(path)?)?)
+}
+
 /// Check the revision against both receipts and the allowed scope, returning
 /// the set of frames that must come from the patch render.
 pub fn validate_revision(
@@ -191,8 +266,14 @@ pub fn run(mut args: Vec<OsString>) -> Result<()> {
         allowed.extend(allowed_from_diff(&diff)?);
         diffs.push((path, diff));
     }
+    let plan_path = take_path(&mut args, "--plan", &root)?;
+    let old_plan_path = take_path(&mut args, "--old-plan", &root)?;
+    let new_plan_path = take_path(&mut args, "--new-plan", &root)?;
+    if old_plan_path.is_some() != new_plan_path.is_some() {
+        return Err("--old-plan and --new-plan must be given together".into());
+    }
     if args.len() != 5 {
-        return Err("usage: render-cache [--root DIR] (--allow START..END | --allow-from-diff DIFF_JSON) PARENT_DIR REVISION_JSON PATCH_DIR WORLD NEW_DIR".into());
+        return Err("usage: render-cache [--root DIR] (--allow START..END | --allow-from-diff DIFF_JSON [--old-plan PLAN --new-plan PLAN]) [--plan PLAN_JSON] PARENT_DIR REVISION_JSON PATCH_DIR WORLD NEW_DIR".into());
     }
     let at = |i: usize| root.resolve(Path::new(&args[i]));
     let (parent_dir, revision_path, patch_dir, world, output) =
@@ -209,9 +290,40 @@ pub fn run(mut args: Vec<OsString>) -> Result<()> {
     let patch_frames = frames(&patch)?;
     let count = parent_frames.len() as u64;
     let mut window_diffs = Vec::new();
+    let supplied = match (&old_plan_path, &new_plan_path) {
+        (Some(o), Some(n)) => Some((load_plan(o, &root)?, load_plan(n, &root)?)),
+        _ => None,
+    };
+    let mut recorded_plan: Option<(String, String)> = None;
     for (path, diff) in &diffs {
         diff_matches_parent(diff, count)?;
+        diff_binds_parent(diff, &parent)?;
+        if let Some((old, new)) = &supplied {
+            diff_matches_plans(diff, old, new, &root)?;
+        }
+        let next = (
+            text(diff, "new_plan_hash", "window diff")?.to_owned(),
+            text(diff, "new_final_key", "window diff")?.to_owned(),
+        );
+        if recorded_plan.get_or_insert_with(|| next.clone()) != &next {
+            return Err("window diffs lead to different plans".into());
+        }
         window_diffs.push(json!({"path":root.rel(path)?,"sha256":sha(path)?}));
+    }
+    let mut plan_record = Value::Null;
+    if let Some(path) = &plan_path {
+        let plan = load_plan(path, &root)?;
+        if recorded_plan
+            .as_ref()
+            .is_some_and(|r| *r != (plan.plan_hash.clone(), plan.final_key.clone()))
+        {
+            return Err("--plan is not the plan the window diff leads to".into());
+        }
+        if plan.request.total_frames != count {
+            return Err("--plan delivery length differs from the parent cache".into());
+        }
+        recorded_plan = Some((plan.plan_hash, plan.final_key));
+        plan_record = json!({"path":root.rel(path)?,"sha256":sha(path)?});
     }
     let mut selected: Vec<(u64, PathBuf, String, &str)> = Vec::new();
     for frame in 0..count {
@@ -246,6 +358,8 @@ pub fn run(mut args: Vec<OsString>) -> Result<()> {
         "scoped_revision":{"path":root.rel(&revision_path)?,"sha256":sha(&revision_path)?},
         "parent_receipt":receipt_of(&parent_dir)?,"patch_receipt":receipt_of(&patch_dir)?,
         "allowed_scope":allowed,"window_diffs":window_diffs,
+        "plan_hash":recorded_plan.as_ref().map(|r| &r.0),"plan_final_key":recorded_plan.as_ref().map(|r| &r.1),
+        "plan":plan_record,
         "reused_frames":count-changed.len() as u64,"rerendered_frames":changed.len(),"production_accepted":false,
         "scope":"Verified PNG cache lineage after a scoped revision; native scene-state proof comes from the separately hashed scene verifier. No generated-video or physical acceptance."});
     root.relativise(&mut report)?;
@@ -350,6 +464,179 @@ mod tests {
         let mut other_patch = patch.clone();
         other_patch["frames"] = json!([{"frame":3,"sha256":"n3"}]);
         assert!(err(&parent, &other_patch, &revision, &world, &ok).contains("coverage"));
+    }
+
+    fn plan_for(input: char, reroll: Option<(u64, u64)>) -> crate::windows::Plan {
+        use crate::windows::{Hashes, ModelFile, Profile, Request, build};
+        let h = |c: char| c.to_string().repeat(64);
+        build(&Request {
+            profile: Profile::ltx(),
+            total_frames: 20,
+            max_window: 9,
+            history_len: 1,
+            master_seed: 3,
+            seed_overrides: reroll.into_iter().collect(),
+            hashes: Hashes {
+                input_sha256: h(input),
+                prompt_sha256: h('2'),
+                settings_sha256: h('3'),
+                models: vec![ModelFile {
+                    path: "m.safetensors".into(),
+                    sha256: h('a'),
+                    verified: false,
+                }],
+            },
+        })
+        .unwrap()
+    }
+
+    #[test]
+    fn a_diff_binds_to_the_parent_by_plan_hash_and_final_key_not_by_length() {
+        use crate::windows::diff;
+        let (a, a2) = (plan_for('1', None), plan_for('1', Some((2, 77))));
+        let parent = json!({"plan_hash":a.plan_hash,"plan_final_key":a.final_key});
+        let good = diff(&a, &a2).unwrap();
+        assert_eq!(good["delivery_frames"], 20);
+        assert!(diff_binds_parent(&good, &parent).is_ok());
+        // A parent that never recorded its plan cannot be bound.
+        let err = diff_binds_parent(&good, &json!({}))
+            .unwrap_err()
+            .to_string();
+        assert!(err.contains("plan_hash"), "{err}");
+        // Same length, same geometry, different input cut: plan_hash alone cannot tell, the key does.
+        let (b, b2) = (plan_for('9', None), plan_for('9', Some((2, 77))));
+        assert_eq!(a.plan_hash, b.plan_hash);
+        let other = diff(&b, &b2).unwrap();
+        diff_matches_parent(&other, 20).unwrap();
+        let err = diff_binds_parent(&other, &parent).unwrap_err().to_string();
+        assert!(err.contains("plan_final_key"), "{err}");
+        // Different geometry of the same length is refused on the hash.
+        let mut geometry = plan_for('1', None).request;
+        geometry.max_window = 17;
+        let c = crate::windows::build(&geometry).unwrap();
+        assert_ne!(c.plan_hash, a.plan_hash);
+        let err = diff_binds_parent(&diff(&c, &c).unwrap(), &parent).unwrap_err();
+        assert!(err.to_string().contains("plan_hash"), "{err}");
+    }
+
+    #[test]
+    fn a_hand_edited_diff_is_refused_when_the_plans_are_supplied() {
+        let nonce = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let dir =
+            std::env::temp_dir().join(format!("vpr-cache-diff-{}-{nonce}", std::process::id()));
+        fs::create_dir_all(&dir).unwrap();
+        let root = Root::new(&dir).unwrap();
+        let (a, a2) = (plan_for('1', None), plan_for('1', Some((2, 77))));
+        let good = crate::windows::diff(&a, &a2).unwrap();
+        assert_eq!(good["invalidated_intervals"], json!([[17, 20]]));
+        assert!(diff_matches_plans(&good, &a, &a2, &root).is_ok());
+        let mut widened = good.clone();
+        widened["invalidated_intervals"] = json!([[0, 20]]);
+        let err = diff_matches_plans(&widened, &a, &a2, &root)
+            .unwrap_err()
+            .to_string();
+        assert!(err.contains("invalidated_intervals"), "{err}");
+        fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn allow_from_diff_end_to_end_binds_the_parent_and_chains_the_new_cache() {
+        let nonce = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let dir =
+            std::env::temp_dir().join(format!("vpr-cache-e2e-{}-{nonce}", std::process::id()));
+        for sub in ["parent", "patch"] {
+            fs::create_dir_all(dir.join(sub)).unwrap();
+        }
+        let write = |sub: &str, frame: u64, text: &str| {
+            let path = dir.join(sub).join(format!("frame-{frame:04}.png"));
+            fs::write(&path, text).unwrap();
+            sha(&path).unwrap()
+        };
+        fs::write(dir.join("world.json"), "world").unwrap();
+        let world = sha(&dir.join("world.json")).unwrap();
+        let parent_hashes: Vec<_> = (0..20)
+            .map(|f| (f, write("parent", f, &format!("p{f}"))))
+            .collect();
+        let patch_hashes: Vec<_> = (17..20)
+            .map(|f| (f, write("patch", f, &format!("n{f}"))))
+            .collect();
+        let save = |name: &str, value: Value| {
+            fs::write(dir.join(name), serde_json::to_vec(&value).unwrap()).unwrap()
+        };
+        let (a, a2) = (plan_for('1', None), plan_for('1', Some((2, 77))));
+        let (b, b2) = (plan_for('9', None), plan_for('9', Some((2, 77))));
+        let mut parent = receipt("old", &parent_hashes);
+        parent["plan_hash"] = json!(a.plan_hash);
+        parent["plan_final_key"] = json!(a.final_key);
+        save("parent/complete.json", parent);
+        save("patch/complete.json", receipt(&world, &patch_hashes));
+        save(
+            "revision.json",
+            json!({"schema":"render-revision/2","source_unchanged":true,"scope_unchanged":true,
+                "source_world_sha256":"old","world_sha256":world,"frames":20,
+                "scoped_world_hashes":vec!["h";20],"changed_frames":[17,18,19]}),
+        );
+        for (name, plan) in [("a", &a), ("a2", &a2), ("b", &b), ("b2", &b2)] {
+            save(&format!("{name}.json"), serde_json::to_value(plan).unwrap());
+        }
+        save("good.json", crate::windows::diff(&a, &a2).unwrap());
+        save("other-cut.json", crate::windows::diff(&b, &b2).unwrap());
+        let go = |diff: &str, out: &str, extra: &[&str]| {
+            let mut args: Vec<OsString> =
+                ["--root", dir.to_str().unwrap(), "--allow-from-diff", diff]
+                    .map(Into::into)
+                    .into();
+            args.extend(extra.iter().map(OsString::from));
+            args.extend(
+                ["parent", "revision.json", "patch", "world.json", out].map(OsString::from),
+            );
+            run(args)
+        };
+        // A diff from another cut of the same length is refused.
+        let err = go("other-cut.json", "o1", &[]).unwrap_err().to_string();
+        assert!(err.contains("plan_final_key"), "{err}");
+        assert!(!dir.join("o1").exists());
+        // Supplying the other cut's plans does not help: the diff is consistent, the parent is not.
+        assert!(
+            go(
+                "other-cut.json",
+                "o2",
+                &["--old-plan", "b.json", "--new-plan", "b2.json"]
+            )
+            .is_err()
+        );
+        // Plans that do not reproduce the diff are refused.
+        let err = go(
+            "good.json",
+            "o3",
+            &["--old-plan", "a.json", "--new-plan", "b2.json"],
+        )
+        .unwrap_err()
+        .to_string();
+        assert!(err.contains("diff") || err.contains("plan"), "{err}");
+        // The matching diff and plans succeed, and the new cache records the new plan.
+        go(
+            "good.json",
+            "o4",
+            &["--old-plan", "a.json", "--new-plan", "a2.json"],
+        )
+        .unwrap();
+        let cache = read(&dir.join("o4/complete.json")).unwrap();
+        assert_eq!(cache["plan_hash"], json!(a2.plan_hash));
+        assert_eq!(cache["plan_final_key"], json!(a2.final_key));
+        assert_eq!(cache["rerendered_frames"], 3);
+        // A parent without a recorded plan is refused.
+        let mut bare = read(&dir.join("parent/complete.json")).unwrap();
+        bare.as_object_mut().unwrap().remove("plan_hash");
+        save("parent/complete.json", bare);
+        assert!(go("good.json", "o5", &[]).is_err());
+        fs::remove_dir_all(dir).unwrap();
     }
 
     #[test]
