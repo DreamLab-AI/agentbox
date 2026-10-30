@@ -9,6 +9,7 @@
 //! * [`windows`] — generation-window planner and chained checkpoint keys.
 //! * [`seam_qa`] — measured seam checks against a local baseline.
 //! * [`render_cache`] — complete render-cache assembly after a scoped edit.
+//! * [`stitch`] — frame-exact stitch, copied audio and retake planning.
 pub mod clock;
 pub mod comfy;
 pub mod guide;
@@ -17,4 +18,5 @@ pub mod paths;
 pub mod prompt_lint;
 pub mod render_cache;
 pub mod seam_qa;
+pub mod stitch;
 pub mod windows;
