@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 6ceb224899a2db4b96dc245e85ba3f4b326a96b3
+verified_commit: 29a4b49391b98d92f4c242b64143ad8eb867d246
 verified_paths: [agentbox.toml, skills/tree-search-coder/SKILL.md, services/agentbox-ops/src/bin/tree-search-cap.rs]
 owner: jjohare
 review_trigger: any new optional skill/feature block added to agentbox.toml, or any change to the tree-search-coder spend/route posture
@@ -318,3 +318,5 @@ The manifest diff only selects minimal thinking and a 20-minute cap for the fina
 
 
 Re-verified 2026-10-29 at `00039efb1e4a70402df86ad19cf76894fe3b9a8f` for ADR-2155. ADR-2155 adds behaviour switches inside existing services. They do not remove host processes or packages. Optional Vault, Ontomark and Solid Cargo features require both system_one.enabled and their consumer switch. Catalogue gates and build gates agree. No image or service activation is claimed.
+
+Re-verified 2026-10-30 at `29a4b4939`: the agentbox.toml delta is three lines inside [system_one] only (bind 0.0.0.0:8094, network = true, local_only = []); this record's sections are untouched.
