@@ -35,6 +35,8 @@ class TrackerConfig:
     min_affine_points: int = 4   # corners needed to attempt the affine fit
     min_inliers: int = 4
     ransac_thresh: float = 3.0
+    provenance: str = "h3-spec-uncalibrated"  # thresholds are configuration, not calibrated constants
+    calibrated: bool = False
     lk_window: int = 11          # LK window; corners near the mask edge see background
     corner_erode: int = 6        # erode the mask by this many px before picking corners
 
@@ -51,6 +53,19 @@ def _check_area(mask, cfg, step):
     if not (cfg.area_min <= frac <= cfg.area_max):
         raise TrackingError(f"step {step}: mask area {frac:.6f} outside [{cfg.area_min}, {cfg.area_max}]")
     return frac
+
+
+def _bbox_correlation(prev, cur, mask, d):
+    """Normalised correlation of the mask bbox in ``prev`` with the same box shifted by ``d`` in ``cur``."""
+    ys, xs = np.nonzero(mask)
+    x0, x1, y0, y1 = xs.min(), xs.max() + 1, ys.min(), ys.max() + 1
+    dx, dy = int(round(d[0])), int(round(d[1]))
+    nx0, ny0 = x0 + dx, y0 + dy
+    if nx0 < 0 or ny0 < 0 or nx0 + (x1 - x0) > cur.shape[1] or ny0 + (y1 - y0) > cur.shape[0]:
+        return -1.0
+    r = cv2.matchTemplate(cur[ny0:ny0 + y1 - y0, nx0:nx0 + x1 - x0], prev[y0:y1, x0:x1], cv2.TM_CCOEFF_NORMED)
+    v = float(r[0, 0])
+    return v if np.isfinite(v) else -1.0
 
 
 def _step(prev, cur, mask, cfg, step):
@@ -76,7 +91,14 @@ def _step(prev, cur, mask, cfg, step):
             if m is not None and inl is not None and int(inl.sum()) >= cfg.min_inliers:
                 return m, "lk_affine", float(np.sqrt(abs(np.linalg.det(m[:, :2]))))
         d = np.median(good_new - good_old, axis=0)
-        return np.array([[1, 0, d[0]], [0, 1, d[1]]], dtype=np.float64), "median", 1.0
+        mm = np.array([[1, 0, d[0]], [0, 1, d[1]]], dtype=np.float64)
+        # A pure translation cannot measure scale, so it must not vouch for it:
+        # verify the translated bbox still correlates with the previous one.
+        score = _bbox_correlation(prev, cur, mask, d)
+        if score < cfg.template_floor:
+            raise TrackingError(f"step {step}: median-motion correlation {score:.3f} below floor "
+                                f"{cfg.template_floor} (unmeasured scale/shape change)")
+        return mm, "median", 1.0
     ys, xs = np.nonzero(mask)
     x0, x1, y0, y1 = xs.min(), xs.max() + 1, ys.min(), ys.max() + 1
     tpl = prev[y0:y1, x0:x1]
@@ -126,6 +148,13 @@ def track_mask(frames, seed_mask, config=None, return_log=False):
     return (arr, log) if return_log else arr
 
 
+def threshold_report(cfg):
+    """The threshold set with its provenance, for receipts and the node's log output."""
+    d = dict(vars(cfg))
+    d["provisional"] = not cfg.calibrated
+    return d
+
+
 class AgentboxTrackMask:
     CATEGORY = "agentbox/masks"
     FUNCTION = "run"
@@ -154,7 +183,7 @@ class AgentboxTrackMask:
         cfg = TrackerConfig(area_min=area_min, area_max=area_max, scale_min=scale_min,
                             scale_max=scale_max, template_floor=template_floor)
         masks, log = track_mask(frames.detach().cpu().numpy(), seed, cfg, return_log=True)
-        return (torch.from_numpy(masks.astype(np.float32)), json.dumps(log))
+        return (torch.from_numpy(masks.astype(np.float32)), json.dumps({"thresholds": threshold_report(cfg), "steps": log}))
 
 
 NODE_CLASS_MAPPINGS = {"AgentboxTrackMask": AgentboxTrackMask}

@@ -78,6 +78,19 @@ class MaskTests(unittest.TestCase):
         with self.assertRaisesRegex(masks.TrackingError, "scale"):
             masks.track_mask([frames[0], big], truth[0])
 
+    def test_large_scale_jump_fail_closed_whatever_the_path(self):
+        # 1.3x is beyond what LK measures, so the step falls to median motion, which
+        # cannot see scale; the correlation check must still stop it.
+        frames, truth = scene(2, step=(0, 0))
+        big = cv2.warpAffine(frames[0], cv2.getRotationMatrix2D((W / 2, H / 2), 0, 1.3), (W, H))
+        with self.assertRaises(masks.TrackingError):
+            masks.track_mask([frames[0], big], truth[0])
+
+    def test_threshold_report_carries_provenance(self):
+        rep = masks.threshold_report(masks.TrackerConfig())
+        self.assertEqual((rep["calibrated"], rep["provisional"]), (False, True))
+        self.assertTrue(rep["provenance"])
+
     def test_area_blowup_fail_closed(self):
         frames, truth = scene(1, step=(0, 0), size=40, start=(44, 28))
         seq = [frames[0]]
