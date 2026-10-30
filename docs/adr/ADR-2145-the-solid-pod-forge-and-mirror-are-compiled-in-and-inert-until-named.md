@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 29a4b49391b98d92f4c242b64143ad8eb867d246
+verified_commit: d0e9ca7865c7e120bd657b0ffc66e54b043dfa1a
 verified_paths: [lib/solid-pod-rs.nix, lib/solid-pod-rs.cargo-lock, flake.nix, agentbox.toml, scripts/ci/check-manifest-catalogue.js]
 owner: jjohare
 review_trigger: the first image rebuilt with this pin; any change to the forge block defaults (open_edit, allow_mainnet, mirror_follow); a solid-pod-rs release that changes the forge feature names; a second operator
@@ -107,3 +107,5 @@ Re-verified 2026-10-23 at `951ada931e235ad45b61b2bef90b7e5c76f8d76c`: flake.nix 
 Re-verified 2026-10-29 at `00039efb1e4a70402df86ad19cf76894fe3b9a8f` for ADR-2155. The server and identity bridge now share alpha.17 plus Jev revision45c73aa86d062b55055c5e779d74ae856522b10f, rather than tag55bfec1f. The library/relay substrate is unchanged. Exact-pin bridge check, server shipped-feature check, 21 Jev tests and 2 forge integration tests passed. The Jev Cargo feature requires both parent and consumer gates; forge configuration, mirrors and authorisation are unchanged. No image or service activation is claimed.
 
 Re-verified 2026-10-30 at `29a4b4939`: solid-pod-rs repinned to 76ab7aab (workspace 0.5.0-alpha.18): the ten commits merged on solid-pod-rs main since 45c73aa (RustCrypto 0.14, RUSTSEC advisories cleared; bare-dot Slug 400; did:nostr prefix bound) plus SOLID_POD_JEV_ALLOW_CLOUD. Server and bridge move together; solid-pod-security-pin test 4/4; bridge cargo test --locked 213 passed; solid-pod-rs CI success. The forge, kind-30618 mirror and Git provenance patch are unchanged by this repin (not rebuilt here: no nix).
+
+Re-verified 2026-10-30 at d0e9ca786: the only change to the governed paths is the new `[system_one].skill_list_at_least` key and its schema property (router runner-up listing, ADR-2091); no section this record governs changed.
