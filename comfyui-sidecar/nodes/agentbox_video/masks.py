@@ -11,7 +11,8 @@ From a seed mask, each step estimates the subject's motion:
 It raises :class:`TrackingError` rather than guess: when template correlation is
 below the floor, when the per-step scale leaves ``[scale_min, scale_max]``, or
 when the warped mask's area leaves ``[area_min, area_max]`` of the frame. The
-returned list always has exactly one mask per frame (asserted).
+median and template paths are additionally probed at several scales and refused when a
+different scale correlates better (:func:`_scale_probe`). The returned list always has exactly one mask per frame (asserted).
 """
 from dataclasses import dataclass
 
@@ -39,6 +40,11 @@ class TrackerConfig:
     calibrated: bool = False
     lk_window: int = 11          # LK window; corners near the mask edge see background
     corner_erode: int = 6        # erode the mask by this many px before picking corners
+    # Paths that cannot measure scale (median, template) probe the bbox correlation at
+    # these scales; a better-correlating scale outside [scale_min, scale_max] is refused.
+    scale_probes: tuple = (0.8, 0.9, 0.95, 1.0, 1.05, 1.1, 1.2, 1.3)
+    probe_shift: int = 3              # px of translation slack searched at each probe scale
+    scale_probe_margin: float = 0.05  # correlation gain over scale 1.0 that counts as "better"
 
 
 def _gray(frame):
@@ -68,8 +74,50 @@ def _bbox_correlation(prev, cur, mask, d):
     return v if np.isfinite(v) else -1.0
 
 
+def _scale_probe(prev, cur, mask, d, cfg, step):
+    """Refuse a translation-only step when another scale explains the subject better.
+
+    The median and template paths assume scale 1.0 without measuring it. Resample the
+    translated neighbourhood in ``cur`` at each probe scale (about the translated bbox
+    centre) and correlate it with the previous bbox. If a scale outside the allowed
+    ``[scale_min, scale_max]`` beats scale 1.0 by ``scale_probe_margin``, the subject
+    has grown or shrunk and a 1.0 mask would under- or over-cover it.
+    """
+    ys, xs = np.nonzero(mask)
+    x0, x1, y0, y1 = int(xs.min()), int(xs.max()) + 1, int(ys.min()), int(ys.max()) + 1
+    bw, bh = x1 - x0, y1 - y0
+    tpl = prev[y0:y1, x0:x1]
+    cx, cy = (x0 + x1) / 2.0 + d[0], (y0 + y1) / 2.0 + d[1]
+
+    r = cfg.probe_shift
+
+    def corr(s):
+        # Padded window (r px in resized space) so a template-match offset of a few pixels, which a
+        # growing subject induces, does not hide the better scale. Best over the shifts.
+        w, h = max(2, int(round((bw + 2 * r) * s))), max(2, int(round((bh + 2 * r) * s)))
+        px0, py0 = int(round(cx - w / 2.0)), int(round(cy - h / 2.0))
+        if px0 < 0 or py0 < 0 or px0 + w > cur.shape[1] or py0 + h > cur.shape[0]:
+            return -1.0
+        patch = cv2.resize(cur[py0:py0 + h, px0:px0 + w], (bw + 2 * r, bh + 2 * r), interpolation=cv2.INTER_AREA)
+        v = float(cv2.matchTemplate(patch, tpl, cv2.TM_CCOEFF_NORMED).max())
+        return v if np.isfinite(v) else -1.0
+
+    base = corr(1.0)
+    best_s, best = 1.0, base
+    for s in cfg.scale_probes:
+        c = corr(s)
+        if c > best:
+            best_s, best = s, c
+    if best_s != 1.0 and best > base + cfg.scale_probe_margin and not (cfg.scale_min <= best_s <= cfg.scale_max):
+        raise TrackingError(f"step {step}: scale {best_s:.2f} outside [{cfg.scale_min}, {cfg.scale_max}] "
+                            f"(unmeasured; bbox correlation {best:.3f} vs {base:.3f} at 1.0)")
+
+
 def _step(prev, cur, mask, cfg, step):
-    """Return ``(M 2x3, method, scale)`` mapping the mask from ``prev`` to ``cur``."""
+    """Return ``(M 2x3, method, scale)`` mapping the mask from ``prev`` to ``cur``.
+
+    ``scale`` is ``None`` on the median and template paths: they cannot measure it.
+    """
     pts = None
     # Prefer corners well inside the mask (their LK window sees only the subject);
     # relax the erosion for small masks rather than lose flow altogether.
@@ -98,7 +146,8 @@ def _step(prev, cur, mask, cfg, step):
         if score < cfg.template_floor:
             raise TrackingError(f"step {step}: median-motion correlation {score:.3f} below floor "
                                 f"{cfg.template_floor} (unmeasured scale/shape change)")
-        return mm, "median", 1.0
+        _scale_probe(prev, cur, mask, d, cfg, step)
+        return mm, "median", None
     ys, xs = np.nonzero(mask)
     x0, x1, y0, y1 = xs.min(), xs.max() + 1, ys.min(), ys.max() + 1
     tpl = prev[y0:y1, x0:x1]
@@ -108,14 +157,16 @@ def _step(prev, cur, mask, cfg, step):
     _, score, _, loc = cv2.minMaxLoc(res)
     if not np.isfinite(score) or score < cfg.template_floor:
         raise TrackingError(f"step {step}: template correlation {score:.3f} below floor {cfg.template_floor}")
-    return np.array([[1, 0, loc[0] - x0], [0, 1, loc[1] - y0]], dtype=np.float64), "template", 1.0
+    _scale_probe(prev, cur, mask, (loc[0] - x0, loc[1] - y0), cfg, step)
+    return np.array([[1, 0, loc[0] - x0], [0, 1, loc[1] - y0]], dtype=np.float64), "template", None
 
 
 def track_mask(frames, seed_mask, config=None, return_log=False):
     """Track ``seed_mask`` (H,W; frame 0) through ``frames`` [N,H,W,C].
 
     Returns uint8 {0,1} masks [N,H,W]; with ``return_log`` also a per-step list of
-    ``{"step", "method", "scale", "area"}``. Raises :class:`TrackingError`.
+    ``{"step", "method", "scale", "scale_measured", "area"}``; ``scale`` is ``None``
+    (``scale_measured`` false) on the median and template paths, which cannot measure it. Raises :class:`TrackingError`.
     """
     cfg = config or TrackerConfig()
     n = len(frames)
@@ -128,18 +179,25 @@ def track_mask(frames, seed_mask, config=None, return_log=False):
     seed = mask
     cum = np.eye(3)
     out = [mask]
-    log = [{"step": 0, "method": "seed", "scale": 1.0, "area": _check_area(mask, cfg, 0)}]
+    log = [{"step": 0, "method": "seed", "scale": 1.0, "scale_measured": True, "area": _check_area(mask, cfg, 0)}]
     prev = _gray(frames[0])
+    seed_gray = prev
+    sys_, sxs = np.nonzero(seed)
+    seed_centre = np.array([(sxs.min() + sxs.max() + 1) / 2.0, (sys_.min() + sys_.max() + 1) / 2.0, 1.0])
     for i in range(1, n):
         cur = _gray(frames[i])
         m, method, scale = _step(prev, cur, mask, cfg, i)
-        if not (cfg.scale_min <= scale <= cfg.scale_max):
+        if scale is not None and not (cfg.scale_min <= scale <= cfg.scale_max):
             raise TrackingError(f"step {i}: scale {scale:.3f} outside [{cfg.scale_min}, {cfg.scale_max}] ({method})")
         # Compose onto the seed instead of re-warping the previous mask, so
         # nearest-neighbour rounding does not accumulate step after step.
         cum = np.vstack([m, [0, 0, 1]]) @ cum
+        if scale is None:
+            # Unmeasured step: also probe against the seed at the cumulative translation, so growth
+            # spread over several in-bound steps cannot add up unseen.
+            _scale_probe(seed_gray, cur, seed, (cum @ seed_centre - seed_centre)[:2], cfg, i)
         mask = cv2.warpAffine(seed, cum[:2], (w, h), flags=cv2.INTER_NEAREST, borderValue=0)
-        log.append({"step": i, "method": method, "scale": scale, "area": _check_area(mask, cfg, i)})
+        log.append({"step": i, "method": method, "scale": scale, "scale_measured": scale is not None, "area": _check_area(mask, cfg, i)})
         out.append(mask)
         prev = cur
     arr = np.stack(out)

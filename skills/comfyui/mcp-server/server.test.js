@@ -53,16 +53,32 @@ test('cancel never interrupts a foreign running job', async () => {
 });
 test('safeFree skips on a busy queue without calling /free', async () => {
   const c = recorder({'/queue': {queue_running: [], queue_pending: [[1,'x']]}});
-  const r = await c.safeFree();
-  assert.equal(r.skipped, true); assert.match(r.reason, /not idle/);
+  const r = await c.safeFree({settleMs: 0});
+  assert.equal(r.skipped, true); assert.equal(r.success, false); assert.match(r.reason, /not idle/);
   assert.equal(c.calls.some(x => x[1] === '/free'), false);
 });
 test('safeFree frees once, reports VRAM and flags a job that appeared meanwhile', async () => {
   let queues = [{queue_running: [], queue_pending: []}, {queue_running: [[0,'late']], queue_pending: []}];
   let stats = [{devices: [{vram_free: 100}]}, {devices: [{vram_free: 900}]}];
   const c = recorder({'/queue': () => queues.shift(), '/system_stats': () => stats.shift()});
-  const r = await c.safeFree();
+  const r = await c.safeFree({settleMs: 0});
+  assert.equal(r.success, false);
   assert.equal(r.vram_before.free, 100); assert.equal(r.vram_after.free, 900);
   assert.equal(r.job_appeared_meanwhile, true);
   assert.equal(c.calls.filter(x => x[1] === '/free').length, 1);
+});
+test('safeFree succeeds on a clean free', async () => {
+  const c = recorder({'/queue': {queue_running: [], queue_pending: []}, '/system_stats': {devices: [{vram_free: 5}]}});
+  const r = await c.safeFree({settleMs: 0});
+  assert.equal(r.success, true); assert.equal(r.job_appeared_meanwhile, false);
+  assert.match(r.message, /best effort/i);
+});
+test('safeFree settles before reading vram_after, and the default is 1500 ms', async () => {
+  const order = [];
+  const c = recorder({'/queue': {queue_running: [], queue_pending: []},
+    '/system_stats': () => { order.push('stats'); return {devices: [{vram_free: 1}]}; }});
+  const t0 = Date.now();
+  await c.safeFree({settleMs: 120});
+  assert.ok(Date.now() - t0 >= 110);
+  assert.equal(ComfyUIClient.SAFE_FREE_SETTLE_MS, 1500);
 });

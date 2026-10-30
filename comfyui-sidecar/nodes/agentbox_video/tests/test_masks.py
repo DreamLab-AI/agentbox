@@ -111,5 +111,73 @@ class MaskTests(unittest.TestCase):
             masks.track_mask(frames, np.zeros((5, 5)))
 
 
+def disc_scene(radii, centre=(64, 48), seed=3):
+    """Flat-colour discs (no interior corners) on a textured background, one radius per frame."""
+    rng = np.random.default_rng(seed)
+    bg = cv2.GaussianBlur(rng.integers(0, 256, (H, W), dtype=np.uint8), (0, 0), 1.0)
+    frames, truth = [], []
+    for r in radii:
+        f = bg.copy()
+        cv2.circle(f, centre, int(round(r)), 250, -1)
+        t = np.zeros((H, W), np.uint8)
+        cv2.circle(t, centre, int(round(r)), 1, -1)
+        frames.append(np.dstack([f] * 3))
+        truth.append(t)
+    return frames, truth
+
+
+class UnmeasuredScaleTests(unittest.TestCase):
+    def test_growing_disc_is_not_tracked_at_scale_one(self):
+        # A flat disc has no corners, so the tracker falls to template matching, which
+        # cannot measure scale. A 1.2x growth must be refused, not tracked at 1.0.
+        frames, truth = disc_scene([12, 12, 14.4, 14.4])
+        with self.assertRaisesRegex(masks.TrackingError, r"scale .*\(unmeasured"):
+            masks.track_mask(frames, truth[0])
+
+    def test_gradual_growth_over_a_few_frames_is_refused(self):
+        # ~1.063x per step to 1.2x overall: each step alone is inside the scale bound.
+        frames, truth = disc_scene([12, 12.75, 13.5, 14.4])
+        with self.assertRaisesRegex(masks.TrackingError, "scale"):
+            masks.track_mask(frames, truth[0])
+
+    def test_growing_disc_median_path_is_refused_too(self):
+        frames, truth = disc_scene([12, 14.4])
+        cfg = masks.TrackerConfig(min_points=1, min_affine_points=10**6, corner_erode=0)
+        with self.assertRaisesRegex(masks.TrackingError, "unmeasured"):
+            masks.track_mask(frames, truth[0], cfg)
+
+    def test_unmeasured_scale_is_logged_as_null(self):
+        frames, truth = scene(4)
+        cfg = masks.TrackerConfig(min_points=10**6)  # template path
+        _, log = masks.track_mask(frames, truth[0], cfg, return_log=True)
+        for e in log[1:]:
+            self.assertIsNone(e["scale"])
+            self.assertFalse(e["scale_measured"])
+        cfg = masks.TrackerConfig(min_affine_points=10**6)  # median path
+        _, log = masks.track_mask(frames, truth[0], cfg, return_log=True)
+        for e in log[1:]:
+            self.assertEqual(e["method"], "median")
+            self.assertIsNone(e["scale"])
+            self.assertFalse(e["scale_measured"])
+
+    def test_measured_scale_is_logged(self):
+        frames, truth = scene(4)
+        _, log = masks.track_mask(frames, truth[0], return_log=True)
+        for e in log[1:]:
+            self.assertTrue(e["scale_measured"])
+            self.assertAlmostEqual(e["scale"], 1.0, places=1)
+
+    def test_static_disc_still_tracks_on_template_path(self):
+        frames, truth = disc_scene([12, 12, 12])
+        out, log = masks.track_mask(frames, truth[0], return_log=True)
+        self.assertGreater(iou(out[2], truth[2]), 0.9)
+        self.assertFalse(log[1]["scale_measured"])
+
+    def test_probe_is_configuration(self):
+        rep = masks.threshold_report(masks.TrackerConfig())
+        self.assertIn("scale_probe_margin", rep)
+        self.assertIn("scale_probes", rep)
+
+
 if __name__ == "__main__":
     unittest.main()

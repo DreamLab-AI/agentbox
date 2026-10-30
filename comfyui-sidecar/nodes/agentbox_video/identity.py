@@ -55,6 +55,11 @@ class ThresholdSet:
     last_n: int = 5
     weak_below: float = 0.25
     drift_min_sim: float = 0.15
+    #: With an expected cast member: FAIL ``identity_swap`` when another actor's best
+    #: cosine beats the expected actor's by more than this. Same provenance as the rest.
+    swap_margin: float = 0.05
+    #: Frames (among ``last_n``) that must hold a judged face; fewer is ``not_judged``.
+    min_judged_frames: int = 2
     provenance: str = "kinoloom-ltx-uncalibrated"
     calibrated: bool = False
     #: Verified ``{path, sha256}`` of a ``threshold-calibration/1`` record.
@@ -144,21 +149,67 @@ def sha256_file(path: Path) -> str:
     return h.hexdigest()
 
 
-def verify_model_files(models_dir: Path, manifest: Optional[dict] = None) -> dict:
-    """Return ``{role: Path}``; raise :class:`ModelFilesError` on absence or hash mismatch."""
+def read_verified_models(models_dir: Path, manifest: Optional[dict] = None) -> dict:
+    """Return ``{role: bytes}``, each file read once and hashed on those same bytes.
+
+    Raise :class:`ModelFilesError` on absence or hash mismatch. Loading from the
+    returned bytes (not by reopening the path) closes the hash-then-reopen window.
+    """
     manifest = manifest or load_manifest()
     out = {}
     for role, spec in manifest["models"].items():
         p = Path(models_dir) / spec["file"]
         if not p.is_file():
             raise ModelFilesError(f"{role}: {p} missing (download {spec['url']})")
-        got = sha256_file(p)
+        data = p.read_bytes()
+        got = hashlib.sha256(data).hexdigest()
         if got != spec["sha256"]:
             raise ModelFilesError(
                 f"{role}: sha256 mismatch for {p} (expected {spec['sha256']}, got {got}); refusing to load"
             )
-        out[role] = p
+        out[role] = data
     return out
+
+
+def verify_model_files(models_dir: Path, manifest: Optional[dict] = None) -> dict:
+    """Return ``{role: Path}``; raise :class:`ModelFilesError` on absence or hash mismatch.
+
+    Checks only; to *load* use :func:`read_verified_models`, which keeps the verified bytes.
+    """
+    manifest = manifest or load_manifest()
+    read_verified_models(models_dir, manifest)
+    return {role: Path(models_dir) / spec["file"] for role, spec in manifest["models"].items()}
+
+
+_LOAD_TRACE: list = []
+
+
+def _create_from_verified_bytes(buffer_create: Callable, path_create: Callable, data: bytes, filename: str,
+                                unsupported: tuple = (TypeError, AttributeError)):
+    """Build an OpenCV model from verified bytes.
+
+    Tries the in-memory ``create(framework, buffer, config)`` overload. If this OpenCV
+    lacks it (``unsupported``: the bindings raise ``cv2.error`` for a missing overload), writes the verified bytes to a private
+    ``0600`` file in a fresh ``0700`` ``mkdtemp`` directory, loads that, and removes it.
+    """
+    try:
+        out = buffer_create(np.frombuffer(data, np.uint8))
+        _LOAD_TRACE.append((filename, "buffer"))
+        return out
+    except unsupported:
+        _LOAD_TRACE.append((filename, "private_copy"))
+    import shutil
+    import tempfile
+
+    tmp = tempfile.mkdtemp(prefix="agentbox-face-")
+    try:
+        path = os.path.join(tmp, os.path.basename(filename))
+        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        with os.fdopen(fd, "wb") as fh:
+            fh.write(data)
+        return path_create(path)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
 
 
 def _unit(v: np.ndarray) -> np.ndarray:
@@ -174,9 +225,19 @@ class SFaceEmbedder:
         import cv2
 
         self._cv2 = cv2
-        paths = verify_model_files(Path(models_dir or os.environ.get("AGENTBOX_FACE_MODELS", DEFAULT_MODELS_DIR)), manifest)
-        self._det = cv2.FaceDetectorYN.create(str(paths["detector"]), "", (320, 320), score_threshold, 0.3, 5000)
-        self._rec = cv2.FaceRecognizerSF.create(str(paths["recogniser"]), "")
+        mdir = Path(models_dir or os.environ.get("AGENTBOX_FACE_MODELS", DEFAULT_MODELS_DIR))
+        man = manifest or load_manifest()
+        data = read_verified_models(mdir, man)
+        none = np.zeros(0, np.uint8)
+        unsupported = (TypeError, AttributeError, cv2.error)  # missing buffer overload -> private copy
+        self._det = _create_from_verified_bytes(
+            lambda buf: cv2.FaceDetectorYN.create("onnx", buf, none, (320, 320), score_threshold, 0.3, 5000),
+            lambda path: cv2.FaceDetectorYN.create(path, "", (320, 320), score_threshold, 0.3, 5000),
+            data["detector"], man["models"]["detector"]["file"], unsupported)
+        self._rec = _create_from_verified_bytes(
+            lambda buf: cv2.FaceRecognizerSF.create("onnx", buf, none),
+            lambda path: cv2.FaceRecognizerSF.create(path, ""),
+            data["recogniser"], man["models"]["recogniser"]["file"], unsupported)
         self.max_side = max_side
 
     def faces(self, bgr: np.ndarray) -> list:
@@ -238,33 +299,71 @@ def frame_best(embedder: Embedder, bgr: np.ndarray, refs: dict, th: ThresholdSet
     shape = _analysed_shape(embedder, bgr)
     ok = [h for h in hits if judged(h, shape, th.min_face_frac)]
     best, who = None, None
+    per_cast: dict = {}
     for h in ok:
         for name, embs in refs.items():
             for e in embs:
                 s = float(np.dot(h.embedding, e))
+                if per_cast.get(name) is None or s > per_cast[name]:
+                    per_cast[name] = s
                 if best is None or s > best:
                     best, who = s, name
-    return {"faces": len(hits), "judged_faces": len(ok), "best": best, "cast": who}
+    return {"faces": len(hits), "judged_faces": len(ok), "best": best, "cast": who, "per_cast": per_cast}
 
 
 def identity_score(frames: Iterable[np.ndarray], refs: dict, embedder: Embedder,
-                   th: Optional[ThresholdSet] = None) -> dict:
-    """Best cosine over the last ``th.last_n`` frames against all references.
+                   th: Optional[ThresholdSet] = None, expected_cast: Optional[str] = None) -> dict:
+    """Best cosine over the last ``th.last_n`` frames against the references.
 
-    Verdict is ``not_judged`` when no judged face appears (a face under the
-    size floor is never a pass), ``FAIL`` under ``min_similarity`` (routed to
-    human review) and otherwise ``PASS`` with ``provisional`` true while the
+    Without ``expected_cast`` the score is the best cosine against *any* reference,
+    so a shot that shows the wrong actor still passes. Give ``expected_cast`` (a key
+    of ``refs``) and the score is the best cosine against that actor's references
+    only; if another actor beats it by more than ``th.swap_margin`` the verdict is
+    ``FAIL`` with ``reason: "identity_swap"`` (``expected_cast``/``matched_cast``
+    named, routed to human review). A two-shot where the other actor is simply
+    the better match also trips this: it fails towards review, never towards a pass.
+
+    Verdict is ``not_judged`` when fewer than ``th.min_judged_frames`` of the last
+    frames hold a face at or above the size floor (one good frame is not enough), or
+    ``expected_cast`` has no reference. Otherwise ``FAIL`` under ``min_similarity``
+    (routed to human review) and ``PASS`` with ``provisional`` true while the
     threshold set is uncalibrated.
     """
     th = th or ThresholdSet()
     tail = list(deque(frames, maxlen=max(1, th.last_n)))
     per = [frame_best(embedder, f, refs, th) for f in tail]
-    scores = [p["best"] for p in per if p["best"] is not None]
-    best = max(scores) if scores else None
+    judged_frames = sum(1 for p in per if p["best"] is not None)
+    swap = None
+    if expected_cast is None:
+        scores = [p["best"] for p in per if p["best"] is not None]
+        best = max(scores) if scores else None
+    else:
+        scores = [p["per_cast"][expected_cast] for p in per if expected_cast in p["per_cast"]]
+        best = max(scores) if scores else None
+        others: dict = {}
+        for p in per:
+            for name, sim in p["per_cast"].items():
+                if name != expected_cast and sim > others.get(name, -2.0):
+                    others[name] = sim
+        if best is not None and others:
+            rival = max(others, key=lambda k: others[k])
+            if others[rival] > best + th.swap_margin:
+                swap = {"expected": expected_cast, "matched": rival,
+                        "expected_score": best, "matched_score": others[rival]}
+    detail = None
     if not refs:
         verdict, reason = "not_judged", "no reference portrait with a face"
+    elif expected_cast is not None and expected_cast not in refs:
+        verdict, reason = "not_judged", f"expected cast {expected_cast!r} has no reference portrait with a face"
     elif best is None:
         verdict, reason = "not_judged", "no face at or above the size floor in the last frames"
+    elif judged_frames < th.min_judged_frames:
+        verdict, reason = "not_judged", (f"only {judged_frames} of {len(tail)} frames held a face at or above the "
+                                         f"size floor; {th.min_judged_frames} needed")
+    elif swap:
+        verdict, reason = "FAIL", "identity_swap"
+        detail = (f"expected {swap['expected']} (best cosine {swap['expected_score']:.3f}) but "
+                  f"{swap['matched']} matches better ({swap['matched_score']:.3f}, margin {th.swap_margin})")
     elif best >= th.min_similarity:
         verdict, reason = "PASS", None
     else:
@@ -273,11 +372,16 @@ def identity_score(frames: Iterable[np.ndarray], refs: dict, embedder: Embedder,
         "schema": SCHEMA, "kind": "identity_score", "verdict": verdict,
         "provisional": (verdict == "PASS" and not th.calibrated),
         "acceptance_backing": bool(verdict == "PASS" and th.calibrated),
-        "score": best, "frames_considered": len(tail), "per_frame": per,
-        "thresholds": asdict(th),
+        "score": best, "frames_considered": len(tail), "judged_frames": judged_frames,
+        "per_frame": per, "thresholds": asdict(th),
     }
+    if expected_cast is not None:
+        report["expected_cast"] = expected_cast
+        report["matched_cast"] = swap["matched"] if swap else None
     if reason:
         report["reason"] = reason
+    if detail:
+        report["detail"] = detail
     if verdict == "FAIL":
         report["route"] = ROUTE_ON_FAIL
     return report
@@ -470,6 +574,10 @@ def _thresholds(args) -> ThresholdSet:
     d = json.loads(Path(args.thresholds).read_text()) if args.thresholds else {}
     if args.last_n is not None:
         d["last_n"] = args.last_n
+    if args.swap_margin is not None:
+        d["swap_margin"] = args.swap_margin
+    if args.min_judged_frames is not None:
+        d["min_judged_frames"] = args.min_judged_frames
     base = Path(args.thresholds).resolve().parent if args.thresholds else None
     return ThresholdSet.from_dict(d, base_dir=base)
 
@@ -479,11 +587,16 @@ def main(argv: Optional[Sequence[str]] = None, embedder: Optional[Embedder] = No
     ap.add_argument("--models-dir", default=None)
     ap.add_argument("--thresholds", help="JSON file overriding the threshold set")
     ap.add_argument("--last-n", type=int, default=None)
+    ap.add_argument("--swap-margin", type=float, default=None, help="override thresholds.swap_margin")
+    ap.add_argument("--min-judged-frames", type=int, default=None, help="override thresholds.min_judged_frames")
     sub = ap.add_subparsers(dest="cmd", required=True)
     for name in ("score", "drift"):
         p = sub.add_parser(name)
         p.add_argument("--video", required=True)
         p.add_argument("--ref", action="append", default=[], help="NAME=portrait path (repeatable)")
+        if name == "score":
+            p.add_argument("--expect", metavar="NAME", default=None,
+                           help="expected cast member (a --ref NAME); FAIL identity_swap if another actor matches better")
         if name == "drift":
             p.add_argument("--link-start", type=int, action="append", default=[])
             p.add_argument("--every", type=int, default=6)
@@ -508,7 +621,8 @@ def main(argv: Optional[Sequence[str]] = None, embedder: Optional[Embedder] = No
         print(json.dumps({"schema": SCHEMA, "verdict": "BLOCKED", "error": str(e)}, indent=2))
         return 2
     if args.cmd == "score":
-        rep = identity_score(read_video_frames(args.video), _parse_refs(args.ref, emb), emb, th)
+        rep = identity_score(read_video_frames(args.video), _parse_refs(args.ref, emb), emb, th,
+                             expected_cast=args.expect)
         rep["input"] = {"video": args.video}
     elif args.cmd == "drift":
         rep = drift_report(read_video_frames(args.video), args.link_start, _parse_refs(args.ref, emb), emb, th, args.every)
@@ -554,14 +668,22 @@ class AgentboxIdentityScore:
             "last_n": ("INT", {"default": 5, "min": 1, "max": 64}),
             "min_similarity": ("FLOAT", {"default": 0.25, "min": 0.0, "max": 1.0, "step": 0.01}),
             "min_face_frac": ("FLOAT", {"default": 0.12, "min": 0.0, "max": 1.0, "step": 0.01}),
-        }, "optional": {"ref_names": ("STRING", {"default": ""})}}
+        }, "optional": {
+            "ref_names": ("STRING", {"default": ""}),
+            "expected_cast": ("STRING", {"default": ""}),
+            "swap_margin": ("FLOAT", {"default": 0.05, "min": 0.0, "max": 1.0, "step": 0.01}),
+            "min_judged_frames": ("INT", {"default": 2, "min": 1, "max": 64}),
+        }}
 
-    def run(self, frames, references, last_n, min_similarity, min_face_frac, ref_names=""):
+    def run(self, frames, references, last_n, min_similarity, min_face_frac, ref_names="",
+            expected_cast="", swap_margin=0.05, min_judged_frames=2):
         emb = _shared_embedder()
-        th = ThresholdSet(min_similarity=min_similarity, min_face_frac=min_face_frac, last_n=last_n)
+        th = ThresholdSet(min_similarity=min_similarity, min_face_frac=min_face_frac, last_n=last_n,
+                          swap_margin=swap_margin, min_judged_frames=min_judged_frames)
         pics = tensor_to_bgr_frames(references)
         refs = reference_embeddings(emb, dict(zip(_names(ref_names, len(pics)), pics)))
-        rep = identity_score(tensor_to_bgr_frames(frames), refs, emb, th)
+        rep = identity_score(tensor_to_bgr_frames(frames), refs, emb, th,
+                             expected_cast=(expected_cast or "").strip() or None)
         return (json.dumps(rep), float(rep["score"] if rep["score"] is not None else -1.0), rep["verdict"])
 
 

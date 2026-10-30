@@ -5,6 +5,7 @@ from pathlib import Path
 import tempfile
 import threading
 import unittest
+from unittest import mock
 
 SPEC = importlib.util.spec_from_file_location("comfy_client", Path(__file__).parents[1] / "comfy_client.py")
 comfy = importlib.util.module_from_spec(SPEC)
@@ -286,17 +287,19 @@ class HarnessTest(unittest.TestCase):
 
     def test_safe_free_skips_when_queue_busy(self):
         self.queue_state = {"queue_running": [], "queue_pending": [[1, "other", {}, {}]]}
-        result = self.client.safe_free(settle=0)
+        result = self.client.safe_free(settle_s=0)
         self.assertTrue(result["skipped"])
         self.assertIn("not idle", result["reason"])
+        self.assertFalse(result["success"])
         self.assertFalse([e for e in self.log if e[0] == "POST"])
 
     def test_safe_free_reports_vram_and_frees_once(self):
         self.phase = "completed"
         self.queue_state = {"queue_running": [], "queue_pending": []}
         self.vram_free = 1 * 1024**3
-        result = self.client.safe_free(settle=0)
+        result = self.client.safe_free(settle_s=0)
         self.assertFalse(result["skipped"])
+        self.assertTrue(result["success"])
         self.assertEqual(result["vram_before"]["free"], 1 * 1024**3)
         self.assertIn("free", result["vram_after"])
         self.assertFalse(result["job_appeared_meanwhile"])
@@ -312,9 +315,51 @@ class HarnessTest(unittest.TestCase):
                 owner.queue_state = {"queue_running": [[1, "late", {}, {}]], "queue_pending": []}
             return result
         self.client.request = request
-        result = self.client.safe_free(settle=0)
+        result = self.client.safe_free(settle_s=0)
         self.assertTrue(result["job_appeared_meanwhile"])
+        self.assertFalse(result["success"])
         self.assertEqual(len([e for e in self.log if e[:2] == ("POST", "/free")]), 1)
+
+    def test_safe_free_default_settle_is_one_and_a_half_seconds(self):
+        import inspect
+        self.assertEqual(inspect.signature(comfy.Client.safe_free).parameters["settle_s"].default, 1.5)
+
+    def test_safe_free_settles_before_reading_vram_after(self):
+        self.queue_state = {"queue_running": [], "queue_pending": []}
+        started = __import__("time").monotonic()
+        self.client.safe_free(settle_s=0.3)
+        self.assertGreaterEqual(__import__("time").monotonic() - started, 0.28)
+
+    def _run_cli(self, *argv):
+        import contextlib
+        import io
+        out = io.StringIO()
+        with mock.patch("sys.argv", ["comfy_client.py", "--url", self.client.url, *argv]), contextlib.redirect_stdout(out):
+            code = comfy.main()
+        return code, json.loads(out.getvalue())
+
+    def test_cli_safe_free_exits_zero_on_a_clean_free(self):
+        self.queue_state = {"queue_running": [], "queue_pending": []}
+        code, result = self._run_cli("safe-free", "--settle-s", "0")
+        self.assertEqual((code, result["success"]), (0, True))
+
+    def test_cli_safe_free_exits_three_when_skipped(self):
+        self.queue_state = {"queue_running": [], "queue_pending": [[1, "other", {}, {}]]}
+        code, result = self._run_cli("safe-free", "--settle-s", "0")
+        self.assertEqual((code, result["success"], result["skipped"]), (3, False, True))
+
+    def test_cli_safe_free_exits_three_when_a_job_appeared(self):
+        self.queue_state = {"queue_running": [], "queue_pending": []}
+        owner = self
+        real = comfy.Client.request
+        def request(client, path, payload=None, timeout=None):
+            result = real(client, path, payload, timeout)
+            if path == "/free":
+                owner.queue_state = {"queue_running": [[1, "late", {}, {}]], "queue_pending": []}
+            return result
+        with mock.patch.object(comfy.Client, "request", request):
+            code, result = self._run_cli("safe-free", "--settle-s", "0")
+        self.assertEqual((code, result["success"], result["job_appeared_meanwhile"]), (3, False, True))
 
     def test_submit_records_vram_warning_but_still_submits(self):
         self.vram_free = 1 * 1024**3
