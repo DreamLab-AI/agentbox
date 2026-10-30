@@ -18,6 +18,28 @@ use std::{
 /// Boxed error used by the media helpers.
 pub type Result<T> = std::result::Result<T, Box<dyn Error>>;
 
+/// Input options for every ffmpeg/ffprobe read of a production file: local
+/// files only, so a playlist or concat list disguised as media cannot make
+/// ffmpeg fetch a URL. Place immediately before the input.
+pub const SAFE_INPUT: [&str; 2] = ["-protocol_whitelist", "file"];
+
+/// Largest decoded frame accepted, in pixels (64 Mpx, above 8K UHD). Frame
+/// buffers are sized from file-declared dimensions, so a crafted header must
+/// not drive the allocation.
+pub const MAX_FRAME_PIXELS: u64 = 64 * 1024 * 1024;
+
+/// Bytes in one decoded frame, refusing dimensions over [`MAX_FRAME_PIXELS`].
+pub fn frame_len(width: u32, height: u32, channels: usize) -> Result<usize> {
+    let pixels = u64::from(width) * u64::from(height);
+    if pixels > MAX_FRAME_PIXELS {
+        return Err(format!(
+            "declared frame {width}x{height} exceeds the {MAX_FRAME_PIXELS}-pixel decode cap"
+        )
+        .into());
+    }
+    Ok(pixels as usize * channels)
+}
+
 fn output(command: &mut Command) -> Result<Vec<u8>> {
     let result = command.output()?;
     if !result.status.success() {
@@ -224,6 +246,7 @@ pub fn probe(path: &Path) -> Result<Probe> {
                 "-of",
                 "json",
             ])
+            .args(SAFE_INPUT)
             .arg(path),
     )?)?;
     let v = &video["streams"][0];
@@ -268,6 +291,7 @@ pub fn probe(path: &Path) -> Result<Probe> {
                 "-of",
                 "json",
             ])
+            .args(SAFE_INPUT)
             .arg(path),
     )?)?;
     let a = &audio["streams"][0];
@@ -362,7 +386,9 @@ pub fn for_each_frame_as(
     }
     let mut command = Command::new("ffmpeg");
     command
-        .args(["-nostdin", "-v", "error", "-i"])
+        .args(["-nostdin", "-v", "error"])
+        .args(SAFE_INPUT)
+        .arg("-i")
         .arg(path)
         .args(["-map", "0:v:0", "-fps_mode", "passthrough"]);
     let mut scale = Vec::new();
@@ -383,7 +409,7 @@ pub fn for_each_frame_as(
         .stderr(Stdio::piped());
     let mut child = command.spawn()?;
     let mut stdout = child.stdout.take().ok_or("ffmpeg stdout unavailable")?;
-    let frame_len = width as usize * height as usize * format.channels();
+    let frame_len = frame_len(width, height, format.channels())?;
     let mut index = 0u64;
     let mut visit_error = None;
     loop {
@@ -439,7 +465,9 @@ pub fn decode_audio_s16(path: &Path, sample_rate: u32, channels: u32) -> Result<
     }
     let bytes = output(
         Command::new("ffmpeg")
-            .args(["-nostdin", "-v", "error", "-i"])
+            .args(["-nostdin", "-v", "error"])
+            .args(SAFE_INPUT)
+            .arg("-i")
             .arg(path)
             .args([
                 "-map",
@@ -475,7 +503,9 @@ pub fn video_frame_hashes(path: &Path) -> Result<Vec<String>> {
     probe(path)?.require_upright_square()?;
     let text = String::from_utf8(output(
         Command::new("ffmpeg")
-            .args(["-nostdin", "-v", "error", "-i"])
+            .args(["-nostdin", "-v", "error"])
+            .args(SAFE_INPUT)
+            .arg("-i")
             .arg(path)
             .args(["-map", "0:v:0", "-f", "framehash", "-hash", "sha256", "-"]),
     )?)?;
@@ -491,7 +521,9 @@ pub fn audio_packet_hashes(path: &Path) -> Result<Vec<String>> {
     }
     let text = String::from_utf8(output(
         Command::new("ffmpeg")
-            .args(["-nostdin", "-v", "error", "-i"])
+            .args(["-nostdin", "-v", "error"])
+            .args(SAFE_INPUT)
+            .arg("-i")
             .arg(path)
             .args([
                 "-map",
@@ -555,6 +587,34 @@ pub mod testutil {
 mod tests {
     use super::testutil::*;
     use super::*;
+
+    #[test]
+    fn a_playlist_disguised_as_media_cannot_reach_the_network() {
+        let s = Scratch::new("media-ssrf");
+        // A plan may name any file; a playlist must not reach the network. The
+        // assertion names our narrower whitelist, so it proves SAFE_INPUT is in
+        // effect rather than ffmpeg's own HLS default (`file,crypto,data`).
+        let fake = s.path("clip.m3u8");
+        std::fs::write(
+            &fake,
+            "#EXTM3U\n#EXT-X-TARGETDURATION:1\n#EXTINF:1,\nhttp://127.0.0.1:9/seg.ts\n#EXT-X-ENDLIST\n",
+        )
+        .unwrap();
+        let err = probe(&fake).unwrap_err().to_string();
+        assert!(err.contains("not on whitelist 'file'!"), "{err}");
+        let err = for_each_frame(&fake, PixelFormat::Rgb24, None, |_| Ok(()))
+            .unwrap_err()
+            .to_string();
+        assert!(err.contains("not on whitelist 'file'!"), "{err}");
+    }
+
+    #[test]
+    fn declared_frame_dimensions_are_capped_before_allocation() {
+        assert!(frame_len(1920, 1080, 3).is_ok());
+        assert!(frame_len(MAX_FRAME_PIXELS as u32, 1, 3).is_ok());
+        let err = frame_len(65_535, 65_535, 3).unwrap_err().to_string();
+        assert!(err.contains("exceeds"), "{err}");
+    }
 
     #[test]
     fn a_declaration_must_agree_with_a_partial_tag() {

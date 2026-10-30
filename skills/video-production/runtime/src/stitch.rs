@@ -261,6 +261,7 @@ fn colour_tags(path: &Path) -> Result<Value> {
             "-of",
             "json",
         ])
+        .args(crate::media::SAFE_INPUT)
         .arg(path)
         .output()?;
     if !out.status.success() {
@@ -345,7 +346,7 @@ fn encode(
         .args(["-s", &format!("{}x{}", size.0, size.1)])
         .args(["-framerate", &plan.rate.ffmpeg_rate(), "-i", "pipe:0"]);
     if let Some(audio) = audio {
-        command.arg("-i").arg(audio);
+        command.args(crate::media::SAFE_INPUT).arg("-i").arg(audio);
     }
     command.args(["-map", "0:v:0"]);
     if audio.is_some() {
