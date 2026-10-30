@@ -1,26 +1,32 @@
 import json
+import pathlib
 import unittest
 
 import numpy as np
 
 from agentbox_video import retake
 
+CASES = pathlib.Path(__file__).with_name("retake_geometry_cases.json")
+
 
 class RetakeTests(unittest.TestCase):
     def test_interior(self):
         p = retake.plan_retake(100, 40, 50)
-        self.assertEqual(p, {"schema": "retake-plan/1", "clip_frames": 100, "retake": [40, 50], "pre_roll": 4,
-                             "post_roll": 4, "generation": [36, 54], "overlap_frames": 4, "clamped": False})
+        self.assertEqual(p, {"schema": "retake-geometry/1", "frames": 100, "retake": [40, 50],
+                             "generation": [36, 54], "pre_requested": 4, "post_requested": 4,
+                             "pre_applied": 4, "post_applied": 4, "clamped_head": False,
+                             "clamped_tail": False, "overlap": 4})
 
-    def test_clamped_start_and_end(self):
-        p = retake.plan_retake(100, 2, 10)
-        self.assertEqual((p["generation"], p["pre_roll"], p["clamped"]), ([0, 14], 2, True))
-        p = retake.plan_retake(100, 90, 99, 6, 6)
-        self.assertEqual((p["generation"], p["post_roll"], p["clamped"]), ([84, 100], 1, True))
-
-    def test_exact_edge_not_clamped(self):
-        self.assertFalse(retake.plan_retake(100, 4, 10)["clamped"])
-        self.assertFalse(retake.plan_retake(100, 90, 96)["clamped"])
+    def test_shared_cases_match_the_stitch_planner(self):
+        for case in json.loads(CASES.read_text())["cases"]:
+            args = (case["frames"], *case["retake"], case["pre"], case["post"], case["overlap"])
+            with self.subTest(case=case):
+                if case["expect"] == "error":
+                    with self.assertRaises(ValueError):
+                        retake.plan_retake(*args)
+                    continue
+                p = retake.plan_retake(*args)
+                self.assertEqual({k: p[k] for k in case["expect"]}, case["expect"])
 
     def test_roll_below_four_rejected(self):
         for pre, post in ((3, 4), (4, 3), (0, 0)):
@@ -40,7 +46,7 @@ class RetakeTests(unittest.TestCase):
         np.testing.assert_array_equal(gen, frames[s:e])
         self.assertEqual(mask.shape, (e - s, 6, 6))
         self.assertEqual(mask[:, 0, 0].tolist(), [0.0] * 4 + [1.0] * 10 + [0.0] * 4)
-        self.assertEqual(json.loads(json.dumps(plan))["schema"], "retake-plan/1")
+        self.assertEqual(json.loads(json.dumps(plan))["schema"], "retake-geometry/1")
 
 
 if __name__ == "__main__":

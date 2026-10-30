@@ -1,0 +1,25 @@
+{
+  "schema": "retake-geometry-cases/1",
+  "note": "Shared by tests/test_retake.py (node pack) and stitch::tests (runtime) so both retake planners stay one contract. Half-open intervals.",
+  "cases": [
+    {"frames": 100, "retake": [40, 50], "pre": 4, "post": 4, "overlap": 4,
+     "expect": {"generation": [36, 54], "pre_applied": 4, "post_applied": 4, "clamped_head": false, "clamped_tail": false}},
+    {"frames": 100, "retake": [40, 50], "pre": 6, "post": 8, "overlap": 4,
+     "expect": {"generation": [34, 58], "pre_applied": 6, "post_applied": 8, "clamped_head": false, "clamped_tail": false}},
+    {"frames": 100, "retake": [2, 10], "pre": 4, "post": 4, "overlap": 4,
+     "expect": {"generation": [0, 14], "pre_applied": 2, "post_applied": 4, "clamped_head": true, "clamped_tail": false}},
+    {"frames": 100, "retake": [90, 99], "pre": 6, "post": 6, "overlap": 4,
+     "expect": {"generation": [84, 100], "pre_applied": 6, "post_applied": 1, "clamped_head": false, "clamped_tail": true}},
+    {"frames": 100, "retake": [4, 10], "pre": 4, "post": 4, "overlap": 4,
+     "expect": {"generation": [0, 14], "pre_applied": 4, "post_applied": 4, "clamped_head": false, "clamped_tail": false}},
+    {"frames": 30, "retake": [0, 30], "pre": 4, "post": 4, "overlap": 4,
+     "expect": {"generation": [0, 30], "pre_applied": 0, "post_applied": 0, "clamped_head": true, "clamped_tail": true}},
+    {"frames": 100, "retake": [40, 50], "pre": 6, "post": 6, "overlap": 6,
+     "expect": {"generation": [34, 56], "pre_applied": 6, "post_applied": 6, "clamped_head": false, "clamped_tail": false}},
+    {"frames": 100, "retake": [40, 50], "pre": 3, "post": 4, "overlap": 4, "expect": "error"},
+    {"frames": 100, "retake": [40, 50], "pre": 4, "post": 4, "overlap": 5, "expect": "error"},
+    {"frames": 100, "retake": [40, 50], "pre": 4, "post": 4, "overlap": 0, "expect": "error"},
+    {"frames": 100, "retake": [50, 40], "pre": 4, "post": 4, "overlap": 4, "expect": "error"},
+    {"frames": 100, "retake": [40, 101], "pre": 4, "post": 4, "overlap": 4, "expect": "error"}
+  ]
+}

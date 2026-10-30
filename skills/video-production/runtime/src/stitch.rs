@@ -53,6 +53,10 @@ pub const DEFAULT_OVERLAP: u64 = 4;
 pub const STITCH_SCHEMA: &str = "stitch/1";
 /// Schema id of a retake plan.
 pub const RETAKE_SCHEMA: &str = "retake-plan/1";
+/// Schema tag of the geometry printed by `plan-retake` and emitted by the
+/// `AgentboxRetakePrep` node; a caller adds rate and assets to form a
+/// [`RETAKE_SCHEMA`] plan.
+pub const GEOMETRY_SCHEMA: &str = "retake-geometry/1";
 
 /// A file bound to its SHA-256.
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -675,7 +679,7 @@ fn run_plan(args: &[OsString]) -> Result<()> {
     }
     let geometry = plan_retake(frames, [a.parse()?, b.parse()?], pre, post, overlap)?;
     let mut value = serde_json::to_value(&geometry)?;
-    value["schema"] = RETAKE_SCHEMA.into();
+    value["schema"] = GEOMETRY_SCHEMA.into();
     println!("{}", serde_json::to_string_pretty(&value)?);
     Ok(())
 }
@@ -1020,6 +1024,29 @@ mod tests {
                 .is_err()
         );
         assert!(plan(vec![one.clone(), one], vec![3]).validate().is_ok());
+    }
+
+    #[test]
+    fn retake_geometry_matches_the_node_pack_cases() {
+        let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../../comfyui-sidecar/nodes/agentbox_video/tests/retake_geometry_cases.json");
+        let cases: Value = serde_json::from_slice(&fs::read(path).unwrap()).unwrap();
+        for case in cases["cases"].as_array().unwrap() {
+            let n = |k: &str| case[k].as_u64().unwrap();
+            let retake = [
+                case["retake"][0].as_u64().unwrap(),
+                case["retake"][1].as_u64().unwrap(),
+            ];
+            let got = plan_retake(n("frames"), retake, n("pre"), n("post"), n("overlap"));
+            if case["expect"] == "error" {
+                assert!(got.is_err(), "{case}");
+                continue;
+            }
+            let got = serde_json::to_value(got.unwrap()).unwrap();
+            for (key, want) in case["expect"].as_object().unwrap() {
+                assert_eq!(&got[key], want, "{key} in {case}");
+            }
+        }
     }
 
     #[test]
