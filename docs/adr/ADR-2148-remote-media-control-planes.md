@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 5a6bf94c5395c494d9a14f70c6b888d7f1497239
+verified_commit: b0c9f064e42f8eb24cbfbb810241747f888484d8
 verified_paths: [flake.nix, comfyui-sidecar/Dockerfile, docker-compose.comfyui.yml, docker-compose.gui-tools.yml, gui-tools-sidecar, skills/blender/tools, skills/comfyui/mcp-server, skills/comfyui/scripts, skills/comfyui/models/stopmotion-candidates.json]
 owner: jjohare
 review_trigger: media control-plane protocol, sidecar dependencies, workflow state handling or model provisioning changes
@@ -16,6 +16,10 @@ domain: BASELINE-container
 ---
 
 # ADR-2148: Typed remote media control planes alongside existing bridges
+
+## Re-verification — 2026-10-30 at b0c9f064e (SpEdE, review fixes)
+
+Re-checked after the SpEdE node pack, the CUDA 13.0 base move and two review-fix rounds. Weights stay out of the image: the Dockerfile copies only the provisioning script, and the new `spede`, `spede-replace` and `face-identity` profiles download at pinned revisions with sha256. Cancellation stays job-scoped (`comfy_client.py` `cancel`: queue-delete when pending, `/interrupt` with the receipt's `prompt_id` when running, refused for a foreign running job). `safe_free` is best effort and reports `success:false` when skipped or when a job appeared; `HF_TOKEN` is sent only to Hugging Face URLs and never on redirects.
 
 ## Re-verification — 2026-10-30 at 5a6bf94c5 (ADR-2163 tooling)
 
