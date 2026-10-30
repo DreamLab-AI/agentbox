@@ -6,16 +6,16 @@
  * The embedding search stays exactly as it is: 384-dim bge vectors, HNSW cosine, the
  * wildcard-namespace exclusions and TTL predicates all run first and are the only source of
  * candidates. This module takes the shortlist those paths already returned and, when
- * `AGENTBOX_JEV_MEMORY_RERANK=1`, asks a LOCAL judge two things in ONE request:
+ * `AGENTBOX_JEV_MEMORY_RERANK=1`, asks a Jev judge two things in ONE request:
  *   • Score, per candidate: how directly does this memory answer the query? (3 levels)
  *   • Noul, once: does any listed memory answer the query at all?
  * The candidates are then reordered by the Score, stably. Nothing is added, dropped or
  * rewritten, `score` stays the cosine so the `min_score` floor still means cosine, and the
  * Noul is an annotation only (a no-answer verdict never removes a row).
  *
- * Privacy: memory may hold private namespaces, so the consumer is local-only. The cloud and an
- * undeclared proxy are refused (`AGENTBOX_SYSTEM_ONE_BACKEND_LOCAL=1` or an explicit local
- * endpoint is required). Each value is sent as a snippet of at most `SNIPPET_CHARS` characters.
+ * Privacy: local-only only on request. With `AGENTBOX_JEV_MEMORY_LOCAL_ONLY=1` (default 0) the cloud
+ * and an undeclared proxy are refused (`AGENTBOX_SYSTEM_ONE_BACKEND_LOCAL=1` or an explicit local
+ * endpoint is required); set it if memory holds private namespaces. Each value is sent as a snippet of at most `SNIPPET_CHARS` characters.
  *
  * Fallback (all return the input untouched, byte for byte): flag off, no local endpoint,
  * fewer than two rows, a degraded (non-vector) result, transport error or timeout, a non-2xx
@@ -104,7 +104,7 @@ async function rerank(query, res, opts = {}) {
   const miss = (reason) => { if (jev) jev.logFallback('ab-20', reason, opts.log); return res; };
   if (!jev) return res;
   if (!res || res.success !== true || !Array.isArray(res.results) || res.results.length < 2 || res.degraded) return res;
-  const endpoint = jev.resolveEndpoint(env, { localOnly: true });
+  const endpoint = jev.resolveEndpoint(env, { localOnly: jev.enabled(env, 'AGENTBOX_JEV_MEMORY_LOCAL_ONLY') });
   if (!endpoint.ok) return miss(endpoint.reason);
 
   const pool = res.results.slice(0, MAX_POOL);

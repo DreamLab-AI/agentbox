@@ -10,7 +10,7 @@
  * existed nothing turned a request into a plan, so every failure path prints "no plan" and
  * exits 3 with nothing written, which is exactly the pre-existing behaviour.
  *
- * Opt-in: `AGENTBOX_JEV_MANIFEST_PLAN=1` and a LOCAL System One endpoint (see jev-option.cjs:
+ * Opt-in: `AGENTBOX_JEV_MANIFEST_PLAN=1` and a System One endpoint (local-only when `AGENTBOX_JEV_MANIFEST_LOCAL_ONLY=1`; see jev-option.cjs:
  * the cloud and an undeclared proxy are refused, because a request can name private config).
  *
  * What the model decides, and what it cannot:
@@ -139,7 +139,7 @@ async function plan(request, opts = {}) {
     if (!text) return { reason: 'empty' };
     const want = parseDirection(text);
     if (want === null) return miss('direction');
-    const endpoint = jev.resolveEndpoint(env, { localOnly: true });
+    const endpoint = jev.resolveEndpoint(env, { localOnly: jev.enabled(env, 'AGENTBOX_JEV_MANIFEST_LOCAL_ONLY') });
     if (!endpoint.ok) return miss(endpoint.reason);
 
     const file = opts.manifestPath || path.join(ROOT, 'agentbox.toml');

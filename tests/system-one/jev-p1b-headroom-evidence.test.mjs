@@ -38,10 +38,19 @@ test('flag off: compressSelected equals plain compress() per excerpt, in input o
   assert.deepStrictEqual(viaJev, plain)
 })
 
-test('local-only: a cloud endpoint (key or undeclared proxy) is refused, nothing is sent', async () => {
+test('not local-only (flag unset): the proxy is used for a cloud backend, with no Authorization header', async () => {
+  const f = ranked()
+  const env = { AGENTBOX_JEV_HEADROOM_EVIDENCE: '1', AGENTBOX_SYSTEM_ONE_PROXY: '1', AGENTBOX_SYSTEM_ONE_ENDPOINT: 'http://127.0.0.1:8094/v1/systemone', AGENTBOX_SYSTEM_ONE_BACKEND_LOCAL: '0' }
+  await he.selectEvidence(TASK, EXC, { env, fetchImpl: f, sink })
+  assert.equal(f.calls.length, 1)
+  assert.equal(JSON.stringify(f.calls[0]).includes('Authorization'), false)
+  assert.ok(JSON.stringify(f.calls[0]).includes('8094'))
+})
+
+test('local-only (AGENTBOX_JEV_HEADROOM_LOCAL_ONLY=1): a cloud endpoint (key or undeclared proxy) is refused, nothing is sent', async () => {
   for (const env of [
-    { AGENTBOX_JEV_HEADROOM_EVIDENCE: '1', TYPESAFE_API_KEY: 'k' },
-    { AGENTBOX_JEV_HEADROOM_EVIDENCE: '1', AGENTBOX_SYSTEM_ONE_PROXY: '1', AGENTBOX_SYSTEM_ONE_ENDPOINT: 'http://p/v1/systemone' },
+    { AGENTBOX_JEV_HEADROOM_EVIDENCE: '1', AGENTBOX_JEV_HEADROOM_LOCAL_ONLY: '1', TYPESAFE_API_KEY: 'k' },
+    { AGENTBOX_JEV_HEADROOM_EVIDENCE: '1', AGENTBOX_JEV_HEADROOM_LOCAL_ONLY: '1', AGENTBOX_SYSTEM_ONE_PROXY: '1', AGENTBOX_SYSTEM_ONE_ENDPOINT: 'http://p/v1/systemone' },
   ]) {
     const f = ranked()
     const r = await he.selectEvidence(TASK, EXC, { env, fetchImpl: f, sink })

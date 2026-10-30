@@ -24,9 +24,9 @@
  * by construction — there is no drop path to guard. Excerpts beyond the 12-excerpt window
  * are not judged and keep their relative order after the judged ones.
  *
- * LOCAL ONLY. Excerpts are file and log content (memory, pods and beads slots carry private
- * material), so this consumer refuses any endpoint that is not declared local
- * (`AGENTBOX_SYSTEM_ONE_BACKEND_LOCAL=1`); there is no cloud override.
+ * Local-only only on request: with `AGENTBOX_JEV_HEADROOM_LOCAL_ONLY=1` (default 0) this consumer
+ * refuses any endpoint that is not declared local (`AGENTBOX_SYSTEM_ONE_BACKEND_LOCAL=1`); by
+ * default the proxy and TypeSafe are allowed.
  *
  * OVERLAP. factrail compaction (ADR-2121/2093; lib/factrail.nix:3-6, agentbox.toml `[features.jev_compaction]` :742-785)
  * already uses a Jev judge to decide what a COMPACTION keeps, in the Claude Code session. It
@@ -113,7 +113,7 @@ async function selectEvidence(task, excerpts, opts = {}) {
   const fail = (reason) => { jev.logFallback(ITEM, reason, opts.sink); return same; };
   if (typeof task !== 'string' || !task.trim()) return fail('malformed');
 
-  const ep = jev.resolveEndpoint(env, { localOnly: true });
+  const ep = jev.resolveEndpoint(env, { localOnly: jev.enabled(env, 'AGENTBOX_JEV_HEADROOM_LOCAL_ONLY') });
   if (!ep.ok) return fail(ep.reason);
 
   const req = buildRequest(task, excerpts);

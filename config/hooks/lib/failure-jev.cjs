@@ -6,13 +6,14 @@
  * `management-api/lib/failure-taxonomy.js#classify` maps a failure by an explicit mode, a
  * symbolic reason, or two tiny stderr heuristics, and otherwise returns the honest
  * `unmapped`. This module is the ONLY thing that may turn an `unmapped` into a mode, and
- * only when `AGENTBOX_JEV_FAILURE_TAXONOMY=1` and a LOCAL judge is declared.
+ * only when `AGENTBOX_JEV_FAILURE_TAXONOMY=1` and an endpoint resolves.
  *
  *   • Exact mappings win: anything `classify()` already resolved is returned untouched and
  *     no request is built.
- *   • Local-only: the error text is redacted tool output and may carry private material, so
- *     the cloud and the shared proxy are refused unless the endpoint is declared local
- *     (`AGENTBOX_SYSTEM_ONE_BACKEND_LOCAL=1`); see jev-option.cjs.
+ *   • Local-only only on request: with `AGENTBOX_JEV_FAILURE_LOCAL_ONLY=1` the cloud and the
+ *     shared proxy are refused unless the endpoint is declared local
+ *     (`AGENTBOX_SYSTEM_ONE_BACKEND_LOCAL=1`); by default (0) the proxy and TypeSafe are
+ *     allowed. See jev-option.cjs.
  *   • It annotates a tag and nothing else. The raw failure text is preserved by the caller,
  *     and a failed operation is never turned into a success (this module never sees, and
  *     cannot change, the outcome).
@@ -105,7 +106,7 @@ async function refine(taxonomy, ctx, base, { env = process.env, fetchImpl, log, 
   const text = typeof ctx.stderr === 'string' ? ctx.stderr.trim() : '';
   if (!text) return keep();                               // nothing to judge
   if (spent >= s.maxCalls) return keep();
-  const endpoint = jev.resolveEndpoint(env, { localOnly: true });
+  const endpoint = jev.resolveEndpoint(env, { localOnly: jev.enabled(env, 'AGENTBOX_JEV_FAILURE_LOCAL_ONLY') });
   if (!endpoint.ok) { jev.logFallback('ab-03', endpoint.reason, log); return keep(); }
   spent += 1;
   const out = await jev.ask(endpoint, { error_text: text, operation: String(ctx.action || '').slice(0, 200) },

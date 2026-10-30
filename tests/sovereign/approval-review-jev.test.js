@@ -2,7 +2,7 @@
 
 /**
  * AB-14-S1-01 — the Jev option on the pending-approvals listing. Advisory only: it adds a
- * `review_aid` and nothing else. Off by default, local-only, per-request fallback, and the
+ * `review_aid` and nothing else. Off by default, local-only only when AGENTBOX_JEV_APPROVAL_LOCAL_ONLY=1, per-request fallback, and the
  * decide route is never touched. Mocked transport throughout.
  */
 
@@ -32,8 +32,8 @@ describe('fallback equivalence — the SAME array comes back', () => {
   const misses = {
     'flag off': [{ ...LOCAL, AGENTBOX_JEV_APPROVAL_REVIEW: '0' }, ok(answers())],
     'flag unset': [{}, ok(answers())],
-    'cloud key only (local-only consumer)': [{ AGENTBOX_JEV_APPROVAL_REVIEW: '1', TYPESAFE_API_KEY: 'k' }, ok(answers())],
-    'proxy not declared local': [{ AGENTBOX_JEV_APPROVAL_REVIEW: '1', AGENTBOX_SYSTEM_ONE_PROXY: '1', AGENTBOX_SKILL_ROUTE_API: 'http://p' }, ok(answers())],
+    'cloud key only (local-only consumer)': [{ AGENTBOX_JEV_APPROVAL_REVIEW: '1', AGENTBOX_JEV_APPROVAL_LOCAL_ONLY: '1', TYPESAFE_API_KEY: 'k' }, ok(answers())],
+    'proxy not declared local': [{ AGENTBOX_JEV_APPROVAL_REVIEW: '1', AGENTBOX_JEV_APPROVAL_LOCAL_ONLY: '1', AGENTBOX_SYSTEM_ONE_PROXY: '1', AGENTBOX_SKILL_ROUTE_API: 'http://p' }, ok(answers())],
     'transport error': [strict, async () => { throw new Error('down'); }],
     timeout: [strict, async () => { const e = new Error('a'); e.name = 'AbortError'; throw e; }],
     'http 500': [strict, async () => ({ ok: false, status: 500, json: async () => ({}) })],
@@ -55,6 +55,19 @@ describe('fallback equivalence — the SAME array comes back', () => {
   it('an empty list is returned as is', async () => {
     const empty = [];
     expect(await run(empty, LOCAL, ok(answers()))).toBe(empty);
+  });
+});
+
+describe('not local-only (flag unset)', () => {
+  it('uses the proxy for a cloud backend, with no Authorization header', async () => {
+    const seen = [];
+    const inner = ok(answers());
+    const fetchImpl = async (url, init) => { seen.push({ url, headers: init.headers }); return inner(); };
+    const env = { AGENTBOX_JEV_APPROVAL_REVIEW: '1', AGENTBOX_SYSTEM_ONE_PROXY: '1', AGENTBOX_SYSTEM_ONE_ENDPOINT: 'http://127.0.0.1:8094/v1/systemone', AGENTBOX_SYSTEM_ONE_BACKEND_LOCAL: '0' };
+    await run(pending(), env, fetchImpl);
+    expect(seen.length).toBeGreaterThan(0);
+    expect(seen[0].url).toBe('http://127.0.0.1:8094/v1/systemone');
+    expect(seen[0].headers.Authorization).toBeUndefined();
   });
 });
 

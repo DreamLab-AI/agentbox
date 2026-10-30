@@ -17,7 +17,7 @@
  * property, bind or replace the operation receipt, reorder, drop or hide a request, or touch
  * `POST /v1/approvals/:id/decide`. The human decision gate is exactly the one it was.
  *
- * Local-only: an operation can carry commands, paths and identifiers, so the cloud and an
+ * Local-only only on request: with `AGENTBOX_JEV_APPROVAL_LOCAL_ONLY=1` (default 0) the cloud and an
  * undeclared proxy are refused (`AGENTBOX_SYSTEM_ONE_BACKEND_LOCAL=1` required). Fallback is
  * per request and total: flag off, no local endpoint, a transport error, timeout, non-2xx,
  * unparseable body or any missing/out-of-range answer leaves that request exactly as listed,
@@ -124,7 +124,7 @@ async function annotate(items, opts = {}) {
   if (!Array.isArray(items) || !items.length) return items;
   const jev = opts.adapter || loadAdapter();
   if (!jev) return items;
-  const endpoint = jev.resolveEndpoint(env, { localOnly: true });
+  const endpoint = jev.resolveEndpoint(env, { localOnly: jev.enabled(env, 'AGENTBOX_JEV_APPROVAL_LOCAL_ONLY') });
   if (!endpoint.ok) { jev.logFallback('ab-14', endpoint.reason, opts.log); return items; }
   const aids = await Promise.all(items.map(async (it, i) => {
     if (i >= MAX_ITEMS || !it || typeof it !== 'object') return null;

@@ -22,8 +22,8 @@
  * family is `unclear` at `AGENTBOX_JEV_VOICE_UNCLEAR_AT` or above, is held for clarification
  * instead of being dispatched. Both thresholds default to "never" (0 and 1.01).
  *
- * Local-only: a transcript is the operator's private speech, so the cloud and an undeclared
- * proxy are refused (`AGENTBOX_SYSTEM_ONE_BACKEND_LOCAL=1` required). Any miss — flag off, no
+ * Local-only only on request: with `AGENTBOX_JEV_VOICE_LOCAL_ONLY=1` (default 0) the cloud and an
+ * undeclared proxy are refused (`AGENTBOX_SYSTEM_ONE_BACKEND_LOCAL=1` required). Any miss — flag off, no
  * local endpoint, transport error, timeout, non-2xx, unparseable body, an answer outside the
  * offered set — resolves `null` and the route behaves exactly as before. Never throws.
  *
@@ -101,7 +101,7 @@ async function interpret(intent, opts = {}) {
   if (!['1', 'true', 'yes', 'on'].includes(on)) return null;
   const jev = opts.adapter || loadAdapter();
   if (!jev || !intent || typeof intent.transcript !== 'string') return null;
-  const endpoint = jev.resolveEndpoint(env, { localOnly: true });
+  const endpoint = jev.resolveEndpoint(env, { localOnly: jev.enabled(env, 'AGENTBOX_JEV_VOICE_LOCAL_ONLY') });
   if (!endpoint.ok) { jev.logFallback('ab-12', endpoint.reason, opts.log); return null; }
   const { state, questions } = buildRequest(intent);
   const out = await jev.ask(endpoint, state, questions, {

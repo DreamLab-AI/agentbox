@@ -1,4 +1,4 @@
-// AB-03-S1-01 — the Jev option on the MAST failure taxonomy. Off by default, local-only,
+// AB-03-S1-01 — the Jev option on the MAST failure taxonomy. Off by default, local-only only when AGENTBOX_JEV_FAILURE_LOCAL_ONLY=1,
 // exact mappings win, and every miss returns the tag classify() already produced.
 //
 //   node --test tests/system-one/failure-jev.test.mjs
@@ -57,14 +57,28 @@ test('local-only: the cloud key and an undeclared proxy are refused without a re
   const fetchImpl = async () => { calls++; return ok(answers('FM-1.3', 0.99, 0.99))() }
   const thresholds = { AGENTBOX_JEV_FAILURE_MIN_CONFIDENCE: '0', AGENTBOX_JEV_FAILURE_MIN_SUPPORT: '0' }
   for (const env of [
-    { AGENTBOX_JEV_FAILURE_TAXONOMY: '1', TYPESAFE_API_KEY: 'k', ...thresholds },
-    { AGENTBOX_JEV_FAILURE_TAXONOMY: '1', AGENTBOX_SYSTEM_ONE_PROXY: '1', AGENTBOX_SKILL_ROUTE_API: 'http://p', ...thresholds },
-    { AGENTBOX_JEV_FAILURE_TAXONOMY: '1', ...thresholds },
+    { AGENTBOX_JEV_FAILURE_TAXONOMY: '1', AGENTBOX_JEV_FAILURE_LOCAL_ONLY: '1', TYPESAFE_API_KEY: 'k', ...thresholds },
+    { AGENTBOX_JEV_FAILURE_TAXONOMY: '1', AGENTBOX_JEV_FAILURE_LOCAL_ONLY: '1', AGENTBOX_SYSTEM_ONE_PROXY: '1', AGENTBOX_SKILL_ROUTE_API: 'http://p', ...thresholds },
+    { AGENTBOX_JEV_FAILURE_TAXONOMY: '1', AGENTBOX_JEV_FAILURE_LOCAL_ONLY: '1', ...thresholds },
   ]) {
     const r = await run(AMBIGUOUS, env, fetchImpl)
     assert.equal(r.mode, 'unmapped')
   }
   assert.equal(calls, 0)
+})
+
+test('not local-only (flag unset): the proxy is used for a cloud backend, with no Authorization header', async () => {
+  const seen = []
+  const fetchImpl = async (url, init) => { seen.push({ url, headers: init.headers }); return ok(answers('FM-1.3', 0.99, 0.99))() }
+  const env = {
+    AGENTBOX_JEV_FAILURE_TAXONOMY: '1', AGENTBOX_SYSTEM_ONE_PROXY: '1',
+    AGENTBOX_SYSTEM_ONE_ENDPOINT: 'http://127.0.0.1:8094/v1/systemone', AGENTBOX_SYSTEM_ONE_BACKEND_LOCAL: '0',
+    AGENTBOX_JEV_FAILURE_MIN_CONFIDENCE: '0', AGENTBOX_JEV_FAILURE_MIN_SUPPORT: '0',
+  }
+  await run(AMBIGUOUS, env, fetchImpl)
+  assert.equal(seen.length, 1)
+  assert.equal(seen[0].url, 'http://127.0.0.1:8094/v1/systemone')
+  assert.equal(seen[0].headers.Authorization, undefined)
 })
 
 const THRESHOLDS = { AGENTBOX_JEV_FAILURE_MIN_CONFIDENCE: '0.6', AGENTBOX_JEV_FAILURE_MIN_SUPPORT: '0.7' }
