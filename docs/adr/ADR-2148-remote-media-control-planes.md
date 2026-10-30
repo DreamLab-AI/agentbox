@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: ed921e56b6ec21959188b08275314d3f1670efd5
+verified_commit: f71d3420ec6d67c5f670f290ec03e51ecfec4eb5
 verified_paths: [flake.nix, comfyui-sidecar/Dockerfile, docker-compose.comfyui.yml, docker-compose.gui-tools.yml, gui-tools-sidecar, skills/blender/tools, skills/comfyui/mcp-server, skills/comfyui/scripts, skills/comfyui/models/stopmotion-candidates.json]
 owner: jjohare
 review_trigger: media control-plane protocol, sidecar dependencies, workflow state handling or model provisioning changes
@@ -16,6 +16,18 @@ domain: BASELINE-container
 ---
 
 # ADR-2148: Typed remote media control planes alongside existing bridges
+
+## Deployment verification — 2026-10-30 (SpEdE)
+
+Corrected the build-only version probe to read `plyfile` distribution metadata;
+the module has no `__version__`. The image built with gsplat 1.5.3 ahead of time
+against Torch 2.14.0+cu130. After idle-queue recreation, the existing model,
+input, output and user volumes remained mounted. `verify-spede.sh` passed:
+33 SpEdE classes, the agentbox_video and required core nodes, prebuilt extension
+identity, one headless OpenCV distribution, and the synthetic A6000 GPU fixture
+(4,800 Gaussians, eight cameras, non-empty alpha and contributors). Agentbox's
+HTTP client and VisionClaw both reached the sidecar. No model-weight generation,
+photoreal quality or legacy-runtime parity is claimed by this smoke test.
 
 ## Re-verification — 2026-10-30 at ed921e56b (empty ComfyUI POST bodies)
 
