@@ -34,6 +34,18 @@ RUN git init /opt/ComfyUI/custom_nodes/ComfyUI-LTX-BBox-Animator \
     && cd /opt/ComfyUI/custom_nodes/ComfyUI-LTX-BBox-Animator \
     && git remote add origin https://github.com/yuvraj108c/ComfyUI-LTX-BBox-Animator.git \
     && git fetch --depth 1 origin ${LTX_BBOX_REV} && git checkout --detach FETCH_HEAD
+# agentbox_video node pack (identity, staging, relay, masks, retake): numpy + OpenCV only,
+# importable without torch. OpenCV pin reasoning: ComfyUI@COMFYUI_REV requirements.txt leaves
+# numpy unbounded (numpy>=1.25.0) and torch 2.14.0 declares no numpy bound, so pip resolves the
+# newest numpy (2.x). opencv-python-headless 4.12.0.88 caps numpy<2.3.0 and would force a
+# downgrade under ComfyUI; 5.0.0.93 needs only numpy>=2 and is the build the pack's tests ran
+# against (numpy 2.3.5). BFSnodes requires the GUI `opencv-python`; two cv2 distributions overwrite
+# each other's files, so remove it and keep exactly one headless build (no libGL/X dependency).
+# Face-model ONNX weights are not baked: they load from /opt/ComfyUI/models/agentbox_face/ (models volume).
+RUN --mount=type=cache,target=/root/.cache/pip pip uninstall -y opencv-python opencv-contrib-python opencv-python-headless \
+    && pip install --timeout 180 --retries 10 --force-reinstall --no-deps opencv-python-headless==5.0.0.93 \
+    && python -c "import cv2, numpy; print('cv2', cv2.__version__, 'numpy', numpy.__version__)"
+COPY comfyui-sidecar/nodes/agentbox_video /opt/ComfyUI/custom_nodes/agentbox_video
 COPY skills/comfyui/scripts/download_video_models.py /opt/agentbox-media/scripts/download_video_models.py
 COPY skills/comfyui/models/stopmotion-candidates.json /opt/agentbox-media/models/stopmotion-candidates.json
 EXPOSE 8188
