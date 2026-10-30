@@ -1581,8 +1581,14 @@ function isLocalEndpoint(endpoint) {
     if (!names.includes(active)) {
       errors.push({ code: 'E080', message: `E080: [system_one].backend="${active}" is not one of [system_one.backends] (${names.join(', ') || 'none declared'}) — the proxy cannot start (ADR-2139)` });
     }
-    if (!(bindHost === 'localhost' || bindHost === '::1' || bindHost.startsWith('127.'))) {
-      errors.push({ code: 'E080', message: `E080: [system_one].bind="${bind}" must be loopback — the proxy spends the vendor keys for whoever can reach it (ADR-2139)` });
+    const loopback = bindHost === 'localhost' || bindHost === '::1' || bindHost.startsWith('127.');
+    // network = true admits the IPv4 wildcard or an RFC 1918 address (never published;
+    // ADR-2139 amendment 2026-10-30). Mirrors the proxy's and projector's is_network_bind.
+    const privateNet = /^(0\.0\.0\.0|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+)$/.test(bindHost);
+    if (!loopback && !(so.network === true && privateNet)) {
+      errors.push({ code: 'E080', message: so.network === true
+        ? `E080: [system_one].bind="${bind}" with network = true must be 0.0.0.0 or an RFC 1918 address — never a public interface (ADR-2139)`
+        : `E080: [system_one].bind="${bind}" must be loopback — the proxy spends the vendor keys for whoever can reach it; declare network = true to serve the private docker network (ADR-2139)` });
     }
     for (const name of names) {
       const b = backends[name] || {};
@@ -1609,7 +1615,7 @@ function isLocalEndpoint(endpoint) {
       if (typeof value !== 'boolean') errors.push({ code: 'E080', message: `E080: system_one.consumers.${name} must be boolean` });
     }
     const a = backends[active] || {};
-    warnings.push({ code: 'W076', message: `W076: [system_one] active backend "${active}" (${a.model ?? '?'}, ${a.local === true ? 'LOCAL — email-tainted sessions are judged here' : `cloud via ${a.key_env || '<no key>'}`}) behind the loopback proxy at ${bind}; switch with ./agentbox.sh systemone backend <name> (ADR-2139)` });
+    warnings.push({ code: 'W076', message: `W076: [system_one] active backend "${active}" (${a.model ?? '?'}, ${a.local === true ? 'LOCAL — email-tainted sessions are judged here' : `cloud via ${a.key_env || '<no key>'}`}) behind the proxy at ${bind}; switch with ./agentbox.sh systemone backend <name> (ADR-2139)` });
   }
 }
 

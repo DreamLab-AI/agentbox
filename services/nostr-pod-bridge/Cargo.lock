@@ -1199,7 +1199,7 @@ dependencies = [
 
 [[package]]
 name = "nostr-bbs-core"
-version = "1.0.0-beta.18"
+version = "1.0.0-beta.11"
 dependencies = [
  "aes",
  "async-trait",
@@ -1218,6 +1218,7 @@ dependencies = [
  "serde-wasm-bindgen",
  "serde_json",
  "sha2 0.10.9",
+ "solid-pod-rs 0.5.0-alpha.7",
  "thiserror 2.0.21",
  "wasm-bindgen",
  "zeroize",
@@ -2016,6 +2017,30 @@ dependencies = [
 
 [[package]]
 name = "solid-pod-rs"
+version = "0.5.0-alpha.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "615d04af22c42d2a20e9695e779b99c432e0781dc6816a0e1aeb0881c7453aa8"
+dependencies = [
+ "async-trait",
+ "base64 0.22.1",
+ "bytes",
+ "chrono",
+ "getrandom 0.2.17",
+ "hex",
+ "js-sys",
+ "mime_guess",
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
+ "spargebra",
+ "thiserror 1.0.69",
+ "tracing",
+ "url",
+ "uuid",
+]
+
+[[package]]
+name = "solid-pod-rs"
 version = "0.5.0-alpha.18"
 dependencies = [
  "async-trait",
@@ -2055,7 +2080,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2 0.10.9",
- "solid-pod-rs",
+ "solid-pod-rs 0.5.0-alpha.18",
  "thiserror 1.0.69",
  "tokio",
  "tokio-tungstenite 0.24.0",
