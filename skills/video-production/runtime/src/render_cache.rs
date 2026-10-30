@@ -90,6 +90,21 @@ pub fn allowed_from_diff(diff: &Value) -> Result<Vec<FrameInterval>> {
         .collect()
 }
 
+/// Refuse a window diff planned for a different delivery length than the
+/// parent cache, so a stale plan cannot scope a revision of another cut.
+pub fn diff_matches_parent(diff: &Value, parent_frames: u64) -> Result<()> {
+    let planned = diff["delivery_frames"]
+        .as_u64()
+        .ok_or("window diff has no delivery_frames")?;
+    if planned != parent_frames {
+        return Err(format!(
+            "window diff plans {planned} delivery frames but the parent cache has {parent_frames}"
+        )
+        .into());
+    }
+    Ok(())
+}
+
 /// Check the revision against both receipts and the allowed scope, returning
 /// the set of frames that must come from the patch render.
 pub fn validate_revision(
@@ -157,6 +172,7 @@ pub fn validate_revision(
 pub fn run(mut args: Vec<OsString>) -> Result<()> {
     let root = Root::new(&take_root_option(&mut args)?)?;
     let mut allowed = Vec::new();
+    let mut diffs = Vec::new();
     while let Some(i) = args.iter().position(|a| a == "--allow") {
         if i + 1 >= args.len() {
             return Err("--allow needs START..END".into());
@@ -171,7 +187,9 @@ pub fn run(mut args: Vec<OsString>) -> Result<()> {
         }
         let path = root.resolve(Path::new(&args.remove(i + 1)))?;
         args.remove(i);
-        allowed.extend(allowed_from_diff(&read(&path)?)?);
+        let diff = read(&path)?;
+        allowed.extend(allowed_from_diff(&diff)?);
+        diffs.push((path, diff));
     }
     if args.len() != 5 {
         return Err("usage: render-cache [--root DIR] (--allow START..END | --allow-from-diff DIFF_JSON) PARENT_DIR REVISION_JSON PATCH_DIR WORLD NEW_DIR".into());
@@ -190,6 +208,11 @@ pub fn run(mut args: Vec<OsString>) -> Result<()> {
     let parent_frames = frames(&parent)?;
     let patch_frames = frames(&patch)?;
     let count = parent_frames.len() as u64;
+    let mut window_diffs = Vec::new();
+    for (path, diff) in &diffs {
+        diff_matches_parent(diff, count)?;
+        window_diffs.push(json!({"path":root.rel(path)?,"sha256":sha(path)?}));
+    }
     let mut selected: Vec<(u64, PathBuf, String, &str)> = Vec::new();
     for frame in 0..count {
         let (directory, hashes, origin) = if changed.contains(&frame) {
@@ -222,7 +245,7 @@ pub fn run(mut args: Vec<OsString>) -> Result<()> {
         "rate":rate_from_receipt(&parent),"resolution":parent["resolution"],"frames":records,"delivery_complete":true,
         "scoped_revision":{"path":root.rel(&revision_path)?,"sha256":sha(&revision_path)?},
         "parent_receipt":receipt_of(&parent_dir)?,"patch_receipt":receipt_of(&patch_dir)?,
-        "allowed_scope":allowed,
+        "allowed_scope":allowed,"window_diffs":window_diffs,
         "reused_frames":count-changed.len() as u64,"rerendered_frames":changed.len(),"production_accepted":false,
         "scope":"Verified PNG cache lineage after a scoped revision; native scene-state proof comes from the separately hashed scene verifier. No generated-video or physical acceptance."});
     root.relativise(&mut report)?;
@@ -269,6 +292,17 @@ mod tests {
         let allowed = [FrameInterval::new(3, 5).unwrap()];
         let changed = validate_revision(&parent, &patch, &revision, &world, &allowed).unwrap();
         assert_eq!(changed, BTreeSet::from([3, 4]));
+    }
+
+    #[test]
+    fn a_window_diff_must_describe_the_parent_frame_count() {
+        let diff =
+            json!({"schema":"window-diff/1","delivery_frames":10,"invalidated_intervals":[[3,5]]});
+        assert!(diff_matches_parent(&diff, 10).is_ok());
+        let err = diff_matches_parent(&diff, 12).unwrap_err().to_string();
+        assert!(err.contains("10") && err.contains("12"), "{err}");
+        let missing = json!({"schema":"window-diff/1","invalidated_intervals":[[3,5]]});
+        assert!(diff_matches_parent(&missing, 10).is_err());
     }
 
     #[test]
