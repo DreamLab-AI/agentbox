@@ -69,7 +69,7 @@ pub struct Thresholds {
     /// Whether the numbers were calibrated on this estate's own footage. A
     /// `true` claim is refused unless `calibration` substantiates it.
     pub calibrated: bool,
-    /// Hashed `threshold-calibration/1` record substantiating `calibrated`.
+    /// Hashed `threshold-calibration/2` record substantiating `calibrated`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub calibration: Option<crate::calibration::Evidence>,
     /// Largest allowed pop ratio (seam frame difference / local median).
@@ -693,6 +693,7 @@ pub fn run(root: &Root, config: &Config) -> Result<Value> {
         &t.provenance,
         t.calibrated,
         t.calibration.as_ref(),
+        t,
     )?;
     let calibrated = calibration.is_some();
     let cut = checked(root, &config.cut)?;
@@ -905,15 +906,26 @@ mod tests {
         let mut claimed = config(&root, "cut.mkv", vec![seam(25)]);
         claimed.thresholds.calibrated = true;
         assert!(run(&root, &claimed).is_err());
-        // With a hashed calibration record for this tool and provenance it counts.
-        let record = serde_json::to_vec(&json!({"schema":crate::calibration::SCHEMA,
-            "tool":"seam-qa","provenance":claimed.thresholds.provenance}))
-        .unwrap();
-        std::fs::write(s.path("cal.json"), &record).unwrap();
-        claimed.thresholds.calibration = Some(crate::calibration::Evidence {
-            path: "cal.json".into(),
-            sha256: sha256_hex(&record),
-        });
+        // With a hashed record binding these exact thresholds and data it counts.
+        std::fs::write(s.path("data.csv"), b"calibration clips").unwrap();
+        let write_record = |thresholds: &Thresholds, name: &str| {
+            let record = serde_json::to_vec(&json!({"schema":crate::calibration::SCHEMA,
+                "tool":"seam-qa","provenance":thresholds.provenance,
+                "thresholds_sha256":crate::calibration::thresholds_digest(thresholds).unwrap(),
+                "evidence":[{"path":"data.csv","sha256":sha256_hex(b"calibration clips")}]}))
+            .unwrap();
+            std::fs::write(s.path(name), &record).unwrap();
+            crate::calibration::Evidence {
+                path: name.into(),
+                sha256: sha256_hex(&record),
+            }
+        };
+        claimed.thresholds.calibration = Some(write_record(&claimed.thresholds, "cal.json"));
+        // Loosening a gate after the record was made (the 1e9 forgery) is refused.
+        let mut forged = claimed.clone();
+        forged.thresholds.pop_ratio = 1e9;
+        forged.thresholds.pop_abs_floor = 1e9;
+        assert!(run(&root, &forged).is_err());
         let r = run(&root, &claimed).unwrap();
         assert_eq!(
             (r["provisional"].clone(), r["acceptance_backing"].clone()),

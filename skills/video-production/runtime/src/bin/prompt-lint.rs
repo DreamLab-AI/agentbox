@@ -133,6 +133,7 @@ fn run() -> Result<ExitCode> {
         &config.provenance,
         config.calibrated,
         config.calibration.as_ref(),
+        &config,
     )
     .map_err(|e| e.to_string())?;
     let out = receipt(&config, calibration, inputs, &findings, &skipped);

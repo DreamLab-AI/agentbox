@@ -177,7 +177,7 @@ pub struct Config {
     /// False until the thresholds are measured; a pass is then provisional.
     /// A `true` claim is refused unless `calibration` substantiates it.
     pub calibrated: bool,
-    /// Hashed `threshold-calibration/1` record substantiating `calibrated`.
+    /// Hashed `threshold-calibration/2` record substantiating `calibrated`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub calibration: Option<crate::calibration::Evidence>,
     /// Numeric limits.

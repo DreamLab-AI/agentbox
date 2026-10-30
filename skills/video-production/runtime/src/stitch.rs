@@ -583,7 +583,7 @@ pub struct RetakeThresholds {
     /// Whether the numbers were calibrated on real footage. A `true` claim is
     /// refused unless `calibration` substantiates it.
     pub calibrated: bool,
-    /// Hashed `threshold-calibration/1` record substantiating `calibrated`.
+    /// Hashed `threshold-calibration/2` record substantiating `calibrated`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub calibration: Option<crate::calibration::Evidence>,
 }
@@ -827,6 +827,7 @@ fn deliver(
             &thresholds.provenance,
             thresholds.calibrated,
             thresholds.calibration.as_ref(),
+            &thresholds,
         )?;
         let original = verified(root, &input.original)?;
         let original_colour = Colour::resolve(
@@ -1384,6 +1385,41 @@ mod tests {
         );
         assert_eq!(receipt["plan"]["path"], "rt.json");
         assert!(crate::paths::absolute_paths(&receipt).is_empty());
+    }
+
+    #[test]
+    fn a_calibration_record_binds_the_retake_threshold_value() {
+        let s = Scratch::new("stitch-cal-bind");
+        let root = Root::new(&s.0).unwrap();
+        std::fs::write(s.path("data.csv"), b"clips").unwrap();
+        let mut t = RetakeThresholds {
+            calibrated: true,
+            provenance: "estate".into(),
+            ..RetakeThresholds::default()
+        };
+        let record = serde_json::to_vec(&json!({"schema":crate::calibration::SCHEMA,
+            "tool":"stitch","provenance":"estate",
+            "thresholds_sha256":crate::calibration::thresholds_digest(&t).unwrap(),
+            "evidence":[{"path":"data.csv","sha256":sha256_hex(b"clips")}]}))
+        .unwrap();
+        std::fs::write(s.path("cal.json"), &record).unwrap();
+        t.calibration = Some(crate::calibration::Evidence {
+            path: "cal.json".into(),
+            sha256: sha256_hex(&record),
+        });
+        let honour = |t: &RetakeThresholds| {
+            crate::calibration::honour(
+                &root,
+                "stitch",
+                &t.provenance,
+                t.calibrated,
+                t.calibration.as_ref(),
+                t,
+            )
+        };
+        assert!(honour(&t).unwrap().is_some());
+        t.min_unchanged_psnr_db = 0.0;
+        assert!(honour(&t).is_err(), "a loosened PSNR gate must be refused");
     }
 
     #[test]
