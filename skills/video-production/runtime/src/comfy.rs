@@ -5,6 +5,9 @@
 //! buffer becomes the request body. The multipart body is built here and piped
 //! to `curl --data-binary @-`, so no filename ever passes through curl's
 //! `--form` syntax (where `;` and `,` are separators).
+//!
+//! It also reads `/object_info` combo inputs ([`combo_choices`]) and checks a
+//! workflow requirement manifest against them ([`capability_snapshot`]).
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use std::{
@@ -142,6 +145,97 @@ pub fn upload_file(
     Ok(reply)
 }
 
+/// Choices of an `/object_info` input definition, or `None` when it is not a combo.
+///
+/// Legacy form `[[choice, ...], {...}]` and current form
+/// `["COMBO", {"options": [...]}]` are both read; the string `"COMBO"` is a
+/// type tag and never a choice.
+pub fn combo_choices(definition: &Value) -> Option<Vec<String>> {
+    let head = definition.get(0)?;
+    let strings = |list: &[Value]| {
+        list.iter()
+            .filter_map(|v| v.as_str().map(String::from))
+            .collect()
+    };
+    if let Some(list) = head.as_array() {
+        return Some(strings(list));
+    }
+    if head.as_str() == Some("COMBO") {
+        let options = definition
+            .get(1)
+            .and_then(|m| m.get("options"))
+            .and_then(Value::as_array);
+        return Some(options.map(|o| strings(o)).unwrap_or_default());
+    }
+    None
+}
+
+/// Check `{required_nodes, required_models: {"Class.input": [file, ...]}}`
+/// against an `/object_info` document. Each item is `PASS` or `BLOCKED`; the
+/// overall status is `BLOCKED` if any item is.
+pub fn capability_snapshot(manifest: &Value, nodes: &Value) -> Value {
+    let mut items = Vec::new();
+    let mut item = |kind: &str, name: &str, file: Option<&str>, reason: Option<String>| {
+        let mut v = json!({"kind": kind, "name": name,
+            "status": if reason.is_some() { "BLOCKED" } else { "PASS" }});
+        if let Some(f) = file {
+            v["file"] = json!(f);
+        }
+        if let Some(r) = reason {
+            v["reason"] = json!(r);
+        }
+        items.push(v);
+    };
+    for name in manifest["required_nodes"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(Value::as_str)
+    {
+        let reason = nodes
+            .get(name)
+            .is_none()
+            .then(|| "node not installed".to_string());
+        item("node", name, None, reason);
+    }
+    for (key, files) in manifest["required_models"]
+        .as_object()
+        .into_iter()
+        .flatten()
+    {
+        let (class, field) = key.split_once('.').unwrap_or((key, ""));
+        let shared: std::result::Result<Vec<String>, String> = match nodes.get(class) {
+            None => Err(format!("node {class} not installed")),
+            Some(schema) => {
+                let input = &schema["input"];
+                match input["required"]
+                    .get(field)
+                    .or_else(|| input["optional"].get(field))
+                {
+                    None => Err(format!("input {field} not found on {class}")),
+                    Some(def) => combo_choices(def)
+                        .ok_or_else(|| format!("input {field} on {class} is not a combo")),
+                }
+            }
+        };
+        for file in files
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(Value::as_str)
+        {
+            let reason = match &shared {
+                Err(r) => Some(r.clone()),
+                Ok(choices) => (!choices.iter().any(|c| c == file))
+                    .then(|| "file not offered by server".to_string()),
+            };
+            item("model", key, Some(file), reason);
+        }
+    }
+    let blocked = items.iter().any(|i| i["status"] == "BLOCKED");
+    json!({"status": if blocked { "BLOCKED" } else { "PASS" }, "items": items})
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -262,5 +356,51 @@ mod tests {
         let nasty = format!("..{seed}..");
         let chosen = boundary_for(nasty.as_bytes());
         assert!(!nasty.contains(&chosen));
+    }
+
+    #[test]
+    fn combo_choices_reads_both_forms_and_never_the_tag() {
+        let legacy = json!([["a.safetensors", "b.safetensors"], {}]);
+        let current = json!(["COMBO", {"options": ["a.safetensors"]}]);
+        assert_eq!(
+            combo_choices(&legacy).unwrap(),
+            ["a.safetensors", "b.safetensors"]
+        );
+        assert_eq!(combo_choices(&current).unwrap(), ["a.safetensors"]);
+        assert_eq!(
+            combo_choices(&json!(["COMBO", {}])).unwrap(),
+            Vec::<String>::new()
+        );
+        assert!(combo_choices(&json!(["IMAGE", {}])).is_none());
+        assert!(combo_choices(&json!(null)).is_none());
+    }
+
+    #[test]
+    fn snapshot_passes_installed_model_in_new_combo_form() {
+        let nodes = json!({"Loader": {"input": {
+            "required": {"ckpt": ["COMBO", {"options": ["installed.safetensors"]}]},
+            "optional": {"lora": [["legacy.safetensors"], {}]}}}});
+        let manifest = json!({"required_nodes": ["Loader", "Absent"],
+            "required_models": {"Loader.ckpt": ["installed.safetensors", "gone.safetensors"],
+                                "Loader.lora": ["legacy.safetensors"], "Loader.nope": ["x"]}});
+        let snap = capability_snapshot(&manifest, &nodes);
+        let find = |name: &str, file: Option<&str>| {
+            snap["items"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .find(|i| i["name"] == name && i.get("file").and_then(Value::as_str) == file)
+                .unwrap()["status"]
+                .clone()
+        };
+        assert_eq!(find("Loader", None), "PASS");
+        assert_eq!(find("Absent", None), "BLOCKED");
+        assert_eq!(find("Loader.ckpt", Some("installed.safetensors")), "PASS");
+        assert_eq!(find("Loader.ckpt", Some("gone.safetensors")), "BLOCKED");
+        assert_eq!(find("Loader.lora", Some("legacy.safetensors")), "PASS");
+        assert_eq!(find("Loader.nope", Some("x")), "BLOCKED");
+        assert_eq!(snap["status"], "BLOCKED");
+        let ok = capability_snapshot(&json!({"required_nodes": ["Loader"]}), &nodes);
+        assert_eq!(ok["status"], "PASS");
     }
 }
