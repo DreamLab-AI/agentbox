@@ -920,7 +920,7 @@ checksum = "384b8ab6d37215f3c5301a95a4accb5d64aa607f1fcb26a11b5303878451b4fe"
 
 [[package]]
 name = "ontomark"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "anyhow",
  "clap",
@@ -934,7 +934,7 @@ dependencies = [
 
 [[package]]
 name = "ontomark-compile"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "anyhow",
  "hex",
@@ -980,7 +980,7 @@ dependencies = [
 
 [[package]]
 name = "ontomark-jev"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "ontomark-ingest",
  "ontomark-model",
@@ -1017,7 +1017,7 @@ dependencies = [
 
 [[package]]
 name = "ontomark-profile-estate"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "ontomark-compile",
 ]
@@ -1037,7 +1037,7 @@ dependencies = [
 
 [[package]]
 name = "ontomark-wasm"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "getrandom 0.3.4",
  "ontomark-ingest",
