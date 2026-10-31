@@ -50,15 +50,15 @@ function stubVault(t, { report = { knowledge: { issues: [] } }, validateExit = 0
   fs.writeFileSync(path.join(dir, 'propose.json'), JSON.stringify(proposeOut));
   fs.writeFileSync(path.join(dir, 'find.json'), JSON.stringify(findResult));
   // Node, not sh: the stub has to read the --diff target and log it as JSON.
-  fs.writeFileSync(path.join(dir, 'vault'), `#!/usr/bin/env node
+  fs.writeFileSync(path.join(dir, 'ontomark'), `#!/usr/bin/env node
 const fs = require('fs'), path = require('path');
 const argv = process.argv.slice(2);
 const repo = argv[0] === '--repo' ? argv[1] : null;
 const sub = argv[0] === '--repo' ? argv[2] : argv[0];
 const entry = { repo, argv };
 if (sub === 'validate') {
-  entry.staged = fs.readdirSync(path.join(repo, 'knowledge', 'pages'));
-  entry.stagedContent = entry.staged.map(f => fs.readFileSync(path.join(repo, 'knowledge', 'pages', f), 'utf8'));
+  entry.staged = fs.readdirSync(path.join(repo, 'knowledge'));
+  entry.stagedContent = entry.staged.map(f => fs.readFileSync(path.join(repo, 'knowledge', f), 'utf8'));
   fs.appendFileSync(${JSON.stringify(log)}, JSON.stringify(entry) + '\\n');
   process.stdout.write(fs.readFileSync(${JSON.stringify(path.join(dir, 'report.json'))}, 'utf8'));
   process.exit(${validateExit});
@@ -79,10 +79,15 @@ if (sub === 'propose') {
 }
 process.stdout.write('null');
 `, { mode: 0o755 });
+  // `propose` stays on `vault`; the corpus verbs (validate, find) run on `ontomark`.
+  // One recording stub serves both names.
+  fs.copyFileSync(path.join(dir, 'ontomark'), path.join(dir, 'vault'));
+  fs.chmodSync(path.join(dir, 'vault'), 0o755);
 
-  const saved = { PATH: process.env.PATH, VAULT_BIN: process.env.VAULT_BIN, VAULT_REPO: process.env.VAULT_REPO };
+  const saved = { PATH: process.env.PATH, VAULT_BIN: process.env.VAULT_BIN, ONTOMARK_BIN: process.env.ONTOMARK_BIN, VAULT_REPO: process.env.VAULT_REPO };
   process.env.PATH = `${dir}:${saved.PATH}`;
   delete process.env.VAULT_BIN;
+  delete process.env.ONTOMARK_BIN;
   process.env.VAULT_REPO = repo;
   t.after(() => {
     for (const [k, v] of Object.entries(saved)) { if (v === undefined) delete process.env[k]; else process.env[k] = v; }

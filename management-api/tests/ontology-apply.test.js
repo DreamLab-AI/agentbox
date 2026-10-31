@@ -1,10 +1,10 @@
 'use strict';
-// ADR-2109 — a signed Promote/Demote applies through `vault edit`.
+// ADR-2109 — a signed Promote/Demote applies through `ontomark edit`.
 //
 // Run: node --test management-api/tests/ontology-apply.test.js
 //
-// The `vault` binary is WS-C's and does not exist yet, so these tests put a
-// STUB named `vault` on PATH which records its argv verbatim and prints the
+// The corpus verbs run through the `ontomark` binary, so these tests put a
+// STUB named `ontomark` on PATH which records its argv verbatim and prints the
 // JSON the real binary contracts to print (C2). Everything asserted here is an
 // assertion about the argv we hand that binary — which is precisely the
 // contract that has to still hold when the real one replaces the stub.
@@ -27,19 +27,19 @@ const AT = '2026-09-22T12:00:00.000Z';
 function fakeRepo(parent, { pageStatus = 'draft' } = {}) {
   const repo = path.join(parent, 'repo');
   fs.mkdirSync(path.join(repo, 'ontology'), { recursive: true });
-  fs.mkdirSync(path.join(repo, 'knowledge', 'pages'), { recursive: true });
+  fs.mkdirSync(path.join(repo, 'knowledge'), { recursive: true });
   fs.writeFileSync(path.join(repo, 'ontology', 'vocabulary.yaml'), 'version: 1\n');
   // The page the stub `find` answers with, read (only) to plan the key set.
-  fs.writeFileSync(path.join(repo, 'knowledge', 'pages', `${PAGE}.md`),
+  fs.writeFileSync(path.join(repo, 'knowledge', `${PAGE}.md`),
     `---\ntype: Class\nresource: ${IRI}\nstatus: ${pageStatus}\n---\nbody\n`);
   return repo;
 }
 
 /**
- * Install a stub `vault` on PATH. Returns the log reader and a restore fn.
+ * Install a stub `ontomark` on PATH. Returns the log reader and a restore fn.
  *
- * `findResult` is the JSON the stub prints for `vault find`; `editExit` is the
- * exit code for `vault edit`, so a refused guard is testable without a real
+ * `findResult` is the JSON the stub prints for `ontomark find`; `editExit` is the
+ * exit code for `ontomark edit`, so a refused guard is testable without a real
  * vault.
  */
 function stubVault(t, { findResult = [{ id: PAGE, title: PAGE, type: 'Class', score: 1 }], editExit = 0, createExit = 0, pageStatus = 'draft', applyExit = 0, applyOut = null } = {}) {
@@ -52,36 +52,36 @@ function stubVault(t, { findResult = [{ id: PAGE, title: PAGE, type: 'Class', sc
 case "$1" in
   find) printf '%s' ${JSON.stringify(JSON.stringify(findResult))} ;;
   edit) printf '%s' '{"ok":true,"docs":1,"blocks":1}'; exit ${editExit} ;;
-  create) dest=${JSON.stringify(path.join(repo, 'knowledge', 'pages'))}/"$(basename "$2")"
+  create) dest=${JSON.stringify(path.join(repo, 'knowledge'))}/"$(basename "$2")"
           [ -e "$dest" ] && { printf '%s' '{"created":false,"code":"EXISTS","message":"refused: already exists","blockers":[]}'; exit 2; }
           [ ${createExit} -eq 0 ] && cp "$2" "$dest"; printf '%s' '{"created":true}'; exit ${createExit} ;;
   apply) cp "$2" ${JSON.stringify(path.join(dir, 'applied-proposal.json'))}
-         [ ${applyExit} -eq 0 ] && printf 'amended\n' >> ${JSON.stringify(path.join(repo, 'knowledge', 'pages', `${PAGE}.md`))}
-         printf '%s' ${JSON.stringify(JSON.stringify(applyOut || { applied: true, page: PAGE, path: `knowledge/pages/${PAGE}.md`, digest: 'sha256:00' }))}
+         [ ${applyExit} -eq 0 ] && printf 'amended\n' >> ${JSON.stringify(path.join(repo, 'knowledge', `${PAGE}.md`))}
+         printf '%s' ${JSON.stringify(JSON.stringify(applyOut || { applied: true, page: PAGE, path: `knowledge/${PAGE}.md`, digest: 'sha256:00' }))}
          exit ${applyExit} ;;
   *) printf '%s' 'null' ;;
 esac
 `;
-  const bin = path.join(dir, 'vault');
+  const bin = path.join(dir, 'ontomark');
   fs.writeFileSync(bin, script, { mode: 0o755 });
 
   const prevPath = process.env.PATH;
-  const prevBin = process.env.VAULT_BIN;
+  const prevBin = process.env.ONTOMARK_BIN;
   const prevRepo = process.env.VAULT_REPO;
   process.env.PATH = `${dir}:${prevPath}`;
   process.env.VAULT_REPO = repo;
-  delete process.env.VAULT_BIN; // prove the default `vault` resolves on PATH
+  delete process.env.ONTOMARK_BIN; // prove the default `ontomark` resolves on PATH
 
   t.after(() => {
     process.env.PATH = prevPath;
-    if (prevBin === undefined) delete process.env.VAULT_BIN; else process.env.VAULT_BIN = prevBin;
+    if (prevBin === undefined) delete process.env.ONTOMARK_BIN; else process.env.ONTOMARK_BIN = prevBin;
     if (prevRepo === undefined) delete process.env.VAULT_REPO; else process.env.VAULT_REPO = prevRepo;
     fs.rmSync(dir, { recursive: true, force: true });
   });
 
   return {
     repo,
-    /** The proposal JSON the stub `vault apply` was handed, parsed. */
+    /** The proposal JSON the stub `ontomark apply` was handed, parsed. */
     appliedProposal() {
       return JSON.parse(fs.readFileSync(path.join(dir, 'applied-proposal.json'), 'utf8'));
     },
@@ -117,7 +117,7 @@ function stubFetch(status = 200) {
 
 // ── The argv, which is the whole contract ───────────────────────────────────
 
-test('promote runs vault edit with status=stable, an appended human attestation and a blast-radius guard', async (t) => {
+test('promote runs ontomark edit with status=stable, an appended human attestation and a blast-radius guard', async (t) => {
   const stub = stubVault(t);
   const fetchFn = stubFetch(200);
 
@@ -136,7 +136,7 @@ test('promote runs vault edit with status=stable, an appended human attestation 
     'edit', PAGE,
     '--set', 'status=stable',
     '--set', `verified+=${JSON.stringify({ by: `human:${NPUB}`, at: AT })}`,
-    // Two keys change — status and verified — and the real `vault edit`
+    // Two keys change — status and verified — and the real `ontomark edit`
     // counts a block per changed key, so blocks=1 here is refused by it.
     '--expect', 'docs=1,blocks=2',
     '--json',
@@ -284,7 +284,7 @@ test('a non-ontology outcome is refused', async (t) => {
   );
 });
 
-test('a vault edit that refuses its guard fails the apply and writes nothing further', async (t) => {
+test('an ontomark edit that refuses its guard fails the apply and writes nothing further', async (t) => {
   stubVault(t, { editExit: 1 });
   const fetchFn = stubFetch(200);
   await assert.rejects(() => apply.applyOntologyDecision(
@@ -522,7 +522,7 @@ test('demoting an already-deprecated page writes nothing but is still ledgered',
   );
   assert.equal(result.applied, false);
   assert.equal(result.noop, true);
-  assert.deepEqual(stub.calls().map(c => c[0]), ['find'], 'no vault edit was spawned');
+  assert.deepEqual(stub.calls().map(c => c[0]), ['find'], 'no ontomark edit was spawned');
   assert.equal(fetchFn.calls.length, 1);
   assert.equal(fetchFn.calls[0].body.outcome, 'demote');
 });
@@ -549,7 +549,7 @@ test('readPageStatus reads the frontmatter scalar and refuses ids that escape th
     assert.equal(apply.readPageStatus(PAGE, { repo }), 'stable');
     assert.throws(() => apply.readPageStatus('../../ontology/vocabulary', { repo }), /escapes/);
     assert.throws(() => apply.readPageStatus('Missing Page', { repo }), /ENOENT/);
-    fs.writeFileSync(path.join(repo, 'knowledge', 'pages', 'Bare.md'), 'no frontmatter\n');
+    fs.writeFileSync(path.join(repo, 'knowledge', 'Bare.md'), 'no frontmatter\n');
     assert.throws(() => apply.readPageStatus('Bare', { repo }), /no YAML frontmatter/);
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
@@ -595,7 +595,7 @@ test('pageFromCreateDiff refuses anything that is not a pure addition', () => {
   assert.throws(() => apply.pageFromCreateDiff(''), /adds no page/);
 });
 
-test('Promote of a create proposal: ONE vault create of the signed diff\'s page, stamped in the same write, then the ledger', async (t) => {
+test('Promote of a create proposal: ONE ontomark create of the signed diff\'s page, stamped in the same write, then the ledger', async (t) => {
   const stub = stubVault(t);
   const fetchFn = stubFetch(200);
   const result = await apply.applyOntologyDecision(createDecision(), { fetchFn });
@@ -612,7 +612,7 @@ test('Promote of a create proposal: ONE vault create of the signed diff\'s page,
     '--set', `verified+={by: human:${NPUB}, at: ${AT}}`,
     '--json',
   ]);
-  assert.equal(fs.readFileSync(path.join(stub.repo, 'knowledge', 'pages', `${NEW_PAGE}.md`), 'utf8'), NEW_MD,
+  assert.equal(fs.readFileSync(path.join(stub.repo, 'knowledge', `${NEW_PAGE}.md`), 'utf8'), NEW_MD,
     'the vault received exactly the bytes the signed diff adds');
   assert.ok(!fs.existsSync(file), 'the temp file is removed');
   assert.equal(fetchFn.calls.length, 1);
@@ -622,12 +622,12 @@ test('Promote of a create proposal: ONE vault create of the signed diff\'s page,
 
 test('the page already existing (exit 2, a race) is applied:false reason exists, and NOT ledgered', async (t) => {
   const stub = stubVault(t);
-  fs.writeFileSync(path.join(stub.repo, 'knowledge', 'pages', `${NEW_PAGE}.md`), 'someone else\n');
+  fs.writeFileSync(path.join(stub.repo, 'knowledge', `${NEW_PAGE}.md`), 'someone else\n');
   const fetchFn = stubFetch(200);
   const result = await apply.applyOntologyDecision(createDecision(), { fetchFn });
   assert.deepEqual([result.applied, result.created, result.reason], [false, false, 'exists']);
   assert.equal(fetchFn.calls.length, 0, 'nothing was admitted, so nothing is ledgered');
-  assert.equal(fs.readFileSync(path.join(stub.repo, 'knowledge', 'pages', `${NEW_PAGE}.md`), 'utf8'), 'someone else\n');
+  assert.equal(fs.readFileSync(path.join(stub.repo, 'knowledge', `${NEW_PAGE}.md`), 'utf8'), 'someone else\n');
 });
 
 test('page_sha256, when the proposal carries it, must be the hash of the signed diff\'s page', async (t) => {
@@ -681,7 +681,7 @@ test('every non-EXISTS refusal (exit 2) throws with its code and blockers, and i
     };
     const fetchFn = stubFetch(200);
     await assert.rejects(apply.applyOntologyDecision(createDecision(), { fetchFn, runVault, tmpRoot: dir }),
-      (err) => err.code === code && /vault create refused Photon Sieve/.test(err.message)
+      (err) => err.code === code && /ontomark create refused Photon Sieve/.test(err.message)
         && (code !== 'BLOCKED' || /SLUG_COLLISION/.test(err.message)));
     assert.equal(fetchFn.calls.length, 0, `${code}: nothing ledgered`);
     assert.deepEqual(fs.readdirSync(dir), [], `${code}: the temp file is removed`);
@@ -704,7 +704,7 @@ test('the attestation is ONE argv element holding a YAML flow MAPPING (by/at), n
   assert.equal(new Date(parsed.at).toISOString(), AT);
 });
 
-test('any other vault create failure rejects with no ledger entry', async (t) => {
+test('any other ontomark create failure rejects with no ledger entry', async (t) => {
   const stub = stubVault(t, { createExit: 3 });
   const fetchFn = stubFetch(200);
   await assert.rejects(apply.applyOntologyDecision(createDecision(), { fetchFn }));
@@ -841,7 +841,7 @@ test('the caller\'s request fetcher is used when the pod holds no stored copy', 
   assert.equal(res.ontology.applied, true, res.ontology.error);
 });
 
-// ── kind: amend — Promote applies the proposal through `vault apply` ───────
+// ── kind: amend — Promote applies the proposal through `ontomark apply` ───────
 
 const amendProposal = (over = {}) => ({ level: 'content', kind: 'amend', iri: IRI, page: PAGE,
   hypothesis: 'tighten the definition', diff: `--- a/${PAGE}\n+++ b/${PAGE}\n@@ -1 +1 @@\n-x\n+y\n`,
@@ -849,7 +849,7 @@ const amendProposal = (over = {}) => ({ level: 'content', kind: 'amend', iri: IR
 const amendDecision = (over = {}) => ({ outcome: 'promote', iri: IRI, signerNpub: NPUB, at: AT,
   caseId: DIGEST_HEX, digest: DIGEST_HEX, eventId: 'f'.repeat(64), proposal: amendProposal(), ...over });
 
-test('Promote of an amend proposal: ONE vault apply of the staged proposal, attestation in the same write, then the ledger', async (t) => {
+test('Promote of an amend proposal: ONE ontomark apply of the staged proposal, attestation in the same write, then the ledger', async (t) => {
   const stub = stubVault(t);
   const fetchFn = stubFetch(200);
   const result = await apply.applyOntologyDecision(amendDecision(), { fetchFn });
@@ -877,7 +877,7 @@ test('an ABSENT kind with a diff is an amendment (the vault\'s serde default)', 
   assert.deepEqual(stub.calls().map(c => c[0]), ['apply']);
 });
 
-test('every vault apply refusal (exit 2) throws with its code and blockers, and is not ledgered', async (t) => {
+test('every ontomark apply refusal (exit 2) throws with its code and blockers, and is not ledgered', async (t) => {
   for (const code of ['STALE', 'BLOCKED', 'GUARD_VIOLATED']) {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'apply-refuse-'));
     t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
@@ -892,7 +892,7 @@ test('every vault apply refusal (exit 2) throws with its code and blockers, and 
     const fetchFn = stubFetch(200);
     const runGit = async () => { throw new Error('git must not run for a refused write'); };
     await assert.rejects(apply.applyOntologyDecision(amendDecision(), { fetchFn, runVault, runGit, tmpRoot: dir }),
-      (err) => err.code === code && /vault apply refused Knowledge Graph/.test(err.message)
+      (err) => err.code === code && /ontomark apply refused Knowledge Graph/.test(err.message)
         && (code !== 'BLOCKED' || (/SLUG_COLLISION/.test(err.message) && err.blockers.length === 1)));
     assert.equal(fetchFn.calls.length, 0, `${code}: nothing ledgered`);
     assert.deepEqual(fs.readdirSync(dir), [], `${code}: the staged file is removed`);
@@ -960,7 +960,7 @@ test('a successful write commits exactly that one page, pathspec-limited, with t
   const runGit = stubGit({ top: stub.repo });
   const result = await apply.applyOntologyDecision(amendDecision(), { fetchFn: stubFetch(200), runGit });
 
-  const rel = path.join('knowledge', 'pages', `${PAGE}.md`);
+  const rel = path.join('knowledge', `${PAGE}.md`);
   assert.deepEqual(runGit.calls.map(a => a.slice(0, 3)), [
     ['-C', stub.repo, 'rev-parse'],
     ['-C', stub.repo, 'add'],
@@ -1016,7 +1016,7 @@ test('the edit and create paths commit too; a no-op demote commits nothing', asy
   const created = await apply.applyOntologyDecision(createDecision({ eventId: 'f'.repeat(64) }), { fetchFn: stubFetch(200), runGit });
   assert.equal(created.committed, true);
   const adds = runGit.calls.filter(a => a[2] === 'add').map(a => a[4]);
-  assert.deepEqual(adds, [path.join('knowledge', 'pages', `${PAGE}.md`), path.join('knowledge', 'pages', `${NEW_PAGE}.md`)]);
+  assert.deepEqual(adds, [path.join('knowledge', `${PAGE}.md`), path.join('knowledge', `${NEW_PAGE}.md`)]);
 
   const stub2 = stubVault(t, { pageStatus: 'deprecated' });
   const runGit2 = stubGit({ top: stub2.repo });
@@ -1037,17 +1037,17 @@ test('against a real git repository, other sessions\' dirty and staged files are
   // Another session's work in progress: one staged, one merely dirty.
   fs.writeFileSync(path.join(stub.repo, 'ontology', 'vocabulary.yaml'), 'version: 2\n');
   git('add', 'ontology/vocabulary.yaml');
-  fs.writeFileSync(path.join(stub.repo, 'knowledge', 'pages', 'Other.md'), 'wip\n');
+  fs.writeFileSync(path.join(stub.repo, 'knowledge', 'Other.md'), 'wip\n');
 
   const result = await apply.applyOntologyDecision(amendDecision(), { fetchFn: stubFetch(200) });
   assert.equal(result.committed, true, result.commitError);
   assert.equal(result.pushed, false, 'no upstream configured');
   assert.equal(result.commit, git('rev-parse', 'HEAD').trim());
 
-  assert.deepEqual(git('show', '--name-only', '--format=', 'HEAD').trim().split('\n'), [`knowledge/pages/${PAGE}.md`]);
+  assert.deepEqual(git('show', '--name-only', '--format=', 'HEAD').trim().split('\n'), [`knowledge/${PAGE}.md`]);
   assert.match(git('log', '-1', '--format=%B'), /Governance-Decision: f{64}\nSigned-off-by-human: npub1testhuman/);
   const status = git('status', '--porcelain').split('\n').filter(Boolean).sort();
-  assert.deepEqual(status, ['?? knowledge/pages/Other.md', 'M  ontology/vocabulary.yaml']);
+  assert.deepEqual(status, ['?? knowledge/Other.md', 'M  ontology/vocabulary.yaml']);
 });
 
 // ── `approve` on an ontology AMEND applies as the promote it means ─────────
@@ -1063,7 +1063,7 @@ const approveEvent = () => ({
   content: JSON.stringify({ action: 'approve', reasoning: 'agreed' }),
 });
 
-test('an approve of an ontology amend runs vault apply with the request\'s IRI', async (t) => {
+test('an approve of an ontology amend runs ontomark apply with the request\'s IRI', async (t) => {
   const stub = stubVault(t);
   withRoster(t, ADMIN_HEX);
   inScratchCwd(t);

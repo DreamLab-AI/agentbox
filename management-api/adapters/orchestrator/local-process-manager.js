@@ -201,7 +201,7 @@ class LocalProcessManagerOrchestratorAdapter extends BaseAdapter {
     const eTag   = (tags.find(t => t[0] === 'e') || [])[1] || null;
     const refId  = dTag || eTag;
 
-    // ── ADR-2109: an ontology Promote/Demote applies through `vault edit` ──
+    // ── ADR-2109: an ontology Promote/Demote applies through `ontomark edit` ──
     //
     // This is the ONE branch that writes to the world rather than merely
     // relaying. It runs BEFORE the agent dispatch below because the write is
@@ -372,7 +372,7 @@ class LocalProcessManagerOrchestratorAdapter extends BaseAdapter {
    * Only a request that is (1) the same case as the decision, (2) routed to
    * the ontology-governance panel, (3) an amend, and (4) whose digest is the
    * decision's `d` tag qualifies, so the human's signature over `d` is a
-   * signature over the diff `vault apply` will write (and `vault apply`
+   * signature over the diff `ontomark apply` will write (and `ontomark apply`
    * re-derives that digest from the content before writing). The roster
    * check then runs exactly as for a signed promote.
    */

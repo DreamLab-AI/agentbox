@@ -15,7 +15,7 @@
  *   `sources[id=origin]` pointing back at where it came from (the working
  *   page when there is one).
  *
- * The staged page must pass `vault validate --strict` ON ITS OWN, in a scratch
+ * The staged page must pass `ontomark validate --strict` ON ITS OWN, in a scratch
  * repository holding only the governed vocabulary, the manifest and the staged
  * page(s), before `propose` runs. A staged page that fails is reported as not
  * proposable, with the vault's own reasons, and never reaches the gate.
@@ -53,7 +53,7 @@ const SUBCLASS_KEY = 'is-a';
  * A page id (filename stem) for a term. Page ids are vault-relative paths, so
  * a `/` would nest the page and a control character would not survive the
  * filesystem; both are replaced. `title` is always written on a staged page
- * (it names the file `vault create` writes).
+ * (it names the file `ontomark create` writes).
  */
 function pageIdFor(term) {
   const id = String(term)
@@ -137,7 +137,7 @@ function renderStagedPage(p, { now = new Date() } = {}) {
   if (!slug) throw new Error(`elevation-stage: ${JSON.stringify(term)} slugs to the empty string`);
   const iri = IRI_NAMESPACE + slug;
 
-  // `title` is always declared: `vault create` names the file from it and
+  // `title` is always declared: `ontomark create` names the file from it and
   // `vault propose` recognises a create by a title no page has.
   // The title IS the page id; a term that had to be sanitised to become one
   // survives as an alias rather than as a title the filesystem cannot hold.
@@ -179,7 +179,7 @@ function renderStagedPage(p, { now = new Date() } = {}) {
 
 /**
  * Validate staged pages on their own: a scratch repository with the governed
- * vocabulary and manifest from `repo`, and nothing in `knowledge/pages` but
+ * vocabulary and manifest from `repo`, and nothing in `knowledge/` but
  * the staged pages.
  *
  * @returns {Promise<{ ok:boolean, issues:object[] }>} issues that disqualify
@@ -187,21 +187,21 @@ function renderStagedPage(p, { now = new Date() } = {}) {
 async function validateStandalone(pages, { repo, stageRoot, runVault = runVaultCommand }) {
   const scratch = path.join(stageRoot, 'validate-repo');
   fs.mkdirSync(path.join(scratch, 'ontology'), { recursive: true });
-  fs.mkdirSync(path.join(scratch, 'knowledge', 'pages'), { recursive: true });
-  fs.mkdirSync(path.join(scratch, 'working', 'pages'), { recursive: true });
+  fs.mkdirSync(path.join(scratch, 'knowledge'), { recursive: true });
+  fs.mkdirSync(path.join(scratch, 'working'), { recursive: true });
   fs.copyFileSync(path.join(repo, 'ontology', 'vocabulary.yaml'),
     path.join(scratch, 'ontology', 'vocabulary.yaml'));
   const manifest = path.join(repo, 'vault.toml');
   if (fs.existsSync(manifest)) fs.copyFileSync(manifest, path.join(scratch, 'vault.toml'));
   for (const page of pages) {
-    fs.writeFileSync(path.join(scratch, 'knowledge', 'pages', `${page.id}.md`), page.markdown);
+    fs.writeFileSync(path.join(scratch, 'knowledge', `${page.id}.md`), page.markdown);
   }
 
   const report = await runVault(['validate', '--strict', '--json'],
     { repo: scratch, reportOnFailure: true });
   const k = report && report.knowledge;
   if (!k || !Array.isArray(k.issues)) {
-    return { ok: false, issues: [{ code: 'VALIDATE_UNREADABLE', message: 'vault validate printed no report' }] };
+    return { ok: false, issues: [{ code: 'VALIDATE_UNREADABLE', message: 'ontomark validate printed no report' }] };
   }
   const ids = new Set(pages.map(pg => pg.id));
   const issues = k.issues.filter(i => !CORPUS_RELATIVE_CODES.has(i.code));

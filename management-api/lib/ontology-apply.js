@@ -1,17 +1,17 @@
 'use strict';
 
 /**
- * ADR-2109 — a signed governance Promote/Demote applies through `vault edit`.
+ * ADR-2109 — a signed governance Promote/Demote applies through `ontomark edit`.
  *
  * The forum (nostr-rust-forum ADR-2013) turns a human's signed kind-31403 into
  * one of two ontology outcomes: `{"action":"promote","iri":"urn:ngm:class:…"}`
  * or `{"action":"demote","iri":"…"}`. This module is what that decision *does*:
- * it resolves the IRI to a vault page, runs a guarded `vault edit`, and then
+ * it resolves the IRI to a vault page, runs a guarded `ontomark edit`, and then
  * records the application in Loom's attestation ledger.
  *
  * Three rules shape every choice here.
  *
- * 1. **The write is guarded.** `vault edit` refuses without `--expect`, and we
+ * 1. **The write is guarded.** `ontomark edit` refuses without `--expect`, and we
  *    always declare `docs=1` plus exactly the keys that change, planned
  *    against the page's current status (`blocks=2` promote from draft,
  *    `blocks=1` for a re-attestation of a stable page or a demote): a decision
@@ -30,10 +30,11 @@
  *    claim about what they approved, and only the latter was signed by the
  *    party whose authority the write rests on.
  *
- * The `vault` binary is WS-C's and does not exist yet. It is invoked through
- * `$VAULT_BIN` (default `vault`) so this module is testable today against a
- * stub on PATH that records its argv, and needs no change when the real binary
- * lands.
+ * The corpus verbs (find, edit, create, apply, validate) run through the
+ * `ontomark` binary, resolved from `$ONTOMARK_BIN` (default `ontomark`); only
+ * the governance transport (`propose`, `panel publish`) stays on `vault`
+ * (`$VAULT_BIN`, default `vault`). Both resolve on PATH by default, so this
+ * module is testable against stubs that record their argv.
  *
  * Every successful corpus write (edit, create, apply) is then committed in the
  * vault repository — that ONE page and nothing else, pathspec-limited, because
@@ -53,7 +54,7 @@ const execFileAsync = promisify(execFile);
 /** Default Loom façade. Deployment B (`visionclaw_network` sidecar). */
 const DEFAULT_LOOM_BASE = 'http://loom:8080';
 
-/** How long a `vault edit` may take before we give up on it. */
+/** How long a `ontomark edit` may take before we give up on it. */
 const VAULT_TIMEOUT_MS = 120_000;
 
 /** How long the ledger call may take. Short: it is never load-bearing. */
@@ -71,6 +72,7 @@ function vaultEnv() {
     VAULT_ROOT: process.env.VAULT_ROOT || '',
     VAULT_REPO: process.env.VAULT_REPO || '',
     VAULT_BIN: process.env.VAULT_BIN || '',
+    ONTOMARK_BIN: process.env.ONTOMARK_BIN || '',
     // `vault propose` signs its 31402 even under --dry-run and refuses without
     // a key; these are the vault CLI's own documented variables. Only passed
     // when set, so an absent secret stays absent rather than becoming "".
@@ -148,8 +150,13 @@ function resolveVaultRepo(env = process.env, { exists = fs.existsSync } = {}) {
   return candidate;
 }
 
-function vaultBin() {
-  return process.env.VAULT_BIN || 'vault';
+/** Subcommands that stay on the `vault` binary: the governance transport. */
+const VAULT_ONLY_VERBS = new Set(['propose', 'panel']);
+
+/** The binary for a subcommand argv: `vault` for governance, else `ontomark`. */
+function binFor(args) {
+  if (VAULT_ONLY_VERBS.has(String(args[0]))) return process.env.VAULT_BIN || 'vault';
+  return process.env.ONTOMARK_BIN || 'ontomark';
 }
 
 /**
@@ -188,7 +195,7 @@ function iriSlug(iri) {
 }
 
 /**
- * Resolve a `resource` IRI to the vault page id `vault edit` takes (C2: the
+ * Resolve a `resource` IRI to the vault page id `ontomark edit` takes (C2: the
  * vault-relative path without `.md`).
  *
  * The IRI is not reversible to a title — `slug()` is lossy, and
@@ -237,7 +244,7 @@ function basename(id) {
 }
 
 /**
- * Run `vault --repo <root> <args>` and parse its `--json` output.
+ * Run `ontomark --repo <root> <args>` (`vault` for propose/panel) and parse its `--json` output.
  *
  * `--repo` is always prepended from {@link resolveVaultRepo}; callers build the
  * subcommand argv only, so descriptors stay independent of where they run.
@@ -254,13 +261,13 @@ async function runVaultCommand(args, { timeoutMs = VAULT_TIMEOUT_MS, repo = null
   const root = repo || resolveVaultRepo();
   let stdout;
   try {
-    ({ stdout } = await execFileAsync(vaultBin(), ['--repo', root, ...args], {
+    ({ stdout } = await execFileAsync(binFor(args), ['--repo', root, ...args], {
       env: vaultEnv(),
       timeout: timeoutMs,
       maxBuffer: 64 * 1024 * 1024,
     }));
   } catch (err) {
-    // `vault validate --strict` exits non-zero on any finding but still prints
+    // `ontomark validate --strict` exits non-zero on any finding but still prints
     // its full report; a caller that asked for the report gets it.
     if (!reportOnFailure || !err || !String(err.stdout || '').trim()) throw err;
     stdout = err.stdout;
@@ -285,7 +292,7 @@ async function runVaultCommand(args, { timeoutMs = VAULT_TIMEOUT_MS, repo = null
  */
 function setArgsFor(outcome, { npub, at, currentStatus } = {}) {
   const target = outcome === 'promote' ? 'stable' : 'deprecated';
-  // A key whose value would not change is not sent: `vault edit` counts only
+  // A key whose value would not change is not sent: `ontomark edit` counts only
   // keys that change, and the guard must say exactly that. So a promote of an
   // already-stable page is a RE-ATTESTATION (one `verified` appended, status
   // untouched, blocks=1), and a demote of an already-deprecated page sets
@@ -297,14 +304,14 @@ function setArgsFor(outcome, { npub, at, currentStatus } = {}) {
   return sets;
 }
 
-/** Where `vault edit` finds a knowledge page: `<repo>/knowledge/pages/<id>.md` (C2). */
-const KNOWLEDGE_PAGES = path.join('knowledge', 'pages');
+/** Where `ontomark edit` finds a knowledge page: `<repo>/knowledge/<id>.md` (flat layout, ADR-OM-007). */
+const KNOWLEDGE_PAGES = 'knowledge';
 
 /**
  * Read a page's current `status` — READ ONLY, to plan the edit's key set.
  *
  * The vault stays the only writer. If the page changes between this read and
- * the edit, the edit's `--expect` no longer matches and `vault edit` refuses:
+ * the edit, the edit's `--expect` no longer matches and `ontomark edit` refuses:
  * the race fails closed. A page id that escapes the pages directory, a missing
  * page, or a page with no frontmatter throws rather than guessing.
  *
@@ -334,7 +341,7 @@ function canonicalDigest(digest) {
 /**
  * The `--expect` blast radius for a list of `--set` arguments: one document,
  * and one block per DISTINCT frontmatter key set (`key=` and `key+=` both name
- * `key`). This is `vault edit`'s own counting rule (crates/vault/src/edit.rs:
+ * `key`). This is `ontomark edit`'s own counting rule (crates/vault/src/edit.rs:
  * blocks = the number of distinct keys whose value changed), so a decision
  * that would be a no-op on any key is refused rather than half-applied.
  */
@@ -372,13 +379,13 @@ async function applyOntologyDecision(decision, deps = {}) {
   const runVault = deps.runVault || runVaultCommand;
 
   // A `kind: create` proposal names a page the corpus does not hold yet: it is
-  // materialised from the proposal's own diff by `vault create`, then promoted
+  // materialised from the proposal's own diff by `ontomark create`, then promoted
   // through the same guarded edit as any other page.
   if (proposal && proposal.kind === CREATE_KIND) {
     return applyCreateProposal(decision, proposal, { ...deps, runVault });
   }
 
-  // An approved amendment is the proposal's diff, applied by `vault apply`. A
+  // An approved amendment is the proposal's diff, applied by `ontomark apply`. A
   // demote of an amendment keeps the status edit below: it withdraws trust in
   // the page, it does not apply anything.
   if (outcome === 'promote' && isAmendProposal(proposal)) {
@@ -396,7 +403,7 @@ async function applyOntologyDecision(decision, deps = {}) {
 }
 
 /**
- * The guarded `vault edit` for one resolved page, then the ledger call.
+ * The guarded `ontomark edit` for one resolved page, then the ledger call.
  * Shared by the ordinary path and the create path (whose page exists by the
  * time this runs).
  */
@@ -405,7 +412,7 @@ async function editAndAttest(page, decision, deps) {
   const { runVault } = deps;
 
   // The guard is not optional and not configurable: one decision, one page,
-  // and exactly the frontmatter keys that CHANGE. `vault edit` counts a block
+  // and exactly the frontmatter keys that CHANGE. `ontomark edit` counts a block
   // per distinct key whose value changes, so the key set is planned against
   // the page's current status and `--expect` is derived from the very argv
   // being sent: promote draft→stable is blocks=2, a re-attestation of a
@@ -462,14 +469,14 @@ async function editAndAttest(page, decision, deps) {
 const CREATE_KIND = 'create';
 
 /**
- * The `vault create` invocation for an approved create-proposal.
+ * The `ontomark create` invocation for an approved create-proposal.
  *
  * The ONE place the create interface is written (VisionClaw vault, ws-vc-final
  * item 12): `vault --repo <root> create <staged-page-file> --expect docs=1
- * --json` writes `knowledge/pages/<Title>.md` only if it is absent, validates
+ * --json` writes `knowledge/<Title>.md` only if it is absent, validates
  * it, and stamps `status: stable` plus the human `verified` entry IN THE SAME
  * WRITE; exit 2 means the page exists (a race). The signer and instant are
- * passed in `vault edit`'s own `--set` grammar, since the vault cannot know who
+ * passed in `ontomark edit`'s own `--set` grammar, since the vault cannot know who
  * approved. Until the command ships, a real vault refuses it and the apply
  * fails closed with nothing written.
  */
@@ -478,7 +485,7 @@ function createArgsFor(file, { npub, at }) {
     'create', file,
     '--expect', 'docs=1',
     '--set', 'status=stable',
-    // `vault edit`'s grammar exactly: `key+=value` appends, and the
+    // `ontomark edit`'s grammar exactly: `key+=value` appends, and the
     // attestation is a YAML flow mapping (crates/vault/src/edit.rs).
     '--set', `verified+={by: human:${npub}, at: ${at}}`,
     '--json',
@@ -486,7 +493,7 @@ function createArgsFor(file, { npub, at }) {
 }
 
 /**
- * `vault create`'s exit status for EVERY refusal (nothing written); stdout
+ * `ontomark create`'s exit status for EVERY refusal (nothing written); stdout
  * then carries `{created:false, code, message, blockers}`. `code: EXISTS` is
  * the race — the page appeared after the proposal was approved.
  */
@@ -542,7 +549,7 @@ function proposalFromRequest(request) {
  * One source of truth: the bytes the human's signature covers. The page is
  * reconstructed from the proposal's signed /dev/null diff — never re-derived
  * from the candidate, never read from a side store — written to a temp file,
- * and handed to ONE `vault create`, which writes, validates and stamps
+ * and handed to ONE `ontomark create`, which writes, validates and stamps
  * `status: stable` + the human `verified` entry in the same write (so no
  * failure can leave a created-but-draft page). When the PatchProposal carries
  * `page_sha256`, the reconstructed bytes must hash to it. Every vault refusal
@@ -603,7 +610,7 @@ async function applyCreateProposal(decision, proposal, deps) {
         const blockers = Array.isArray(refusal.blockers) && refusal.blockers.length
           ? ` [${refusal.blockers.map(b => (b && (b.code || b.message)) || String(b)).join(', ')}]` : '';
         const refused = new Error(
-          `ontology-apply: vault create refused ${page}: ${refusal.code || 'REFUSED'} — ` +
+          `ontology-apply: ontomark create refused ${page}: ${refusal.code || 'REFUSED'} — ` +
           `${refusal.message || String(err.stderr || err.message || '').trim()}${blockers}`,
         );
         refused.code = refusal.code || 'REFUSED';
@@ -638,17 +645,17 @@ async function applyCreateProposal(decision, proposal, deps) {
 const AMEND_KIND = 'amend';
 
 /**
- * `vault apply`'s exit status for EVERY refusal (nothing written); stdout then
+ * `ontomark apply`'s exit status for EVERY refusal (nothing written); stdout then
  * carries `{applied:false, code, message, blockers}`.
  */
 const APPLY_REFUSED_EXIT = 2;
 
 /**
- * Whether a proposal is an amendment `vault apply` can apply. The vault's own
+ * Whether a proposal is an amendment `ontomark apply` can apply. The vault's own
  * serde default makes an ABSENT kind an amendment (vault-core proposal.rs,
  * `ProposalKind::Amend` is `#[default]`), so absent counts; but only a
  * PatchProposal carries a diff, and a 31402 whose content is anything else (an
- * older agentbox shape) is not something to hand to `vault apply`.
+ * older agentbox shape) is not something to hand to `ontomark apply`.
  */
 function isAmendProposal(proposal) {
   if (!proposal || typeof proposal !== 'object') return false;
@@ -657,7 +664,7 @@ function isAmendProposal(proposal) {
 }
 
 /**
- * The `vault apply` invocation for an approved amendment — the ONE place the
+ * The `ontomark apply` invocation for an approved amendment — the ONE place the
  * interface is written: `vault --repo <root> apply <proposal.json> --expect
  * docs=1 --set 'verified+={by: human:<npub>, at: <iso>}' --json`. The vault
  * applies the proposal's own diff and appends the human attestation in the
@@ -676,7 +683,7 @@ function applyArgsFor(file, { npub, at }) {
  * Apply a Promote of a `kind: amend` proposal.
  *
  * The bytes applied are the proposal the human's 31403 answers, staged
- * verbatim as JSON — never re-derived — for ONE `vault apply`. The proposal
+ * verbatim as JSON — never re-derived — for ONE `ontomark apply`. The proposal
  * must be about the IRI the human signed and its page must answer to that IRI;
  * a grouped proposal is refused, since the guard and the commit are both
  * one-page. Every vault refusal (exit 2) throws with its code and blockers and
@@ -710,7 +717,7 @@ async function applyAmendProposal(decision, proposal, deps) {
         const blockers = Array.isArray(refusal.blockers) && refusal.blockers.length
           ? ` [${refusal.blockers.map(b => (b && (b.code || b.message)) || String(b)).join(', ')}]` : '';
         const refused = new Error(
-          `ontology-apply: vault apply refused ${page}: ${refusal.code || 'REFUSED'} — ` +
+          `ontology-apply: ontomark apply refused ${page}: ${refusal.code || 'REFUSED'} — ` +
           `${refusal.message || String(err.stderr || err.message || '').trim()}${blockers}`,
         );
         refused.code = refusal.code || 'REFUSED';
@@ -724,7 +731,7 @@ async function applyAmendProposal(decision, proposal, deps) {
   }
   if (out && out.applied === false) {
     // A refusal reported on a zero exit is still a refusal.
-    const refused = new Error(`ontology-apply: vault apply refused ${page}: ${out.code || 'REFUSED'} — ${out.message || ''}`);
+    const refused = new Error(`ontology-apply: ontomark apply refused ${page}: ${out.code || 'REFUSED'} — ${out.message || ''}`);
     refused.code = out.code || 'REFUSED';
     refused.blockers = Array.isArray(out.blockers) ? out.blockers : [];
     throw refused;
@@ -911,6 +918,7 @@ async function attest(body, { fetchFn } = {}) {
 
 module.exports = {
   applyOntologyDecision,
+  binFor,
   vaultEnv,
   resolveIriToPage,
   runVaultCommand,
