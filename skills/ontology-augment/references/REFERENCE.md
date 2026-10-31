@@ -260,7 +260,7 @@ Evaluated in order; the first that holds wins.
 | Loom (`sparql`, `neighbours`, `paths`) | `x-loom-generation`, `x-loom-content-digest` headers; `version_iri` from an `x-loom-version-iri` header or a `version_iri` / `versionIRI` / `owl:versionIRI` body field |
 | `health` | the body's `generation.id` / `content_digest` |
 | `check` | VisionClaw's `check.scope.generation` as `id`, and as `version_iri` when it is an IRI (ADR-2128) |
-| `ontomark` (`ask`, `search`, `get`, `classes`, `validate`, the `neighbours` fallback; `propose` rides `vault`) | the newest `.generation.json` among `<repo>/<vault.toml [build].out>`, `<repo>/site-data`, `<repo>/www`; `version_iri` = `https://narrativegoldmine.com/ontology/<ontology_digest>` once the build records one (ADR-2128); plus `working_tree_commit`, because `ontomark` reads the working tree, not the build |
+| `ontomark` (`ask`, `search`, `get`, `classes`, `validate`, the `neighbours` fallback; `propose` rides `vault`) | the newest `.generation.json` among `<repo>/<vault.toml [build].out>`, `<repo>/site-data`, `<repo>/www`; `version_iri` = `https://narrativegoldmine.com/ontology/<ontology_digest>` once the build records one (ADR-2128); plus `working_tree_commit`, because `vault` reads the working tree, not the build |
 
 The vault repo is `VAULT_REPO` (exported at boot), else `[vault].repo` in
 `AGENTBOX_CONFIG` (default `/etc/agentbox.toml`), else derived from
