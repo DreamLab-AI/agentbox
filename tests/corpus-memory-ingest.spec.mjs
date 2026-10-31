@@ -116,10 +116,12 @@ second one
 test('chunkPage: Section 0 is the pre-heading text; ## and ### split; #, #### and fenced headings do not', () => {
   const { chunks, collisions, pageSlug: slug } = chunkPage({ fileName: 'Demo Page.md', text: PAGE });
   assert.equal(slug, 'demo-page');
-  assert.deepEqual(chunks.map((c) => c.key), ['demo-page::section-0', 'demo-page::relationships', 'demo-page::features']);
-  assert.deepEqual(chunks.map((c) => c.chunkIndex), [0, 1, 3], 'the duplicate keeps its own (later) index');
-  assert.deepEqual(collisions, ['demo-page::features'], 'duplicate heading: last wins, collision reported');
-  assert.equal(chunks[2].content, '## Features\nsecond one');
+  assert.deepEqual(chunks.map((c) => c.key), ['demo-page::section-0', 'demo-page::relationships', 'demo-page::features', 'demo-page::features~2']);
+  assert.deepEqual(chunks.map((c) => c.chunkIndex), [0, 1, 2, 3]);
+  assert.deepEqual(collisions, [], 'a repeated heading is suffixed, not overwritten');
+  assert.match(chunks[2].content, /^## Features\n/);
+  assert.match(chunks[2].content, /Deep heading stays inside/);
+  assert.equal(chunks[3].content, '## Features\nsecond one');
   assert.equal(chunks[0].title, 'Demo Page > Section 0');
   assert.equal(chunks[1].title, 'Demo Page > Relationships');
   assert.equal(chunks[1].contentHash, contentHash('### Relationships\n- related-to:: [[Alpha]]'));
@@ -235,7 +237,7 @@ const pagesOf = (...names) => names.map((n) => ({ fileName: n, vault: 'knowledge
 
 test('planIngest: new / changed / metadata / generation / unchanged, and foreign rows are never overwritten', () => {
   const first = planIngest(pagesOf('Demo Page.md'), [], OPTS);
-  assert.equal(first.counts.new, 3);
+  assert.equal(first.counts.new, 4);
   const row = (c, over = {}) => ({ key: c.key, source_type: 'knowledge', source_file: 'Demo Page.md', content_hash: c.contentHash, meta_hash: c.metaHash, generation: GEN, embed_model: 'bge-small-en-v1.5', embedded: true, ...over });
   const [a, b, c] = first.chunks;
   const existing = [
@@ -245,7 +247,7 @@ test('planIngest: new / changed / metadata / generation / unchanged, and foreign
     { ...row(a, { key: 'demo-page::zzz' }), source_type: 'claude' },
   ];
   const again = planIngest(pagesOf('Demo Page.md'), existing, OPTS);
-  assert.deepEqual(again.chunks.map((x) => x.action), ['unchanged', 'changed', 'metadata']);
+  assert.deepEqual(again.chunks.map((x) => x.action), ['unchanged', 'changed', 'metadata', 'new']);
   const gen = planIngest(pagesOf('Demo Page.md'), [row(a, { generation: 'old' })], OPTS);
   assert.equal(gen.counts.generation_bump, 1);
   const legacy = planIngest(pagesOf('Demo Page.md'), [row(a, { embed_model: null })], OPTS);
@@ -340,7 +342,7 @@ test('run: dry-run (default) reads but never writes or embeds, even without the 
   const db = fakeDb(); const emb = fakeEmbedder();
   const r = await run({ ...base, write: false }, { pool: db, embedder: emb, env: {}, corpus: corpus(['Demo Page.md']), ...quiet });
   assert.equal(r.mode, 'dry-run');
-  assert.equal(r.plan.counts.new, 3);
+  assert.equal(r.plan.counts.new, 4);
   assert.equal(emb.seen.length, 0);
   assert.ok(db.calls.every((c) => c === 'SELECT'), db.calls.join());
   assert.equal(db.rows.size, 0);
@@ -361,19 +363,19 @@ test('run: write, then an identical re-run embeds nothing (manifest no-op and pl
   const env = { RUVECTOR_ADMIN_WRITE: 'true' };
   const opts = { ...base, write: true, prune: true };
   const r1 = await run(opts, { pool: db, embedder: emb, env, corpus: corpus(['Demo Page.md']), ...quiet });
-  assert.equal(r1.stats.embedded, 3);
+  assert.equal(r1.stats.embedded, 4);
   assert.equal(r1.stats.pruned, 1);
   assert.ok(r1.stats.prune_receipt);
   assert.match(readFileSync(r1.stats.prune_receipt, 'utf8'), /"vanished::old".*"vanished"/);
   assert.ok(db.rows.has('demo-page::section-0') && db.rows.has('flash') && db.rows.has(MANIFEST_KEY));
   assert.equal(db.rows.has('vanished::old'), false);
-  const row = db.rows.get('demo-page::features');
+  const row = db.rows.get('demo-page::features~2');
   assert.equal(row.source_type, 'knowledge');
   assert.equal(row.metadata.generation, GEN);
   assert.equal(row.metadata.source_file, 'Demo Page.md');
   assert.equal(row.value.content_hash, contentHash('## Features\nsecond one'));
   assert.equal(db.rows.get(MANIFEST_KEY).value.generation, GEN);
-  assert.equal(db.rows.get(MANIFEST_KEY).value.chunks, 3);
+  assert.equal(db.rows.get(MANIFEST_KEY).value.chunks, 4);
   const embedded = emb.seen.length;
 
   const r2 = await run(opts, { pool: db, embedder: emb, env, corpus: corpus(['Demo Page.md']), ...quiet });
@@ -383,14 +385,14 @@ test('run: write, then an identical re-run embeds nothing (manifest no-op and pl
   // Manifest gone (or --force off the fast path): the plan itself is still a no-op.
   db.rows.delete(MANIFEST_KEY);
   const r3 = await run(opts, { pool: db, embedder: emb, env, corpus: corpus(['Demo Page.md']), ...quiet });
-  assert.equal(r3.plan.counts.unchanged, 3);
+  assert.equal(r3.plan.counts.unchanged, 4);
   assert.equal(r3.plan.counts.new + r3.plan.counts.changed, 0);
   assert.equal(emb.seen.length, embedded + 1, 'only the manifest probe is embedded');
 
   // New generation, same content: metadata is bumped, nothing is re-embedded.
   const before = emb.seen.length;
   const r4 = await run(opts, { pool: db, embedder: emb, env, corpus: corpus(['Demo Page.md']), ...quiet, generation: { ...gen, generation: 'b'.repeat(40), corpusVersion: 'visiongraph@bbbbbbbbbbbb' } });
-  assert.equal(r4.plan.counts.generation_bump, 3);
+  assert.equal(r4.plan.counts.generation_bump, 4);
   assert.equal(emb.seen.length, before + 1);
   assert.equal(db.rows.get('demo-page::features').metadata.generation, 'b'.repeat(40));
 });
@@ -452,4 +454,15 @@ test('run: a manifest from an older chunker re-plans an unchanged corpus without
   assert.equal(r.plan.counts.new + r.plan.counts.changed, 0);
   assert.equal(emb.seen.length, before + 1, 'only the manifest probe is embedded');
   assert.equal(db.rows.get(MANIFEST_KEY).value.chunker_version, CHUNKER_VERSION);
+});
+
+test('chunkPage: a repeated heading keeps every section, the first under the plain key', () => {
+  const text = '---\ntitle: Dup\n---\n## Examples\nfirst text\n## Other\nmiddle\n## Examples\nsecond text\n## Examples\nthird text\n';
+  const { chunks, collisions } = chunkPage({ fileName: 'Dup.md', text });
+  const by = Object.fromEntries(chunks.map((c) => [c.key, c.content]));
+  assert.deepEqual(collisions, []);
+  assert.match(by['dup::examples'], /first text/);
+  assert.match(by['dup::examples~2'], /second text/);
+  assert.match(by['dup::examples~3'], /third text/);
+  assert.match(by['dup::other'], /middle/);
 });

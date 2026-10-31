@@ -33,7 +33,7 @@ import { wellFormed } from './ruvector-bulk.mjs';
  * unchanged corpus; content hashes still keep unchanged rows from
  * re-embedding.
  */
-export const CHUNKER_VERSION = 2;
+export const CHUNKER_VERSION = 3;
 
 export const SECTION_MAX = 2048;
 /** Characters of the previous part repeated at the head of the next one. */
@@ -187,9 +187,16 @@ export function chunkPage({ fileName, text, vault = 'knowledge' }) {
   };
   const byKey = new Map();
   const collisions = [];
+  // A heading used twice on a page would otherwise share one key, and the
+  // later section would overwrite the earlier. The first occurrence keeps
+  // the plain key (so existing keys stay valid); later ones get ~2, ~3, ...
+  const seen = new Map();
   splitSections(body).forEach((sec, chunkIndex) => {
     if (!sec.content) return;
-    const base = `${slug}::${sec.section === 'Section 0' && chunkIndex === 0 ? 'section-0' : slugify(sec.section)}`;
+    const plain = `${slug}::${sec.section === 'Section 0' && chunkIndex === 0 ? 'section-0' : slugify(sec.section)}`;
+    const n = (seen.get(plain) || 0) + 1;
+    seen.set(plain, n);
+    const base = n === 1 ? plain : `${plain}~${n}`;
     const parts = splitParts(sec.content);
     const split = parts.length > 1 || sec.rawLength > SECTION_MAX;
     parts.forEach((content, i) => {
