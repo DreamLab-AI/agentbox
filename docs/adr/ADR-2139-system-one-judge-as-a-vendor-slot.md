@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: f8b02b93d7849955f065d7ae9afc9206198ec9b4
+verified_commit: 97f298db552a61b8edd6147c68a3191d434db6fa
 verified_paths: [agentbox.toml, schema/agentbox.toml.schema.json, crates/system-one/system-one-proxy/src/config.rs, crates/system-one/system-one-proxy/tests/proxy.rs, tests/config/semantic-rules.test.js, crates/system-one/system-one-proxy/src/server.rs, crates/system-one/system-one-proxy/src/key.rs, services/agentbox-manifest/src/system_one.rs, config/entrypoint-unified.sh, config/hooks/lib/skill-route.cjs, config/seal-bootstrap.sh, lib/system-one-proxy.nix, flake.nix, scripts/agentbox-config-validate.js, agentbox.sh]
 owner: jjohare
 review_trigger: SubQ Snap leaving public preview or changing its price, retention default or the Decisions request shape; a Kev, Clef or pplx-decider release that serves /v1/systemone on a 9B-class checkpoint; a system-one-eval run on the ADR-2089 corpus that moves any backend by more than 5 points; the first compaction replay whose keep-rate is above 5%
@@ -326,7 +326,7 @@ Re-verified 2026-10-31 at `b65c3d4ed`. Governed paths changed: `agentbox.toml`: 
 
 ## Close-out 2026-10-31
 
-Decision 5's `state_budget_tokens` is implemented at every layer the 2026-10-13 amendment named as missing, at `d149a0f33` (re-verified at `f8b02b93d`, the next commit on the branch, which only adds the ADR-2090 bypass). `implementation_status` moves `partial` → `complete`; `activation_status` stays `staged` (the proxy and projector are baked, so a rebuild is needed).
+Decision 5's `state_budget_tokens` is implemented at every layer the 2026-10-13 amendment named as missing, at `d149a0f33` (re-verified at `97f298db5`; the commits after it only add the ADR-2090 bypass). `implementation_status` moves `partial` → `complete`; `activation_status` stays `staged` (the proxy and projector are baked, so a rebuild is needed).
 
 - **Manifest and schema**: `[system_one.backends.<name>].state_budget_tokens`, a non-negative integer, `default 0` = undeclared (`schema/agentbox.toml.schema.json`). `subq` ships `73000`, the measured floor (SubQ accepted 73,612 tokens in 1.5 s; not its limit); every other backend is undeclared.
 - **Boot projector** (`services/agentbox-manifest/src/system_one.rs`): a negative, fractional or non-numeric value refuses the whole slot (E082, as every other invalid backend field does). The value goes into `/run/agentbox/system-one.json` per backend; `export AGENTBOX_SYSTEM_ONE_STATE_BUDGET_TOKENS` and `stateBudgetTokens=` (plugin-config) are emitted **only** when the *active* backend declares one, so every existing output is byte-identical (`plugin_config_lines_are_exact` is unchanged).
@@ -338,7 +338,7 @@ Evidence (worktree branch `adr-sprint/w7`):
 
 ```
 cargo test -p system-one-proxy             → 13 (lib) + 7 (tests/proxy.rs) passed, 0 failed
-cargo test system_one  (agentbox-manifest)  → 17 passed, 0 failed
+cargo test (agentbox-manifest, full)     → 161+3+10+17+17 passed, 0 failed
 jest tests/config/semantic-rules.test.js    → 80 passed, 1 skipped (E082: absent/0/73000 pass; -1/1.5 fail)
 node scripts/ci/check-manifest-catalogue.js → PASS (118 gate paths)
 node scripts/agentbox-config-validate.js agentbox.toml → valid
