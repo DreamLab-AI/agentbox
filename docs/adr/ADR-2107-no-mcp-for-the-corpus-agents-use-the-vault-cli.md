@@ -3,12 +3,12 @@ id: ADR-2107
 title: No MCP inside the estate for the corpus; agents use the vault CLI
 date: 2026-09-22
 decision_status: accepted
-implementation_status: partial
+implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 4fb44b789fa51f31b380dfbe7a0f79ebaf87ff67
-verified_paths: []               # armed in the landing commit — see Verification
+verified_commit: 3e3e09b1d7a00620d5704b8e48299ea90466ae19
+verified_paths: [skills/ontology-augment, skills/podcast-knowledge-ingest, agents/ontology-curator.md, mcp/mcp.json, agentbox.toml, AGENTS.md]
 owner: jjohare
 review_trigger: a request to register any MCP server that reads or writes visionGraph, the ADR-140 /mcp plane reaching the deployed Loom, or the first `vault` subcommand an agent cannot express
 repo: agentbox
@@ -131,3 +131,20 @@ Established by:
 Today's commits: `2d49681bf` (management API), `b7a1d0955` (ontology-augment), `f4beec643` (skills and docs), `7aa9365d4` (path tiers), `6aaf3bb46` (podcast submitter), `eff6c29c1`, `4a07fbfb3` (ontomark v0.6.1 pin). Owner decision 2026-10-31 (Ontomark DEPRECATION §14): `ontomark` is the one corpus CLI; `vault` keeps only the governance transport, `propose` and `panel publish`, per Ontomark ADR-OM-005 decisions 5-6.
 
 The decision stands: no MCP server inside the estate fronts the corpus, and agents reach it from Bash. The CLI named in Decision 1 is now `ontomark` for `find`, `retrieve`, `tree`, `edit`, `create`, `apply`, `validate`, `gate`, `conflicts` and `build`; `vault` remains for `propose` and `panel publish` only. Skills, `agents/ontology-curator.md`, `AGENTS.md` and the management API call `ontomark` (`f4beec643`, `2d49681bf`). `ontology-augment.sh` has no `vault` fallback (`b7a1d0955`), and its `neighbours` fallback when the Loom does not answer is `ontomark tree`. Read every `vault <verb>` above as `ontomark <verb>` except `propose`. No `verified_paths` are armed on this record, so the ledger gate did not flag it; this note is the re-verification.
+
+## Close-out 2026-10-31
+
+Status moves to `accepted / complete / staged`. The two gaps named at the 2026-10-30 park are closed: the binary exists (`vault` and `ontomark` are baked) and the Loom `/mcp` plane lists `loom.neighbours` / `loom.paths`. The park's remaining item, that `agents/ontology-curator.md` and `AGENTS.md` still taught `vault find/retrieve/tree/edit`, had already been fixed by the 2026-10-31 amendment (`f4beec643`); this pass re-verified it and swept the last residues (`3e3e09b1d`: `runtime-files.md:127`, two stale comments in `ontology-apply.js`).
+
+`verified_paths` is armed with the ADR's prescribed set plus `AGENTS.md`, each confirmed to exist. Activation stays `staged`: the running image predates the re-point until the owner rebuilds.
+
+Executed at `3e3e09b1d` (binaries on PATH: `vault 0.1.0`, `ontomark 0.7.0`):
+
+- `ontomark --help` lists `find retrieve tree edit create apply validate gate conflicts build repair`; `vault --help` lists `validate propose rank panel gate conflicts build certify repair` and ends `Moved: find, retrieve, tree, edit, create and apply now live in the ontomark CLI`. The curator's examples (`ontomark find|retrieve|tree|validate|conflicts`, `ontomark edit --expect`, `vault propose`, `vault panel publish`) each name a verb that binary has.
+- `grep -rnE "\bvault (find|retrieve|tree|edit|create|apply)"` over `agents/ skills/ config/ docs/reference/ management-api/ AGENTS.md CLAUDE.md flake.nix lib/` (excluding tests and ADRs) returns nothing.
+- `bash skills/lint-skills.sh --check` → `OK — skills estate clean (131 skills, 0 errors)`.
+- `node --test management-api/tests/{ontology-apply,ontology-propose-vault,elevation-stage}.test.js` → 95 pass, 0 fail; `node --test tests/contract/governance-flow.spec.js` → 24 pass, 0 fail (the spec uses `node:test`, not jest).
+
+Not re-verified: the live-image behaviour (needs the owner's rebuild) and the `/mcp` plane against the deployed Loom.
+
+Left as is on purpose: the `flake.nix` ontomark note (it omits `apply` from its verb list) and `skills/ontology-augment/references/REFERENCE.md:263` ("`vault` reads the working tree"). Both are governed paths of other ADRs; editing them stales 23 records at once, so they wait for a batch that re-verifies those records. Neither teaches an unavailable verb.
