@@ -3,11 +3,11 @@ id: ADR-2109
 title: Ontology proposals and decisions both go through vault — propose raises them, a guarded vault edit applies them
 date: 2026-09-22
 decision_status: accepted
-implementation_status: partial
+implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: b65c3d4eda3c2449d7ea8512ae1bda33a24c2312
+verified_commit: 3e3e09b1d7a00620d5704b8e48299ea90466ae19
 verified_paths: [management-api/lib/ontology-apply.js, management-api/lib/ontology-propose.js, management-api/lib/kg-proposal-extractor.js, management-api/lib/elevation-publisher.js, management-api/routes/kg-elevation.js, management-api/adapters/orchestrator/local-process-manager.js, management-api/tests/ontology-apply.test.js, management-api/tests/ontology-propose-vault.test.js]
 owner: jjohare
 review_trigger: the `vault` binary landing on PATH (VisionClaw WS-C), or Loom deploying `/loom/attest` (WS-H)
@@ -53,7 +53,9 @@ At the *decision* end, `handleGovernanceDecision()` relayed every kind-31403 to 
 
 11. **The outcome is read from `action` first, then `outcome`.** A real forum 31403 keys it `action`; older agentbox publishers wrote `outcome`. Reading both means neither publisher has to change to be understood.
 
-12. **An approved amendment is applied as its own diff, by `vault apply`.** A promote of a `kind: amend` proposal (an absent kind counts, provided the proposal carries a diff) stages the 31402's proposal verbatim and runs `vault --repo <root> apply <proposal.json> --expect docs=1 --set 'verified+={by: human:<npub>, at: <iso>}' --json` (`applyArgsFor`, `lib/ontology-apply.js:666`; `applyAmendProposal`, `:685`). The proposal's IRI must equal the signed IRI, its page must answer to that IRI, and a grouped proposal is refused. An exit-2 refusal throws with its code and blockers and is not ledgered. A decision that says amend but carries no proposal is refused (`:390`), and a promote whose 31402 cannot be found is refused rather than guessed (`local-process-manager.js:455`). An `approve` answering an ontology-governance amend whose digest equals the 31403's `d` tag applies as that promote; every other `approve` is dispatched as before (`_ontologyApprove`, `local-process-manager.js:379`; `48ebe60b9`).
+12. **An approved amendment is applied as its own diff, by `vault apply`.** A promote of a `kind: amend` proposal (an absent kind counts, provided the proposal carries a diff) stages the 31402's proposal verbatim and runs `vault --repo <root> apply <proposal.json> --expect docs=1 --set 'verified+={by: human:<npub>, at: <iso>}' --json` (`applyArgsFor`, `lib/ontology-apply.js:666`; `applyAmendProposal`, `:685`). The proposal's IRI must equal the signed IRI, its page must answer to that IRI, and a grouped proposal is refused. An exit-2 refusal throws with its code and blockers and is not ledgered. A decision that says amend but carries no proposal is refused (`:390`), and a promote whose 31402 cannot be found is refused rather than guessed (`local-process-manager.js:455`). An `approve` answering an ontology-governance amend whose digest equals the 31403's `d` tag applies as that promote; every other `approve` is dispatched as before (`_ontologyApprove`, `local-process-manager.js:379`; `48ebe60b9`). A replayed Promote of an applied amend is refused `STALE`, not ledgered.
+
+    **Owner question (not decided here).** A distinct second Promote of an already-applied amend is also refused `STALE`, and Decision 7 then leaves it not-applied for a reconciliation retry that can never succeed. A replay of the same event is deduplicated upstream by relay-consumer.
 
 13. **Only a rostered human may write the corpus.** Before anything else is read, `_ontologySignerRefusal` (`local-process-manager.js:503`) refuses a promote, demote or amend-approve whose signer is not in `AGENTBOX_FORUM_GOVERNANCE_SIGNERS` (projected from `[sovereign_mesh.forum_governance].signers`). An empty roster refuses every write, and this box's own identity is refused even when listed. Refusals are recorded, never thrown (`afc8a0ed6`).
 
@@ -119,3 +121,13 @@ Today's commits: `2d49681bf` (management API), `b7a1d0955` (ontology-augment), `
 The regression recorded above (the baked `vault` no longer carries `find`/`edit`/`create`/`apply`, so the decision handler's spawns fail) is fixed as the record prescribed: `2d49681bf` adds `binFor()` to `management-api/lib/ontology-apply.js`, sending `propose` and `panel` to `$VAULT_BIN` and every other verb to `$ONTOMARK_BIN` (default `ontomark`, added to the allow-listed env). `41c35fb83` names the ontomark gate in the conflict refusal. Elevation stages a flat vault (`knowledge/<id>.md`). Read the decision's `vault edit`, `vault find`, `vault create` and `vault apply` as `ontomark …`; `vault propose` is unchanged.
 
 Gates: `node --test tests/ontology-apply.test.js tests/elevation-stage.test.js` 81 passed, 0 failed, with both binaries stubbed; the real `ontomark validate --strict --json` returns the `knowledge.issues[].path` shape `elevation-stage` reads. Statuses are left as recorded: the live end-to-end (a forum-signed decision applied in the running image) is unproven until the owner rebuilds.
+
+## Close-out 2026-10-31
+
+Status moves to `accepted / complete / staged`; the remaining gap named on 2026-10-30 ("the four spawns above, then an `E2E_REAL_VAULT=1` run against the baked binaries") is closed in source.
+
+- **Spawns.** `binFor()` (`management-api/lib/ontology-apply.js:156-159`) sends only `propose` and `panel` to `$VAULT_BIN`; `find` (`:228`), `edit` (`:427`), `create` (`:485`) and `apply` (`:675`) go to `$ONTOMARK_BIN`. Every verb exists in the baked binaries (`ontomark --help`: `find retrieve tree edit create apply validate …`; `vault --help`: `validate propose rank panel gate conflicts build certify repair`).
+- **Unit and contract.** `node --test management-api/tests/{ontology-apply,ontology-propose-vault,elevation-stage}.test.js` → 95 pass, 0 fail; `node --test tests/contract/governance-flow.spec.js` → 24 pass, 0 fail.
+- **Real-binary end to end** (forum `scripts/e2e-ontology-promotion.sh`, nostr-rust-forum ADR-2013 close-out, forum commit `64589c7`): `E2E_REAL_VAULT=1 E2E_LEDGER=stub` → 100 passed, 0 failed against `vault 0.1.0` and `ontomark 0.7.0` on a scratch corpus; stub mode 30/30. The earlier 33 failures were not rejected verbs: the harness lacked the signer roster and stored-request lookup this handler now requires, still used the `knowledge/pages/` layout, and its `events` shim lacked `d_tag`.
+- **Behaviour the record had not stated.** A Promote of a diff-bearing amend applies once: a replayed Promote is refused `STALE` by `ontomark apply` (nothing written, no second attestation, no ledger entry). The diff-less re-attestation path is covered by `ontology-apply.test.js`.
+- **Scope of the evidence.** The ledger in the real-binary run was a local recording stub (no `loom-facade` build here), and relay publication is dry-run only. A forum-signed decision applied in the running image remains unproven until the owner rebuilds; activation stays `staged`.
