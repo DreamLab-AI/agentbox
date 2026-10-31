@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: e8d59c23c265b9a8e1f055884b1b9721299aa614
+verified_commit: b65c3d4eda3c2449d7ea8512ae1bda33a24c2312
 verified_paths: [skills/ontology-augment/scripts/ontology-augment.sh, skills/ontology-augment/SKILL.md, skills/ontology-augment/references/REFERENCE.md, skills/ontology-augment/references/EXAMPLES.md, tests/skills/ontology-augment-grounding.test.sh]
 owner: jjohare
 review_trigger: VisionClaw ADR-2128 (versionIRI) or ADR-2127 (tri-valued answers) landing; an agent decision traced to an empty Loom or vault result; the ontology-augment skill's output format changing; the first session on a booted image whose ontology-augment output cites its generation (activation → live)
@@ -78,3 +78,9 @@ Format change, as Consequences 3 anticipated: `source` gains the value `"ontomar
 `bash tests/skills/ontology-augment-grounding.test.sh` gives 87 passed, 0 failed at `426b43250`, with a stub `ontomark` answering the corpus verbs and the stub `vault` left for the fallback path. Re-verified by `git diff 044f1d689..426b43250 -- <governed paths>` and by reading each decision against the script. The decision holds.
 
 **Re-verified 2026-10-17 at `e8d59c23c`.** The only change on a governed path since the previous verification is the flat-vault pages default (agentbox `a2c6d5520`, ADR-2028 amendment; Ontomark ADR-OM-007): `[vault].pages = "."` in `agentbox.toml` and the default manifest, the schema default and description for that key, the entrypoint deriving `VAULT_PAGES`/`VAULT_WORKING_PAGES` from it, and the ontology skills' corpus-verb names (`ontomark find|retrieve|tree`). None of it touches this record's decision. Re-verified by `git diff 426b43250..e8d59c23c -- <verified_paths>`; no re-implementation was needed.
+
+## Re-verification — 2026-10-31 at `b65c3d4ed`
+
+Today's commits: `2d49681bf` (management API), `b7a1d0955` (ontology-augment), `f4beec643` (skills and docs), `7aa9365d4` (path tiers), `6aaf3bb46` (podcast submitter), `eff6c29c1`, `4a07fbfb3` (ontomark v0.6.1 pin). Owner decision 2026-10-31 (Ontomark DEPRECATION §14): `ontomark` is the one corpus CLI; `vault` keeps only the governance transport, `propose` and `panel publish`, per Ontomark ADR-OM-005 decisions 5-6.
+
+The `vault` fallback described in the 2026-10-17 note is removed (`b7a1d0955`): without `ontomark` the script stops and names PATH, `/opt/agentbox/bin/ontomark` and `ONTOMARK_BIN`. When the Loom does not answer, `neighbours` falls back to `ontomark tree` (asserted edges only) and still says so on stderr; the envelope `source` in the examples is `ontomark`. Envelope, silence and generation semantics are unchanged. Gate: `tests/skills/ontology-augment-grounding.test.sh` 87 passed, 0 failed. The decision holds.

@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: e786197ccb9f56c638d4b0181e77f33ab38b7db9
+verified_commit: b65c3d4eda3c2449d7ea8512ae1bda33a24c2312
 verified_paths: [docs/BASELINE-container.md]
 owner: jjohare
 review_trigger: a change to [privacy_filter].port, to the [program:opf-router] supervisor block, or to the BASELINE-container supervised-program table
@@ -105,3 +105,5 @@ The routed BASELINE edit has landed (`f8e61efac`, 2026-09-05, re-checked at `e78
 - `grep -n 8084 docs/BASELINE-container.md` → only the changelog lines 28 and 327, which record this correction. No row describes a supervised program serving `:8084`.
 - The supervised-services table cites `[program:<name>]`, not line numbers (changelog 0.3.0, line 28). `grep -n 'flake.nix:[0-9]'` → two citations outside the table (lines 127 and 141).
 - Live: `ss -ltnp` → `127.0.0.1:9092` held by `python3.12` pid 922 (`opf-router`), and nothing listening on `:8084`.
+
+Re-verified 2026-10-31 at `b65c3d4ed`. Governed paths changed: `docs/BASELINE-container.md`: vault section wording: `pages` defaults to `.`, corpus verbs use `ontomark`, the `ONTOLOGY_PAGES_DIR` override is recorded as removed (`f4beec643`, `7aa9365d4`); the supervised-program table is unchanged. No section this record governs changed; the decision holds. Re-verified by `git diff e786197cc..b65c3d4ed -- <verified_paths>`; no re-implementation was needed. The image carries it at the next rebuild.

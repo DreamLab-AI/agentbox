@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 358e5d32c81e8a4259d754568919a962461b9a31
+verified_commit: b65c3d4eda3c2449d7ea8512ae1bda33a24c2312
 verified_paths: [agentbox.sh, scripts/runtime-delivery.*, scripts/refresh-compose.sh, config/build-registry.json, lib/image-layers.nix, flake.nix, tests/config/runtime-delivery*, .github/workflows/invariants.yml, docs/developer/incremental-builds.md]
 owner: jjohare
 review_trigger: layer grouping, delivery transport, candidate validation or cache retention changes
@@ -188,3 +188,5 @@ Re-verified 2026-10-29 at `00039efb1e4a70402df86ad19cf76894fe3b9a8f` for ADR-215
 - `docker images | grep recovery` lists `agentbox:recovery-7fb68740e2f3`. A recovery tag exists, but it cannot be dated to this cycle: Nix-built images report `Created` 0001-01-01.
 
 Implementation axis and `verified_commit` are unchanged; the timings are one cycle, not a benchmark.
+
+Re-verified 2026-10-31 at `b65c3d4ed`. Governed paths changed: `.github/workflows/invariants.yml`: `check-no-logseq-paths` also rejects `mainKnowledgeGraph` and `pages/` literals (`bbb942058`); `flake.nix`: the ontomark comment now names the verbs it owns (`4a07fbfb3`). No section this record governs changed; the decision holds. Re-verified by `git diff 358e5d32c..b65c3d4ed -- <verified_paths>`; no re-implementation was needed. The image carries it at the next rebuild.

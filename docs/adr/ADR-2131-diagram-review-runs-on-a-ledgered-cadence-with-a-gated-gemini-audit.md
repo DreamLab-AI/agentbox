@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: f7aa7f68e82f75b65afff8e4c1e0ad7154835ffe
+verified_commit: b65c3d4eda3c2449d7ea8512ae1bda33a24c2312
 verified_paths: [skills/sealmap-review/scripts/review-cadence.cjs, skills/sealmap-review/run-cron.sh, skills/sealmap-review/crontab, schema/agentbox.toml.schema.json]
 owner: jjohare
 review_trigger: the first month of real Gemini spend (compare ledger cost with the estimate); a change to Gemini or Z.AI pricing; a GLM model change behind [consultants.zai]; a second corpus joining repos
@@ -137,3 +137,5 @@ and the thinking counts against the cap, so at 1,500 most triage calls returned 
 failed topics gave 0 empty replies in 26 calls. The decision is unchanged: cadence, sharding, both GLM passes and the
 gated Gemini audit are as recorded, and this record never fixed the triage budget. Tests: 43/43 in
 `review-cadence.test.cjs`, one new assertion pins the cap. Takes effect at the next image rebuild.
+
+Re-verified 2026-10-31 at `b65c3d4ed`. Governed paths changed: `schema/agentbox.toml.schema.json`: the `[vault].working` description says pages sit at the working root (`f4beec643`). No section this record governs changed; the decision holds. Re-verified by `git diff f7aa7f68e..b65c3d4ed -- <verified_paths>`; no re-implementation was needed. The image carries it at the next rebuild.

@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: e786197ccb9f56c638d4b0181e77f33ab38b7db9
+verified_commit: b65c3d4eda3c2449d7ea8512ae1bda33a24c2312
 verified_paths: [lib/ontomark.nix]
 owner: jjohare
 review_trigger: Before shared workspace extraction or any consumer dependency or generation migration
@@ -101,3 +101,9 @@ Owner decisions, with evidence in [Ontomark ADR-OM-005](https://github.com/Dream
 - `flake.nix:948-959` bakes `ontomarkPkg = import ./lib/ontomark.nix` beside `vaultPkg` under the same gate, and the comment there calls it "agentbox ADR-2136 first step". `lib/ontomark.nix` exists on main.
 - In the running image, built from `e786197cc` (receipt `.agentbox-build/active.json`, `sourceDirty: false`), `command -v ontomark` → `/nix/store/h0x241pq9mqv9mhb0p2v869nn564b9vf-ontomark-0.6.0/bin/ontomark`.
 - Not done: Decision 1's repin of the `vault` source and the preservation of the `vault` command contract. The current `vaultSrc` already drops `find`/`retrieve`/`tree`/`edit`/`create`/`apply` (see ADR-2109's close-out), which breaks that contract for the management-api governance path.
+
+## Re-verification — 2026-10-31 at `b65c3d4ed` (ontomark 0.6.1 pin)
+
+Today's commits: `2d49681bf` (management API), `b7a1d0955` (ontology-augment), `f4beec643` (skills and docs), `7aa9365d4` (path tiers), `6aaf3bb46` (podcast submitter), `eff6c29c1`, `4a07fbfb3` (ontomark v0.6.1 pin). Owner decision 2026-10-31 (Ontomark DEPRECATION §14): `ontomark` is the one corpus CLI; `vault` keeps only the governance transport, `propose` and `panel publish`, per Ontomark ADR-OM-005 decisions 5-6.
+
+`lib/ontomark.nix` moves from 0.6.0 to 0.6.1 for both the release asset and the `jev` source build (`4a07fbfb3`). 0.6.1 applies one CommonMark fence rule across the Ontomark workspace, so the baked CLI agrees with visionGraph's publish pipeline (also pinned to v0.6.1) about which pages carry outline residue (0.6.0 read a line such as ```` ```prose``` ```` as an opening fence and hid what followed). 0.6.1 is also on crates.io (`ontomark`, `ontomark-compile`, `ontomark-jev`, `ontomark-profile-estate`; `ontomark-parse` 0.1.3, `ontomark-ingest` 0.1.1), and its release assets are now built by Ontomark's `release.yml` from the tag. Statuses are unchanged: this record's decision is still `proposed`, and the running image carries 0.6.0 until the owner's rebuild.

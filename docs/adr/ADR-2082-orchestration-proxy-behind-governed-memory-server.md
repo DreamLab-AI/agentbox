@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 3b498088e5a35e78158a9eb8d6f0266996d31f82
+verified_commit: b65c3d4eda3c2449d7ea8512ae1bda33a24c2312
 verified_paths: [mcp/servers/lib/orchestration-proxy.js, mcp/servers/ruvector-mcp.cjs, mcp/servers/lib/ruvector-gates.js, config/entrypoint-unified.sh]
 owner: jjohare
 review_trigger: next image rebuild (activation), a Ruflo release that changes plugin/runtime resolution or renames the swarm/agent/task/coordination tools, or any proposal to forward a memory_* tool
@@ -267,3 +267,5 @@ Security follow-up re-verified 2026-10-29 at `7d8c3b2dfe165f4ab3f8a5e4f62b8294ea
 ## Close-out 2026-10-30 — staged → live
 
 The record's activation event was the next image rebuild. Executed against the baked server on the running image: `node /opt/agentbox/mcp/servers/ruvector-mcp.cjs` with the `claude-flow` env from `/home/devuser/workspace/.mcp.json`, JSON-RPC `initialize` then `tools/list` → 56 tools. Besides the native stubs and the ten governed `memory_*` tools, the list carries the projected Ruflo capability: `agent_execute agent_terminate agent_status agent_list agent_pool agent_health agent_update agent_logs swarm_pheromone_update swarm_pheromone_status swarm_shutdown swarm_health` and the `rure_*` set (8 tools). That matches the running manifest's `orchestration_tools = "swarm,agent,rure"` (`/etc/agentbox.toml:456`). No forwarded `memory_*` tool is present. The proxy's denial of a forwarded `memory_*` call was not re-exercised here.
+
+Re-verified 2026-10-31 at `b65c3d4ed`. Governed paths changed: `config/entrypoint-unified.sh`: the `ONTOLOGY_PAGES_DIR` / `AGENTBOX_VAULT_LEGACY_PATHS` override tier is removed (ADR-2028 re-verification), `ONTO_PAGES` reads `VAULT_PAGES`, and the Phase 5d skip line says "[vault] liveness gate" (`7aa9365d4`). No section this record governs changed; the decision holds. Re-verified by `git diff 3b498088e..b65c3d4ed -- <verified_paths>`; no re-implementation was needed. The image carries it at the next rebuild.

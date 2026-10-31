@@ -18,6 +18,8 @@ lineage: ADR-2104 (a crate is the control surface, an MCP server a disposable ad
 
 # ADR-2107 — No MCP inside the estate for the corpus; agents use the vault CLI
 
+> Current amendment (2026-10-31, below): the corpus CLI is `ontomark`; `vault` keeps `propose` and `panel publish`.
+
 ## Context
 
 The estate had one corpus and four doors that disagreed about its size: raw disk
@@ -123,3 +125,9 @@ Established by:
   `vault` on PATH (all subcommands) **and** the live Loom: `/health` and
   `/loom/sparql` returned real data; `/mcp` returned 404 and the documented
   fallbacks fired.
+
+## Amendment — 2026-10-31: the corpus CLI is `ontomark`
+
+Today's commits: `2d49681bf` (management API), `b7a1d0955` (ontology-augment), `f4beec643` (skills and docs), `7aa9365d4` (path tiers), `6aaf3bb46` (podcast submitter), `eff6c29c1`, `4a07fbfb3` (ontomark v0.6.1 pin). Owner decision 2026-10-31 (Ontomark DEPRECATION §14): `ontomark` is the one corpus CLI; `vault` keeps only the governance transport, `propose` and `panel publish`, per Ontomark ADR-OM-005 decisions 5-6.
+
+The decision stands: no MCP server inside the estate fronts the corpus, and agents reach it from Bash. The CLI named in Decision 1 is now `ontomark` for `find`, `retrieve`, `tree`, `edit`, `create`, `apply`, `validate`, `gate`, `conflicts` and `build`; `vault` remains for `propose` and `panel publish` only. Skills, `agents/ontology-curator.md`, `AGENTS.md` and the management API call `ontomark` (`f4beec643`, `2d49681bf`). `ontology-augment.sh` has no `vault` fallback (`b7a1d0955`), and its `neighbours` fallback when the Loom does not answer is `ontomark tree`. Read every `vault <verb>` above as `ontomark <verb>` except `propose`. No `verified_paths` are armed on this record, so the ledger gate did not flag it; this note is the re-verification.

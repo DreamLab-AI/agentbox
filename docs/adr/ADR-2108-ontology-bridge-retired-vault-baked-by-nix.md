@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: [ADR-2022, ADR-2054]
 superseded_by: []
-verified_commit: e786197ccb9f56c638d4b0181e77f33ab38b7db9
+verified_commit: b65c3d4eda3c2449d7ea8512ae1bda33a24c2312
 verified_paths: [lib/vault.nix, flake.nix, agentbox.toml, schema/agentbox.toml.schema.json, config/entrypoint-unified.sh, mcp/mcp.json, services/agentbox-manifest/tests/golden, management-api/lib/ontology-propose.js]
 owner: jjohare
 review_trigger: a `vault --version` gate failure at boot; a request to re-register any deleted server; ontology-monitor, typed-spawn and ontology-workingset re-pointed off mcp/servers/lib/ontology-local.js (vault shipped, so this is now due; ADR-2136); a vaultSrc bump that changes the vault verb set
@@ -238,3 +238,9 @@ publication alone does not retire the current source pin or read-only helpers.
 Not claimed: the review-trigger follow-on (re-point `ontology-monitor`, `typed-spawn` and `ontology-workingset` off `ontology-local.js`); ADR-2136 still owns that. Found while verifying, and outside this record's Decision: the baked `vault 0.1.0` no longer has `find`/`retrieve`/`tree`/`edit`/`create`/`apply` ("Moved: … now live in the `ontomark` CLI"), while `flake.nix:950-953` still says vault keeps them. ADR-2109's close-out records the consumer impact.
 
 `review_trigger` (2026-10-30): the remote-push clause was closed by the 2026-10-02 pin to `github:DreamLab-AI/VisionClaw/<rev>`, and "vault shipping" fired with this close-out. The trigger now names what is still pending.
+
+## Re-verification — 2026-10-31 at `b65c3d4ed`
+
+Today's commits: `2d49681bf` (management API), `b7a1d0955` (ontology-augment), `f4beec643` (skills and docs), `7aa9365d4` (path tiers), `6aaf3bb46` (podcast submitter), `eff6c29c1`, `4a07fbfb3` (ontomark v0.6.1 pin). Owner decision 2026-10-31 (Ontomark DEPRECATION §14): `ontomark` is the one corpus CLI; `vault` keeps only the governance transport, `propose` and `panel publish`, per Ontomark ADR-OM-005 decisions 5-6.
+
+The discrepancy recorded in the 2026-10 note above is fixed: `flake.nix` no longer says `vault` keeps `find`/`retrieve`/`tree`/`edit`; its comment names the verbs `ontomark` owns and the two `vault` keeps. `lib/ontomark.nix` pins ontomark 0.6.1 (release asset sha256 `7c41ea49…`, SRI `sha256-fEHq…`; the `jev` source build at `4699ee08b`, NAR hash computed by a method that reproduces the previous `13af4234` pin). The decision (`ontology-bridge` retired; the corpus CLIs baked by Nix) holds. The running image still carries 0.6.0 until the owner's rebuild.

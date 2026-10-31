@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 21769a881315a246afaa6e9d0b39daf4ec39b5bc
+verified_commit: b65c3d4eda3c2449d7ea8512ae1bda33a24c2312
 verified_paths: [management-api/lib/ontology-apply.js, management-api/lib/ontology-propose.js, management-api/lib/kg-proposal-extractor.js, management-api/lib/elevation-publisher.js, management-api/routes/kg-elevation.js, management-api/adapters/orchestrator/local-process-manager.js, management-api/tests/ontology-apply.test.js, management-api/tests/ontology-propose-vault.test.js]
 owner: jjohare
 review_trigger: the `vault` binary landing on PATH (VisionClaw WS-C), or Loom deploying `/loom/attest` (WS-H)
@@ -112,3 +112,10 @@ Status stays `accepted / partial / staged`. Both halves of `review_trigger` have
 
 Remaining gap: the four spawns above, then an `E2E_REAL_VAULT=1` run against the baked binaries.
 
+## Re-verification — 2026-10-31 at `b65c3d4ed` (regression closed in source)
+
+Today's commits: `2d49681bf` (management API), `b7a1d0955` (ontology-augment), `f4beec643` (skills and docs), `7aa9365d4` (path tiers), `6aaf3bb46` (podcast submitter), `eff6c29c1`, `4a07fbfb3` (ontomark v0.6.1 pin). Owner decision 2026-10-31 (Ontomark DEPRECATION §14): `ontomark` is the one corpus CLI; `vault` keeps only the governance transport, `propose` and `panel publish`, per Ontomark ADR-OM-005 decisions 5-6.
+
+The regression recorded above (the baked `vault` no longer carries `find`/`edit`/`create`/`apply`, so the decision handler's spawns fail) is fixed as the record prescribed: `2d49681bf` adds `binFor()` to `management-api/lib/ontology-apply.js`, sending `propose` and `panel` to `$VAULT_BIN` and every other verb to `$ONTOMARK_BIN` (default `ontomark`, added to the allow-listed env). `41c35fb83` names the ontomark gate in the conflict refusal. Elevation stages a flat vault (`knowledge/<id>.md`). Read the decision's `vault edit`, `vault find`, `vault create` and `vault apply` as `ontomark …`; `vault propose` is unchanged.
+
+Gates: `node --test tests/ontology-apply.test.js tests/elevation-stage.test.js` 81 passed, 0 failed, with both binaries stubbed; the real `ontomark validate --strict --json` returns the `knowledge.issues[].path` shape `elevation-stage` reads. Statuses are left as recorded: the live end-to-end (a forum-signed decision applied in the running image) is unproven until the owner rebuilds.
