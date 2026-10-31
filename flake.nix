@@ -948,7 +948,7 @@
         };
         # ontomark — the released shared-ontology CLI (Ontomark ADR-OM-005; agentbox
         # ADR-2136 first step). Baked BESIDE vault under the same gate: it owns
-        # find/retrieve/tree/edit/create/validate/gate/conflicts/build (both scopes);
+        # find/retrieve/tree/edit/create/apply/validate/gate/conflicts/build (both scopes);
         # vault keeps only the governance transport, `propose` and `panel publish`
         # (Ontomark ADR-OM-005 decisions 5-6, DEPRECATION §13-14).
         # Fetched as the release's static binary by digest, so this image runs the

@@ -472,7 +472,7 @@ const CREATE_KIND = 'create';
  * The `ontomark create` invocation for an approved create-proposal.
  *
  * The ONE place the create interface is written (VisionClaw vault, ws-vc-final
- * item 12): `vault --repo <root> create <staged-page-file> --expect docs=1
+ * item 12): `ontomark --repo <root> create <staged-page-file> --expect docs=1
  * --json` writes `knowledge/<Title>.md` only if it is absent, validates
  * it, and stamps `status: stable` plus the human `verified` entry IN THE SAME
  * WRITE; exit 2 means the page exists (a race). The signer and instant are
@@ -665,7 +665,7 @@ function isAmendProposal(proposal) {
 
 /**
  * The `ontomark apply` invocation for an approved amendment — the ONE place the
- * interface is written: `vault --repo <root> apply <proposal.json> --expect
+ * interface is written: `ontomark --repo <root> apply <proposal.json> --expect
  * docs=1 --set 'verified+={by: human:<npub>, at: <iso>}' --json`. The vault
  * applies the proposal's own diff and appends the human attestation in the
  * same write; exit 2 is a refusal with nothing written.
