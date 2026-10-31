@@ -321,8 +321,8 @@ test('run: --yes without RUVECTOR_ADMIN_WRITE=true is refused before any read', 
 });
 
 test('run: write, then an identical re-run embeds nothing (manifest no-op and plan-level idempotence)', async () => {
-  const stale = { id: 'knowledge/pages/vanished::old', key: 'vanished::old', source_type: 'knowledge', value: { content_hash: 'q' }, metadata: { source_file: 'Deleted.md' }, embedding: '[0]' };
-  const keep = { id: 'knowledge/pages/flash', key: 'flash', source_type: 'claude', value: {}, metadata: {}, embedding: '[0]' };
+  const stale = { id: `${base.namespace}/vanished::old`, key: 'vanished::old', source_type: 'knowledge', value: { content_hash: 'q' }, metadata: { source_file: 'Deleted.md' }, embedding: '[0]' };
+  const keep = { id: `${base.namespace}/flash`, key: 'flash', source_type: 'claude', value: {}, metadata: {}, embedding: '[0]' };
   const db = fakeDb([stale, keep]); const emb = fakeEmbedder();
   const env = { RUVECTOR_ADMIN_WRITE: 'true' };
   const opts = { ...base, write: true, prune: true };

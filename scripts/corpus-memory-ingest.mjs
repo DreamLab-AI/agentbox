@@ -22,7 +22,7 @@
 //                       kept. Off by default. The deleted keys are written to a receipt
 //                       (JSONL) BEFORE the delete so a tombstone consumer can replay them.
 //   --force             re-embed everything, ignore the manifest fast path
-//   --vault-root DIR    visionGraph checkout (default /home/devuser/workspace/visionGraph)
+//   --vault-root DIR    visionGraph checkout (default $VAULT_ROOT from the manifest, ADR-2028; no literal fallback)
 //   --namespace NS      default knowledge/pages
 //   --max-failed N      abort before the prune when more chunks fail (default 1000)
 //   --receipt-dir DIR   prune receipts and the last plan (default
@@ -306,7 +306,7 @@ export function summarise(plan, { generation, namespace, existingRows }) {
 
 export function parseArgs(argv) {
   const o = { yes: false, dryRun: false, includeWorking: false, prune: false, force: false, json: false,
-    vaultRoot: '/home/devuser/workspace/visionGraph', namespace: 'knowledge/pages', maxFailed: 1000,
+    vaultRoot: process.env.VAULT_ROOT || '', namespace: 'knowledge/pages', maxFailed: 1000,
     receiptDir: '/home/devuser/workspace/.tmp/corpus-memory-ingest' };
   const val = (i, f) => { if (i + 1 >= argv.length) throw new Error(`${f} needs a value`); return argv[i + 1]; };
   for (let i = 0; i < argv.length; i++) {
@@ -371,6 +371,7 @@ async function main() {
   const die = (m) => { log(`FATAL: ${m}`); process.exit(1); };
   let opts;
   try { opts = parseArgs(process.argv.slice(2)); } catch (e) { die(e.message); }
+  if (!opts.vaultRoot) die('no vault: set [vault] in agentbox.toml (VAULT_ROOT) or pass --vault-root (ADR-2028)');
   const conninfo = process.env.RUVECTOR_PG_CONNINFO || '';
   if (!conninfo) die('RUVECTOR_PG_CONNINFO not set');
   const { Pool } = loadPg(die);

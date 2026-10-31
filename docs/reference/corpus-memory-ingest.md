@@ -5,7 +5,7 @@
 ## Usage
 
 ```
-node scripts/corpus-memory-ingest.mjs                         # dry-run: print the plan, write nothing
+node scripts/corpus-memory-ingest.mjs                         # dry-run (vault from $VAULT_ROOT or --vault-root): print the plan, write nothing
 RUVECTOR_ADMIN_WRITE=true node scripts/corpus-memory-ingest.mjs --yes [--prune] [--include-working]
 ```
 
@@ -22,7 +22,7 @@ Reverse-engineered from the 20,119 rows written between 2026-03-16 and 2026-04-1
 
 | Part | Rule |
 |---|---|
-| id / key | id `knowledge/pages/<key>`, `source_type` `knowledge`, key `<page-slug>::<section-slug>[::p<N>]` |
+| id / key | id `<namespace>/<key>`, `source_type` `knowledge`, key `<page-slug>::<section-slug>[::p<N>]` |
 | page slug | file stem, lower-cased; characters outside `[a-z0-9]`, whitespace, `-`, `/`, `:` dropped; `___` read as `/`; `_` dropped; each whitespace char becomes `-` (no collapsing or trimming) |
 | section | text before the first `##`/`###` heading is `section-0`; every `##`/`###` at column 0 outside a fenced block starts a section; `#` and `####`+ do not split. Section slug = same slug function of the heading text |
 | chunk_index | position in the section list, counting an empty `section-0` |
