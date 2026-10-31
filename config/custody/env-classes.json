@@ -579,6 +579,7 @@
         "OLLAMA_MODEL",
         "ONTOLOGY_ALIASES",
         "ONTOLOGY_CONDENSE_ENDPOINT",
+        "ONTOMARK_BIN",
         "ONTO_BUILDER",
         "ONTO_PAGES",
         "OPENAI_BASE_URL",
