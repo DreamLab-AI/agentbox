@@ -306,9 +306,11 @@ for (const [name, provConf] of Object.entries(providers)) {
 }
 
 // E010: desktop.enabled=true forbids any profile marked headless_only=true.
-// Profile files are read from /workspace/profiles/*/profile.toml when desktop is enabled.
+// Profile files are read from $WORKSPACE/profiles/*/profile.toml when desktop is enabled.
+// ADR-2066: the literal /workspace is retired; the root follows $WORKSPACE and
+// falls back to /home/devuser/workspace (same rule as nostr-bridge loadSigner).
 if (desktop.enabled === true) {
-  const profilesRoot = '/workspace/profiles';
+  const profilesRoot = path.join(process.env.WORKSPACE || '/home/devuser/workspace', 'profiles');
   if (fs.existsSync(profilesRoot)) {
     let profileDirs = [];
     try {

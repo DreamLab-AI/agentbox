@@ -345,3 +345,7 @@ node scripts/agentbox-config-validate.js agentbox.toml → valid
 ```
 
 `tests/config/setup-ui-drift.test.mjs` has three failures that predate this change (`user_cron` has no UI label or seed entry); a fourth, a stale `apply.json`, is fixed by the regeneration.
+
+## Re-verification — 2026-10-31 (`1e41b64b624af97cf49771d08da82fbf3743acbd`)
+
+Tripped by the W8 ADR-sprint changes. Governed-path delta since `753788564`: `agentbox.toml` gains only four `[model_routing.routes]` entries (`diagram-polish`, `diagram-narrative`, `diagram-synthesis`, `seal-review`) and a comment block (ADR-2130); `scripts/agentbox-config-validate.js` changes only the E010 profiles root, from the retired `/workspace/profiles` to `$WORKSPACE/profiles` (ADR-2066). No key, table or code path this record decides is touched, so the decision and status axes are unchanged. Judged from the diff (`git diff {old[:9]}..{V[:9]} -- <governed path>`), not by re-running this record's own acceptance checks.

@@ -1746,6 +1746,20 @@ debugging         = "claude:claude-fable-5-1"
 packaging         = "codex:gpt-6-astra"          # kit-originated activity (no upstream template)
 release           = "claude:claude-sonnet-5-5" # kit-originated activity (no upstream template)
 
+# ADR-2130: diagram work (sealmap) routes by activity and never names a model id
+# in a skill. Hosts: `loom` = the Ontology Loom facade (${LOOM_BASE_URL}, the :8084
+# door, OpenAI chat-completions, LAN, $0 marginal; never target the model port);
+# `zai` = GLM on Z.AI's Anthropic Messages API (metered, leaves the estate,
+# ADR-2053; credentials under [providers.zai], auth home [consultants.zai].home).
+# Tiers are SOFT defaults until the measured descent has run on held-out data
+# (docs/diagrams/.tiers.json records a confirmed, sticky de-escalation per corpus).
+# Seal review must be a different model family from the author. Claude ids follow
+# the live ids above (ADR-2130 names the families sonnet-5 / opus-5 / fable-5-1).
+diagram-polish    = "loom:qwen3.8-27B -> claude:claude-sonnet-5-5"          # T1
+diagram-narrative = "claude:claude-sonnet-5-5 -> claude:claude-opus-5-5"    # T2
+diagram-synthesis = "claude:claude-opus-5-5 -> claude:claude-fable-5-1"     # T3
+seal-review       = "zai:glm-5.3 -> claude:claude-fable-5-1"                # T3 cross-family
+
 # ── ADR-2080: metaharness cost-optimal router as a dedicated AoE session ─────
 # Phase 0 of ADR-2079. The baked ruflo closure carries @metaharness/router
 # (KRR / k-NN, optional FastGRNN) but the npm tarball ships NO router artefacts

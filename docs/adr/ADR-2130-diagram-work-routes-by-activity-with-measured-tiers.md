@@ -3,12 +3,12 @@ id: ADR-2130
 title: Diagram skills route by four model_routing activities on loom and zai hosts, with tiers set by measured descent and seal review always cross-family
 date: 2026-10-05
 decision_status: accepted
-implementation_status: none
+implementation_status: partial
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: 66f975561c95cef63f080153ac29fc9dbfe576bd
-verified_paths: [services/agentbox-manifest/src/routing.rs, skills/sealmap]
+verified_commit: 1e41b64b624af97cf49771d08da82fbf3743acbd
+verified_paths: [services/agentbox-manifest/src/routing.rs, agentbox.toml, schema/agentbox.toml.schema.json]
 owner: jjohare
 review_trigger: the sealmap skill landing (DESIGN §10 step 5) with the four routes and two hosts; a Loom model swap; a change of the GLM model behind [consultants.zai]; a seal review whose author and reviewer share a family; ADR-2079's router consolidating [model_routing.routes]
 repo: agentbox
@@ -45,7 +45,7 @@ Two hosts are added, described the same way as `claude → claude-code` and `cod
 ## Consequences
 
 - A model swap, including a Loom model swap, is one manifest edit and touches no skill. T0 work never spends tokens.
-- **Nothing is live yet.** The four routes, the `loom`/`zai` hosts in `route_re`, explicit `host_provider` arms for both, and the `.tiers.json` reader are implemented together with the `sealmap` skill (sealmap DESIGN §10 step 5). Until then, an `agentbox.toml` route that names `loom` or `zai` is rejected by the parser. This record changes no manifest, flake or code.
+- **Landed 2026-10-31 (agentbox side); the sealmap side is still open.** The four routes, the `loom`/`zai` hosts in `route_re` and explicit `host_provider` arms are implemented and tested here. The `.tiers.json` reader and the same-family seal-review refusal belong to the `sealmap` tool, which is packaged from `DreamLab-AI/sealmap` (`lib/sealmap.nix`) and is not in this repository, so they remain open. The path `skills/sealmap` this record named does not exist and is not created: the in-repo skill is `skills/sealmap-review`, which the record says is not an activity and not a `seal-review` substitute.
 - Neither new host maps to the agentic-qe subscription tier. `loom` is the nearest constructible type to `openai` (an OpenAI-compatible base URL). `zai` has no constructible type, so the QE-fleet projection must skip it rather than mislabel it as `codex`.
 - `seal-review` on `zai` sends topic content to a cloud provider. This decision does not yet name a LAN-only reviewer from another family, so a corpus that must not leave the estate has no conforming seal reviewer. That is an open item, not a licence to review it with the same family.
 - What this forecloses: a skill choosing a model by id, a same-family seal review, and lowering a tier without a held-out measurement.
@@ -55,3 +55,31 @@ Two hosts are added, described the same way as `claude → claude-code` and `cod
 ## Verification
 
 `implementation_status: none`. Checked at `66f975561` by reading committed code: `routing.rs:82-87`'s regex admits only `claude|codex`; `routing.rs:68-73` maps every other host to `codex`; the test `an_unknown_host_is_rejected` (`routing.rs:412`) holds; and no `skills/sealmap/` directory exists. The `[model_routing.routes]`, `[providers.zai]`, `[consultants.zai]` and `[[interaction_plane.session_seeds]] slug = "loom"` keys were read in `agentbox.toml`. **Acceptance for `complete`:** the four routes parse; `host_provider` has explicit `loom` and `zai` arms; and the sealmap skill refuses a same-family seal review in a test.
+
+## Close-out 2026-10-31 (partial)
+
+**Verified at `2a36c42d8`:** the regex admitted only `claude|codex`, `host_provider` sent every other host to `codex`, and `agentbox.toml` had none of the four routes. `sealmap-review` exists in-repo (`skills/sealmap-review`, also baked at `/opt/agentbox/skills`), already registered and lint-clean, so no skills authoring step is owed. `skills/sealmap` was never a path in this repo.
+
+**Implemented:**
+
+- `routing.rs`: `route_re` admits `claude|codex|loom|zai` as start and rung. `host_provider` has explicit arms: `loom` -> `openai` (constructible), `zai` -> `zai` (deliberately absent from `AQE_CONSTRUCTIBLE`, so the agentic-qe projection skips it and never mislabels it `codex`).
+- `schema/agentbox.toml.schema.json`: the twelve route patterns widened and the four activities added.
+- `agentbox.toml`: `diagram-polish`, `diagram-narrative`, `diagram-synthesis` and `seal-review` as the record's table gives them. Claude ids follow the manifest's live ids (`claude-sonnet-5-5`, `claude-opus-5-5`, `claude-fable-5-1`), not the shorthand `claude-sonnet-5` / `claude-opus-5` in this record's table. The Loom start model is the record's `qwen3.8-27B`; the Loom's current alias is `hemmingway-1.5-q8_0` and the workspace notes say old `qwen3.8` names are still accepted, which this change did not verify against a live Loom. Models are soft defaults.
+
+**Tests:**
+
+```
+cd services/agentbox-manifest && cargo test --offline     # 210 passed across all binaries, golden llm-config unchanged
+#   new: the_four_diagram_routes_parse_as_start_and_as_rung, host_provider_has_an_explicit_arm_for_every_admitted_host,
+#        a_zai_route_is_never_projected_as_an_agent_override, the_shipped_manifest_routes_all_parse_and_include_the_diagram_activities
+node scripts/agentbox-config-validate.js agentbox.toml    # valid, same 6 advisory warnings as the primary checkout
+node scripts/ci/check-manifest-catalogue.js               # PASS, 118 gate paths
+```
+
+**Remaining, so `implementation_status` stays `partial`:**
+
+1. The `sealmap` tool must read these routes, refuse a same-family seal review in a test (this record's acceptance), and own the `.tiers.json` reader. All of it lives in `DreamLab-AI/sealmap`.
+2. The measured descent has not run. The tiers are soft defaults until accuracy is measured on held-out data, one step at a time within 0.03.
+3. A corpus that must not leave the estate still has no conforming LAN-only cross-family seal reviewer (an open item the record already names).
+
+`activation_status` stays `inactive`: the projection skips these activities for the QE fleet (none maps to an `AGENT_ACTIVITY_MAP` entry), and nothing consumes them until `sealmap` does.
