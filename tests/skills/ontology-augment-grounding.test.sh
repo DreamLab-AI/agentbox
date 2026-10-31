@@ -39,6 +39,11 @@
 #        HTTP 500 / unreachable / no verdict → degraded (exit 0); base URL from
 #        VISIONCLAW_API_URL or agentbox.toml [skills.ontology].visionclaw_api_url;
 #        {subject,class} and {subject,property,object} bodies; scope.generation cited
+#  23. result labels and --ref (2026-10-31): every envelope carries call_id and
+#      refs (E/N/P/S labels, unique per call, deterministic, additive to the
+#      unchanged .result); --ref <call_id>:<label> resolves through a per-call
+#      cache file under ${XDG_RUNTIME_DIR:-/tmp}, rejects malformed or unknown
+#      refs with exit 2, and an unusable cache never costs the answer.
 #
 # Run: bash tests/skills/ontology-augment-grounding.test.sh
 set -u
@@ -280,7 +285,7 @@ chmod +x "$BIN/ontomark"
 run() {
   (cd "$WORK" && env -u VAULT_REPO -u VAULT_GENERATION_FILE -u VISIONCLAW_API_URL \
      PATH="$BIN:$PATH" AGENTBOX_CONFIG="$WORK/agentbox.toml" \
-     STUB_VAULT_LOG="$WORK/vault.log" ONTOLOGY_TIMEOUT_SECS=3 "$@")
+     STUB_VAULT_LOG="$WORK/vault.log" ONTOLOGY_TIMEOUT_SECS=3 XDG_RUNTIME_DIR="$WORK/xdg" "$@")
 }
 
 # 1. silent
@@ -523,6 +528,96 @@ check "check: base URL from agentbox.toml [skills.ontology]" "$out" '.grounding 
 mv "$WORK/agentbox.toml.bak" "$WORK/agentbox.toml"
 run bash "$S" check s-false >/dev/null 2>&1; rc=$?
 [ "$rc" -eq 2 ] && ok "check: missing class/property is a usage error (exit 2)" || bad "check: usage error" "rc=$rc"
+
+# 23. result labels and --ref
+mkdir -p "$WORK/xdg"; XDGD="$WORK/xdg/ontology-augment"
+out="$(run env LOOM_BASE_URL="$STUB" bash "$S" sparql 'SELECT ?c WHERE { ?c ?p ?o } LIMIT 1 #HIT' 2>/dev/null)"
+check "labels: envelope has a call_id"                   "$out" '.call_id | test("^c-[0-9a-f]{8}$")'
+check "labels: sparql IRI is S1, kind S"                  "$out" \
+  '.refs == [{"label":"S1","kind":"S","id":"https://narrativegoldmine.com/class/smart-contract"}]'
+check "labels: .result is untouched, old fields intact"   "$out" \
+  '.result.rows == [["https://narrativegoldmine.com/class/smart-contract"]] and .grounding == "answered" and .source == "loom" and .generation.id == "visionGraph@stubgen0001"'
+check "labels: call_id and refs sit before result"        "$out" '(keys_unsorted | index("refs")) < (keys_unsorted | index("result"))'
+[ -f "$XDGD/$(printf '%s' "$out" | jq -r .call_id).json" ] && ok "labels: call record written under XDG_RUNTIME_DIR" || bad "labels: call record written" "$(ls -la "$XDGD" 2>&1)"
+[ "$(stat -c %a "$XDGD")" = "700" ] && ok "labels: cache dir is mode 0700" || bad "labels: cache dir mode" "$(stat -c %a "$XDGD")"
+
+out1="$(run bash "$S" search escrow 2>/dev/null)"; out2="$(run bash "$S" search escrow 2>/dev/null)"
+check "labels: ontomark search entry is E1 with its title" "$out1" '.refs == [{"label":"E1","kind":"E","id":"Escrow Oracle","title":"Escrow Oracle"}]'
+[ "$(printf '%s' "$out1" | jq -c .refs)" = "$(printf '%s' "$out2" | jq -c .refs)" ] \
+  && ok "labels: deterministic for the same body" || bad "labels: deterministic" "$out1" "$out2"
+[ "$(printf '%s' "$out1" | jq -r .call_id)" != "$(printf '%s' "$out2" | jq -r .call_id)" ] \
+  && ok "labels: call_id differs between calls" || bad "labels: call_id differs"
+out="$(run bash "$S" ask escrow 2>/dev/null)"
+check "labels: ask seeds are E-labelled"                  "$out" '.refs[0] | .label == "E1" and .id == "Escrow Oracle"'
+
+out="$(run env LOOM_BASE_URL="$STUB" bash "$S" neighbours urn:ngm:class:live-hit 2>/dev/null)"
+check "labels: neighbours N1..N4 with via, unique, subject excluded" "$out" \
+  '[.refs[] | "\(.label) \(.via) \(.id)"] == ["N1 is-a urn:ngm:class:parent","N2 ancestor urn:ngm:class:grandparent","N3 requires urn:ngm:class:a","N4 requires urn:ngm:class:b"]
+   and ((.refs | map(.label) | unique | length) == (.refs | length))'
+out="$(run env LOOM_BASE_URL="$STUB" bash "$S" paths live-a live-b 2>/dev/null)"
+check "labels: path steps are P1, P2"                     "$out" '[.refs[] | "\(.label) \(.id)"] == ["P1 live-a","P2 live-b"]'
+PCID="$(printf '%s' "$out" | jq -r .call_id)"
+out="$(run env LOOM_BASE_URL="http://127.0.0.1:1" bash "$S" neighbours hub 2>/dev/null)"
+check "labels: tree fallback children are N-labelled"     "$out" '[.refs[] | .label + " " + .id] == ["N1 A","N2 B"]'
+
+out="$(run env LOOM_BASE_URL="$STUB" bash "$S" sparql 'SELECT ?c WHERE { ?c a <urn:x:Nope> } LIMIT 5' 2>/dev/null)"
+check "labels: a silent call has call_id and empty refs"  "$out" '.refs == [] and (.call_id | length) > 0'
+[ ! -f "$XDGD/$(printf '%s' "$out" | jq -r .call_id).json" ] && ok "labels: nothing cached when there is nothing to label" || bad "labels: empty refs cached"
+
+# --ref
+: > "$WORK/vault.log"
+out="$(run env LOOM_BASE_URL="$STUB" bash "$S" paths --ref "$PCID:P1" --ref "$PCID:P2" 2>"$WORK/err")"; rc=$?
+[ "$rc" -eq 0 ] && ok "--ref: paths with two refs, exit 0" || bad "--ref: paths" "rc=$rc" "$(cat "$WORK/err")"
+check "--ref: both ends resolved (live-a → live-b answered)" "$out" '.grounding == "answered" and .result.result.structuredContent.result.hops == 1'
+grep -q -- "--ref $PCID:P1 -> live-a" "$WORK/err" && ok "--ref: resolution is announced on stderr" || bad "--ref: stderr" "$(cat "$WORK/err")"
+out="$(run env LOOM_BASE_URL="$STUB" bash "$S" paths live-a --ref "$PCID:P2" 2>/dev/null)"
+check "--ref: mixes with a literal positional"            "$out" '.grounding == "answered" and .source == "loom"'
+SCID="$(printf '%s' "$out1" | jq -r .call_id)"
+run bash "$S" get --ref "$SCID:E1" >/dev/null 2>&1
+grep -q 'retrieve Escrow Oracle --json' "$WORK/vault.log" && ok "--ref: get --ref E1 retrieves the labelled page (title with a space intact)" || bad "--ref: get" "$(cat "$WORK/vault.log")"
+NCID="$(run env LOOM_BASE_URL="$STUB" bash "$S" neighbours urn:ngm:class:live-hit 2>/dev/null | jq -r .call_id)"
+out="$(run env LOOM_BASE_URL="$STUB" bash "$S" neighbours --ref "$NCID:N3" --limit 3 2>/dev/null)"
+check "--ref: neighbours --ref N3 keeps its other flags (urn:ngm:class:a is unknown to the stub: falls back)" "$out" '.fallback.loom_status == "404"'
+
+run bash "$S" get --ref "c-deadbeef:E1" >/dev/null 2>"$WORK/err"; rc=$?
+[ "$rc" -eq 2 ] && grep -q "no record of call c-deadbeef" "$WORK/err" && ok "--ref: unknown call → exit 2 with a reason" || bad "--ref: unknown call" "rc=$rc" "$(cat "$WORK/err")"
+run bash "$S" get --ref "$SCID:E9" >/dev/null 2>"$WORK/err"; rc=$?
+[ "$rc" -eq 2 ] && grep -q "has no entry E9 (labels: E1)" "$WORK/err" && ok "--ref: unknown label → exit 2 naming the labels that exist" || bad "--ref: unknown label" "rc=$rc" "$(cat "$WORK/err")"
+for badref in '../../etc/passwd:E1' 'c-1234:E1' "$SCID:e1" "$SCID" "$SCID:E1;rm"; do
+  run bash "$S" get --ref "$badref" >/dev/null 2>"$WORK/err"; rc=$?
+  [ "$rc" -eq 2 ] && ok "--ref: malformed '$badref' rejected (exit 2)" || bad "--ref: malformed '$badref'" "rc=$rc" "$(cat "$WORK/err")"
+done
+run bash "$S" search escrow --ref "$SCID:E1" >/dev/null 2>"$WORK/err"; rc=$?
+[ "$rc" -eq 2 ] && grep -q "not supported for 'search'" "$WORK/err" && ok "--ref: refused on subcommands that take no id" || bad "--ref on search" "rc=$rc" "$(cat "$WORK/err")"
+run bash "$S" get --ref >/dev/null 2>&1; rc=$?
+[ "$rc" -eq 2 ] && ok "--ref: missing value → exit 2" || bad "--ref: missing value" "rc=$rc"
+
+# an unusable cache costs the labels, never the answer
+echo notadir > "$WORK/blocked"
+out="$(run env XDG_RUNTIME_DIR="$WORK/blocked" LOOM_BASE_URL="$STUB" bash "$S" sparql 'SELECT ?c WHERE { ?c ?p ?o } #HIT' 2>/dev/null)"; rc=$?
+[ "$rc" -eq 0 ] && ok "cache unusable: exit 0" || bad "cache unusable: exit 0" "rc=$rc"
+check "cache unusable: answer and labels intact, ref_cache flagged" "$out" \
+  '.grounding == "answered" and .refs[0].label == "S1" and .ref_cache == "unavailable"'
+run env XDG_RUNTIME_DIR="$WORK/blocked" bash "$S" get --ref "$SCID:E1" >/dev/null 2>"$WORK/err"; rc=$?
+[ "$rc" -eq 2 ] && grep -q "ref cache is unavailable" "$WORK/err" && ok "cache unusable: --ref says so (exit 2)" || bad "cache unusable: --ref" "rc=$rc" "$(cat "$WORK/err")"
+# a symlinked cache dir is refused, not followed
+mkdir -p "$WORK/evil" "$WORK/xdg2"; ln -s "$WORK/evil" "$WORK/xdg2/ontology-augment"
+out="$(run env XDG_RUNTIME_DIR="$WORK/xdg2" bash "$S" search escrow 2>/dev/null)"
+check "symlinked cache dir: refused (ref_cache unavailable), nothing written through it" "$out" '.ref_cache == "unavailable"'
+[ -z "$(ls -A "$WORK/evil")" ] && ok "symlinked cache dir: target untouched" || bad "symlinked cache dir: target written" "$(ls -A "$WORK/evil")"
+
+# concurrent sessions: 12 parallel calls, 12 distinct ids, every one resolvable
+rm -rf "$WORK/xdgc"; mkdir -p "$WORK/xdgc"
+for i in $(seq 1 12); do
+  ( run env XDG_RUNTIME_DIR="$WORK/xdgc" bash "$S" search escrow 2>/dev/null | jq -r .call_id > "$WORK/par.$i" ) &
+done
+wait $(jobs -p | grep -v "^$STUB_PID$" | grep -v "^$DROP_PID$") 2>/dev/null
+[ "$(cat "$WORK"/par.* | sort -u | wc -l | tr -d ' ')" = "12" ] && ok "concurrent: 12 calls, 12 distinct call_ids" || bad "concurrent: call_ids" "$(cat "$WORK"/par.* | sort | uniq -c)"
+okc=0; for i in $(seq 1 12); do
+  run env XDG_RUNTIME_DIR="$WORK/xdgc" bash "$S" get --ref "$(cat "$WORK/par.$i"):E1" >/dev/null 2>&1 && okc=$((okc+1))
+done
+[ "$okc" = "12" ] && ok "concurrent: every call's label still resolves (no clobbering)" || bad "concurrent: resolvable" "$okc/12"
+[ -z "$(ls -A "$WORK/xdgc/ontology-augment" | grep '^\.tmp\.')" ] && ok "concurrent: no temp files left behind" || bad "concurrent: temp files" "$(ls -A "$WORK/xdgc/ontology-augment")"
 
 # 14. no generation file
 rm "$CORPUS/out/.generation.json"

@@ -272,3 +272,21 @@ about the model, and the hypothesis is not the thing that is wrong.
 - ❌ Using `ontomark edit` to apply a proposal by hand. Approval writes it, with an
   `--expect` blast radius; a hand edit has neither signature nor ledger entry.
 - ❌ Looking for `mcp__ontology-bridge__*`. It is deleted — see ADR-2107/2108.
+
+## Labels and `--ref` (2026-10-31)
+
+Every envelope names its citable entries, so a follow-up does not re-quote them.
+
+```bash
+$S search "escrow oracle" | jq -c '{call_id, refs}'
+# {"call_id":"c-1a2b3c4d","refs":[{"label":"E1","kind":"E","id":"Escrow Oracle","title":"Escrow Oracle"}]}
+
+$S neighbours --ref c-1a2b3c4d:E1 | jq -c '{call_id, refs: [.refs[] | "\(.label) \(.via)"]}'
+# {"call_id":"c-9f8e7d6c","refs":["N1 is-a","N2 ancestor","N3 requires","N4 requires"]}
+
+$S paths --ref c-1a2b3c4d:E1 --ref c-9f8e7d6c:N3      # both ends by label
+```
+
+A claim built from that is cited as `c-9f8e7d6c:N3` plus the envelope's
+`generation.id`. If `neighbours` had come back `silent`, the answer is "unknown",
+not a guessed link.

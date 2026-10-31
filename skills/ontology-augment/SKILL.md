@@ -85,6 +85,57 @@ statement, they are not proven false. Only a positive count is `answered`; a
 healthy body whose shape the wrapper cannot count is `silent` with
 `shape: "unrecognised"` (read `.result` yourself).
 
+## Labels and `--ref`: cite by short name
+
+Every envelope carries a `call_id` (`c-1a2b3c4d`) and a `refs` list: the citable
+entries of that result, each with a short label by kind, unique within the call.
+
+| Label | Kind | From |
+|---|---|---|
+| `E1`, `E2` … | page / entity | `ask`, `search`, `get`, `classes` |
+| `N1`, `N2` … | neighbour (with `via`: `is-a`, `ancestor`, or the predicate) | `neighbours` |
+| `P1`, `P2` … | step on a path, in order | `paths` |
+| `S1`, `S2` … | IRI in a SPARQL row | `sparql` |
+
+```bash
+$S search "escrow oracle"              # refs: [{label:"E1", id:"Escrow Oracle", …}], call_id c-1a2b3c4d
+$S neighbours --ref c-1a2b3c4d:E1      # no re-quoting a title with spaces or a long IRI
+$S paths --ref c-1a2b3c4d:E1 "Ontology"
+```
+
+`--ref` stands in for a positional id on `get`, `neighbours`, `paths`, `check`
+and `propose`; it may appear twice (`paths`) and mixes with literal ids. A
+malformed, unknown or expired ref is a usage error (exit 2) that names what does
+exist. Labels are a convenience over the same ids: `result` is untouched, `refs`
+is capped at 25 (`refs_truncated`), and if the per-call cache under
+`${XDG_RUNTIME_DIR:-/tmp}` is unusable the labels are still printed with
+`ref_cache: "unavailable"` and only `--ref` fails. The cache holds one file per
+call, so concurrent sessions never share state. Details: REFERENCE.md.
+
+## Stop rules (read before the second call)
+
+Grounding is meant to settle a question quickly, not to explore the graph.
+
+1. **Converge in 1-2 targeted rounds.** One `ask` or `search` to find the
+   concept, at most one follow-up (`get`, `neighbours`, or one `sparql`) to
+   check the specific thing you are about to claim. A third round means the
+   question was not specific enough: sharpen it or stop.
+2. **At most 2 graph hops** from any seed (`--depth` / `--max-hops` no higher
+   than 2, and no chaining `neighbours` of `neighbours` of `neighbours`). A
+   relation that only appears at hop 3 is a hypothesis, not a finding.
+3. **Every asserted link needs source evidence.** To say "A requires B" or "A is
+   a kind of B", you must hold the entry that says so (a `neighbours` `via`, a
+   `get` page, a SPARQL row) and cite it with its `generation.id`
+   (and `version_iri` when present), plus the label (`c-1a2b3c4d:N3`). A link you
+   inferred yourself from names or proximity is not asserted; say it is your
+   inference.
+4. **Silence is unknown.** If a healthy call comes back `silent`, or `degraded`,
+   or the cited generation is not the one you need, stop and write "unknown":
+   the corpus does not say at that generation. Never turn `silent` into "no"
+   (ADR-2129), never fill the gap with a plausible link, and do not widen the
+   search to find something that fits. Propose instead (`propose`).
+5. **Stop on `degraded`.** Carry on ungrounded and say so; do not retry in a loop.
+
 ## Quick Start
 
 Everything routes through one wrapper:

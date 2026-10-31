@@ -30,7 +30,15 @@
 #     "negation":  { … }              # only when the SPARQL used FILTER NOT EXISTS / MINUS
 #     "shape":     "unrecognised"     # only when a healthy body could not be counted
 #     "note":      "how to read this state",
-#     "result":    <the Loom or vault body, unchanged> }
+#     "result":    <the Loom or vault body, unchanged>,
+#     "call_id":   "c-1a2b3c4d",      # unique per call; added 2026-10-31 (new fields only)
+#     "refs":      [ {label,kind,id,title?,via?} … ] }   # short labels for the entries
+#
+#   refs labels are E1.. (pages/entities from ask|search|get|classes), N1..
+#   (neighbours of a class), P1.. (steps of a path), S1.. (IRIs in SPARQL rows):
+#   unique within this call's envelope, deterministic for the same body, capped
+#   at 25 (refs_truncated says so). A follow-up names one as `--ref <call_id>:<label>`
+#   instead of re-quoting the id; see "Refs" below.
 #
 #   silent       — a HEALTHY call found nothing. The corpus does not say; that
 #                  is not "no" (open world). Never negative evidence.
@@ -41,14 +49,14 @@
 # Usage:
 #   ontology-augment.sh ask      <query> [--documents N] [--depth N]
 #   ontology-augment.sh search   <query> [--type T] [--limit N]
-#   ontology-augment.sh get      <id>
+#   ontology-augment.sh get      <id | --ref CALL:LABEL>
 #   ontology-augment.sh classes  [--limit N]
 #   ontology-augment.sh sparql   <query|@file>
-#   ontology-augment.sh neighbours <iri> [--limit N]
-#   ontology-augment.sh paths    <from> <to> [--max-hops N]
+#   ontology-augment.sh neighbours <iri | --ref CALL:LABEL> [--limit N]
+#   ontology-augment.sh paths    <from | --ref C:L> <to | --ref C:L> [--max-hops N]
 #   ontology-augment.sh validate [--vault knowledge|working|all]
-#   ontology-augment.sh propose  <iri> --level content|schema [--hypothesis "…"] [--dry-run]
-#   ontology-augment.sh check    <subject> <class>
+#   ontology-augment.sh propose  <iri | --ref C:L> --level content|schema [--hypothesis "…"] [--dry-run]
+#   ontology-augment.sh check    <subject | --ref C:L> <class>
 #   ontology-augment.sh check    <subject> --property <p> --object <o>
 #   ontology-augment.sh health
 #
@@ -171,6 +179,12 @@ vault_generation() {
 # mode=report (validate, propose, health) never is — an empty report is not a
 # grounding answer.
 emit() {
+  local out
+  out="$(emit_core "$@")" || return $?
+  annotate_envelope "$out"
+}
+
+emit_core() {
   local source="$1" mode="$2" body="$3" gen="$4" query="${5:-}" extra="${6:-}"
   [ -n "$extra" ] || extra='{}'
   if ! printf '%s' "$body" | jq . >/dev/null 2>&1; then
@@ -256,6 +270,130 @@ emit() {
           }[$state] end ) }
       + $extra
       + { result: $b }'
+}
+
+# ── Refs: short labels for result entries, and --ref to use them ──────────────
+#
+# Every envelope gets a `call_id` and a `refs` list: the citable entries of the
+# body, each with a short label (E1, N2, P1, S3 by kind). A follow-up names one
+# as `--ref <call_id>:<label>` rather than re-quoting a long IRI or a page title
+# with spaces. The body under `result` is never altered; this is additive.
+#
+# WHERE THE LABELS LIVE (chosen: a per-call file, not the envelope passed back).
+# Each call writes ONE small file, <dir>/<call_id>.json, atomically (temp file +
+# rename), under ${XDG_RUNTIME_DIR:-/tmp}/ontology-augment[-<uid>]/ (mode 0700,
+# refused if it is a symlink or not ours). Why not hand the envelope back in? An
+# agent's shell calls share no state, so "passing the envelope back" would mean
+# re-printing kilobytes of JSON into the context window on every follow-up, which
+# defeats the reason for a short label. Why per-call files and not one session
+# index? Concurrent sessions never write the same file: call_ids are unique
+# (time + pid + RANDOM, hashed), so there is no shared mutable state, no lock and
+# no read-modify-write race. Entries expire after 24 h (pruned on write). If the
+# directory cannot be used the labels are still printed, the envelope says
+# `ref_cache: "unavailable"`, and --ref reports that it cannot resolve.
+REFS_CAP=25
+ref_dir() {
+  local base="${XDG_RUNTIME_DIR:-}"
+  if [ -n "$base" ]; then base="${base%/}/ontology-augment"; else base="/tmp/ontology-augment-$(id -u)"; fi
+  [ -L "$base" ] && return 1
+  mkdir -p -m 700 "$base" 2>/dev/null || return 1
+  [ -d "$base" ] && [ -O "$base" ] && [ ! -L "$base" ] || return 1
+  printf '%s' "$base"
+}
+new_call_id() {
+  printf 'c-%s' "$(printf '%s-%s-%s' "$(date +%s%N 2>/dev/null || date +%s)" "$$" "$RANDOM$RANDOM" | sha256sum | cut -c1-8)"
+}
+
+# The labelling pass: reads an envelope, prints {refs, truncated}. Pure.
+REFS_JQ='
+  def tgt:
+    if type == "string" then {id: .}
+    elif type == "object" and ((.iri // .id) | type) == "string" then {id: (.iri // .id)} + (if (.title | type) == "string" then {title: .title} else {} end)
+    else empty end;
+  def uri: select(type == "string" and test("^(https?://|urn:)"));
+  def withkind($k): . + {kind: $k};
+  def via($v): . + {via: $v};
+  def entries:
+    (.result) as $r
+    | if $cmd == "search" or $cmd == "ask" or $cmd == "get" or $cmd == "classes" then
+        [ $r | .. | objects | select((.id? | type) == "string")
+          | {id, kind: "E"}
+            + (if (.title? | type) == "string" then {title: .title} else {} end)
+            + (if (.via? | type) == "string" then {via: .via} else {} end) ]
+      elif $cmd == "neighbours" or $cmd == "neighbors" then
+        ( [ $r | .. | objects | select(has("iri") and (has("is_a") or has("relations") or has("ancestors"))) ] | first // null ) as $n
+        | if $n != null then
+            ( [ ($n.is_a // [])[] | tgt | withkind("N") | via("is-a") ]
+            + [ ($n.ancestors // [])[] | tgt | withkind("N") | via("ancestor") ]
+            + [ ($n.relations // [])[] | (.predicate // "related") as $p | (.targets // [])[] | tgt | withkind("N") | via($p) ] )
+            | map(select(.id != $n.iri))
+          elif ($r | type) == "object" and ($r | has("id")) then
+            [ $r | (.children // [])[] | .. | objects | select((.id? | type) == "string") | {id, kind: "N"} ]
+          else [] end
+      elif $cmd == "paths" then
+        [ $r | .. | objects | select((.path? | type) == "array") | .path[] | tgt | withkind("P") ]
+      elif $cmd == "sparql" then
+        if ($r | type) == "object" then
+          [ ($r.rows // [])[] | (if type == "array" then .[] else . end) | uri | {id: ., kind: "S"} ]
+          + [ ($r.results.bindings // [])[] | .[] | select(type == "object" and .type == "uri") | {id: .value, kind: "S"} ]
+        else [] end
+      else [] end;
+  ( try entries catch [] )
+  | reduce .[] as $x ([]; if any(.[]; .id == $x.id) then . else . + [$x] end) as $all
+  | ($all[0:$cap]) as $kept
+  | reduce range(0; $kept | length) as $i ({n: {}, out: []};
+      $kept[$i] as $x
+      | (.n[$x.kind] // 0) + 1 as $k
+      | .n[$x.kind] = $k
+      | .out += [ {label: ($x.kind + ($k | tostring))} + $x ])
+  | {refs: .out, truncated: (($all | length) > $cap)}'
+
+# annotate_envelope <envelope-json> — add call_id + refs (before `result`), store
+# the labels for --ref, and print. Any failure here prints the envelope untouched:
+# labels are a convenience and must never cost the grounding answer.
+annotate_envelope() {
+  local env="$1" cid lab refs trunc out dir tmp stored=1
+  lab="$(printf '%s' "$env" | jq -c --arg cmd "$cmd" --argjson cap "$REFS_CAP" "$REFS_JQ" 2>/dev/null)" || lab=''
+  if [ -z "$lab" ]; then printf '%s\n' "$env"; return 0; fi
+  cid="$(new_call_id)"
+  refs="$(printf '%s' "$lab" | jq -c .refs)"
+  trunc="$(printf '%s' "$lab" | jq -c .truncated)"
+  if [ "$refs" != "[]" ]; then
+    stored=0
+    if dir="$(ref_dir)" && tmp="$(mktemp "$dir/.tmp.XXXXXX" 2>/dev/null)"; then
+      if jq -nc --arg cid "$cid" --arg cmd "$cmd" --arg at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --argjson refs "$refs" \
+           '{call_id: $cid, cmd: $cmd, created: $at, refs: $refs}' > "$tmp" 2>/dev/null \
+         && chmod 600 "$tmp" && mv -f "$tmp" "$dir/$cid.json" 2>/dev/null; then
+        stored=1
+        find "$dir" -maxdepth 1 -name 'c-*.json' -mmin +1440 -delete 2>/dev/null || true
+      else rm -f "$tmp"; fi
+    fi
+  fi
+  out="$(printf '%s' "$env" | jq --arg cid "$cid" --argjson refs "$refs" --argjson trunc "$trunc" --argjson stored "$stored" '
+      . as $e | ($e | del(.result))
+      + {call_id: $cid, refs: $refs}
+      + (if $trunc then {refs_truncated: true} else {} end)
+      + (if $stored == 0 then {ref_cache: "unavailable"} else {} end)
+      + {result: $e.result}' 2>/dev/null)" || out=''
+  if [ -n "$out" ]; then printf '%s\n' "$out"; else printf '%s\n' "$env"; fi
+}
+
+# resolve_ref <call_id:label> — sets REF_ID, or stops with a usage error (2).
+# call_id and label are validated against a strict shape before they touch a path.
+REF_ID=''
+resolve_ref() {
+  local spec="$1" cid lbl dir f
+  cid="${spec%%:*}"; lbl="${spec#*:}"
+  case "$spec" in *:*) ;; *) die "--ref needs <call_id>:<label>, e.g. c-1a2b3c4d:E2 (got: $spec)";; esac
+  [[ "$cid" =~ ^c-[0-9a-f]{8}$ ]] || die "--ref: bad call_id '$cid' (expected c-xxxxxxxx from a previous envelope)"
+  [[ "$lbl" =~ ^[A-Z][0-9]{1,3}$ ]] || die "--ref: bad label '$lbl' (expected E1, N2, P1 or S3 from that envelope's refs)"
+  dir="$(ref_dir)" || die "--ref: the ref cache is unavailable (no usable \${XDG_RUNTIME_DIR:-/tmp}/ontology-augment); pass the id from the envelope's refs directly"
+  f="$dir/$cid.json"
+  [ -r "$f" ] || die "--ref: no record of call $cid (expired after 24 h, or made on another host); re-run that call or pass the id directly"
+  REF_ID="$(jq -r --arg l "$lbl" '[.refs[]? | select(.label == $l) | .id][0] // empty' "$f" 2>/dev/null)"
+  [ -n "$REF_ID" ] || die "--ref: call $cid has no entry $lbl (labels: $(jq -r '[.refs[]?.label] | join(" ")' "$f" 2>/dev/null))"
+  case "$REF_ID" in -*) die "--ref: $spec resolves to '$REF_ID', which looks like a flag; pass it explicitly after --";; esac
+  echo "ontology-augment: --ref $spec -> $REF_ID" >&2
 }
 
 # Fail-open POST. A Loom that is down, slow, unreachable or serving an older
@@ -448,6 +586,23 @@ run_ontomark() {
 
 cmd="${1:-}"; shift || true
 [ -n "$cmd" ] || die "no subcommand. See the header for usage."
+
+# --ref <call_id>:<label> stands in for a positional id: rewritten in place to
+# the id it names, so every subcommand below sees an ordinary argument. Only the
+# subcommands that take an id accept it.
+case "$cmd" in
+  get|neighbours|neighbors|paths|check|propose)
+    _args=()
+    while [ $# -gt 0 ]; do
+      if [ "$1" = "--ref" ]; then
+        [ $# -ge 2 ] || die "--ref needs <call_id>:<label>"
+        resolve_ref "$2"; _args+=("$REF_ID"); shift 2
+      else _args+=("$1"); shift; fi
+    done
+    set -- ${_args[@]+"${_args[@]}"}
+    ;;
+  *) for _a in "$@"; do [ "$_a" != "--ref" ] || die "--ref is not supported for '$cmd' (it takes get, neighbours, paths, check, propose)"; done;;
+esac
 
 case "$cmd" in
 

@@ -186,9 +186,45 @@ kept verbatim under `result`, so a former parser of the raw body reads
   "shape": "unrecognised",            // only when a healthy body could not be counted
   "note": "healthy call, nothing asserted or inferred matched: …",
   "fallback": { … },                  // only when neighbours fell back to ontomark tree
+  "call_id": "c-1a2b3c4d",            // added 2026-10-31; unique per call
+  "refs": [ { "label": "S1", "kind": "S", "id": "https://…/smart-contract" } ],   // added 2026-10-31
   "result": { "boolean": null, "columns": ["c"], "rows": [], "truncated": false }
 }
 ```
+
+### Labels, `call_id` and `--ref` (added 2026-10-31)
+
+`call_id` and `refs` are new fields; nothing existing moved or changed, and
+`result` is still the verbatim body. `refs` is `[]` when there is nothing to
+label (a silent call, `health`, `validate`, `propose`, `check`).
+
+| Kind | Subcommand | Entry `id` | Extra |
+|---|---|---|---|
+| `E` | `ask`, `search`, `get`, `classes` | page id (`"Price Oracle"`) | `title`; `via` for `ask`'s expanded pages |
+| `N` | `neighbours` (Loom, or the `ontomark tree` fallback) | IRI (page id on fallback) | `via`: `is-a`, `ancestor`, or the relation predicate; the subject itself is excluded |
+| `P` | `paths` | IRI, in path order | |
+| `S` | `sparql` | each distinct `http(s)://` / `urn:` value in `rows` or `bindings` | |
+
+Labels are numbered per kind in body order after de-duplicating by `id`, so the
+same body always yields the same labels; at most 25 are kept (`refs_truncated:
+true` beyond that). A call made while the cache is unusable carries `ref_cache:
+"unavailable"`.
+
+**`--ref <call_id>:<label>`** replaces a positional id on `get`, `neighbours`,
+`paths` (twice for both ends), `check` (the subject) and `propose` (the IRI); it
+is rewritten to the entry's `id` before dispatch and announced on stderr. Other
+flags are untouched. `call_id` must match `c-[0-9a-f]{8}` and the label
+`[A-Z][0-9]{1,3}`, so neither can reach outside the cache directory. Unknown,
+expired (24 h), malformed, or `--ref` on a subcommand that takes no id: exit 2.
+
+**Why a per-call file under `${XDG_RUNTIME_DIR:-/tmp}`, not the envelope passed
+back.** Shell calls share no state, so passing the envelope back means re-printing
+kilobytes of JSON into the context window on every follow-up, which defeats a
+short label. One file per call (`ontology-augment[-<uid>]/<call_id>.json`,
+directory mode 0700, owner-checked, refused if a symlink; written temp-then-rename;
+pruned after 24 h) has no shared mutable state, so concurrent sessions need no
+lock and cannot clobber each other: `call_id` is a hash of time, pid and
+`$RANDOM`. A call made by another host, or after expiry, simply is not found.
 
 ### How the state is decided
 
