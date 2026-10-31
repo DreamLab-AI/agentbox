@@ -14,6 +14,8 @@ review_trigger: a request to register any MCP server that reads or writes vision
 repo: agentbox
 domain: BASELINE-container
 lineage: ADR-2104 (a crate is the control surface, an MCP server a disposable adapter), ADR-112 (budget-bounded fail-open grounding), ADR-2028 ([vault] path authority), VisionFlow PRD-sovereign-corpus Q10/Q11
+evidence_class: source+test
+acceptance_boundary: ontomark and vault --help verb checks at 3e3e09b1d, a grep for stale vault verbs returning nothing, 95 + 24 node tests passing, skills lint clean. Live image behaviour and the Loom /mcp plane on the deployed Loom are not verified; the running image predates the re-point until the owner rebuilds
 ---
 
 # ADR-2107 — No MCP inside the estate for the corpus; agents use the vault CLI

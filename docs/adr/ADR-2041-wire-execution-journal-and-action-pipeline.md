@@ -13,6 +13,8 @@ owner: jjohare
 review_trigger: a second route or MCP tool needs to become an AgentAction, or task-spawn's `local` classification is challenged by a real incident
 repo: agentbox
 domain: GOVERNANCE-capabilities
+evidence_class: source+test
+acceptance_boundary: jest system-execution-wiring (3 passed) and execution-coverage contracts, code at 1e41b64b6; one unrelated web-interfaces spec fails identically on the primary checkout. Says nothing about the running container, since management-api was not restarted and /v1/system keeps reporting declared until it restarts
 ---
 
 # ADR-2041 — Wire the execution journal and action pipeline onto POST /v1/tasks

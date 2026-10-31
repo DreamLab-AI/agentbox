@@ -12,6 +12,8 @@ verified_paths: [crates/colloquy/colloquy-nostr/src/kinds.rs, docs/PROTOCOL-regi
 owner: jjohare
 review_trigger: the next agentbox Nostr kind allocation, or any change to the band table in docs/PROTOCOL-registry.md
 repo: agentbox
+evidence_class: source+test
+acceptance_boundary: jest federation-kind-parity (61 passed) and cargo colloquy_publish tests (105 lib passed) against schema/federation-kinds.json 1.1.0. The VisionClaw Rust twin was not executed (compatible by inspection only), the settlement kinds stay proposed, and nothing is published to a relay
 ---
 
 # ADR-2105 — The agentbox 38xxx bands below 38400 are all reserved, so colloquy and settlement move to 38400-38499
