@@ -615,7 +615,7 @@
                 "type": "string",
                 "pattern": "^/[^\\s'\",:#\\[\\]]*$"
               },
-              "description": "ADR-2090 per-project bypass: absolute project roots whose turns never reach the judge. A session cwd equal to or beneath an entry (path-boundary match, symlinks resolved) is skipped before the request is built; with a non-empty list and no cwd nothing is sent. Empty (default) = no bypass, byte-identical to before. A local cascade answer still applies; only escalation to the judge stops."
+              "description": "ADR-2090 per-project bypass: absolute project roots whose skill-routing turns (hook and /route only) never reach the judge; factrail compaction and the jev-checkpoints plugin call the same judge and are not stopped. A session cwd equal to or beneath an entry (path-boundary match, symlinks resolved) is skipped before the request is built; with a non-empty list and no cwd nothing is sent. Empty (default) = no bypass, byte-identical to before. A local cascade answer still applies; only escalation to the judge stops."
             },
             "timeout_ms": {
               "type": "integer",

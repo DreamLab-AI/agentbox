@@ -1311,7 +1311,7 @@ hook = true                     # register the UserPromptSubmit hook (router = "
 model = "jev-latest"            # resolved server-side; pin (e.g. "jev-1.13.0") to freeze behaviour
 timeout_ms = 4000               # hook budget per call; the hook itself is registered at 8000
 min_prompt_chars = 24           # shorter turns are never sent (and never routed)
-# ADR-2090 per-project bypass. Absolute project roots whose turns NEVER reach the judge: a
+# ADR-2090 per-project bypass. Absolute project roots whose turns never reach the skill-routing judge (hook and /route only; factrail and the jev-checkpoints plugin still call it): a
 # session whose cwd is one of these or lies beneath it (path-boundary match, symlinks
 # resolved: "/x/proj" covers "/x/proj/sub", never "/x/proj2") is skipped before the request
 # is built, so the Choice and every verify/intent/facet extra stay home. Fails closed: with

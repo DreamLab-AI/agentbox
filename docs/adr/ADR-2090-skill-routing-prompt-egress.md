@@ -93,10 +93,11 @@ stands. Decision and status axes unchanged.
 
 The debt this record carried is paid at `f8b02b93d` (multi-line-array fix `97f298db5`); the decision itself is unchanged (skill routing may egress by default). `implementation_status` moves `none` → `complete`. `activation_status` stays `inactive`: the manifest list ships empty, so no project is gated until the operator lists one, and applying it needs a boot (BOOT-class, no rebuild).
 
-- **Key**: `[skills.routing].bypass_projects`, an array of absolute project roots, default `[]` (schema, `agentbox.toml`, validator **E083**: absolute, no whitespace, quote, comma, colon or `#`).
+- **Key**: `[skills.routing].bypass_projects`, an array of absolute project roots, default `[]` (schema, `agentbox.toml`, validator **E083**: absolute, no whitespace, quote, comma, colon, `#`, `[` or `]`; brackets are refused because the shell and JS array readers end a multi-line array at the first `]`, so `/srv/p[1]` would have projected as `/srv/p1` and dropped every later entry, a gate that fails open; schema pattern and tests/config/skill-route.test.js cover it).
 - **Gate**: `config/hooks/lib/skill-route.cjs` `route()`, immediately before the single `fetch` site. The hook and `/route` share the library, and the Choice plus every verify/intent/facet extra ride that one request, so one gate covers all of them. A bypassed turn returns `skipped: project-bypass`, is logged without prompt text, and never builds a request.
 - **Identity**: the hook passes `hook.cwd`; `route.mjs` passes `process.cwd()`. Match is realpath on both sides plus a path-boundary test (`/x/proj` covers `/x/proj/sub` and a symlink to it, never `/x/proj2`).
 - **Fails closed**: with a non-empty list and an unknown or non-absolute cwd, nothing is sent. The list is a privacy control, so uncertainty must not egress.
+- **Scope of the claim**: the bypass stops the *skill router* (the hook and `/route`) only. `jev_compaction` (factrail, ADR-2121) and `jev_checkpoints` (ADR-2135) are both enabled in the shipped manifest and call the same System One judge; a listed project's turns still reach it by those routes. The key's description, `agentbox.toml`, the schema, `system-manifest.js` and the register's `skill-router` row now say "skill-routing turns", not "turns". Bypassed projects that must not reach the judge at all need those two consumers gated separately.
 - **Cascade choice**: a local BM25 cascade answer involves no egress and still applies to a bypassed project; only an escalation to the judge is stopped.
 - **Projection**: the entrypoint (`_ab_toml_array`, single- or multi-line, comments tolerated) turns the array into a PATH-style value and inlines `AGENTBOX_SKILL_ROUTE_BYPASS_PROJECTS` into the registered hook command and `runtime-env.sh` **only when the list is non-empty**, so the default hook command and env are byte-identical to before. `config()` also reads the manifest as the `/route` fallback in an unbooted shell.
 - **Register**: `config/egress-policy.json` `.register` (`skill-router` row) and `docs/SECURITY-profiles.md` no longer say no bypass exists; the Cross-reference above is superseded on that point.
@@ -114,3 +115,5 @@ jest tests/config/semantic-rules.test.js tests/config/routing-labels.test.js tes
 node scripts/ci/render-egress-register.js --check → 46 routes in sync
 node scripts/agentbox-config-validate.js agentbox.toml → valid
 ```
+
+**Owner question (open):** should `bypass_projects` also gate factrail compaction and the jev-checkpoints plugin, or is a project that must not reach the judge to be handled by disabling `jev_compaction` and `jev_checkpoints` for it? Until the owner answers, listing a project protects it from skill routing alone.
