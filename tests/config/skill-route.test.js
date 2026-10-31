@@ -617,6 +617,28 @@ describe('hook — per-project bypass (ADR-2090; [skills.routing].bypass_project
     expect(lib.projectBypassed('/x/proj', ['relative'])).toBe(false);
   });
 
+  test('manifest fallback reads a MULTI-LINE array with comments (a missed list would silently open the gate)', () => {
+    const toml = path.join(tmp, 'bypass-multiline.toml');
+    fs.writeFileSync(toml, '[skills.routing]\nrouter = "jev"\nbypass_projects = [\n  "/a/one",  # private\n  "/b/two",\n]\ntimeout_ms = 4000\n');
+    expect(lib.config({}, { fallbackToml: toml }).bypassProjects).toEqual(['/a/one', '/b/two']);
+    expect(lib.readTomlSection(toml, 'skills.routing').timeout_ms).toBe('4000');
+  });
+
+  test('entrypoint _ab_toml_array projects single-line, multi-line, empty and absent lists', () => {
+    const { spawnSync } = require('child_process');
+    const ep = path.resolve(__dirname, '../../config/entrypoint-unified.sh');
+    const fn = fs.readFileSync(ep, 'utf8').match(/^_ab_toml_array\(\) \{[\s\S]*?^\}/m)[0];
+    const project = (body) => {
+      const f = path.join(tmp, `arr-${Math.random().toString(36).slice(2)}.toml`);
+      fs.writeFileSync(f, body);
+      return spawnSync('bash', ['-c', `${fn}\n_ab_toml_array skills.routing bypass_projects`], { env: { PATH: process.env.PATH, AGENTBOX_CONFIG: f }, encoding: 'utf8' }).stdout.trim();
+    };
+    expect(project('[other]\nbypass_projects = ["/nope"]\n[skills.routing]\nbypass_projects = ["/a", "/b"] # c\n')).toBe('/a:/b');
+    expect(project('[skills.routing]\nbypass_projects = [\n  "/home/devuser/workspace/a",  # private\n  "/srv/b",\n]\ntimeout_ms = 4000\n')).toBe('/home/devuser/workspace/a:/srv/b');
+    expect(project('[skills.routing]\nbypass_projects = []\n')).toBe('');
+    expect(project('[skills.routing]\nrouter = "jev"\n')).toBe('');
+  });
+
   test('manifest fallback: [skills.routing].bypass_projects is read when the env is silent', () => {
     const toml = path.join(tmp, 'bypass-fallback.toml');
     fs.writeFileSync(toml, `[skills.routing]\nrouter = "jev"\nbypass_projects = ["/a/one", "/b/two"]\n`);

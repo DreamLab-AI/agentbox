@@ -49,6 +49,14 @@ _ab_toml_val() { # _ab_toml_val <section> <key>
       sub(/^[^=]*=[[:space:]]*/,""); sub(/[[:space:]]*(#.*)?$/,""); gsub(/"/,"");
       print; exit }' "${AGENTBOX_CONFIG:-/etc/agentbox.toml}"
 }
+_ab_toml_array() { # _ab_toml_array <section> <key> → "a:b:c" (PATH-style); handles a multi-line array
+  [ -r "${AGENTBOX_CONFIG:-/etc/agentbox.toml}" ] || return 0
+  awk -v sec="[$1]" -v key="$2" '
+    $0==sec {f=1;next} /^\[/{f=0}
+    f && !cap && $0 ~ ("^[[:space:]]*" key "[[:space:]]*=") { cap=1; sub(/^[^=]*=/,"") }
+    cap { line=$0; sub(/#.*/,"",line); buf=buf line; if (line ~ /\]/) exit }
+    END { gsub(/[][" \t\047]/,"",buf); gsub(/,+/,":",buf); gsub(/^:+|:+$/,"",buf); print buf }' "${AGENTBOX_CONFIG:-/etc/agentbox.toml}"
+}
 _ab_toml_bool() { # _ab_toml_bool <section> <key> → 1|0
   case "$(_ab_toml_val "$1" "$2")" in 1|true|TRUE|True|yes|on) echo 1 ;; *) echo 0 ;; esac
 }
@@ -2699,7 +2707,13 @@ _SR_LABEL_EMBED_URL="${_SR_LABEL_EMBED_URL:-http://192.168.2.132:9997/v1/embeddi
 # unless the manifest lists projects, in which case the hook command and runtime-env.sh are
 # EXACTLY what they were before (byte-identical-when-off). The validator (E083) guarantees no
 # whitespace, quote, comma or colon inside an entry, so the transform below is lossless.
-_SR_BYPASS="$(_ab_toml_val skills.routing bypass_projects | tr -d '[] ' | tr ',' ':' | sed 's/^:*//; s/:*$//')"
+_SR_BYPASS="$(_ab_toml_array skills.routing bypass_projects)"
+# The gate is a privacy control: a key that is present but projects to nothing (other than an
+# explicit empty list) must be loud at boot, never silently open.
+if [ -z "$_SR_BYPASS" ] && [ -r "${AGENTBOX_CONFIG:-/etc/agentbox.toml}" ] \
+   && awk -v sec="[skills.routing]" '$0==sec{f=1;next} /^\[/{f=0} f && /^[[:space:]]*bypass_projects[[:space:]]*=/ && $0 !~ /=[[:space:]]*\[[[:space:]]*\]/ && $0 !~ /=[[:space:]]*\[[[:space:]]*(#.*)?$/ {found=1} END{exit !found}' "${AGENTBOX_CONFIG:-/etc/agentbox.toml}"; then
+  echo "  [skill-route] WARNING: [skills.routing].bypass_projects is set but projected no path — the per-project bypass is NOT active (ADR-2090)"
+fi
 _SR_BYPASS_EXPORT=""
 [ -z "$_SR_BYPASS" ] || _SR_BYPASS_EXPORT="export AGENTBOX_SKILL_ROUTE_BYPASS_PROJECTS='$_SR_BYPASS'"
 _SR_CASCADE_EXPORTS=""

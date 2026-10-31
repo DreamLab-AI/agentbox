@@ -321,13 +321,19 @@ function readTomlSection(file, section) {
   let text;
   try { text = fs.readFileSync(file, 'utf8'); } catch { return out; }
   let inSection = false;
-  for (const raw of text.split('\n')) {
-    const line = raw.trim();
+  const lines = text.split('\n');
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
     if (line.startsWith('[')) { inSection = line === `[${section}]`; continue; }
     if (!inSection || !line || line.startsWith('#')) continue;
     const m = line.match(/^([A-Za-z0-9_]+)\s*=\s*(.*)$/);
     if (!m) continue;
     let v = m[2].replace(/\s+#.*$/, '').trim();
+    // A multi-line array (ADR-2090 bypass_projects) is joined up to its closing bracket.
+    while (v.startsWith('[') && !v.includes(']') && i + 1 < lines.length) {
+      i += 1;
+      v += lines[i].replace(/\s+#.*$/, '').trim();
+    }
     if (/^".*"$/.test(v)) v = v.slice(1, -1);
     out[m[1]] = v;
   }
