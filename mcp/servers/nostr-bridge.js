@@ -989,7 +989,7 @@ class NostrBridge {
 /**
  * Load and decrypt the Nostr private key for a given stack profile.
  *
- * The key is stored at `/workspace/profiles/<stack>/nostr.key.enc`
+ * The key is stored at `<profilesRoot>/<stack>/nostr.key.enc` (ADR-2066: `$WORKSPACE/profiles`)
  * encrypted with AES-256-GCM.  The passphrase is derived from
  * MANAGEMENT_API_KEY + a profile-local salt stored in the same directory.
  *

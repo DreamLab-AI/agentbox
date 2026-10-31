@@ -1,10 +1,11 @@
 ---
 title: Agentbox Capability Governance
 doc_id: AB-GOVERNANCE
-version: 0.6.11
+version: 0.6.12
 status: draft-for-ratification
 verified_commit: 
 changelog:
+  - "0.6.12 (2026-10-31): ADR-2130 (accepted, partial, inactive) - the four diagram routes and the loom and zai hosts now parse in routing.rs, validate in the schema and ship in agentbox.toml; zai is never projected as codex. The sealmap-side same-family refusal, the .tiers.json reader and the measured descent are not in this repository and remain open. ADR-2041 /v1/system now carries the execution snapshot. Invariants unchanged."
   - "0.6.11 (2026-10-29): ADR-2153 is live: session ownership and peer-credential control replace the AoE token boundary. Router remains a public-only seed; operator auth on named routes remains NIP-98."
   - "0.6.10 (2026-10-28): ADR-2153 (proposed) supersedes ADR-2079: AoE is no longer examined as the fleet dispatch plane, because AoE itself is being replaced by an owned session plane. ADR-2080's router console becomes an ordinary seed on the new plane with its public-only scope unchanged."
   - "0.6.9 (2026-10-23): ADR-2150 (proposed, partial, staged) - video productions are directed through the existing media sidecars and their job clients under one evidence discipline, with a deterministic Rust toolkit (skills/video-production/runtime/), not a parallel orchestration engine. The Invariants compliance surface gains the reciprocal when-not and no-advertised-absent-runtime rule, tagged proposed until ADR-2150 is accepted."
@@ -671,11 +672,17 @@ review transport outside `[model_routing]` and is not a `seal-review` substitute
 
 **Scheduled review (ADR-2131).** With `[diagram_review].enabled` (shipped on, rebuild-class; corpus repos auto-discovered, never named in the manifest) `[program:diagram-review-cron]` runs GLM triage and a GLM review of each configured corpus, and the Gemini audit, one area-shard at a time, only when `gemini_min_interval_days`, `gemini_min_changed_topics` (or a high-severity GLM finding) and `gemini_monthly_usd` all allow it. Each run, refusals included, is a line in `docs/diagrams/review-ledger.jsonl`; findings are unverified hypotheses in `docs/review/`. Detail: `skills/sealmap-review/references/cadence.md`.
 
-**Not yet true of the code.** `routing.rs:82-87` admits only the `claude|codex` hosts, and
-`routing.rs:68-73` maps any other host to `codex`. The routes, both hosts, explicit provider arms
-and the `.tiers.json` reader ship together with the `sealmap` skill (DESIGN §10 step 5). The
-two rules (activities rather than ids, and cross-family seal review) move into *Invariants*
-when that lands with a test that refuses a same-family seal review.
+**Landed 2026-10-31 (agentbox side).** `routing.rs` admits `claude|codex|loom|zai` as start and rung,
+`host_provider` has explicit arms (`loom` → `openai`, `zai` → the unconstructible label `zai`, so a
+Z.AI route is skipped by the agentic-qe projection rather than mislabelled `codex`), the schema
+accepts the four activities, and `agentbox.toml` carries them with the live Claude ids. Tests:
+`the_four_diagram_routes_parse_as_start_and_as_rung`, `host_provider_has_an_explicit_arm_for_every_admitted_host`,
+`a_zai_route_is_never_projected_as_an_agent_override` and a parse of the shipped manifest.
+**Still open, and not in this repository:** the `sealmap` tool (packaged by `lib/sealmap.nix` from
+`DreamLab-AI/sealmap`) must read the routes, refuse a same-family seal review in a test and own the
+`.tiers.json` reader, and the measured descent has not run, so the tiers are soft defaults. The two
+rules (activities rather than ids, and cross-family seal review) move into *Invariants* when that
+lands.
 
 
 ## Proposed shared ontology workspace extension — 2026-10-11
