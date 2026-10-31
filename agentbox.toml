@@ -1138,7 +1138,7 @@ schedule_max_age_hours = 24                 # rebuild even without corpus change
 # surfaces are its heaviest consumer. This is the SINGLE path authority for the
 # authored knowledge corpus: the entrypoint resolves it into VAULT_ROOT /
 # VAULT_PAGES / VAULT_FORMAT / VAULT_TUI for every supervised program, every
-# tmux window and every MCP server, and ONTOLOGY_PAGES_DIR is derived from it.
+# tmux window and every MCP server; nothing else is a path authority.
 # No consumer hard-codes a corpus path (VAULT-corpus-format Invariant 3) — one
 # edit here relocates the corpus for every agent surface. Absent [vault] is
 # FAIL-LOUD, not fail-quiet: the boot prints "[vault] disabled" and the corpus

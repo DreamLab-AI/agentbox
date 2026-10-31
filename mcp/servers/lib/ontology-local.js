@@ -34,17 +34,14 @@
 // set there is no corpus, and this backend serves an empty index rather than
 // silently indexing a stale tree (fail-loud, ADR-2028 D3).
 //
-// Precedence (ADR-2028 closeout 2026-09-05), mirroring _ab_vault_resolve():
+// Precedence, mirroring _ab_vault_resolve():
 //   1. manifest vault  — VAULT_PAGES
-//   2. explicit env override — AGENTBOX_ONTOLOGY_LOCAL_PATH (unchanged: it wins
-//      over VAULT_PAGES while the vault is enabled)
-//   3. legacy ONTOLOGY_PAGES_DIR — deprecated
-// Tiers 2 and 3 are honoured ONLY while the vault is enabled, or under the
-// explicit AGENTBOX_VAULT_LEGACY_PATHS=1 opt-in. With AGENTBOX_VAULT_ENABLED=0
-// and no opt-in, an override is REFUSED with a clear line and the backend serves
-// an empty index: "the vault is disabled" and "we are still serving a stale
-// corpus" must never be true at the same time.
-//
+//   2. explicit env override — AGENTBOX_ONTOLOGY_LOCAL_PATH (it wins over
+//      VAULT_PAGES while the vault is enabled)
+// With AGENTBOX_VAULT_ENABLED=0 an override is REFUSED with a clear line and the
+// backend serves an empty index: "the vault is disabled" and "we are still
+// serving a stale corpus" must never be true at the same time. The pre-vault
+// ONTOLOGY_PAGES_DIR variable and its AGENTBOX_VAULT_LEGACY_PATHS opt-in are gone.
 //
 // Pure Node core modules only — no deps, so it loads in any agentbox context.
 
@@ -52,27 +49,22 @@ const fs = require('fs');
 const path = require('path');
 
 const VAULT_DISABLED = process.env.AGENTBOX_VAULT_ENABLED === '0';
-const LEGACY_PATHS_OPT_IN = /^(1|true|yes|on)$/i.test(process.env.AGENTBOX_VAULT_LEGACY_PATHS || '');
 
-// Set when a legacy/explicit override was refused, so corpusFiles() can say WHY
+// Set when an explicit override was refused, so corpusFiles() can say WHY
 // the index is empty instead of the generic "no corpus path" line.
 let CORPUS_REFUSAL = '';
 
 function resolveDefaultCorpus() {
   const explicit = process.env.AGENTBOX_ONTOLOGY_LOCAL_PATH || '';
-  const legacy = process.env.ONTOLOGY_PAGES_DIR || '';
   const vaultPages = process.env.VAULT_PAGES || '';
-  if (!VAULT_DISABLED || LEGACY_PATHS_OPT_IN) {
-    // Vault enabled (or the operator opted in): behaviour is unchanged.
-    return explicit || vaultPages;
-  }
-  // Vault disabled, no opt-in: refuse tier 2/3 rather than index a stale tree.
-  const refused = explicit || legacy;
+  if (!VAULT_DISABLED) return explicit || vaultPages;
+  // Vault disabled: refuse the override rather than index a stale tree.
+  const refused = explicit;
   if (refused) {
     CORPUS_REFUSAL =
       `[ontology-local] REFUSING corpus path '${refused}' — AGENTBOX_VAULT_ENABLED=0 (the manifest declares no [vault]), `
-      + 'so a legacy/explicit override must not resurrect a corpus the rest of the system reports as disabled. '
-      + 'Set [vault].root in agentbox.toml, or export AGENTBOX_VAULT_LEGACY_PATHS=1 to opt in deliberately. Serving an empty index.';
+      + 'so an explicit override must not resurrect a corpus the rest of the system reports as disabled. '
+      + 'Set [vault].root in agentbox.toml. Serving an empty index.';
   }
   return '';
 }

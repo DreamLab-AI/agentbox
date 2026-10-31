@@ -66,61 +66,25 @@ _ab_toml_int() { # _ab_toml_int <section> <key> <default>
 # No consumer hard-codes a corpus path any more (ADR-2028 D3, VAULT-corpus-format
 # Invariant 3).
 #
-# PATH PRECEDENCE (ADR-2028 closeout 2026-09-05) — exactly three tiers, highest
-# first. This ordering is the contract; the consumers mirror it.
-#
-#   1. MANIFEST VAULT — `[vault]` in agentbox.toml, projected here as
-#      VAULT_ROOT / VAULT_PAGES / VAULT_WORKING_* / VAULT_TRANSCRIPTS /
-#      VAULT_FORMAT / VAULT_TUI. Highest authority: when the manifest declares a
-#      vault, VAULT_PAGES IS the corpus, whatever the inherited environment said.
-#
-#   2. EXPLICIT ENVIRONMENT OVERRIDE — ONTOLOGY_PAGES_DIR (and the per-consumer
-#      equivalents such as AGENTBOX_ONTOLOGY_LOCAL_PATH). Honoured ONLY when the
-#      vault is ENABLED (tier 1 succeeded), or when the operator sets the
-#      explicit opt-in AGENTBOX_VAULT_LEGACY_PATHS=1. It redirects a consumer to
-#      a scratch corpus; it never resurrects a disabled vault.
-#
-#   3. LEGACY ONTOLOGY_PAGES_DIR — DEPRECATED (the pre-vault variable, kept for
-#      one release). When AGENTBOX_VAULT_ENABLED=0 and there is no legacy opt-in,
-#      the resolver CLEARS it (exports it empty) and warns once, so no consumer
-#      can silently fall back to a stale Logseq-era tree while the system reports
-#      the vault as disabled. That contradiction — "disabled" but still indexing
-#      — is the exact silent-degradation failure ADR-2028 exists to stop.
-#
-# Escape hatch: AGENTBOX_VAULT_LEGACY_PATHS=1 retains tier 3 verbatim and says so
-# on stdout. It is an explicit, logged operator decision, not a default.
+# PATH AUTHORITY (ADR-2028) — one source. `[vault]` in agentbox.toml, projected
+# here as VAULT_ROOT / VAULT_PAGES / VAULT_WORKING_* / VAULT_TRANSCRIPTS /
+# VAULT_FORMAT / VAULT_TUI. When the manifest declares a vault, VAULT_PAGES IS
+# the corpus, whatever the inherited environment said. The pre-vault
+# ONTOLOGY_PAGES_DIR variable and its AGENTBOX_VAULT_LEGACY_PATHS opt-in are
+# gone: nothing here reads, exports or retains them, and the consumers derive
+# their paths from VAULT_* alone (a scratch corpus is a consumer's own explicit
+# argument, e.g. AGENTBOX_ONTOLOGY_LOCAL_PATH, never a second path authority).
 #
 # Fail-loud: a manifest with no [vault].root leaves VAULT_ROOT empty, prints one
 # line, and every vault consumer disables itself rather than indexing a stale or
 # empty tree.
 _ab_vault_resolve() {
-  # Tier-2/3 opt-in switch, read once (see the precedence block above).
-  local _ab_legacy_optin=0
-  case "${AGENTBOX_VAULT_LEGACY_PATHS:-}" in 1|true|TRUE|True|yes|on) _ab_legacy_optin=1 ;; esac
-
   VAULT_ROOT="$(_ab_toml_val vault root)"
   if [ -z "$VAULT_ROOT" ]; then
     unset VAULT_ROOT VAULT_REPO VAULT_PAGES VAULT_FORMAT VAULT_TUI VAULT_WORKING_ROOT VAULT_WORKING_PAGES VAULT_TRANSCRIPTS
     AGENTBOX_VAULT_ENABLED=0
     export AGENTBOX_VAULT_ENABLED
     echo "[vault] disabled — no [vault] in agentbox.toml"
-    # Tier 3: the deprecated pre-vault override must NOT survive a disabled
-    # vault. Leaving it set is what let consumers keep indexing a stale corpus
-    # while the manifest, the doctor and system-manifest all said "disabled".
-    if [ "$_ab_legacy_optin" = "1" ]; then
-      if [ -n "${ONTOLOGY_PAGES_DIR:-}" ]; then
-        export ONTOLOGY_PAGES_DIR
-        echo "[vault] legacy opt-in AGENTBOX_VAULT_LEGACY_PATHS=1 — RETAINING deprecated ONTOLOGY_PAGES_DIR=${ONTOLOGY_PAGES_DIR} with the vault disabled"
-      else
-        echo "[vault] legacy opt-in AGENTBOX_VAULT_LEGACY_PATHS=1 set, but ONTOLOGY_PAGES_DIR is empty — nothing to retain"
-      fi
-    else
-      if [ -n "${ONTOLOGY_PAGES_DIR:-}" ]; then
-        echo "[vault] WARNING: clearing deprecated ONTOLOGY_PAGES_DIR=${ONTOLOGY_PAGES_DIR} — the manifest declares no [vault], so no consumer may silently fall back to a legacy corpus path. Set [vault].root in agentbox.toml, or export AGENTBOX_VAULT_LEGACY_PATHS=1 to retain the override deliberately."
-      fi
-      ONTOLOGY_PAGES_DIR=""
-      export ONTOLOGY_PAGES_DIR
-    fi
     return 0
   fi
   # [vault].pages is the authored-pages directory relative to each vault root.
@@ -143,7 +107,7 @@ _ab_vault_resolve() {
   LOOM_URL="$(_ab_toml_val vault loom_url)"
   LOOM_HP_HOST="$(_ab_toml_val vault loom_host)"
   if [ -n "$VAULT_WORKING_ROOT" ]; then VAULT_WORKING_PAGES="${VAULT_WORKING_ROOT%/}${_VAULT_PAGES_REL:+/$_VAULT_PAGES_REL}"; else VAULT_WORKING_PAGES=""; fi
-  # VAULT_REPO: the repository root the `vault` CLI is pinned to with --repo
+  # VAULT_REPO: the repository root the `ontomark` and `vault` CLIs are pinned to with --repo
   # (holds ontology/vocabulary.yaml, knowledge/, working/). Optional
   # [vault].repo wins; else derived from root — its parent when root is the
   # knowledge/ or working/ vault, root itself otherwise. Exported empty when the
@@ -162,15 +126,6 @@ _ab_vault_resolve() {
   fi
   AGENTBOX_VAULT_ENABLED=1
   export VAULT_ROOT VAULT_REPO VAULT_PAGES VAULT_FORMAT VAULT_TUI VAULT_WORKING_ROOT VAULT_WORKING_PAGES VAULT_TRANSCRIPTS AGENTBOX_VAULT_ENABLED HP_LOOM_SYNC LOOM_URL LOOM_HP_HOST
-  # Tier 1 has won: VAULT_PAGES is the manifest's, never the environment's — an
-  # inherited ONTOLOGY_PAGES_DIR cannot move the vault. Tier 2 then applies:
-  # with the vault ENABLED, an explicit ONTOLOGY_PAGES_DIR stays honoured (the
-  # pre-vault variable survives one release as a scratch-corpus override,
-  # ADR-2028 D2); absent it, it is derived from VAULT_PAGES.
-  if [ -n "${ONTOLOGY_PAGES_DIR:-}" ] && [ "${ONTOLOGY_PAGES_DIR}" != "$VAULT_PAGES" ]; then
-    echo "[vault] note: explicit ONTOLOGY_PAGES_DIR=${ONTOLOGY_PAGES_DIR} overrides the manifest pages dir ${VAULT_PAGES} for legacy consumers (deprecated; VAULT_PAGES remains the path authority)"
-  fi
-  export ONTOLOGY_PAGES_DIR="${ONTOLOGY_PAGES_DIR:-$VAULT_PAGES}"
   echo "[vault] root=$VAULT_ROOT repo=${VAULT_REPO:-—} pages=$VAULT_PAGES format=$VAULT_FORMAT tui=$VAULT_TUI working=${VAULT_WORKING_ROOT:-—} transcripts=${VAULT_TRANSCRIPTS:-—}"
 }
 
@@ -593,7 +548,7 @@ fi
 #     it; skipping the chmod does not narrow it (risk R2). This never narrows it
 #     either: that is a host-side decision (Q2). If devuser can still reach it,
 #     the boot records degraded:docker-socket and logs a grep-able marker:
-#     fail loud, not fatal, like the vault gate.
+#     fail loud, not fatal, like the [vault] liveness gate.
 # Test: tests/runtime-contract/RC-X1-04.sh.
 _ab_docker_socket_access() { # _ab_docker_socket_access <socket> <0|1> [state-file] [user=devuser]
   local sock="$1" iso="$2" state="${3:-/run/secrets/role-isolation.state}" user="${4:-devuser}" mode gid uid verdict
@@ -1135,7 +1090,7 @@ fi
 # {iri:[alias]} file to fold in the condensation-mesh synonyms.
 # ADR-2028 D3: with no [vault] in the manifest there is no corpus to index, so
 # the refresh is skipped outright rather than pointed at a stale tree.
-ONTO_PAGES="${ONTOLOGY_PAGES_DIR:-${VAULT_PAGES:-}}"
+ONTO_PAGES="${VAULT_PAGES:-}"
 ONTO_BUILDER="/opt/agentbox/mcp/servers/lib/ontology-index-build.js"
 # Durable {iri:[alias]} file produced by the ontology-condense refresh
 # (ontology-condense.js). Lives on the workspace bind mount so condensation
@@ -1195,7 +1150,7 @@ if [ "${AGENTBOX_VAULT_ENABLED:-0}" = "1" ]; then
   fi
   unset _VAULT_BIN _VAULT_VER
 else
-  echo "[5d/8] vault gate skipped ([vault] disabled — no corpus to open)"
+  echo "[5d/8] [vault] liveness gate skipped ([vault] disabled — no corpus to open)"
 fi
 
 # Phase 5d(iii) — reconcile the HP Loom with the vault (ADR-2140).
@@ -3891,7 +3846,6 @@ export VAULT_TUI="${VAULT_TUI:-}"
 export VAULT_WORKING_ROOT="${VAULT_WORKING_ROOT:-}"
 export VAULT_WORKING_PAGES="${VAULT_WORKING_PAGES:-}"
 export VAULT_TRANSCRIPTS="${VAULT_TRANSCRIPTS:-}"
-export ONTOLOGY_PAGES_DIR="${ONTOLOGY_PAGES_DIR:-}"
 # ADR-2029 D4: cargo-installed binaries (cargo-audit, cargo-deny ...). Custody W0:
 # devuser shells only, and APPENDED, so a planted or stale workspace binary can
 # never shadow an image tool. A root shell sourcing this file is left alone.

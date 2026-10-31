@@ -7,42 +7,29 @@
 //
 // Usage: node ontology-index-build.js [pagesDir] [outFile]
 //
-// Corpus path (ADR-2028): argv[1], else ONTOLOGY_PAGES_DIR (the pre-vault
-// override, kept for one release), else VAULT_PAGES — the manifest [vault] path
-// authority. No hard-coded fallback: with none of the three set there is no
-// corpus, so the run writes an empty index and says so (fail-loud, D3).
-//
-// Precedence guard (ADR-2028 closeout 2026-09-05), mirroring _ab_vault_resolve():
-// the environment override (ONTOLOGY_PAGES_DIR) is honoured ONLY while the vault
-// is ENABLED, or under the explicit AGENTBOX_VAULT_LEGACY_PATHS=1 opt-in. With
-// AGENTBOX_VAULT_ENABLED=0 and no opt-in the run REFUSES the legacy path, exits
-// non-zero (2) and touches neither the index nor the PUSH cache — a disabled
-// vault must not keep an ontology index alive off a stale tree.
-// An explicit argv path is a typed operator action, not a silent fallback: it is
-// honoured, with a warning naming the disabled vault.
+// Corpus path (ADR-2028): argv[1], else VAULT_PAGES — the manifest [vault] path
+// authority, and the only environment source. No hard-coded fallback: with
+// neither set there is no corpus, so the run leaves the existing index and PUSH
+// cache untouched and says so (fail-loud, D3). An explicit argv path is a typed
+// operator action, not a silent fallback: it is honoured, with a warning naming
+// the disabled vault when AGENTBOX_VAULT_ENABLED=0.
 
 const fs = require('fs');
 const path = require('path');
 
-const EXIT_LEGACY_PATH_REFUSED = 2;
 const VAULT_DISABLED = process.env.AGENTBOX_VAULT_ENABLED === '0';
-const LEGACY_PATHS_OPT_IN = /^(1|true|yes|on)$/i.test(process.env.AGENTBOX_VAULT_LEGACY_PATHS || '');
 
 const ARGV_DIR = process.argv[2] || '';
-const LEGACY_DIR = process.env.ONTOLOGY_PAGES_DIR || '';
 const VAULT_DIR = process.env.VAULT_PAGES || '';
 
-let LEGACY_REFUSED = false;
 let PAGES_DIR = '';
 if (ARGV_DIR) {
   PAGES_DIR = ARGV_DIR;
-  if (VAULT_DISABLED && !LEGACY_PATHS_OPT_IN) {
+  if (VAULT_DISABLED) {
     console.error(`[ontology-index-build] WARNING: AGENTBOX_VAULT_ENABLED=0 (no [vault] in agentbox.toml) but an explicit pagesDir argument was given — indexing '${ARGV_DIR}' because it was typed, not inherited.`);
   }
-} else if (!VAULT_DISABLED || LEGACY_PATHS_OPT_IN) {
-  PAGES_DIR = LEGACY_DIR || VAULT_DIR;
-} else if (LEGACY_DIR) {
-  LEGACY_REFUSED = true;
+} else if (!VAULT_DISABLED) {
+  PAGES_DIR = VAULT_DIR;
 }
 const OUT = process.argv[3] || '/tmp/onto-classes.json';
 
@@ -83,7 +70,7 @@ function terms(label, rels, domain, definition) {
 // clear line — never a stack trace, and never a stale hard-coded path.
 function corpusFiles() {
   if (!PAGES_DIR) {
-    console.error('[ontology-index-build] no corpus path — set [vault].root in agentbox.toml (VAULT_PAGES), ONTOLOGY_PAGES_DIR, or pass a pagesDir argument; leaving the existing index and PUSH cache untouched');
+    console.error('[ontology-index-build] no corpus path — set [vault].root in agentbox.toml (VAULT_PAGES), or pass a pagesDir argument; leaving the existing index and PUSH cache untouched');
     return [];
   }
   try {
@@ -95,14 +82,6 @@ function corpusFiles() {
 }
 
 function main() {
-  // ADR-2028 D3 + closeout precedence: a refused legacy path is a configuration
-  // error, not a quiet no-op. Say so and exit non-zero; leave every output alone.
-  if (LEGACY_REFUSED) {
-    console.error(`[ontology-index-build] REFUSING legacy corpus path ONTOLOGY_PAGES_DIR='${LEGACY_DIR}' — AGENTBOX_VAULT_ENABLED=0 (the manifest declares no [vault]), so no consumer may fall back to a pre-vault tree. Set [vault].root in agentbox.toml, or export AGENTBOX_VAULT_LEGACY_PATHS=1 to opt in deliberately. Index and PUSH cache left untouched.`);
-    console.log(JSON.stringify({ pages: 0, classes: 0, pages_dir: null, wrote: false, refused: 'legacy-path-vault-disabled' }, null, 2));
-    process.exitCode = EXIT_LEGACY_PATH_REFUSED;
-    return;
-  }
   const files = corpusFiles();
   // No corpus ⇒ nothing to index, and — critically — nothing to WRITE. Writing
   // an empty index here would clobber a good PUSH cache with zero classes and

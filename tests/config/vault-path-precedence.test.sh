@@ -8,12 +8,11 @@
 # `_ab_toml_val` standing in for the manifest reader. Nothing on this machine's
 # real manifest, vault or corpus is read or written.
 #
-# The contract under test (the three tiers documented at the resolver):
-#   1. manifest vault           — highest; VAULT_PAGES comes from [vault]
-#   2. explicit env override    — honoured only while the vault is ENABLED, or
-#                                 under AGENTBOX_VAULT_LEGACY_PATHS=1
-#   3. legacy ONTOLOGY_PAGES_DIR — cleared + warned about when the vault is
-#                                 disabled and there is no opt-in
+# The contract under test (one path authority, ADR-2028):
+#   - `[vault]` in the manifest is the only source: VAULT_PAGES and the
+#     VAULT_WORKING_* paths come from it, whatever the inherited environment says.
+#   - the retired ONTOLOGY_PAGES_DIR / AGENTBOX_VAULT_LEGACY_PATHS escape hatch
+#     is gone: the resolver neither reads, retains, clears nor mentions it.
 #
 # Part 2 covers the shell consumer (scripts/ontology-condense-refresh.sh); the
 # JS consumers are covered by tests/config/vault-consumer-fallback.test.mjs.
@@ -71,7 +70,7 @@ _run_resolver() { # _run_resolver <manifest-root> [ENV=VAL ...]
     ${stub}
     $(cat "$FN")
     _ab_vault_resolve
-    printf 'RESULT:%s|%s|%s|%s\n' \"\${AGENTBOX_VAULT_ENABLED:-}\" \"\${VAULT_ROOT:-}\" \"\${VAULT_PAGES:-}\" \"\${ONTOLOGY_PAGES_DIR:-}\"
+    printf 'RESULT:%s|%s|%s|%s\n' \"\${AGENTBOX_VAULT_ENABLED:-}\" \"\${VAULT_ROOT:-}\" \"\${VAULT_PAGES:-}\" \"\${VAULT_WORKING_PAGES:-}\"
   " 2>&1
 }
 
@@ -79,94 +78,63 @@ _field() { printf '%s' "$1" | sed -n 's/^RESULT:\(.*\)$/\1/p' | tail -1 | cut -d
 
 echo "── part 1: _ab_vault_resolve precedence ──"
 
-# case 1 — no vault, no override
+# case 1 — no vault
 OUT="$(_run_resolver '')"
-if [ "$(_field "$OUT" 1)" = "0" ] && [ -z "$(_field "$OUT" 3)" ] && [ -z "$(_field "$OUT" 4)" ]; then
-  _ok "no-vault + no-override → enabled=0, VAULT_PAGES empty, ONTOLOGY_PAGES_DIR empty"
+if [ "$(_field "$OUT" 1)" = "0" ] && [ -z "$(_field "$OUT" 3)" ]; then
+  _ok "no-vault → enabled=0, VAULT_PAGES empty"
 else
-  _bad "no-vault + no-override" "$OUT"
+  _bad "no-vault" "$OUT"
 fi
 
-# case 2 — no vault, legacy override present: cleared + warned
-OUT="$(_run_resolver '' ONTOLOGY_PAGES_DIR=/fixture/old-pages)"
-if [ "$(_field "$OUT" 1)" = "0" ] && [ -z "$(_field "$OUT" 4)" ] \
-   && printf '%s' "$OUT" | grep -q 'WARNING: clearing deprecated ONTOLOGY_PAGES_DIR=/fixture/old-pages'; then
-  _ok "no-vault + legacy override → CLEARED, one warning naming the path"
-else
-  _bad "no-vault + legacy override (must clear + warn)" "$OUT"
-fi
-
-# case 2b — the warning names the escape hatch (actionable, not just loud)
-if printf '%s' "$OUT" | grep -q 'AGENTBOX_VAULT_LEGACY_PATHS=1'; then
-  _ok "no-vault + legacy override → warning names the AGENTBOX_VAULT_LEGACY_PATHS=1 opt-in"
-else
-  _bad "warning names the opt-in" "$OUT"
-fi
-
-# case 3 — no vault, legacy override, explicit opt-in: retained
+# case 2 — no vault, a stale ONTOLOGY_PAGES_DIR and the old opt-in in the
+#          environment: the resolver ignores both, silently (no warning, no
+#          retention, no clearing — the variables are simply not its business).
 OUT="$(_run_resolver '' ONTOLOGY_PAGES_DIR=/fixture/old-pages AGENTBOX_VAULT_LEGACY_PATHS=1)"
-if [ "$(_field "$OUT" 1)" = "0" ] && [ "$(_field "$OUT" 4)" = "/fixture/old-pages" ] \
-   && printf '%s' "$OUT" | grep -q 'RETAINING deprecated ONTOLOGY_PAGES_DIR'; then
-  _ok "no-vault + legacy override + LEGACY_PATHS=1 → RETAINED, and says so"
+if [ "$(_field "$OUT" 1)" = "0" ] && [ -z "$(_field "$OUT" 3)" ] \
+   && ! printf '%s' "$OUT" | grep -q 'ONTOLOGY_PAGES_DIR\|LEGACY_PATHS'; then
+  _ok "no-vault + stale legacy variables → still disabled, resolver silent about them"
 else
-  _bad "no-vault + legacy override + opt-in (must retain)" "$OUT"
+  _bad "no-vault + stale legacy variables must be ignored" "$OUT"
 fi
 
-# case 4 — vault present, env override also set: the MANIFEST wins for VAULT_PAGES
+# case 2b — the resolver source carries no trace of the retired escape hatch
+if ! grep -q 'ONTOLOGY_PAGES_DIR\|AGENTBOX_VAULT_LEGACY_PATHS' "$FN"; then
+  _ok "resolver source has no ONTOLOGY_PAGES_DIR / AGENTBOX_VAULT_LEGACY_PATHS tier"
+else
+  _bad "resolver source must not mention the retired escape hatch" "$(grep -n 'ONTOLOGY_PAGES_DIR\|AGENTBOX_VAULT_LEGACY_PATHS' "$FN")"
+fi
+
+# case 3 — vault present, stale env override also set: the MANIFEST wins and
+#          the override is not mentioned
 OUT="$(_run_resolver /fixture/vault ONTOLOGY_PAGES_DIR=/fixture/old-pages)"
 if [ "$(_field "$OUT" 1)" = "1" ] \
    && [ "$(_field "$OUT" 2)" = "/fixture/vault" ] \
-   && [ "$(_field "$OUT" 3)" = "/fixture/vault/pages" ]; then
-  _ok "vault present + env override → manifest wins: VAULT_PAGES=/fixture/vault/pages"
+   && [ "$(_field "$OUT" 3)" = "/fixture/vault/pages" ] \
+   && ! printf '%s' "$OUT" | grep -q 'ONTOLOGY_PAGES_DIR'; then
+  _ok "vault present + stale override → manifest wins: VAULT_PAGES=/fixture/vault/pages, no note"
 else
   _bad "vault present: manifest must win for VAULT_PAGES" "$OUT"
 fi
 
-# case 4b — tier 2 unchanged while enabled: the explicit override is still honoured
-#           by legacy consumers, and the resolver says so out loud.
-if [ "$(_field "$OUT" 4)" = "/fixture/old-pages" ] \
-   && printf '%s' "$OUT" | grep -q 'overrides the manifest pages dir'; then
-  _ok "vault present + env override → ONTOLOGY_PAGES_DIR honoured (tier 2) with a note"
-else
-  _bad "vault present: tier-2 override must stay honoured + noted" "$OUT"
-fi
-
-# case 5 — vault present, no override: ONTOLOGY_PAGES_DIR derived from the manifest
-OUT="$(_run_resolver /fixture/vault)"
-if [ "$(_field "$OUT" 3)" = "/fixture/vault/pages" ] && [ "$(_field "$OUT" 4)" = "/fixture/vault/pages" ]; then
-  _ok "vault present + no override → ONTOLOGY_PAGES_DIR derived from VAULT_PAGES"
-else
-  _bad "vault present + no override" "$OUT"
-fi
-
-# case 6 — relocation: one manifest edit moves every derived path
+# case 4 — relocation: one manifest edit moves every derived path
 OUT="$(_run_resolver /fixture/relocated/visionGraph/knowledge)"
 if [ "$(_field "$OUT" 2)" = "/fixture/relocated/visionGraph/knowledge" ] \
-   && [ "$(_field "$OUT" 3)" = "/fixture/relocated/visionGraph/knowledge/pages" ] \
-   && [ "$(_field "$OUT" 4)" = "/fixture/relocated/visionGraph/knowledge/pages" ]; then
-  _ok "vault relocated → root, pages and the derived legacy var all follow the manifest"
+   && [ "$(_field "$OUT" 3)" = "/fixture/relocated/visionGraph/knowledge/pages" ]; then
+  _ok "vault relocated → root and pages follow the manifest"
 else
   _bad "vault relocated" "$OUT"
 fi
 
-# --- flat vault: pages = "." (the schema default since the 2026-10-16 flatten) means the root itself
+# case 5 — flat vault: pages = "." (the schema default since the 2026-10-16 flatten) means the root itself
 OUT="$(VPAGES=. _run_resolver /fixture/flat/knowledge)"
-if [ "$(_field "$OUT" 3)" = "/fixture/flat/knowledge" ] && [ "$(_field "$OUT" 4)" = "/fixture/flat/knowledge" ]; then
-  _ok "pages=\".\" → VAULT_PAGES is the vault root, and so is the derived legacy var"
+if [ "$(_field "$OUT" 3)" = "/fixture/flat/knowledge" ]; then
+  _ok "pages=\".\" → VAULT_PAGES is the vault root"
 else
-  _fail "pages=\".\" should resolve to the vault root" "$OUT"
-fi
-
-# case 7 — relocation with a stale env override still present: manifest still wins
-OUT="$(_run_resolver /fixture/relocated/knowledge ONTOLOGY_PAGES_DIR=/fixture/stale-legacy-corpus/pages)"
-if [ "$(_field "$OUT" 3)" = "/fixture/relocated/knowledge/pages" ]; then
-  _ok "vault relocated + stale Logseq-era override → VAULT_PAGES still the manifest's"
-else
-  _bad "vault relocated + stale override" "$OUT"
+  _bad "pages=\".\" should resolve to the vault root" "$OUT"
 fi
 
 # ---------------------------------------------------------------------------
-# Part 2 — the shell consumer refuses the legacy path when the vault is disabled
+# Part 2 — the shell consumer derives its path from VAULT_PAGES alone
 # ---------------------------------------------------------------------------
 echo
 echo "── part 2: scripts/ontology-condense-refresh.sh consumer guard ──"
@@ -186,18 +154,19 @@ _run_refresh() { # _run_refresh [ENV=VAL ...]
   printf 'RC:%s\n' "$?"
 }
 
-OUT="$(_run_refresh AGENTBOX_VAULT_ENABLED=0 ONTOLOGY_PAGES_DIR="$LEGACY_DIR")"
-if printf '%s' "$OUT" | grep -q 'RC:2' && printf '%s' "$OUT" | grep -q 'REFUSING legacy corpus path'; then
-  _ok "refresh.sh: vault disabled + legacy override → exit 2, refuses the path"
+OUT="$(_run_refresh AGENTBOX_VAULT_ENABLED=0 ONTOLOGY_PAGES_DIR="$LEGACY_DIR" AGENTBOX_VAULT_LEGACY_PATHS=1)"
+if printf '%s' "$OUT" | grep -q 'RC:0' && printf '%s' "$OUT" | grep -q 'disabled — no corpus path' \
+   && ! printf '%s' "$OUT" | grep -q 'index-build'; then
+  _ok "refresh.sh: vault disabled + stale legacy variables → ignored: benign exit 0, nothing run"
 else
-  _bad "refresh.sh must refuse the legacy path with exit 2" "$OUT"
+  _bad "refresh.sh must ignore the retired legacy variables" "$OUT"
 fi
 
-OUT="$(_run_refresh AGENTBOX_VAULT_ENABLED=0 ONTOLOGY_PAGES_DIR="$LEGACY_DIR" AGENTBOX_VAULT_LEGACY_PATHS=1)"
-if ! printf '%s' "$OUT" | grep -q 'REFUSING legacy corpus path'; then
-  _ok "refresh.sh: vault disabled + legacy override + opt-in → path honoured (no refusal)"
+OUT="$(_run_refresh AGENTBOX_VAULT_ENABLED=1 VAULT_PAGES="${TMP}/no-such-corpus" ONTOLOGY_PAGES_DIR="$LEGACY_DIR")"
+if printf '%s' "$OUT" | grep -q "corpus path does not exist: ${TMP}/no-such-corpus"; then
+  _ok "refresh.sh: vault enabled + stray ONTOLOGY_PAGES_DIR → VAULT_PAGES is the only source"
 else
-  _bad "refresh.sh must honour the legacy path under the opt-in" "$OUT"
+  _bad "refresh.sh must read VAULT_PAGES, not ONTOLOGY_PAGES_DIR" "$OUT"
 fi
 
 OUT="$(_run_refresh AGENTBOX_VAULT_ENABLED=0)"

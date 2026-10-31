@@ -3,16 +3,16 @@
 // vault-consumer-fallback.test.mjs — ADR-2028 acceptance test (JS consumers)
 // ----------------------------------------------------------------------------
 // The companion to tests/config/vault-path-precedence.test.sh: that one proves
-// the resolver CLEARS the deprecated ONTOLOGY_PAGES_DIR when the manifest
-// declares no [vault]; this one proves the consumers refuse it independently,
-// so a stale variable arriving from anywhere (an operator shell, a supervisord
-// environment= line, an older runtime-env.sh) cannot resurrect a corpus the rest
-// of the system reports as disabled.
+// the resolver derives paths from [vault] alone; this one proves the consumers
+// ignore the retired ONTOLOGY_PAGES_DIR / AGENTBOX_VAULT_LEGACY_PATHS pair
+// independently, so a stale variable arriving from anywhere (an operator shell,
+// a supervisord environment= line, an older runtime-env.sh) cannot resurrect a
+// corpus the rest of the system reports as disabled, or redirect an enabled one.
 //
 // Consumers covered:
-//   mcp/servers/lib/ontology-local.js        (library — refuses, empty index)
-//   mcp/servers/lib/ontology-index-build.js  (script  — refuses, exit 2)
-//   scripts/ontology-condense-scheduler.mjs  (loop    — refuses, exit 2)
+//   mcp/servers/lib/ontology-local.js        (library — empty index when disabled)
+//   mcp/servers/lib/ontology-index-build.js  (script  — leaves outputs untouched)
+//   scripts/ontology-condense-scheduler.mjs  (loop    — benign skip)
 // scripts/ontology-condense-refresh.sh is covered by the bash test above.
 //
 // Every case runs in a child process with an explicit environment, against a
@@ -88,32 +88,32 @@ function probeLocal(env) {
 
 console.log('── mcp/servers/lib/ontology-local.js ──');
 
-let r = probeLocal({ AGENTBOX_VAULT_ENABLED: '0', ONTOLOGY_PAGES_DIR: LEGACY_PAGES, AGENTBOX_ONTOLOGY_LOCAL_PATH: LEGACY_PAGES });
+let r = probeLocal({ AGENTBOX_VAULT_ENABLED: '0', AGENTBOX_ONTOLOGY_LOCAL_PATH: LEGACY_PAGES });
 if (r.json.corpusDir === '' && r.json.classes === 0 && /REFUSING corpus path/.test(r.stderr)) {
-  ok('vault disabled + legacy/explicit override → corpus refused, 0 classes, clear line');
+  ok('vault disabled + explicit override → corpus refused, 0 classes, clear line');
 } else {
   bad('ontology-local must refuse the override when the vault is disabled', `corpusDir=${r.json.corpusDir} classes=${r.json.classes}\n${r.stderr}`);
 }
 
-r = probeLocal({ AGENTBOX_VAULT_ENABLED: '0', ONTOLOGY_PAGES_DIR: LEGACY_PAGES, AGENTBOX_ONTOLOGY_LOCAL_PATH: LEGACY_PAGES, AGENTBOX_VAULT_LEGACY_PATHS: '1' });
-if (r.json.corpusDir === LEGACY_PAGES && r.json.classes === 1) {
-  ok('vault disabled + override + LEGACY_PATHS=1 → override honoured (1 fixture class)');
+r = probeLocal({ AGENTBOX_VAULT_ENABLED: '0', ONTOLOGY_PAGES_DIR: LEGACY_PAGES, AGENTBOX_VAULT_LEGACY_PATHS: '1' });
+if (r.json.corpusDir === '' && r.json.classes === 0) {
+  ok('vault disabled + retired ONTOLOGY_PAGES_DIR + LEGACY_PATHS=1 → ignored, 0 classes');
 } else {
-  bad('ontology-local must honour the override under the opt-in', `corpusDir=${r.json.corpusDir} classes=${r.json.classes}\n${r.stderr}`);
+  bad('ontology-local must ignore the retired legacy pair', `corpusDir=${r.json.corpusDir} classes=${r.json.classes}\n${r.stderr}`);
 }
 
-r = probeLocal({ AGENTBOX_VAULT_ENABLED: '1', VAULT_PAGES });
+r = probeLocal({ AGENTBOX_VAULT_ENABLED: '1', VAULT_PAGES, ONTOLOGY_PAGES_DIR: LEGACY_PAGES });
 if (r.json.corpusDir === VAULT_PAGES && r.json.classes === 1 && !/REFUSING/.test(r.stderr)) {
-  ok('vault enabled → VAULT_PAGES indexed, behaviour unchanged');
+  ok('vault enabled → VAULT_PAGES indexed; a stray ONTOLOGY_PAGES_DIR is ignored');
 } else {
   bad('ontology-local must be unchanged when the vault is enabled', `corpusDir=${r.json.corpusDir} classes=${r.json.classes}\n${r.stderr}`);
 }
 
 r = probeLocal({ AGENTBOX_VAULT_ENABLED: '1', VAULT_PAGES, AGENTBOX_ONTOLOGY_LOCAL_PATH: LEGACY_PAGES });
 if (r.json.corpusDir === LEGACY_PAGES) {
-  ok('vault enabled + explicit AGENTBOX_ONTOLOGY_LOCAL_PATH → tier-2 override still wins (unchanged)');
+  ok('vault enabled + explicit AGENTBOX_ONTOLOGY_LOCAL_PATH → explicit override still wins (unchanged)');
 } else {
-  bad('tier-2 override must still win while the vault is enabled', `corpusDir=${r.json.corpusDir}`);
+  bad('explicit override must still win while the vault is enabled', `corpusDir=${r.json.corpusDir}`);
 }
 
 // ── consumer 2: ontology-index-build.js ─────────────────────────────────────
@@ -121,21 +121,18 @@ console.log('\n── mcp/servers/lib/ontology-index-build.js ──');
 
 const outFile = () => join(TMP, `index-${Math.random().toString(36).slice(2)}.json`);
 
-r = runNode(INDEX_BUILD, [], { AGENTBOX_VAULT_ENABLED: '0', ONTOLOGY_PAGES_DIR: LEGACY_PAGES, ONTOLOGY_PUSH_CACHE: join(TMP, 'cache-refused.json') });
-if (r.status === 2 && /REFUSING legacy corpus path/.test(r.stderr) && /"wrote": false/.test(r.stdout)) {
-  ok('vault disabled + legacy override → exit 2, refuses, wrote:false (index + PUSH cache untouched)');
+r = runNode(INDEX_BUILD, [], { AGENTBOX_VAULT_ENABLED: '0', ONTOLOGY_PAGES_DIR: LEGACY_PAGES, AGENTBOX_VAULT_LEGACY_PATHS: '1', ONTOLOGY_PUSH_CACHE: join(TMP, 'cache-retired.json') });
+if (r.status === 0 && /no corpus path/.test(r.stderr) && /"wrote": false/.test(r.stdout)) {
+  ok('vault disabled + retired ONTOLOGY_PAGES_DIR/LEGACY_PATHS → ignored: no corpus path, wrote:false (outputs untouched)');
 } else {
-  bad('index-build must exit 2 and refuse the legacy path', `status=${r.status}\n${r.stderr}\n${r.stdout}`);
+  bad('index-build must ignore the retired legacy pair', `status=${r.status}\n${r.stderr}\n${r.stdout}`);
 }
 
-r = runNode(INDEX_BUILD, [], {
-  AGENTBOX_VAULT_ENABLED: '0', ONTOLOGY_PAGES_DIR: LEGACY_PAGES, AGENTBOX_VAULT_LEGACY_PATHS: '1',
-  ONTOLOGY_PUSH_CACHE: join(TMP, 'cache-optin.json'),
-});
-if (r.status === 0 && /"classes": 1/.test(r.stdout)) {
-  ok('vault disabled + legacy override + LEGACY_PATHS=1 → indexes the override (1 class)');
+r = runNode(INDEX_BUILD, [], { AGENTBOX_VAULT_ENABLED: '1', VAULT_PAGES, ONTOLOGY_PAGES_DIR: LEGACY_PAGES, ONTOLOGY_PUSH_CACHE: join(TMP, 'cache-stray.json') });
+if (r.status === 0 && /"classes": 1/.test(r.stdout) && r.stdout.includes(VAULT_PAGES)) {
+  ok('vault enabled + stray ONTOLOGY_PAGES_DIR → VAULT_PAGES indexed, the stray variable ignored');
 } else {
-  bad('index-build must honour the legacy path under the opt-in', `status=${r.status}\n${r.stderr}\n${r.stdout}`);
+  bad('index-build must index VAULT_PAGES, not ONTOLOGY_PAGES_DIR', `status=${r.status}\n${r.stderr}\n${r.stdout}`);
 }
 
 r = runNode(INDEX_BUILD, [VAULT_PAGES, outFile()], { AGENTBOX_VAULT_ENABLED: '1', VAULT_PAGES, ONTOLOGY_PUSH_CACHE: join(TMP, 'cache-enabled.json') });
@@ -157,18 +154,11 @@ console.log('\n── scripts/ontology-condense-scheduler.mjs ──');
 
 const SCHED_GATES = { ONTOLOGY_CONDENSE_ENABLED: 'true', ONTOLOGY_CONDENSE_SCHEDULE: 'true' };
 
-r = runNode(SCHEDULER, ['--once'], { ...SCHED_GATES, AGENTBOX_VAULT_ENABLED: '0', ONTOLOGY_PAGES_DIR: LEGACY_PAGES });
-if (r.status === 2 && /REFUSING legacy corpus path/.test(r.stderr + r.stdout)) {
-  ok('--once: vault disabled + legacy override → exit 2, refuses, runs nothing');
+r = runNode(SCHEDULER, ['--once'], { ...SCHED_GATES, AGENTBOX_VAULT_ENABLED: '0', ONTOLOGY_PAGES_DIR: LEGACY_PAGES, AGENTBOX_VAULT_LEGACY_PATHS: '1' });
+if (r.status === 0 && /vault-disabled/.test(r.stderr + r.stdout) && !/REFUSING/.test(r.stderr + r.stdout)) {
+  ok('--once: vault disabled + retired ONTOLOGY_PAGES_DIR/LEGACY_PATHS → ignored, benign skip, exit 0');
 } else {
-  bad('scheduler --once must exit 2 on a refused legacy path', `status=${r.status}\n${r.stderr}\n${r.stdout}`);
-}
-
-r = runNode(SCHEDULER, ['--dry-run'], { ...SCHED_GATES, AGENTBOX_VAULT_ENABLED: '0', ONTOLOGY_PAGES_DIR: LEGACY_PAGES });
-if (r.status === 2 && /legacy-path-vault-disabled/.test(r.stdout + r.stderr)) {
-  ok('--dry-run: vault disabled + legacy override → exit 2 with the reason named');
-} else {
-  bad('scheduler --dry-run must exit 2 on a refused legacy path', `status=${r.status}\n${r.stderr}\n${r.stdout}`);
+  bad('scheduler --once must ignore the retired legacy pair', `status=${r.status}\n${r.stderr}\n${r.stdout}`);
 }
 
 r = runNode(SCHEDULER, ['--dry-run'], { ...SCHED_GATES, AGENTBOX_VAULT_ENABLED: '0' });
@@ -176,16 +166,6 @@ if (r.status === 0 && /vault-disabled/.test(r.stdout + r.stderr)) {
   ok('--dry-run: vault disabled + no path at all → benign skip, exit 0');
 } else {
   bad('scheduler must stay a benign no-op with no path at all', `status=${r.status}\n${r.stderr}\n${r.stdout}`);
-}
-
-r = runNode(SCHEDULER, ['--dry-run'], {
-  ...SCHED_GATES, AGENTBOX_VAULT_ENABLED: '0', ONTOLOGY_PAGES_DIR: LEGACY_PAGES, AGENTBOX_VAULT_LEGACY_PATHS: '1',
-  ONTOLOGY_CONDENSED_OUT: join(TMP, 'condensed-optin.json'),
-});
-if (r.status === 0 && !/REFUSING/.test(r.stderr + r.stdout)) {
-  ok('--dry-run: vault disabled + override + LEGACY_PATHS=1 → honoured, exit 0');
-} else {
-  bad('scheduler must honour the legacy path under the opt-in', `status=${r.status}\n${r.stderr}\n${r.stdout}`);
 }
 
 r = runNode(SCHEDULER, ['--dry-run'], { ...SCHED_GATES, AGENTBOX_VAULT_ENABLED: '1', VAULT_PAGES, ONTOLOGY_CONDENSED_OUT: join(TMP, 'condensed-enabled.json') });

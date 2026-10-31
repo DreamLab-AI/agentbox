@@ -16,7 +16,7 @@
 #   6. no entailed_false anywhere   → "contradicted" never appears
 #   7. FILTER NOT EXISTS / MINUS    → negation.reading "not asserted at this generation"
 #   8. x-loom-version-iri header    → generation.version_iri
-#   9. vault find, zero hits        → "silent", generation from the local
+#   9. ontomark find, zero hits        → "silent", generation from the local
 #                                      .generation.json (located via agentbox.toml
 #                                      [vault].repo + vault.toml [build].out), and
 #                                      owl:versionIRI from its ontology_digest
@@ -26,7 +26,7 @@
 #  13. validate keeps its exit code (1) through the envelope
 #  14. a missing .generation.json   → generation.id null with a reason, still exit 0
 #  15. SPARQL ASK false → silent; ASK true → answered
-#  16. neighbours with /mcp 404     → vault tree fallback, enveloped, fallback named
+#  16. neighbours with /mcp 404     → ontomark tree fallback, enveloped, fallback named
 #  17. paths with /mcp 404          → degraded, never a corpus walk
 #  18. health                       → generation from the /health body
 #  19. MCP tools/call bodies        → content items counted: text "[]" silent,
@@ -339,7 +339,7 @@ out="$(run env LOOM_BASE_URL="$STUB" bash "$S" sparql 'SELECT ?c WHERE { ?c ?p ?
 check "x-loom-version-iri: carried as version_iri" "$out" \
   '.generation.version_iri == "https://narrativegoldmine.com/ontology/sha256-12-abcdefabcdef"'
 
-# 9 / 10. vault find, silent, generation from the local build
+# 9 / 10. ontomark find, silent, generation from the local build
 : > "$WORK/vault.log"
 out="$(run env LOOM_BASE_URL="http://127.0.0.1:1" bash "$S" search zzz-nothing 2>"$WORK/err")"; rc=$?
 [ "$rc" -eq 0 ] && ok "vault search: exit 0" || bad "vault search: exit 0" "rc=$rc" "$(cat "$WORK/err")"
@@ -392,7 +392,7 @@ out="$(run env LOOM_BASE_URL="http://127.0.0.1:1" bash "$S" health 2>/dev/null)"
 check "health unreachable: degraded"          "$out" '.grounding == "degraded"'
 [ "$rc" -eq 0 ] && ok "health unreachable: exit 0" || bad "health unreachable: exit 0" "rc=$rc"
 
-# 16b / 20. vault tree fallback is counted, not answered by default
+# 16b / 20. ontomark tree fallback is counted, not answered by default
 out="$(run env LOOM_BASE_URL="$STUB" bash "$S" neighbours escrow-oracle 2>/dev/null)"
 check "neighbours fallback: tree with children: []  → silent" "$out" '.grounding == "silent"'
 out="$(run env LOOM_BASE_URL="$STUB" bash "$S" neighbours leaf 2>/dev/null)"

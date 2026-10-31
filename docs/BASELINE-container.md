@@ -165,8 +165,9 @@ the hoisted `_ab_toml_val` reader — and exports `VAULT_ROOT`, `VAULT_PAGES`
 (= `root/pages`), `VAULT_FORMAT` and `VAULT_TUI`. Supervised programs inherit
 them from PID 1; tmux windows and interactive shells pick them up from the
 Phase-8 runtime-env file (`/run/agentbox/runtime-env.sh`, sourced by
-`/etc/profile.d` for bash and `conf.d` for fish). `ONTOLOGY_PAGES_DIR` is
-derived from `VAULT_PAGES` and survives one release as an explicit override.
+`/etc/profile.d` for bash and `conf.d` for fish). The pre-vault
+`ONTOLOGY_PAGES_DIR` variable and its `AGENTBOX_VAULT_LEGACY_PATHS` opt-in are
+removed: consumers derive their paths from `VAULT_*` alone.
 
 The section is catalogued as **two** entries, because its keys have genuinely
 different apply classes and one entry claiming `boot` for both would tell an
@@ -300,7 +301,7 @@ Desired manifest state, built image, projected target and loaded process configu
 
 ## Vault compatibility and Notes qualification — 2026-09-04
 
-ADR-2028 is partial for universal disablement: the no-vault resolver clears VAULT_PAGES but retains a legacy ONTOLOGY_PAGES_DIR override, which consumers prefer. The Notes script selects by binary presence, not VAULT_TUI, and can use a retained workspace binary or workspace-root fallback. ADR-2029 keeps its historical/staged evidence; usable editing and recovery need their own receipt. See the [estate vault review](https://github.com/DreamLab-AI/VisionFlow/blob/main/docs/estate-review/authored-vault-transition.md#runtime-path-overrides-and-notes-launch).
+ADR-2028 was partial for universal disablement: the no-vault resolver cleared VAULT_PAGES but retained a legacy ONTOLOGY_PAGES_DIR override, which consumers preferred. **Resolved 2026-10-31:** the override and its `AGENTBOX_VAULT_LEGACY_PATHS` opt-in are removed; paths derive from `VAULT_*` alone. The Notes script selects by binary presence, not VAULT_TUI, and can use a retained workspace binary or workspace-root fallback. ADR-2029 keeps its historical/staged evidence; usable editing and recovery need their own receipt. See the [estate vault review](https://github.com/DreamLab-AI/VisionFlow/blob/main/docs/estate-review/authored-vault-transition.md#runtime-path-overrides-and-notes-launch).
 
 ## Process lifecycle qualification — 2026-09-04
 
