@@ -135,3 +135,41 @@ max_parallel_maintenance_workers = 0` (database scope, survives restarts; the
 16 came from `postgresql.auto.conf`, an earlier `ALTER SYSTEM`). Invariant 8 of
 LEARNING-memory now says serial. The "Remaining" bullet above ("the FAIL is
 unexplained") is closed; the gate is still not wired into CI.
+
+## Amendment — 2026-10-31 (fixture v2: negatives, min_docs, stale-gold exclusion; fusion gate parity)
+
+The decision above stands unchanged for the v1 fixture: the band constants
+(175/102/0), the median-of-3 protocol, the receipt and the gate behave
+byte-for-byte as before, and `recall-fixture.v1.json` keeps its frozen
+`fixture_hash`. This amendment adds a **second, separate fixture schema** that the
+harness and gate dispatch on (`version: 2`, schema `ruvector-recall-fixture/v2`,
+file `scripts/recall-fixtures/recall-fixture.v2.json`, built by
+`--build-fixture-v2 --seeds FILE`, read-only). Ideas re-implemented from the
+MIT-licensed `kb_search/evalset.py` of FengZhenfei/carrel.
+
+- **Cases, not self-probes.** v2 judges text queries on the path an agent uses:
+  `memSearch` then `shapeSearchResponse` with the relevance floor
+  (`RUVECTOR_SEARCH_MIN_SCORE`, default 0.55, `memory-tools.js`). The fixture
+  freezes its own `relevance_floor`; the gate refuses if the deployed floor
+  differs.
+- **`negative` cases** pass only if no top-k result clears the floor. A degraded
+  (ILIKE) or failed search never passes.
+- **`min_docs`** requires at least N *distinct* gold source pages (`gold[].doc`,
+  default the entry) in the top-k above the floor; chunks of one page count once.
+- **Stale gold** (a gold `(namespace,key)` no longer in `memory_entries`,
+  checked read-only before measuring) is counted and reported separately and
+  excluded from the hit denominators; a case whose surviving gold cannot satisfy
+  `min_docs` is excluded whole. The verdict and the gate FAIL when stale gold
+  exceeds `band.max_stale_gold_fraction` (the gate's `--max-stale-gold-fraction`
+  can only tighten it), so corpus drift is loud rather than absorbed.
+- **Hash.** `fixture_hash` for v2 binds the cases, band, floor and embedding
+  model but not `baseline`, which is the output of measuring the fixture.
+  Receipts are `receipt@2` and name their fixture file; the gate accepts both
+  receipt schemas.
+- **Gate parity.** `RUVECTOR_HYBRID_FUSION` (`blend` default | `rrf`, see
+  `memory-hybrid.js`) is compared between run and now like the other geometry
+  gates, so a receipt measured under one fusion is not evidence for the other.
+
+Statuses are unchanged. Re-measuring against a v2 fixture is an operational step
+(baseline, re-ingest, serial reindex, fixture rebuild, re-measure, only then
+evaluate `rrf`) and is not claimed here.
