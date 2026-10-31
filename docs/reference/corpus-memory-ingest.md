@@ -5,7 +5,7 @@
 ## Usage
 
 ```
-node scripts/corpus-memory-ingest.mjs                         # dry-run (vault from $VAULT_ROOT or --vault-root): print the plan, write nothing
+node scripts/corpus-memory-ingest.mjs                         # dry-run (vault from $VAULT_PAGES / $VAULT_REPO, or --pages-dir / --repo): print the plan, write nothing
 RUVECTOR_ADMIN_WRITE=true node scripts/corpus-memory-ingest.mjs --yes [--prune] [--include-working]
 ```
 

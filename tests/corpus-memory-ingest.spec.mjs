@@ -12,7 +12,7 @@ import { join } from 'node:path';
 
 import { slugify, pageSlug, chunkPage, splitParts, splitSections, contentHash, parseFrontmatter, wikilinksOf, SECTION_MAX, OVERLAP } from '../scripts/lib/corpus-chunker.mjs';
 import { processBatch, createEmbedder, EMB_DIM, embedText, wellFormed } from '../scripts/lib/ruvector-bulk.mjs';
-import { planIngest, run, parseArgs, applyPlan, MANIFEST_KEY } from '../scripts/corpus-memory-ingest.mjs';
+import { planIngest, run, parseArgs, applyPlan, collectCorpus, vaultGeneration, MANIFEST_KEY } from '../scripts/corpus-memory-ingest.mjs';
 
 const live = JSON.parse(readFileSync(new URL('./fixtures/corpus-memory-live-rows.json', import.meta.url), 'utf8'));
 
@@ -375,8 +375,32 @@ test('parseArgs: dry-run is the default; --dry-run beats --yes', () => {
   assert.equal(parseArgs([]).write, false);
   assert.equal(parseArgs(['--yes']).write, true);
   assert.equal(parseArgs(['--yes', '--dry-run']).write, false);
-  const o = parseArgs(['--include-working', '--prune', '--vault-root', '/x', '--max-failed', '5']);
-  assert.deepEqual([o.includeWorking, o.prune, o.vaultRoot, o.maxFailed], [true, true, '/x', 5]);
+  const o = parseArgs(['--include-working', '--prune', '--pages-dir', '/x', '--max-failed', '5']);
+  assert.deepEqual([o.includeWorking, o.prune, o.pagesDir, o.maxFailed], [true, true, '/x', 5]);
   assert.equal(parseArgs([]).includeWorking, false);
   assert.throws(() => parseArgs(['--nope']), /unknown option/);
+});
+
+test('collectCorpus: working/ is excluded unless asked for; a name in both vaults is ingested from knowledge/ only; known covers both', () => {
+  const list = (dir) => (dir === '/k' ? ['A.md', 'B.md'] : ['B.md', 'C.md']);
+  const read = (p) => `text of ${p}`;
+  const off = collectCorpus({ pagesDir: '/k', workingDir: '/w' }, { includeWorking: false, list, read });
+  assert.deepEqual(off.pages.map((p) => `${p.vault}:${p.fileName}`), ['knowledge:A.md', 'knowledge:B.md']);
+  assert.deepEqual([...off.known].sort(), ['A.md', 'B.md', 'C.md']);
+  const on = collectCorpus({ pagesDir: '/k', workingDir: '/w' }, { includeWorking: true, list, read });
+  assert.deepEqual(on.pages.map((p) => `${p.vault}:${p.fileName}`), ['knowledge:A.md', 'knowledge:B.md', 'working:C.md']);
+  assert.deepEqual(on.shadowed, ['B.md']);
+  assert.equal(on.pages[0].text, 'text of /k/A.md');
+});
+
+test('vaultGeneration: HEAD sha, with +dirty when the ingested dirs have local changes', () => {
+  const head = 'c'.repeat(40);
+  const mk = (porcelain) => (args) => (args[0] === 'rev-parse' ? `${head}\n` : porcelain);
+  assert.equal(vaultGeneration({ repo: '/r', pagesDir: '/k' }, { git: mk('') }).generation, head);
+  const d = vaultGeneration({ repo: '/r', pagesDir: '/k' }, { git: mk(' M A.md\n') });
+  assert.equal(d.generation, `${head}+dirty`);
+  assert.equal(d.corpusVersion, `visiongraph@${'c'.repeat(12)}+dirty`);
+  const seen = [];
+  vaultGeneration({ repo: '/r', pagesDir: '/k', workingDir: '/w' }, { includeWorking: false, git: (a) => { seen.push(a); return a[0] === 'rev-parse' ? head : ''; } });
+  assert.ok(!seen.flat().includes('/w'), 'private vault changes do not taint a public-only run');
 });

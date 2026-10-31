@@ -22,7 +22,10 @@
 //                       kept. Off by default. The deleted keys are written to a receipt
 //                       (JSONL) BEFORE the delete so a tombstone consumer can replay them.
 //   --force             re-embed everything, ignore the manifest fast path
-//   --vault-root DIR    visionGraph checkout (default $VAULT_ROOT from the manifest, ADR-2028; no literal fallback)
+//   --pages-dir DIR     public vault pages (default $VAULT_PAGES, from the manifest [vault], ADR-2028;
+//                       there is no literal fallback)
+//   --working-dir DIR   private vault pages, used only with --include-working (default $VAULT_WORKING_PAGES)
+//   --repo DIR          git checkout that supplies the generation (default $VAULT_REPO)
 //   --namespace NS      default knowledge/pages
 //   --max-failed N      abort before the prune when more chunks fail (default 1000)
 //   --receipt-dir DIR   prune receipts and the last plan (default
@@ -85,26 +88,26 @@ export function listVault(root, { fs = { readdirSync } } = {}) {
  * vault. A name in both vaults is ingested from the public `knowledge/` vault
  * only. `known` lets the prune keep rows of pages that exist but were excluded.
  */
-export function collectCorpus(vaultRoot, { includeWorking = false, read = (p) => readFileSync(p, 'utf8'), list = listVault } = {}) {
-  const kn = list(join(vaultRoot, 'knowledge'));
-  const wk = list(join(vaultRoot, 'working'));
+export function collectCorpus({ pagesDir, workingDir }, { includeWorking = false, read = (p) => readFileSync(p, 'utf8'), list = listVault } = {}) {
+  const kn = list(pagesDir);
+  const wk = workingDir ? list(workingDir) : [];
   const known = new Set([...kn, ...wk]);
-  const pages = kn.map((fileName) => ({ fileName, vault: 'knowledge', path: join(vaultRoot, 'knowledge', fileName) }));
+  const pages = kn.map((fileName) => ({ fileName, vault: 'knowledge', path: join(pagesDir, fileName) }));
   const shadowed = [];
   if (includeWorking) {
     const have = new Set(kn);
     for (const fileName of wk) {
       if (have.has(fileName)) shadowed.push(fileName);
-      else pages.push({ fileName, vault: 'working', path: join(vaultRoot, 'working', fileName) });
+      else pages.push({ fileName, vault: 'working', path: join(workingDir, fileName) });
     }
   }
   return { pages: pages.map((p) => ({ ...p, text: read(p.path) })), known, shadowed };
 }
 
 /** visionGraph HEAD sha, with "+dirty" when the ingested vault dirs have local changes. */
-export function vaultGeneration(vaultRoot, { includeWorking = false, git = (args) => execFileSync('git', ['-C', vaultRoot, ...args], { encoding: 'utf8' }) } = {}) {
+export function vaultGeneration({ repo, pagesDir, workingDir }, { includeWorking = false, git = (args) => execFileSync('git', ['-C', repo, ...args], { encoding: 'utf8' }) } = {}) {
   const head = git(['rev-parse', 'HEAD']).trim();
-  const dirty = git(['status', '--porcelain', '--', 'knowledge', ...(includeWorking ? ['working'] : [])]).trim() !== '';
+  const dirty = git(['status', '--porcelain', '--', pagesDir, ...(includeWorking && workingDir ? [workingDir] : [])]).trim() !== '';
   return { head, generation: dirty ? `${head}+dirty` : head, corpusVersion: `visiongraph@${head.slice(0, 12)}${dirty ? '+dirty' : ''}`, dirty };
 }
 
@@ -306,7 +309,7 @@ export function summarise(plan, { generation, namespace, existingRows }) {
 
 export function parseArgs(argv) {
   const o = { yes: false, dryRun: false, includeWorking: false, prune: false, force: false, json: false,
-    vaultRoot: process.env.VAULT_ROOT || '', namespace: 'knowledge/pages', maxFailed: 1000,
+    pagesDir: process.env.VAULT_PAGES || '', workingDir: process.env.VAULT_WORKING_PAGES || '', repo: process.env.VAULT_REPO || '', namespace: 'knowledge/pages', maxFailed: 1000,
     receiptDir: '/home/devuser/workspace/.tmp/corpus-memory-ingest' };
   const val = (i, f) => { if (i + 1 >= argv.length) throw new Error(`${f} needs a value`); return argv[i + 1]; };
   for (let i = 0; i < argv.length; i++) {
@@ -317,7 +320,9 @@ export function parseArgs(argv) {
     else if (a === '--prune') o.prune = true;
     else if (a === '--force') o.force = true;
     else if (a === '--json') o.json = true;
-    else if (a === '--vault-root') o.vaultRoot = val(i++, a);
+    else if (a === '--pages-dir') o.pagesDir = val(i++, a);
+    else if (a === '--working-dir') o.workingDir = val(i++, a);
+    else if (a === '--repo') o.repo = val(i++, a);
     else if (a === '--namespace') o.namespace = val(i++, a);
     else if (a === '--receipt-dir') o.receiptDir = val(i++, a);
     else if (a === '--max-failed') o.maxFailed = Math.max(0, Number(val(i++, a)) || 0);
@@ -336,8 +341,8 @@ export async function run(opts, deps) {
   if (opts.write && env.RUVECTOR_ADMIN_WRITE !== 'true') {
     throw new Error('refusing to write: direct-pg ingest bypasses the memory MCP (ADR-2014). Set RUVECTOR_ADMIN_WRITE=true to authorise, or omit --yes for a dry-run.');
   }
-  const gen = deps.generation || vaultGeneration(opts.vaultRoot, { includeWorking: opts.includeWorking });
-  const { pages, known, shadowed } = deps.corpus || collectCorpus(opts.vaultRoot, { includeWorking: opts.includeWorking });
+  const gen = deps.generation || vaultGeneration(opts, { includeWorking: opts.includeWorking });
+  const { pages, known, shadowed } = deps.corpus || collectCorpus(opts, { includeWorking: opts.includeWorking });
   const manifest = await loadManifest(pool, opts.namespace);
   if (opts.write && !opts.force && manifest && manifest.generation === gen.generation && !manifest.failed_chunks
       && manifest.include_working === opts.includeWorking && (!opts.prune || manifest.prune_enabled)) {
@@ -371,7 +376,8 @@ async function main() {
   const die = (m) => { log(`FATAL: ${m}`); process.exit(1); };
   let opts;
   try { opts = parseArgs(process.argv.slice(2)); } catch (e) { die(e.message); }
-  if (!opts.vaultRoot) die('no vault: set [vault] in agentbox.toml (VAULT_ROOT) or pass --vault-root (ADR-2028)');
+  if (!opts.pagesDir || !opts.repo) die('no vault: set [vault] in agentbox.toml (VAULT_PAGES, VAULT_REPO) or pass --pages-dir and --repo (ADR-2028)');
+  if (opts.includeWorking && !opts.workingDir) die('--include-working needs VAULT_WORKING_PAGES or --working-dir');
   const conninfo = process.env.RUVECTOR_PG_CONNINFO || '';
   if (!conninfo) die('RUVECTOR_PG_CONNINFO not set');
   const { Pool } = loadPg(die);
