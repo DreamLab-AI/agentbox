@@ -1,0 +1,36 @@
+name: adr-checker
+# The canonical ADR ledger checker (scripts/adr-index-gen.js) is consumed pinned
+# by commit and sha256 from ontomark, ontomark-obsidian, visionGraph and
+# knowledgeGraph, so its .ledger.json / --exclude contract is tested whenever the
+# script or that test changes. (The ledger gate for this repo's own docs/adr stays
+# in invariants.yml.) Changing the script changes its sha256: the consumers' pins
+# in scripts/adr-ledger.sh must be bumped deliberately, in their own commits.
+on:
+  push:
+    paths:
+      - 'scripts/adr-index-gen.js'
+      - 'tests/config/adr-ledger-config.test.mjs'
+      - 'tests/config/adr-index-check.test.mjs'
+      - '.github/workflows/adr-checker.yml'
+  pull_request:
+    paths:
+      - 'scripts/adr-index-gen.js'
+      - 'tests/config/adr-ledger-config.test.mjs'
+      - 'tests/config/adr-index-check.test.mjs'
+      - '.github/workflows/adr-checker.yml'
+permissions:
+  contents: read
+jobs:
+  adr-checker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: ledger config contract (.ledger.json, --exclude)
+        run: node tests/config/adr-ledger-config.test.mjs
+      - name: index gate contract (ADR-2001)
+        run: node tests/config/adr-index-check.test.mjs
