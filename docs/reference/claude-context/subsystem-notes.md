@@ -77,6 +77,8 @@ The [ruvnet-brain](https://github.com/stuinfla/ruvnet-brain) corpus (~90k source
 
 **MCP surface**: `mcp/ruvnet-brain/server.js` is a THIN wrapper (deps: MCP SDK + pg) exposing `search_ruvnet` (namespace-scoped pgvector search, optional repo filter, ILIKE fallback when Xinference is down) and `ruvnet_brain_status`. The same data is reachable via `mcp__claude-flow__memory_search({namespace: "ruvnet-kb"})` — no wrapper required.
 
+**Corpus memory ingest** (`knowledge/pages`): `scripts/corpus-memory-ingest.mjs` re-ingests the visionGraph vaults in place under the existing key scheme (`<page-slug>::<section-slug>[::pN]`), sharing its embed/upsert helpers with the ruvnet playbook (`scripts/lib/ruvector-bulk.mjs`). Dry-run by default; `--yes` needs `RUVECTOR_ADMIN_WRITE=true` (ADR-2014 amendment 2026-10-31); `working/` only with `--include-working`; deletes only with `--prune`. Not wired into boot. After a write run rebuild the HNSW index (`scripts/ruvector-sidecar-update.sh reindex`, ADR-2133). Key scheme and usage: [corpus-memory-ingest.md](../corpus-memory-ingest.md).
+
 **Write protection**: the entrypoint appends `ruvnet-kb` to `RUVECTOR_PROTECTED_NAMESPACES` on the claude-flow MCP env, so agents cannot overwrite reference corpus rows through `memory_store`; only the ingest playbook (direct pg, `source_type = ruvnet-brain-ingest`) writes there.
 
 **Manifest gate**: `[skills.ruvnet_brain]` in `agentbox.toml` — `enabled`, `namespace`, `auto_ingest`, `grounding_hook`, `kb_release_url`, `staging_path` (workspace-backed transient download/extract scratch), `embed_batch`.

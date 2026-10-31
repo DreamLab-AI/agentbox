@@ -49,6 +49,10 @@ import { createInterface } from 'node:readline';
 import { execFileSync } from 'node:child_process';
 import http from 'node:http';
 import https from 'node:https';
+import {
+  EMB_DIM, EMBED_TRUNC, makeLog, loadPg as loadPgShared, poolConfig, httpJson, createEmbedder,
+  sleep, wellFormed, embedText, vecToSql, sha12, processBatch as processBatchShared,
+} from './lib/ruvector-bulk.mjs';
 
 // ── Config ───────────────────────────────────────────────────────────────────
 const NAMESPACE   = process.env.RUVNET_BRAIN_NAMESPACE || 'ruvnet-kb';
@@ -56,7 +60,6 @@ const SOURCE_TYPE = 'ruvnet-brain-ingest';
 const CONNINFO    = process.env.RUVECTOR_PG_CONNINFO || '';
 const XINFERENCE  = process.env.XINFERENCE_ENDPOINT || 'http://xinference:9997';
 const EMB_MODEL   = process.env.EMBEDDING_MODEL || 'bge-small-en-v1.5';
-const EMB_DIM     = 384;
 const RELEASE_URL = process.env.RUVNET_BRAIN_RELEASE_URL
   || 'https://github.com/stuinfla/ruvnet-brain/releases/latest/download/ruvnet-brain.zip';
 // Transient download/extract staging only — the corpus itself is persisted in
@@ -66,98 +69,16 @@ const RELEASE_URL = process.env.RUVNET_BRAIN_RELEASE_URL
 // neither can safely hold the roughly 512 MiB zip plus extraction scratch.
 const STAGING     = process.env.RUVNET_BRAIN_STAGING || '/home/devuser/workspace/.tmp/ruvnet-brain-staging';
 const BATCH       = Math.max(8, Math.min(Number(process.env.RUVNET_BRAIN_EMBED_BATCH) || 32, 128));
-const EMBED_TRUNC = 2000; // chars fed to the embedder (full text kept in value)
 
 const FORCE  = process.argv.includes('--force');
 const STATUS = process.argv.includes('--status');
 
-const log = (m) => process.stderr.write(`[${new Date().toISOString()}] [ruvnet-brain-ingest] ${m}\n`);
+const log = makeLog('ruvnet-brain-ingest');
 const die = (m, code = 1) => { log(`FATAL: ${m}`); process.exit(code); };
 
-// ── pg: resolve from baked closures, never npm-install at runtime ────────────
-function loadPg() {
-  const req = createRequire(import.meta.url);
-  const candidates = [
-    '/opt/agentbox/mcp/ruvnet-brain/node_modules/pg',
-    ...(process.env.AGENTBOX_PG_NODE_PATH ? [join(process.env.AGENTBOX_PG_NODE_PATH, 'pg')] : []),
-    '/opt/agentbox/management-api/node_modules/pg',
-    'pg',
-  ];
-  for (const c of candidates) { try { return req(c); } catch { /* next */ } }
-  die('pg module not found in any baked closure');
-}
-
-// ── Xinference client (batch) ────────────────────────────────────────────────
-function httpJson(url, { method = 'GET', body = null, timeout = 60000, headers = {} } = {}) {
-  return new Promise((resolvePromise, reject) => {
-    const u = new URL(url);
-    const mod = u.protocol === 'https:' ? https : http;
-    const payload = body ? JSON.stringify(body) : null;
-    const req = mod.request({
-      hostname: u.hostname, port: u.port, path: u.pathname + u.search, method,
-      headers: {
-        ...(payload ? { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload) } : {}),
-        ...headers,
-      },
-      timeout,
-    }, (res) => {
-      let data = '';
-      res.on('data', (c) => { data += c; });
-      res.on('end', () => {
-        if (res.statusCode >= 400) { reject(new Error(`HTTP ${res.statusCode}: ${data.substring(0, 200)}`)); return; }
-        try { resolvePromise(JSON.parse(data)); } catch (e) { reject(new Error(`parse: ${e.message}`)); }
-      });
-    });
-    req.on('error', reject);
-    req.on('timeout', () => { req.destroy(); reject(new Error('timeout')); });
-    if (payload) req.write(payload);
-    req.end();
-  });
-}
-
-async function embedBatch(texts) {
-  const j = await httpJson(`${XINFERENCE}/v1/embeddings`, {
-    method: 'POST',
-    body: { model: EMB_MODEL, input: texts },
-    timeout: 120000,
-  });
-  const embs = (j.data || []).map((d) => d.embedding);
-  if (embs.length !== texts.length) throw new Error(`embed count mismatch: ${embs.length}/${texts.length}`);
-  for (const e of embs) if (!Array.isArray(e) || e.length !== EMB_DIM) throw new Error('bad embedding dim');
-  return embs;
-}
-
-async function waitXinference(maxSecs = 180) {
-  const deadline = Date.now() + maxSecs * 1000;
-  while (Date.now() < deadline) {
-    try { await embedBatch(['ready-probe']); return true; } catch { /* retry */ }
-    await new Promise((r) => setTimeout(r, 5000));
-  }
-  return false;
-}
-
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-
-// Unpaired-surrogate sanitiser. Upstream's chunker splits surrogate pairs
-// across chunk boundaries (lone low surrogate at position 0 observed), which
-// breaks BOTH sinks: Xinference 500s the embed batch (Python UTF-8 encode
-// rejects lone surrogates) and Postgres rejects the stored value
-// (JSON.stringify emits the lone surrogate as a \uDXXX escape, which the
-// jsonb parser refuses to decode). Deterministic, so retries can't help —
-// replace unpaired surrogates with U+FFFD at the source, in mapPassage.
-const wellFormed = (s) => {
-  const t = s.toWellFormed ? s.toWellFormed() : s
-    .replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])/g, '�')
-    .replace(/(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g, '�');
-  // NUL is a valid Unicode scalar (toWellFormed keeps it) but Postgres
-  // text/jsonb cannot store it — "unsupported Unicode escape sequence".
-  return t.replace(/\u0000/g, '');
-};
-
-// The EMBED_TRUNC substring can re-split a valid pair at the boundary
-// ('\ud83d' at position 1998 observed), so the embed input is sanitised
-// again after the cut.
-const embedText = (s) => wellFormed(s.substring(0, EMBED_TRUNC));
+// ── pg + Xinference: shared with corpus-memory-ingest (scripts/lib/ruvector-bulk.mjs) ──
+const loadPg = () => loadPgShared(die, ['/opt/agentbox/mcp/ruvnet-brain/node_modules/pg']);
+const { embedBatch, waitReady: waitXinference } = createEmbedder({ endpoint: XINFERENCE, model: EMB_MODEL });
 
 // ── Release provenance (pure helpers, unit-tested) ──────────────────────────
 const HEX64 = /\b[0-9a-f]{64}\b/i;
@@ -358,9 +279,7 @@ async function resolveRelease(url) {
 }
 
 // ── SQL helpers (mirror ruvector-mcp.cjs conventions) ────────────────────────
-const vecToSql = (arr) => '[' + arr.join(',') + ']';
 const entryId  = (key) => `${SOURCE_TYPE}:${NAMESPACE}:${key}`;
-const sha12    = (s) => createHash('sha256').update(s).digest('hex').slice(0, 12);
 
 // ── Passage field mapping (defensive against upstream format drift) ──────────
 function mapPassage(p, fileRepo) {
@@ -392,24 +311,6 @@ function mintCorpusUrn(version) {
 }
 
 // ── Main ─────────────────────────────────────────────────────────────────────
-// Conninfo arrives in either libpq key=value form or postgresql:// URL form —
-// accept both, mirroring ruvector-mcp.cjs.
-function poolConfig(conninfo) {
-  if (/^postgres(ql)?:\/\//.test(conninfo)) return { connectionString: conninfo };
-  const parsed = {};
-  for (const pair of conninfo.split(/\s+/)) {
-    const eq = pair.indexOf('=');
-    if (eq > 0) parsed[pair.slice(0, eq)] = pair.slice(eq + 1);
-  }
-  return {
-    host: parsed.host || 'ruvector-postgres',
-    port: parseInt(parsed.port || '5432', 10),
-    database: parsed.dbname || parsed.database || 'ruvector',
-    user: parsed.user || parsed.username || 'ruvector',
-    password: parsed.password || 'ruvector',
-  };
-}
-
 async function main() {
   if (!CONNINFO) die('RUVECTOR_PG_CONNINFO not set');
   const { Pool } = loadPg();
@@ -553,33 +454,20 @@ async function main() {
     );
   };
 
-  // Embed+upsert with retry (transient Xinference/pg hiccups) then bisection
-  // (isolate poison passages instead of dropping the whole batch). Exceeding
+  // Embed+upsert with retry then bisection (shared helper). Exceeding
   // MAX_FAILED aborts before the prune, leaving the existing corpus intact.
-  const processBatch = async (batch) => {
-    let lastErr = null;
-    for (let attempt = 1; attempt <= 3; attempt++) {
-      try {
-        const embs = await embedBatch(batch.map((b) => embedText(b.text)));
-        await insertBatch(batch, embs);
-        inserted += batch.length;
-        return;
-      } catch (e) {
-        lastErr = e;
-        if (attempt < 3) await sleep(attempt * 2000);
-      }
-    }
-    if (batch.length > 1) {
-      log(`WARN: batch of ${batch.length} failed 3 attempts (${lastErr.message}) — bisecting`);
-      const mid = Math.ceil(batch.length / 2);
-      await processBatch(batch.slice(0, mid));
-      await processBatch(batch.slice(mid));
-      return;
-    }
-    failedChunks++;
-    log(`WARN: chunk ${batch[0].key} permanently failed (${lastErr.message}) — skipped`);
-    if (failedChunks > MAX_FAILED) die(`${failedChunks} failed chunks exceeds RUVNET_BRAIN_MAX_FAILED_CHUNKS=${MAX_FAILED} — aborting before prune (existing corpus left intact)`);
-  };
+  const processBatch = (batch) => processBatchShared(batch, {
+    log,
+    run: async (items) => {
+      const embs = await embedBatch(items.map((b) => embedText(b.text)));
+      await insertBatch(items, embs);
+    },
+    onInserted: (n) => { inserted += n; },
+    onFailure: () => {
+      failedChunks++;
+      if (failedChunks > MAX_FAILED) die(`${failedChunks} failed chunks exceeds RUVNET_BRAIN_MAX_FAILED_CHUNKS=${MAX_FAILED} — aborting before prune (existing corpus left intact)`);
+    },
+  });
 
   let pending = [];
   const flushPending = async () => {

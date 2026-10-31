@@ -122,3 +122,19 @@ passing recall receipt exist together.
 ## Re-affirmation — 2026-10-03 (ruflo 3.51.1 memory, ADR-2123)
 
 The `review_trigger` fired in substance: ruflo 3.51.1 (baked under the console gate) carries its own memory subsystem, and one `memory init` wrote three local stores into a repository. Tested, it is local-only (sql.js, AgentDB mirror, `./ruvector.db`, MiniLM) with no Postgres path, so it is not a new backend for this record to admit; it is a second system this record forbids. ADR-2123 closes the gap by routing `ruflo memory …` through `memStore`/`memSearch` of `lib/memory-tools.js` and refusing the local-store verbs, so the MCP-only, fail-closed mandate now also holds for the CLI and the ruflo-console memory pane. The upstream lineage (why ruvnet has an embedded line and a Postgres line, and why the Postgres line is current) is recorded in ADR-2123 so it is not re-derived. Nothing this record decides changed.
+
+## Amendment — 2026-10-31 (sanctioned bulk ingesters)
+
+Two scripts write `memory_entries` with direct `pg` and not through `memStore`: `scripts/ruvnet-brain-ingest.mjs` (namespace `ruvnet-kb`, ~160k rows) and `scripts/corpus-memory-ingest.mjs` (namespace `knowledge/pages`, the visionGraph corpus). Neither was named by this record. Reading the first against the decision above: it carried no gate of its own. Its only guard was that the entrypoint adds `ruvnet-kb` to `RUVECTOR_PROTECTED_NAMESPACES`, so agents cannot reach those rows through the governed tools while the playbook can (`docs/reference/claude-context/subsystem-notes.md`, "Write protection"). That was an unrecorded exception.
+
+**Decision.** These two scripts, and only these, are the sanctioned bulk-ingest exception to "no raw `INSERT`". The exception holds because they honour the reason for the rule, which is that a raw write must not produce a row HNSW cannot see:
+
+- they embed client-side through the same Xinference pipeline, model (`bge-small-en-v1.5`) and 384 dimensions as the governed path (ADR-2019 freeze), via the single shared module `scripts/lib/ruvector-bulk.mjs`, and write the vector in the same statement as the value, so a row is never stored without its own vector;
+- a failed chunk is skipped and counted, never stored vectorless; both abort before pruning when failures exceed a cap;
+- both stamp a manifest row (`ruvnet/manifest`, `_manifest`) recording version, counts and failures.
+
+**Authorisation.** The break-glass gate named above governs the new writer: `corpus-memory-ingest.mjs` refuses `--yes` unless `RUVECTOR_ADMIN_WRITE=true`, and is a read-only dry-run otherwise (the dry-run session is opened `default_transaction_read_only=on`). `ruvnet-brain-ingest.mjs` keeps its protected-namespace guard and its boot-time auto-run; it is not gated on `RUVECTOR_ADMIN_WRITE` because the boot path cannot hold that override. `corpus-memory-ingest.mjs` is not wired into boot. A third direct writer needs its own amendment here.
+
+**Erasure.** Deleting rows of pages that left the corpus is reconciliation of derived reference rows, not subject erasure, so it does not route through ADR-2060 (which is deferred and has no orchestration to call). The corpus writer still prunes only on `--prune` and writes the deleted keys to a JSONL receipt before deleting, so a future tombstone consumer can replay it.
+
+**Not decided here.** Whether the `_manifest` row, which carries a real embedding so that `memory_repair_embeddings` does not count it as pending, should live in the searchable namespace; `ruvnet/manifest` stores a NULL vector and therefore shows in the pending census.
