@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 75378856483d13f952569018421c4526da0aede2
+verified_commit: 1a5cd8e4105c3a6f96fca992c8c29f72903825e6
 verified_paths: [scripts/ci/check-ports-loopback.sh, .github/workflows/invariants.yml, flake.nix, docker-compose.yml]
 owner: jjohare
 review_trigger: Any new entry on the SANCTIONED list, or a new compose overlay file
@@ -466,3 +466,7 @@ Review trigger fired and was actioned: `docker-compose.isaac-sim.yml` is a new o
 Re-verified 2026-10-29 at `00039efb1e4a70402df86ad19cf76894fe3b9a8f` for ADR-2155. Reviewed the typed-decision activation diff against this record: the changed manifest, bootstrap, catalogue or source-pin hunks do not alter its governing boundary. Existing status axes and runtime evidence limits are retained. No image or service activation is claimed.
 
 Re-verified 2026-10-31 at `b65c3d4ed`. Governed paths changed: `.github/workflows/invariants.yml`: `check-no-logseq-paths` also rejects `mainKnowledgeGraph` and `pages/` literals (`bbb942058`); `flake.nix`: the ontomark comment now names the verbs it owns (`4a07fbfb3`). No section this record governs changed; the decision holds. Re-verified by `git diff 358e5d32c..b65c3d4ed -- <verified_paths>`; no re-implementation was needed. The image carries it at the next rebuild.
+
+## Re-verification — 2026-10-31
+
+Re-verified 2026-10-31 at `1a5cd8e4105c3a6f96fca992c8c29f72903825e6` (ADR-2007 evidence-gate port, branch `adr-sprint/w10`). Governed path changed: `.github/workflows/invariants.yml`: one new step, "adr-ratchet evidence gate self-test", running `tests/config/adr-ratchet-evidence.test.sh` beside the existing adr-ratchet self-test. It touches neither this record's decision nor the steps it relies on, so the decision and status axes stand. Re-run: `git diff 75378856483d13f952569018421c4526da0aede2..1a5cd8e4105c3a6f96fca992c8c29f72903825e6 -- .github/workflows/invariants.yml`.
