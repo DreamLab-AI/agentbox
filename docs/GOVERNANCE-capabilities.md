@@ -1,10 +1,11 @@
 ---
 title: Agentbox Capability Governance
 doc_id: AB-GOVERNANCE
-version: 0.6.11
+version: 0.6.12
 status: draft-for-ratification
 verified_commit: 
 changelog:
+  - "0.6.12 (2026-10-31): ADR-2139 Decision 5 implemented: an optional per-backend `state_budget_tokens` (0 = undeclared, E082) is projected by the boot projector to JSON, shell and plugin-config and reported, never enforced, by the proxy. ADR-2090's per-project bypass is built: `[skills.routing].bypass_projects` (E083) stops a matching project's turns before the one egress site; default empty, byte-identical."
   - "0.6.11 (2026-10-29): ADR-2153 is live: session ownership and peer-credential control replace the AoE token boundary. Router remains a public-only seed; operator auth on named routes remains NIP-98."
   - "0.6.10 (2026-10-28): ADR-2153 (proposed) supersedes ADR-2079: AoE is no longer examined as the fleet dispatch plane, because AoE itself is being replaced by an owned session plane. ADR-2080's router console becomes an ordinary seed on the new plane with its public-only scope unchanged."
   - "0.6.9 (2026-10-23): ADR-2150 (proposed, partial, staged) - video productions are directed through the existing media sidecars and their job clients under one evidence discipline, with a deterministic Rust toolkit (skills/video-production/runtime/), not a parallel orchestration engine. The Invariants compliance surface gains the reciprocal when-not and no-advertised-absent-runtime rule, tagged proposed until ADR-2150 is accepted."
@@ -145,7 +146,10 @@ guarded the same way; a post-hook can still rewrite what an earlier guard approv
   self-trigger and `/route` reads the routing table — the pre-2091 path, kept intact as the
   fallback. Invariant: the router **fails open** to the table on timeout, 429/529, any error,
   a missing `TYPESAFE_API_KEY` or a `none` pick, and the hook never retries. Egress of the
-  routing prompt is accepted for skill routing only (ADR-2090); per-project gates are deferred.
+  routing prompt is accepted for skill routing only (ADR-2090). The per-project bypass is
+  `bypass_projects`: absolute project roots whose sessions (cwd equal or beneath, path-boundary
+  match, symlinks resolved, fail-closed on an unknown cwd) are skipped before the request is
+  built, in the hook and in `/route`; empty by default, i.e. no project is gated until listed.
   Measured 2026-09-16: 90% soft accuracy over the fleet, ~0.7–1.1 s, $0.00062 per route.
   Contract tests: `tests/config/skill-route.test.js`.
 - **Jev compaction with fact rails** (ADR-2093, ADR-2121) —
@@ -222,7 +226,12 @@ guarded the same way; a post-hook can still rewrite what an earlier guard approv
   over-blocks and is allowed); the proxy and `[features.sovereign_system_one]` are mutually
   exclusive projectors (E081); the consumers' own key gates stand (router keyless behind the
   proxy; factrail still needs `TYPESAFE_API_KEY` or `FACTRAIL_API_KEY` present). Observability:
-  `GET /v1/backend` and the JSONL request log (never content). Validator: E080/E081/W076.
+  `GET /v1/backend` and the JSONL request log (never content). Decision 5: a backend may
+  declare `state_budget_tokens` (0 = undeclared), projected as `stateBudgetTokens` to
+  factrail's userConfig and `AGENTBOX_SYSTEM_ONE_STATE_BUDGET_TOKENS`, and reported on
+  `/v1/backend` and `x-system-one-state-budget-tokens`; advisory, the proxy never refuses a
+  request over it, and factrail applies it only once a release declares the key. Validator:
+  E080/E081/E082/W076.
 
 - **Manifest gates** — `agentbox.toml` `[skills.*]` blocks are the boot gates; each skill
   declares its own `manifest_gate` (e.g. tree-search-coder → `[skills.tree_search_coder]

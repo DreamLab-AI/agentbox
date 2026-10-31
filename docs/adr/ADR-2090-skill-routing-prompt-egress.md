@@ -3,12 +3,12 @@ id: ADR-2090
 title: Skill-routing prompts may egress to the judge; per-project gates are deferred, not waived
 date: 2026-09-16
 decision_status: accepted
-implementation_status: none
+implementation_status: complete
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: 5e213c3ecdf132c5b2fa72b89f1222e36c94551c
-verified_paths: []
+verified_commit: f8b02b93d7849955f065d7ae9afc9206198ec9b4
+verified_paths: [agentbox.toml, schema/agentbox.toml.schema.json, scripts/agentbox-config-validate.js, config/entrypoint-unified.sh, config/hooks/skill-route.cjs, config/hooks/lib/skill-route.cjs, skills/skill-router/scripts/route.mjs, config/egress-policy.json, tests/config/skill-route.test.js]
 owner: jjohare
 review_trigger: the first project whose content must not reach the judge, or any proposal to widen this beyond skill routing
 repo: agentbox
@@ -88,3 +88,28 @@ head+tail (`config/hooks/lib/skill-route.cjs:408-414`), to `api.typesafe.ai`
 (`config/hooks/lib/skill-route.cjs:33`); `[skills.routing].router` (`agentbox.toml:962`) is
 still the switch; and no per-project gate or bypass exists yet, so the debt in Consequences
 stands. Decision and status axes unchanged.
+
+## Close-out 2026-10-31 (per-project bypass built)
+
+The debt this record carried is paid at `f8b02b93d`; the decision itself is unchanged (skill routing may egress by default). `implementation_status` moves `none` → `complete`. `activation_status` stays `inactive`: the manifest list ships empty, so no project is gated until the operator lists one, and applying it needs a boot (BOOT-class, no rebuild).
+
+- **Key**: `[skills.routing].bypass_projects`, an array of absolute project roots, default `[]` (schema, `agentbox.toml`, validator **E083**: absolute, no whitespace, quote, comma or colon).
+- **Gate**: `config/hooks/lib/skill-route.cjs` `route()`, immediately before the single `fetch` site. The hook and `/route` share the library, and the Choice plus every verify/intent/facet extra ride that one request, so one gate covers all of them. A bypassed turn returns `skipped: project-bypass`, is logged without prompt text, and never builds a request.
+- **Identity**: the hook passes `hook.cwd`; `route.mjs` passes `process.cwd()`. Match is realpath on both sides plus a path-boundary test (`/x/proj` covers `/x/proj/sub` and a symlink to it, never `/x/proj2`).
+- **Fails closed**: with a non-empty list and an unknown or non-absolute cwd, nothing is sent. The list is a privacy control, so uncertainty must not egress.
+- **Cascade choice**: a local BM25 cascade answer involves no egress and still applies to a bypassed project; only an escalation to the judge is stopped.
+- **Projection**: the entrypoint turns the array into a PATH-style value and inlines `AGENTBOX_SKILL_ROUTE_BYPASS_PROJECTS` into the registered hook command and `runtime-env.sh` **only when the list is non-empty**, so the default hook command and env are byte-identical to before. `config()` also reads the manifest as the `/route` fallback in an unbooted shell.
+- **Register**: `config/egress-policy.json` `.register` (`skill-router` row) and `docs/SECURITY-profiles.md` no longer say no bypass exists; the Cross-reference above is superseded on that point.
+- **Known limits**: `route.mjs` prefers the baked `/opt/agentbox/config/hooks/lib` copy of the library, so the CLI honours the key only after a rebuild; the hook, run from the registered path, is covered by the same bake. The gate bounds the judge call only: the optional label-log embedding (ADR-2110, LAN, off in default use) is a separate route and is not gated by this key.
+
+Evidence (worktree branch `adr-sprint/w7`):
+
+```
+jest tests/config/skill-route.test.js       → 66 passed, 0 failed (10 new: bypassed cwd/subdir/symlink → 0 judge requests;
+                                              sibling prefix still routes; list is PATH-delimited; no cwd → nothing sent;
+                                              default/empty list unchanged; verify+intent request bypassed; cascade escalation
+                                              stopped; route() direct; boundary helper; manifest fallback; E083; entrypoint source)
+jest tests/config/semantic-rules.test.js tests/config/routing-labels.test.js tests/config/exp-b8-label-log.test.js → green
+node scripts/ci/render-egress-register.js --check → 46 routes in sync
+node scripts/agentbox-config-validate.js agentbox.toml → valid
+```
