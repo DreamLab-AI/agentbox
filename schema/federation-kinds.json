@@ -1,6 +1,6 @@
 {
   "artefact": "federation-kinds",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "adr": "ADR-2061",
   "description": "The single versioned authority for which urn:agentbox kinds cross the agentbox -> VisionClaw federation boundary. Both translators derive their closed kind map from this file: the JS bridge (agentbox management-api/lib/bc20-provenance-bridge.js) reads it at load, and the Rust translator (VisionClaw src/uri/mod.rs::cross_from_agentbox) embeds it with include_str!(\"../../agentbox/schema/federation-kinds.json\") - the agentbox tree is the ./agentbox submodule of the VisionClaw checkout, so that relative path resolves from src/uri/. Neither side may transcribe the kind list; a paired fixture asserts symmetry and any disagreement is a test failure.",
   "conventions": {
@@ -298,5 +298,161 @@
         "expect": null
       }
     }
-  ]
+  ],
+  "event_kinds": {
+    "adr": "ADR-2105",
+    "description": "Nostr event kinds agentbox allocates inside its own band. ADR-2105 decided the band layout; docs/PROTOCOL-registry.md is the human-readable table and this section is its machine-readable fixture under the ADR-2061 symmetric kind-map contract: the JS contract test (tests/contract/federation-kind-parity.contract.spec.js) and the Rust include_str! parity test (services/nostr-pod-bridge/src/colloquy_publish.rs) both read these rows and fail on drift against the colloquy-nostr constants and the registry.",
+    "band": {
+      "min": 38400,
+      "max": 38499
+    },
+    "reserved_bands": [
+      {
+        "min": 38000,
+        "max": 38099,
+        "purpose": "agent intent",
+        "record": "ADR-009 4.2"
+      },
+      {
+        "min": 38100,
+        "max": 38199,
+        "purpose": "agent response",
+        "record": "ADR-009 4.2"
+      },
+      {
+        "min": 38200,
+        "max": 38299,
+        "purpose": "agent job and payment",
+        "record": "PRD-006 S8"
+      },
+      {
+        "min": 38300,
+        "max": 38399,
+        "purpose": "LLM resource marketplace",
+        "record": "ADR-021"
+      }
+    ],
+    "kinds": [
+      {
+        "kind": 38410,
+        "name": "KnowledgeUnit",
+        "owner": "agentbox",
+        "adr": "ADR-2085",
+        "state": "spent",
+        "shape": "addressable",
+        "crosses": false,
+        "refusal_reason": "ADR-2085. A colloquy kind is an agentbox relay event inside the agentbox-owned Nostr band; VisionClaw has no consumer for it, so it never crosses the federation boundary. The urn:agentbox:knowledge kind row above governs the address; this row governs the wire number."
+      },
+      {
+        "kind": 38411,
+        "name": "Confirmation",
+        "owner": "agentbox",
+        "adr": "ADR-2085",
+        "state": "spent",
+        "shape": "regular, append-only",
+        "crosses": false,
+        "refusal_reason": "ADR-2085. A colloquy kind is an agentbox relay event inside the agentbox-owned Nostr band; VisionClaw has no consumer for it, so it never crosses the federation boundary. The urn:agentbox:knowledge kind row above governs the address; this row governs the wire number."
+      },
+      {
+        "kind": 38412,
+        "name": "Flag",
+        "owner": "agentbox",
+        "adr": "ADR-2085",
+        "state": "spent",
+        "shape": "regular, append-only",
+        "crosses": false,
+        "refusal_reason": "ADR-2085. A colloquy kind is an agentbox relay event inside the agentbox-owned Nostr band; VisionClaw has no consumer for it, so it never crosses the federation boundary. The urn:agentbox:knowledge kind row above governs the address; this row governs the wire number."
+      },
+      {
+        "kind": 38413,
+        "name": "Supersession",
+        "owner": "agentbox",
+        "adr": "ADR-2085",
+        "state": "spent",
+        "shape": "regular",
+        "crosses": false,
+        "refusal_reason": "ADR-2085. A colloquy kind is an agentbox relay event inside the agentbox-owned Nostr band; VisionClaw has no consumer for it, so it never crosses the federation boundary. The urn:agentbox:knowledge kind row above governs the address; this row governs the wire number."
+      },
+      {
+        "kind": 38414,
+        "name": "Graduation",
+        "owner": "agentbox",
+        "adr": "ADR-2085",
+        "state": "spent",
+        "shape": "regular",
+        "crosses": false,
+        "refusal_reason": "ADR-2085. A colloquy kind is an agentbox relay event inside the agentbox-owned Nostr band; VisionClaw has no consumer for it, so it never crosses the federation boundary. The urn:agentbox:knowledge kind row above governs the address; this row governs the wire number."
+      },
+      {
+        "kind": 38415,
+        "name": "ToolGapSignal",
+        "owner": "agentbox",
+        "adr": "ADR-2085",
+        "state": "spent",
+        "shape": "addressable",
+        "crosses": false,
+        "refusal_reason": "ADR-2085. A colloquy kind is an agentbox relay event inside the agentbox-owned Nostr band; VisionClaw has no consumer for it, so it never crosses the federation boundary. The urn:agentbox:knowledge kind row above governs the address; this row governs the wire number."
+      },
+      {
+        "kind": 38420,
+        "name": "sidestr-account-binding",
+        "owner": "agentbox",
+        "adr": "ADR-2098",
+        "state": "allocated-proposed",
+        "shape": "proposed",
+        "crosses": false,
+        "refusal_reason": "ADR-2098 / ADR-2101 / DDD-022, proposed and parked. The number is reserved so that no other record can spend it; nothing is published and nothing crosses the federation boundary."
+      },
+      {
+        "kind": 38421,
+        "name": "PegOutDefaulted",
+        "owner": "agentbox",
+        "adr": "DDD-022",
+        "state": "allocated-proposed",
+        "shape": "proposed",
+        "crosses": false,
+        "refusal_reason": "ADR-2098 / ADR-2101 / DDD-022, proposed and parked. The number is reserved so that no other record can spend it; nothing is published and nothing crosses the federation boundary."
+      },
+      {
+        "kind": 38422,
+        "name": "ChildChainOpened",
+        "owner": "agentbox",
+        "adr": "DDD-022",
+        "state": "allocated-proposed",
+        "shape": "proposed",
+        "crosses": false,
+        "refusal_reason": "ADR-2098 / ADR-2101 / DDD-022, proposed and parked. The number is reserved so that no other record can spend it; nothing is published and nothing crosses the federation boundary."
+      },
+      {
+        "kind": 38423,
+        "name": "ChildChainClosing",
+        "owner": "agentbox",
+        "adr": "DDD-022",
+        "state": "allocated-proposed",
+        "shape": "proposed",
+        "crosses": false,
+        "refusal_reason": "ADR-2098 / ADR-2101 / DDD-022, proposed and parked. The number is reserved so that no other record can spend it; nothing is published and nothing crosses the federation boundary."
+      },
+      {
+        "kind": 38424,
+        "name": "ChainTombstoned",
+        "owner": "agentbox",
+        "adr": "DDD-022",
+        "state": "allocated-proposed",
+        "shape": "proposed",
+        "crosses": false,
+        "refusal_reason": "ADR-2098 / ADR-2101 / DDD-022, proposed and parked. The number is reserved so that no other record can spend it; nothing is published and nothing crosses the federation boundary."
+      },
+      {
+        "kind": 38425,
+        "name": "SettlementRecorded",
+        "owner": "agentbox",
+        "adr": "DDD-022",
+        "state": "allocated-proposed",
+        "shape": "proposed",
+        "crosses": false,
+        "refusal_reason": "ADR-2098 / ADR-2101 / DDD-022, proposed and parked. The number is reserved so that no other record can spend it; nothing is published and nothing crosses the federation boundary."
+      }
+    ]
+  }
 }

@@ -1015,7 +1015,15 @@ async function start() {
     // Always mounted (core observability, like /v1/uri); authed, read-only.
     {
       try {
-        await app.register(require('./routes/system'), { logger, manifest, adapters: resolvedAdapters });
+        // ADR-2041: hand /v1/system the live action-plane singletons so the
+        // `execution` block reports `live` once POST /v1/tasks has built them
+        // (`{}` — i.e. declared — until then; never a fabricated "live").
+        await app.register(require('./routes/system'), {
+          logger,
+          manifest,
+          adapters: resolvedAdapters,
+          execution: { snapshot: require('./lib/action-plane').getCoverageSnapshot },
+        });
         logger.debug({ event: 'system.mounted' }, 'System surface ready at /v1/system');
       } catch (err) {
         logger.error({ err: err.message }, 'System surface failed to mount');

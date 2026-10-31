@@ -23,9 +23,9 @@
  * the REAL journal/pipeline singletons from `lib/action-plane.js` (built the
  * first time `POST /v1/tasks` dispatches through them) and feeds them in, so
  * `status` genuinely means "a live instance is being used", not "declared".
- * `routes/system.js` does not call it yet — wiring that in is a one-line
- * change to `server.js`'s route registration (`options.execution.snapshot`),
- * which is out of this module's owner's file scope; see ADR-2041 §Consequences.
+ * `server.js` now registers `routes/system` with
+ * `execution: { snapshot: action-plane.getCoverageSnapshot }` (ADR-2041
+ * close-out 2026-10-31; test: tests/contract/system-execution-wiring.contract.spec.js).
  */
 
 const { VOCABULARY, SCHEMA_ID } = require('./execution-journal');

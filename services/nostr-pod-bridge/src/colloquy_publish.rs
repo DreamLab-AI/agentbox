@@ -143,6 +143,63 @@ pub fn parse_request(raw: &str) -> anyhow::Result<PublishRequest> {
 mod tests {
     use super::*;
 
+    /// ADR-2061 / ADR-2105: the Rust half of the event-kind parity fixture.
+    /// `schema/federation-kinds.json` (`event_kinds`) is the shared authority;
+    /// its JS twin is `tests/contract/federation-kind-parity.contract.spec.js`.
+    /// Test-only, so the production build never reads a file outside the crate.
+    const FEDERATION_KINDS_JSON: &str = include_str!("../../../schema/federation-kinds.json");
+
+    fn artefact_event_kinds() -> Vec<(u64, String, String)> {
+        let doc: serde_json::Value =
+            serde_json::from_str(FEDERATION_KINDS_JSON).expect("federation-kinds.json must parse");
+        let ek = &doc["event_kinds"];
+        assert_eq!(ek["adr"], "ADR-2105");
+        assert_eq!(ek["band"]["min"], 38_400);
+        assert_eq!(ek["band"]["max"], 38_499);
+        ek["kinds"]
+            .as_array()
+            .expect("event_kinds.kinds is an array")
+            .iter()
+            .map(|r| {
+                assert_eq!(r["owner"], "agentbox");
+                assert_eq!(r["crosses"], false, "agentbox band kinds never cross");
+                (
+                    r["kind"].as_u64().expect("kind is a number"),
+                    r["name"].as_str().expect("name").to_string(),
+                    r["state"].as_str().expect("state").to_string(),
+                )
+            })
+            .collect()
+    }
+
+    #[test]
+    fn event_kind_artefact_rows_sit_in_the_agentbox_band_only() {
+        let rows = artefact_event_kinds();
+        assert!(!rows.is_empty());
+        let mut seen = std::collections::BTreeSet::new();
+        for (kind, name, _) in &rows {
+            assert!(
+                (38_400..=38_499).contains(kind),
+                "{name} ({kind}) is outside the agentbox band"
+            );
+            assert!(seen.insert(*kind), "duplicate kind {kind}");
+        }
+    }
+
+    #[test]
+    fn spent_artefact_rows_match_signable_kinds_plus_graduation() {
+        let mut spent: Vec<u64> = artefact_event_kinds()
+            .into_iter()
+            .filter(|(_, _, state)| state == "spent")
+            .map(|(k, _, _)| k)
+            .collect();
+        spent.sort_unstable();
+        let mut mine: Vec<u64> = SIGNABLE_KINDS.to_vec();
+        mine.push(KIND_GRADUATION);
+        mine.sort_unstable();
+        assert_eq!(spent, mine, "artefact and signing door disagree on the colloquy kinds");
+    }
+
     #[test]
     fn every_colloquy_kind_except_graduation_is_admitted() {
         for kind in [38_410, 38_411, 38_412, 38_413, 38_415] {

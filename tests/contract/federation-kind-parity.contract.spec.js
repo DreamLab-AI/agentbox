@@ -179,6 +179,67 @@ describe('ADR-2061 — identity pass-through', () => {
   });
 });
 
+describe('ADR-2105 event-kind rows — the 38400-38499 band fixture', () => {
+  const fs = require('fs');
+  const EK = ART.event_kinds;
+  const kindsRs = fs.readFileSync(
+    path.join(__dirname, '..', '..', 'crates', 'colloquy', 'colloquy-nostr', 'src', 'kinds.rs'), 'utf8');
+  const registry = fs.readFileSync(path.join(__dirname, '..', '..', 'docs', 'PROTOCOL-registry.md'), 'utf8');
+
+  test('the section names ADR-2105 and the agentbox band 38400-38499', () => {
+    expect(EK.adr).toBe('ADR-2105');
+    expect(EK.band).toEqual({ min: 38400, max: 38499 });
+  });
+
+  test('every row sits inside the band and outside every reserved band', () => {
+    for (const row of EK.kinds) {
+      expect(row.kind).toBeGreaterThanOrEqual(EK.band.min);
+      expect(row.kind).toBeLessThanOrEqual(EK.band.max);
+      for (const b of EK.reserved_bands) {
+        expect(row.kind < b.min || row.kind > b.max).toBe(true);
+      }
+    }
+  });
+
+  test('the reserved bands tile 38000-38399 exactly, so nothing below 38400 is free', () => {
+    const sorted = [...EK.reserved_bands].sort((a, b) => a.min - b.min);
+    expect(sorted[0].min).toBe(38000);
+    expect(sorted[sorted.length - 1].max).toBe(EK.band.min - 1);
+    for (let i = 1; i < sorted.length; i += 1) expect(sorted[i].min).toBe(sorted[i - 1].max + 1);
+  });
+
+  test('numbers are unique, owned by agentbox, cite a record, and never cross', () => {
+    const nums = EK.kinds.map((r) => r.kind);
+    expect(new Set(nums).size).toBe(nums.length);
+    for (const row of EK.kinds) {
+      expect(row.owner).toBe('agentbox');
+      expect(row.adr).toMatch(/^(ADR|DDD|PRD)-\d+$/);
+      expect(['spent', 'allocated-proposed']).toContain(row.state);
+      expect(row.crosses).toBe(false);
+      expect(row.refusal_reason.length).toBeGreaterThan(20);
+    }
+  });
+
+  test('colloquy rows equal the colloquy-nostr ALL_KINDS constants, in order and by name', () => {
+    const consts = [...kindsRs.matchAll(/pub const (KIND_[A-Z_]+): u64 = (\d+(?:_\d+)*);/g)]
+      .map((m) => [m[1], Number(m[2].replace(/_/g, ''))]);
+    expect(consts).toHaveLength(6);
+    const rows = EK.kinds.filter((r) => r.state === 'spent');
+    expect(rows.map((r) => r.kind)).toEqual(consts.map(([, n]) => n));
+    const snake = (name) => `KIND_${name.replace(/([a-z])([A-Z])/g, '$1_$2').toUpperCase()}`;
+    expect(rows.map((r) => snake(r.name))).toEqual(consts.map(([c]) => c));
+  });
+
+  test('every row appears in docs/PROTOCOL-registry.md and the old 3810x/3811x numbers are retired', () => {
+    for (const row of EK.kinds) {
+      const inRow = new RegExp(`\\\`${row.kind}\\\``).test(registry)
+        || (row.kind >= 38421 && /`38421`-`38425`/.test(registry) && row.kind <= 38425);
+      expect({ kind: row.kind, documented: inRow }).toEqual({ kind: row.kind, documented: true });
+    }
+    for (const row of EK.kinds) expect(row.kind).not.toBeLessThan(38400);
+  });
+});
+
 /**
  * Turn a declared grammar such as `urn:visionclaw:kg:<pubkey>:<sha256-12>` into a
  * regex, so the artefact's prose grammar is itself executable rather than a
