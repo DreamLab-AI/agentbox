@@ -294,7 +294,7 @@ file (same directory) for quick review.
 ## The `vault propose` adapter contract
 
 `ontology_propose_payload` on a survivor dossier is the splice, shaped so the
-adapter (`submit-proposals.mjs`) can render it as a unified diff and hand it to
+adapter (`submit-proposals.mjs`) can apply it to the target page and hand the proposed page to
 `vault propose` with minimal transformation. The field keeps its historical name;
 the MCP tool it was named after is retired (ADR-2107/ADR-2108):
 
@@ -322,12 +322,13 @@ The adapter is `submit-proposals.mjs`, and it does this:
    demanding an **exact slug match**. A fuzzy hit must never receive someone
    else's amendment, so an unresolved page is reported and skipped. It needs a
    class *create* proposal, which stays human-initiated.
-3. Renders `edit.content` as the added lines of a unified diff, with
-   `edit.anchor` as diff **context** on the side `edit.mode` dictates, and calls
-   `vault propose <iri> --level content --hypothesis "…" --diff <file>`. The
-   hypothesis carries the provenance and scores. Emitting the anchor as context
-   rather than a hint is what makes the proposal fail safely: if the page moved
-   under the dossier, the diff no longer applies and `vault` refuses it.
+3. Splices `edit.content` into the target page (`knowledge/<page>.md`) before
+   or after `edit.anchor`, as `edit.mode` dictates, and calls
+   `vault propose <iri> --level content --hypothesis "…" --diff <file>` with the
+   proposed page in full (that is what `--diff` takes). The hypothesis carries
+   the provenance and scores. The anchor must still be one contiguous run of
+   the page's lines: if the page moved under the dossier, the splice is
+   refused and banked as `anchor-moved` instead of being placed by guess.
 4. Reports the outcome without dressing it up. `blockers` non-empty means
    nothing was posted — an automatic refusal on Whelk inconsistency, a subclass
    cycle, a relation contradiction or a vocabulary violation — and the submitter

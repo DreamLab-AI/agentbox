@@ -142,28 +142,35 @@ export function resolveIri(targetPage, find = (q) => cli(ONTOMARK, ['find', '--q
 }
 
 /**
- * The dossier's splice edit, rendered as the unified diff `vault propose`
- * consumes. `edit.mode` is insert_after/insert_before against `edit.anchor`;
- * the anchor is prose from the target page, so it is emitted as diff CONTEXT.
- * That is deliberate: if the anchor has moved since the dossier was built, the
- * diff no longer applies and `vault` refuses it, which is the correct outcome.
+ * The target page with the dossier's splice applied, in full: `vault propose
+ * --diff` takes the proposed page itself, not a diff (VisionClaw
+ * `crates/vault/src/main.rs`, the `diff` argument). `edit.mode` is
+ * insert_after/insert_before against `edit.anchor`, prose lines taken from the
+ * page when the dossier was built. They must still appear as one contiguous
+ * run of lines; if the anchor has moved or is ambiguous the splice is refused
+ * (`null`), never placed by guess.
  */
-function writeDiff(dossier) {
-  const p = dossier.ontology_propose_payload;
-  const file = path.join(os.tmpdir(), `podcast-propose-${dossier.topic_slug}-${process.pid}.diff`);
-  const anchor = String(p.edit.anchor || '').split('\n').filter(Boolean);
-  const added = String(p.edit.content || '').split('\n');
-  const before = p.edit.mode === 'insert_before';
-  const body = [
-    `--- a/${p.target_page}`,
-    `+++ b/${p.target_page}`,
-    '@@ anchored splice @@',
-    ...(before ? [] : anchor.map((l) => ` ${l}`)),
-    ...added.map((l) => `+${l}`),
-    ...(before ? anchor.map((l) => ` ${l}`) : []),
-    '',
-  ].join('\n');
-  fs.writeFileSync(file, body);
+export function spliceProposal(pageText, edit) {
+  const anchor = String(edit.anchor || '').split('\n').filter((l) => l.trim());
+  if (!anchor.length) return null;
+  const lines = pageText.split('\n');
+  const starts = [];
+  for (let i = 0; i + anchor.length <= lines.length; i++) {
+    if (anchor.every((a, k) => lines[i + k].trim() === a.trim())) starts.push(i);
+  }
+  if (starts.length !== 1) return null;
+  const at = edit.mode === 'insert_before' ? starts[0] : starts[0] + anchor.length;
+  const added = String(edit.content || '').replace(/\n+$/, '').split('\n');
+  return [...lines.slice(0, at), ...added, ...lines.slice(at)].join('\n');
+}
+
+/** Write the proposed page for `vault propose --diff`, or return null. */
+function writeProposedPage(dossier, page) {
+  const source = path.join(REPO, 'knowledge', `${page}.md`);
+  const proposed = spliceProposal(fs.readFileSync(source, 'utf8'), dossier.ontology_propose_payload.edit);
+  if (proposed === null) return null;
+  const file = path.join(os.tmpdir(), `podcast-propose-${dossier.topic_slug}-${process.pid}.md`);
+  fs.writeFileSync(file, proposed);
   return file;
 }
 
@@ -224,7 +231,17 @@ function main() {
       continue;
     }
 
-    const diffFile = writeDiff(d);
+    const diffFile = writeProposedPage(d, target.page);
+    if (!diffFile) {
+      // The anchor is gone or ambiguous: the page moved on since the dossier
+      // was built. Bank it as blocked; a new dossier gets a new fingerprint.
+      console.log(`BLOCKED [${d.topic_slug}] -> ${target.iri}`);
+      console.log('         anchor-moved: the splice anchor is not one contiguous run of the page\'s lines');
+      state[d.topic_slug] = { fp: key, blocked: ['anchor-moved'], at: new Date().toISOString() };
+      fs.writeFileSync(STATE, JSON.stringify(state, null, 2));
+      blocked++;
+      continue;
+    }
     const args = ['propose', target.iri,
       '--level', 'content',
       '--hypothesis', hypothesisFor(d, f),

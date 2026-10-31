@@ -307,7 +307,7 @@ refresh. The curated main graph is
 never touched.
 
 Survivors flow onward via `node submit-proposals.mjs` (weekly cron stage 3):
-each dossier's splice becomes a unified diff and is submitted as a governed
+each dossier's splice is applied to the target page and the full proposed page is submitted as a governed
 content proposal with `vault propose --level content --diff <file>` (ADR-2107;
 contract C2). `vault` (the governance transport) runs Whelk and the conflict detector as **blockers**, then
 posts a forum 31402 for a human 31403 signature. There is no VisionClaw

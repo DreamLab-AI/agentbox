@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { findHits, resolveIri, resolveRepo, slugFromPage } from '../submit-proposals.mjs';
+import { findHits, resolveIri, resolveRepo, slugFromPage, spliceProposal } from '../submit-proposals.mjs';
 
 test('slugFromPage lower-cases and dashes a page title', () => {
   assert.equal(slugFromPage('Agentic Workflow.md'), 'agentic-workflow');
@@ -39,4 +39,21 @@ test('the repository comes from VAULT_REPO, else the parent of a knowledge or wo
   assert.equal(resolveRepo({ VAULT_ROOT: '/r/working' }), '/r');
   assert.equal(resolveRepo({ VAULT_ROOT: '/r/elsewhere' }), null);
   assert.equal(resolveRepo({}), null);
+});
+
+test('a splice inserts the content after its anchor and keeps every other line', () => {
+  const page = '---\ntype: Class\n---\n# Topic\n\nFirst line.\nSecond line.\n\nTail.\n';
+  const out = spliceProposal(page, { mode: 'insert_after', anchor: 'First line.\nSecond line.', content: '- New evidence.\n' });
+  assert.equal(out, '---\ntype: Class\n---\n# Topic\n\nFirst line.\nSecond line.\n- New evidence.\n\nTail.\n');
+});
+
+test('insert_before places the content above the anchor', () => {
+  const out = spliceProposal('A\nB\nC', { mode: 'insert_before', anchor: 'B', content: 'X' });
+  assert.equal(out, 'A\nX\nB\nC');
+});
+
+test('a moved or ambiguous anchor refuses the splice rather than guess', () => {
+  assert.equal(spliceProposal('A\nB\n', { mode: 'insert_after', anchor: 'Gone', content: 'X' }), null);
+  assert.equal(spliceProposal('B\nB\n', { mode: 'insert_after', anchor: 'B', content: 'X' }), null);
+  assert.equal(spliceProposal('A\n', { mode: 'insert_after', anchor: '', content: 'X' }), null);
 });
