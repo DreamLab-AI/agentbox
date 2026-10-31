@@ -637,6 +637,7 @@
         "RUSTUP_HOME",
         "RUST_LOG",
         "RUVECTOR_DATA_DIR",
+        "RUVECTOR_HYBRID_FUSION",
         "RUVECTOR_PORT",
         "RUVECTOR_USE_EXTERNAL",
         "RUVNET_BRAIN_AUTO_INGEST",

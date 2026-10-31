@@ -134,6 +134,10 @@ const params = {
   // division-by-zero downstream (recency half-life divides; sample count floors at 0).
   aggregateMinSamples: () => Math.max(0, intGate('RUVECTOR_AGGREGATE_MIN_SAMPLES', 20)),
   recencyHalfLifeDays: () => Math.max(1, intGate('RUVECTOR_RECENCY_HALF_LIFE_DAYS', 14)),
+  // Hybrid rank fusion strategy. 'blend' (default, today's behaviour) keeps the
+  // ruvector_hybrid_score score blend; 'rrf' fuses the vector and FTS rank lists
+  // by reciprocal rank fusion. Anything else is 'blend' (never fail closed).
+  hybridFusion: () => (String(process.env.RUVECTOR_HYBRID_FUSION || '').trim().toLowerCase() === 'rrf' ? 'rrf' : 'blend'),
 };
 
 module.exports = { boolGate, intGate, gates, params, consumerAdmission, retainedCorpusMaxAgeDays, RETAINED_CORPUS_DEFAULT_MAX_AGE_DAYS };

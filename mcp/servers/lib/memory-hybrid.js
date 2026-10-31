@@ -12,6 +12,13 @@
  *     (`websearch_to_tsquery` over `value::text`). Recency is a half-life decay
  *     on `updated_at` (RUVECTOR_RECENCY_HALF_LIFE_DAYS, default 14).
  *
+ *     RANK FUSION (env RUVECTOR_HYBRID_FUSION=rrf, default 'blend' = the above):
+ *     the namespace-scoped path instead fuses two RANK lists, the vector side
+ *     (composite order) and the FTS side (rows with a keyword match, ts_rank
+ *     order), by reciprocal rank fusion, score = sum 1/(60 + rank). Raw scores
+ *     from the two sides are never compared; rows are deduplicated by row id.
+ *     The unscoped path has no FTS list (HYBRID GUARD) so it is unchanged.
+ *
  *     HYBRID GUARD (ADR-036 D4): the FTS keyword blend runs an *unindexed*
  *     `ts_rank(to_tsvector(value::text))` over the scanned set. It is only run
  *     when the namespace scopes the scan to a small subset. When the namespace
@@ -55,6 +62,50 @@ const { notExpiredPredicate } = require('./memory-metadata');
 const NOT_EXPIRED = notExpiredPredicate('metadata');
 
 const AGG_NAMESPACE = 'memory-learning-aggregates';
+
+/** Standard RRF damping constant (Cormack et al. 2009). */
+const RRF_K = 60;
+
+/**
+ * Reciprocal rank fusion over ranked lists. Pure and deterministic.
+ *
+ * Each list is an array of items in rank order (best first); an item is
+ * identified by `item.id`. An item's fused score is the sum over the lists it
+ * appears in of 1 / (k + rank), rank starting at 1. Raw scores are never read.
+ * An id repeated within one list counts once, at its best (first) rank. Ties on
+ * the fused score are broken by best single rank, then by id, so the output
+ * order is stable. The returned items are the first-seen object for each id,
+ * shallow-copied with `rrf` = { score, ranks: [rank-or-null per list] }.
+ *
+ * @param {Array<Array<{id: (string|number)}>>} lists ranked lists, best first
+ * @param {{k?: number, limit?: number}} [opts]
+ * @returns {Array<object>} fused items, best first
+ */
+function fuseRrf(lists, opts = {}) {
+  const k = Number.isFinite(opts.k) && opts.k > 0 ? opts.k : RRF_K;
+  const byId = new Map();
+  (lists || []).forEach((list, li) => {
+    let rank = 0;
+    for (const item of list || []) {
+      if (!item || item.id === undefined || item.id === null) continue;
+      const id = String(item.id);
+      let e = byId.get(id);
+      if (!e) {
+        e = { item, score: 0, ranks: new Array(lists.length).fill(null) };
+        byId.set(id, e);
+      }
+      if (e.ranks[li] !== null) continue; // duplicate within a list: keep best rank
+      rank += 1;
+      e.ranks[li] = rank;
+      e.score += 1 / (k + rank);
+    }
+  });
+  const best = (e) => Math.min(...e.ranks.filter((r) => r !== null));
+  const out = [...byId.entries()]
+    .sort(([ia, a], [ib, b]) => (b.score - a.score) || (best(a) - best(b)) || (ia < ib ? -1 : ia > ib ? 1 : 0))
+    .map(([, e]) => ({ ...e.item, rrf: { score: e.score, ranks: e.ranks } }));
+  return Number.isFinite(opts.limit) && opts.limit > 0 ? out.slice(0, opts.limit) : out;
+}
 
 function createHybridTools(deps) {
   const { pool, getPgOk, getEmbedding, xinfEnsure, vecToSql, parseVal, log, memSearch } = deps;
@@ -152,6 +203,8 @@ function createHybridTools(deps) {
       : [];
     // HYBRID GUARD: FTS keyword blend only when the namespace scopes the scan.
     const scoped = !!(namespace && namespace !== '*');
+    // Fusion strategy; only the scoped path has two rank lists to fuse.
+    const fusion = scoped ? gateParams.hybridFusion() : 'blend';
 
     // Need an embedding + a live pool to fuse; otherwise degrade to memSearch.
     if (getPgOk() && pool && (await xinfEnsure())) {
@@ -193,7 +246,61 @@ function createHybridTools(deps) {
             FROM scored
             ORDER BY score DESC
             LIMIT $${lIdx}`;
-          res = await pool.query(sql, p);
+          if (fusion === 'rrf') {
+            // Rank-list fusion: same scoped CTEs, but return the two candidate
+            // RANK lists (vector side by composite, FTS side by ts_rank) and
+            // fuse in JS. The overfetch bounds each list; the final slice is
+            // `limit`.
+            const rp = p.slice(0, p.length - 2); // drop alpha + limit; keep qIdx/hlIdx
+            rp.push(Math.min(2000, Math.max(limit * 5, 50))); const nIdx = rp.length;
+            const rrfSql = `
+              WITH scoped AS MATERIALIZED (
+                SELECT id, key, value, namespace, source_type, metadata, embedding, updated_at
+                FROM memory_entries
+                WHERE embedding IS NOT NULL AND ${NOT_EXPIRED} AND namespace = $2 ${stClause} ${tagClause}
+              ),
+              scored AS (
+                SELECT id, key, value, namespace, source_type, metadata,
+                  (1.0 - (embedding <=> $1::ruvector(384)))::float AS vec_sim,
+                  COALESCE((metadata->>'importance')::float, 0.5) AS importance,
+                  power(0.5, GREATEST(EXTRACT(EPOCH FROM (now() - updated_at)), 0)/86400.0/$${hlIdx})::float AS recency,
+                  ts_rank(to_tsvector('english', value::text),
+                          websearch_to_tsquery('english', $${qIdx}))::float AS kw
+                FROM scoped
+              ),
+              vec AS (
+                SELECT 'vec' AS lst, row_number() OVER (ORDER BY (0.6*vec_sim + 0.2*importance + 0.2*recency) DESC, id) AS rnk, *
+                FROM scored ORDER BY (0.6*vec_sim + 0.2*importance + 0.2*recency) DESC, id LIMIT $${nIdx}
+              ),
+              fts AS (
+                SELECT 'fts' AS lst, row_number() OVER (ORDER BY kw DESC, id) AS rnk, *
+                FROM scored WHERE kw > 0 ORDER BY kw DESC, id LIMIT $${nIdx}
+              )
+              SELECT * FROM vec UNION ALL SELECT * FROM fts`;
+            const rr = await pool.query(rrfSql, rp);
+            const toItem = (r) => ({
+              id: r.id, key: r.key, value: parseVal(r.value), namespace: r.namespace,
+              source_type: r.source_type, metadata: r.metadata || {},
+              components: {
+                vector: parseFloat(r.vec_sim), importance: parseFloat(r.importance),
+                recency: parseFloat(r.recency), keyword: parseFloat(r.kw),
+              },
+            });
+            const byRank = (lst) => rr.rows.filter((r) => r.lst === lst)
+              .sort((a, b) => Number(a.rnk) - Number(b.rnk)).map(toItem);
+            const fused = fuseRrf([byRank('vec'), byRank('fts')], { limit });
+            res = {
+              rows: fused.map((f) => ({
+                id: f.id, key: f.key, value: f.value, namespace: f.namespace, source_type: f.source_type,
+                metadata: f.metadata, score: f.rrf.score,
+                vec_sim: f.components.vector, importance: f.components.importance,
+                recency: f.components.recency, kw: f.components.keyword,
+                _rrf: f.rrf,
+              })),
+            };
+          } else {
+            res = await pool.query(sql, p);
+          }
         } else {
           // ── unscoped (namespace absent/'*'): vector+importance+recency only,
           // no FTS. HNSW candidate prefetch keeps this off the full-corpus seq
@@ -238,6 +345,7 @@ function createHybridTools(deps) {
             importance: parseFloat(r.importance),
             recency: parseFloat(r.recency),
             keyword: parseFloat(r.kw),
+            ...(r._rrf ? { rrf: r._rrf } : {}),
           },
         }));
 
@@ -250,7 +358,7 @@ function createHybridTools(deps) {
         return {
           success: true, action: 'hybrid_search', query, namespace,
           results, count: results.length, alpha, scoped,
-          method: scoped ? 'hybrid-fusion' : 'hybrid-fusion-vectoronly',
+          method: scoped ? (fusion === 'rrf' ? 'hybrid-rrf' : 'hybrid-fusion') : 'hybrid-fusion-vectoronly',
           storage: 'ruvector-postgres',
         };
       } catch (err) {
@@ -362,4 +470,4 @@ function createHybridTools(deps) {
   return { memHybridSearch, memOrient, applyEffectivenessBonus };
 }
 
-module.exports = { createHybridTools, AGG_NAMESPACE };
+module.exports = { createHybridTools, fuseRrf, RRF_K, AGG_NAMESPACE };
