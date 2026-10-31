@@ -46,7 +46,7 @@ Two hosts are added, described the same way as `claude → claude-code` and `cod
 
 - A model swap, including a Loom model swap, is one manifest edit and touches no skill. T0 work never spends tokens.
 - **Landed 2026-10-31 (agentbox side); the sealmap side is still open.** The four routes, the `loom`/`zai` hosts in `route_re` and explicit `host_provider` arms are implemented and tested here. The `.tiers.json` reader and the same-family seal-review refusal belong to the `sealmap` tool, which is packaged from `DreamLab-AI/sealmap` (`lib/sealmap.nix`) and is not in this repository, so they remain open. The path `skills/sealmap` this record named does not exist and is not created: the in-repo skill is `skills/sealmap-review`, which the record says is not an activity and not a `seal-review` substitute.
-- Neither new host maps to the agentic-qe subscription tier. `loom` is the nearest constructible type to `openai` (an OpenAI-compatible base URL). `zai` has no constructible type, so the QE-fleet projection must skip it rather than mislabel it as `codex`.
+- Neither new host maps to the agentic-qe subscription tier. Neither `loom` nor `zai` has a constructible agentic-qe type, so the QE-fleet projection must skip both rather than mislabel them (`zai` as `codex`, `loom` as `openai`, which would target api.openai.com; amended 2026-10-31, see the close-out).
 - `seal-review` on `zai` sends topic content to a cloud provider. This decision does not yet name a LAN-only reviewer from another family, so a corpus that must not leave the estate has no conforming seal reviewer. That is an open item, not a licence to review it with the same family.
 - What this forecloses: a skill choosing a model by id, a same-family seal review, and lowering a tier without a held-out measurement.
 - Revisit if ADR-2079's router absorbs `[model_routing.routes]`; if GLM leaves Z.AI or `[consultants.zai].model` changes family (`seal-review` then needs another non-Claude family); or if the grammar gains more than one rung.
@@ -62,7 +62,7 @@ Two hosts are added, described the same way as `claude → claude-code` and `cod
 
 **Implemented:**
 
-- `routing.rs`: `route_re` admits `claude|codex|loom|zai` as start and rung. `host_provider` has explicit arms: `loom` -> `openai` (constructible), `zai` -> `zai` (deliberately absent from `AQE_CONSTRUCTIBLE`, so the agentic-qe projection skips it and never mislabels it `codex`).
+- `routing.rs`: `route_re` admits `claude|codex|loom|zai` as start and rung. `host_provider` has explicit arms: `loom` -> `loom` and `zai` -> `zai`, both deliberately absent from `AQE_CONSTRUCTIBLE`, so the agentic-qe projection skips them (fail closed) and never mislabels them `codex` or `openai`.
 - `schema/agentbox.toml.schema.json`: the twelve route patterns widened and the four activities added.
 - `agentbox.toml`: `diagram-polish`, `diagram-narrative`, `diagram-synthesis` and `seal-review` as the record's table gives them. Claude ids follow the manifest's live ids (`claude-sonnet-5-5`, `claude-opus-5-5`, `claude-fable-5-1`), not the shorthand `claude-sonnet-5` / `claude-opus-5` in this record's table. The Loom start model is the record's `qwen3.8-27B`; the Loom's current alias is `hemmingway-1.5-q8_0` and the workspace notes say old `qwen3.8` names are still accepted, which this change did not verify against a live Loom. Models are soft defaults.
 
@@ -83,3 +83,5 @@ node scripts/ci/check-manifest-catalogue.js               # PASS, 118 gate paths
 3. A corpus that must not leave the estate still has no conforming LAN-only cross-family seal reviewer (an open item the record already names).
 
 `activation_status` stays `inactive`: the projection skips these activities for the QE fleet (none maps to an `AGENT_ACTIVITY_MAP` entry), and nothing consumes them until `sealmap` does.
+
+**Correction (F3, 2026-10-31): loom fails closed.** The first W8 cut mapped `loom` to `openai`, a latent egress fault. agentic-qe's `openai` provider targets api.openai.com and nothing here sets `OPENAI_BASE_URL` to the Loom, so a QE activity routed to `loom:*` would have sent its prompt, with the Loom model name, to OpenAI. The shipped manifest was not affected (no `AGENT_ACTIVITY_MAP` activity routes to `loom`). `host_provider("loom")` now returns the unconstructible `loom` label, the override loop skips it exactly as it skips `zai`, and `routing.rs` tests assert no `openai` agent override and no Loom model in any fallback-chain entry (`cargo test routing` in `services/agentbox-manifest`: 11 passed). Reinstating a Loom-backed QE provider needs a constructible base-URL provider first, as a new decision.
