@@ -171,3 +171,30 @@ export async function processBatch(batch, { run, onInserted, onFailure, log, att
   log(`WARN: chunk ${batch[0].key} permanently failed (${lastErr.message}) — skipped`);
   onFailure(batch[0], lastErr);
 }
+
+/**
+ * Multi-row upsert into memory_entries, one statement per call (the SAME
+ * statement both bulk ingesters issue; mirrors ruvector-mcp.cjs conventions).
+ * The vector is written in the same statement as the value, so a row never
+ * exists with a vector that belongs to other text (ADR-2014).
+ *
+ * @param {{ query: Function }} pool
+ * @param {{ id: string, namespace: string, key: string, value: object, source_type: string, metadata: object, embedding: number[] }[]} rows
+ */
+export async function upsertRows(pool, rows) {
+  const cols = [];
+  const params = [];
+  rows.forEach((r) => {
+    const base = params.length;
+    params.push(r.id, r.namespace, r.key, JSON.stringify(r.value), r.source_type, JSON.stringify(r.metadata), vecToSql(r.embedding));
+    cols.push(`($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}::jsonb, $${base + 5}, $${base + 6}::jsonb, $${base + 7}::ruvector(${EMB_DIM}))`);
+  });
+  await pool.query(
+    `INSERT INTO memory_entries (id, namespace, key, value, source_type, metadata, embedding)
+       VALUES ${cols.join(', ')}
+       ON CONFLICT (id) DO UPDATE
+         SET value = EXCLUDED.value, metadata = EXCLUDED.metadata,
+             embedding = EXCLUDED.embedding, updated_at = NOW()`,
+    params,
+  );
+}

@@ -50,8 +50,8 @@ import { execFileSync } from 'node:child_process';
 import http from 'node:http';
 import https from 'node:https';
 import {
-  EMB_DIM, EMBED_TRUNC, makeLog, loadPg as loadPgShared, poolConfig, httpJson, createEmbedder,
-  sleep, wellFormed, embedText, vecToSql, sha12, processBatch as processBatchShared,
+  makeLog, loadPg as loadPgShared, poolConfig, httpJson, createEmbedder,
+  wellFormed, embedText, sha12, processBatch as processBatchShared, upsertRows,
 } from './lib/ruvector-bulk.mjs';
 
 // ── Config ───────────────────────────────────────────────────────────────────
@@ -429,30 +429,13 @@ async function main() {
     );
   };
 
-  const insertBatch = async (items, embs) => {
-    // Multi-row upsert, one statement per embed batch.
-    const cols = [];
-    const params = [];
-    items.forEach((it, i) => {
-      const base = params.length;
-      params.push(
-        entryId(it.key), NAMESPACE, it.key,
-        JSON.stringify({ text: it.text, repo: it.repo, path: it.path }),
-        SOURCE_TYPE,
-        JSON.stringify({ memory_type: 'semantic', tags: ['ruvnet-kb', it.repo], repo: it.repo, path: it.path, corpus_version: version }),
-        vecToSql(embs[i]),
-      );
-      cols.push(`($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}::jsonb, $${base + 5}, $${base + 6}::jsonb, $${base + 7}::ruvector(${EMB_DIM}))`);
-    });
-    await pool.query(
-      `INSERT INTO memory_entries (id, namespace, key, value, source_type, metadata, embedding)
-       VALUES ${cols.join(', ')}
-       ON CONFLICT (id) DO UPDATE
-         SET value = EXCLUDED.value, metadata = EXCLUDED.metadata,
-             embedding = EXCLUDED.embedding, updated_at = NOW()`,
-      params,
-    );
-  };
+  const insertBatch = (items, embs) => upsertRows(pool, items.map((it, i) => ({
+    id: entryId(it.key), namespace: NAMESPACE, key: it.key,
+    value: { text: it.text, repo: it.repo, path: it.path },
+    source_type: SOURCE_TYPE,
+    metadata: { memory_type: 'semantic', tags: ['ruvnet-kb', it.repo], repo: it.repo, path: it.path, corpus_version: version },
+    embedding: embs[i],
+  })));
 
   // Embed+upsert with retry then bisection (shared helper). Exceeding
   // MAX_FAILED aborts before the prune, leaving the existing corpus intact.

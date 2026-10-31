@@ -26,7 +26,7 @@ Reverse-engineered from the 20,119 rows written between 2026-03-16 and 2026-04-1
 | page slug | file stem, lower-cased; characters outside `[a-z0-9]`, whitespace, `-`, `/`, `:` dropped; `___` read as `/`; `_` dropped; each whitespace char becomes `-` (no collapsing or trimming) |
 | section | text before the first `##`/`###` heading is `section-0`; every `##`/`###` at column 0 outside a fenced block starts a section; `#` and `####`+ do not split. Section slug = same slug function of the heading text |
 | chunk_index | position in the section list, counting an empty `section-0` |
-| split | a section over 2048 chars (trimmed) becomes `::p0..pN`: paragraphs (blank-line separated) are packed while the part stays within 2048; each later part is prefixed with the last 128 chars of the previous one; a single paragraph is never cut |
+| split | a section over 2048 chars (measured before the trim) becomes `::p0..pN`: paragraphs (blank-line separated) are packed while the part stays within 2048; each later part is prefixed with the last 128 chars of the previous one; a single paragraph is never cut; a split section that packs into one part is still `::p0` (495 live groups) |
 | value | `{ title: "<page> > <section>[ (part N)]", content, content_hash }`, `content_hash` = md5 of content, 12 hex chars |
 | collisions | two headings with the same slug in one page share a key; the later wins (as the original upsert did). The plan counts them |
 
@@ -34,4 +34,4 @@ Reproduction against the live rows is in `tests/corpus-memory-ingest.spec.mjs` (
 
 ## Why most rows are rewritten
 
-The vault was converted from Logseq outlines to Obsidian Markdown (ADR-OM-007), so most page text no longer matches the stored rows. Of 10,868 non-split rows on pages that still exist, 741 are still verbatim in today's file. Where text is unchanged the scheme reproduces (124 of 126 rows); where it changed, the keys change with it, so an in-place upsert leaves the old keys as stale rows. That is what `--prune` is for.
+The vault was converted from Logseq outlines to Obsidian Markdown (ADR-OM-007), so most page text no longer matches the stored rows. Of 10,868 non-split rows on pages that still exist, 741 are still verbatim in today's file. Where text is unchanged the scheme reproduces (126 of 126 rows, 16 of 16 fully unchanged pages); where it changed, the keys change with it, so an in-place upsert leaves the old keys as stale rows. That is what `--prune` is for.

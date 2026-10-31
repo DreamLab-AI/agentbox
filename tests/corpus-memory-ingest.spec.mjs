@@ -11,7 +11,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { slugify, pageSlug, chunkPage, splitParts, splitSections, contentHash, parseFrontmatter, wikilinksOf, SECTION_MAX, OVERLAP } from '../scripts/lib/corpus-chunker.mjs';
-import { processBatch, createEmbedder, EMB_DIM, embedText, wellFormed } from '../scripts/lib/ruvector-bulk.mjs';
+import { processBatch, createEmbedder, EMB_DIM, embedText, wellFormed, upsertRows } from '../scripts/lib/ruvector-bulk.mjs';
 import { planIngest, run, parseArgs, applyPlan, collectCorpus, vaultGeneration, MANIFEST_KEY } from '../scripts/corpus-memory-ingest.mjs';
 
 const live = JSON.parse(readFileSync(new URL('./fixtures/corpus-memory-live-rows.json', import.meta.url), 'utf8'));
@@ -62,6 +62,17 @@ test('live rows: split sections regenerate every part key, hash and title (parag
     assert.deepEqual(got.map((c) => c.contentHash), sp.parts.map((p) => p.content_hash), `${sp.base} hashes`);
     assert.deepEqual(got.map((c) => c.title), sp.parts.map((p) => p.title), `${sp.base} titles`);
     assert.deepEqual(got.map((c) => c.meta.sub_index), sp.parts.map((p) => p.sub_index));
+  }
+});
+
+test('live rows: an oversized section that packs into ONE part is still keyed ::p0', () => {
+  assert.ok(live.single.length >= 3);
+  for (const s of live.single) {
+    assert.match(s.key, /::p0$/);
+    const { chunks } = chunkPage({ fileName: s.file_name, text: s.text });
+    assert.deepEqual(chunks.map((c) => c.key), [s.key]);
+    assert.equal(chunks[0].contentHash, s.content_hash);
+    assert.equal(chunks[0].title, s.title);
   }
 });
 
@@ -192,6 +203,23 @@ test('embedText truncates to 2000 chars and sanitises a split surrogate; wellFor
   assert.equal(embedText('a'.repeat(5000)).length, 2000);
   assert.ok(!/[\uD800-\uDBFF]$/.test(embedText('a'.repeat(1999) + '😀')));
   assert.equal(wellFormed('a\u0000b'), 'ab');
+});
+
+test('upsertRows: one multi-row statement, vector in the same statement, jsonb columns', async () => {
+  const calls = [];
+  const pool = { query: async (sql, params) => { calls.push({ sql, params }); return { rowCount: 2 }; } };
+  const vec = new Array(EMB_DIM).fill(0.5);
+  await upsertRows(pool, [
+    { id: 'ns/a', namespace: 'ns', key: 'a', value: { t: 1 }, source_type: 'knowledge', metadata: { m: 1 }, embedding: vec },
+    { id: 'ns/b', namespace: 'ns', key: 'b', value: { t: 2 }, source_type: 'knowledge', metadata: { m: 2 }, embedding: vec },
+  ]);
+  assert.equal(calls.length, 1);
+  assert.match(calls[0].sql, /ON CONFLICT \(id\) DO UPDATE/);
+  assert.match(calls[0].sql, /embedding = EXCLUDED\.embedding/);
+  assert.equal((calls[0].sql.match(/::ruvector\(384\)/g) || []).length, 2);
+  assert.equal(calls[0].params.length, 14);
+  assert.equal(calls[0].params[3], '{"t":1}');
+  assert.ok(calls[0].params[6].startsWith('[0.5,'));
 });
 
 // ── Plan ─────────────────────────────────────────────────────────────────────

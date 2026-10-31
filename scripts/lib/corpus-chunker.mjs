@@ -11,11 +11,13 @@
 //                (slug "section-0"); every `##`/`###` heading starts a section.
 //                Level 1 and 4+ headings do NOT split. Headings inside fenced
 //                code do not split (CommonMark fences).
-//   split      = a section longer than SECTION_MAX chars becomes parts p0..pN:
+//   split      = a section longer than SECTION_MAX chars (measured before the trim, so a
+//                few sections of 2035..2048 trimmed chars split too) becomes parts p0..pN:
 //                paragraphs (split on a blank line) are packed while the part
 //                stays within SECTION_MAX; each later part is prefixed with the
 //                last OVERLAP chars of the previous part. A single paragraph is
-//                never cut, so a part can exceed SECTION_MAX.
+//                never cut, so a part can exceed SECTION_MAX. A split section that packs
+//                into ONE part is still keyed ::p0 (495 such groups live).
 //   value      = { title: "<page> > <section>[ (part N)]", content, content_hash }
 //                content_hash = md5(content)[0..12]
 //
@@ -99,7 +101,7 @@ export function wikilinksOf(text, max = MAX_WIKILINKS) {
 }
 
 /**
- * Sections of a body: [{ section, content }] in order. Index 0 is always the
+ * Sections of a body: [{ section, content, rawLength }] in order. Index 0 is always the
  * pre-heading text (possibly empty) so chunk_index == position here.
  */
 export function splitSections(body) {
@@ -115,7 +117,10 @@ export function splitSections(body) {
     if (h && h[2]) sections.push({ section: h[2], lines: [line] });
     else sections[sections.length - 1].lines.push(line);
   }
-  return sections.map((s) => ({ section: s.section, content: s.lines.join('\n').trim() }));
+  return sections.map((s) => {
+    const raw = s.lines.join('\n');
+    return { section: s.section, content: raw.trim(), rawLength: raw.length };
+  });
 }
 
 /**
@@ -173,8 +178,8 @@ export function chunkPage({ fileName, text, vault = 'knowledge' }) {
     if (!sec.content) return;
     const base = `${slug}::${sec.section === 'Section 0' && chunkIndex === 0 ? 'section-0' : slugify(sec.section)}`;
     const parts = splitParts(sec.content);
+    const split = parts.length > 1 || sec.rawLength > SECTION_MAX;
     parts.forEach((content, i) => {
-      const split = parts.length > 1;
       const key = split ? `${base}::p${i}` : base;
       const chunk = {
         key, section: sec.section, chunkIndex, ...(split ? { subIndex: i } : {}),

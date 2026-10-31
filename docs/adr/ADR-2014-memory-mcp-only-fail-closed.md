@@ -129,7 +129,7 @@ Two scripts write `memory_entries` with direct `pg` and not through `memStore`: 
 
 **Decision.** These two scripts, and only these, are the sanctioned bulk-ingest exception to "no raw `INSERT`". The exception holds because they honour the reason for the rule, which is that a raw write must not produce a row HNSW cannot see:
 
-- they embed client-side through the same Xinference pipeline, model (`bge-small-en-v1.5`) and 384 dimensions as the governed path (ADR-2019 freeze), via the single shared module `scripts/lib/ruvector-bulk.mjs`, and write the vector in the same statement as the value, so a row is never stored without its own vector;
+- they embed client-side through the same Xinference pipeline, model (`bge-small-en-v1.5`) and 384 dimensions as the governed path (ADR-2019 freeze), via the single shared module `scripts/lib/ruvector-bulk.mjs` (embedder, retry and bisect, and the one upsert statement), and write the vector in the same statement as the value, so a row is never stored without its own vector;
 - a failed chunk is skipped and counted, never stored vectorless; both abort before pruning when failures exceed a cap;
 - both stamp a manifest row (`ruvnet/manifest`, `_manifest`) recording version, counts and failures.
 

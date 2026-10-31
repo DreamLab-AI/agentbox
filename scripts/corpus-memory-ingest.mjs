@@ -56,8 +56,8 @@ import { mkdirSync, readdirSync, readFileSync, realpathSync, writeFileSync } fro
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  EMB_DIM, makeLog, loadPg, poolConfig, createEmbedder, embedText, vecToSql, sha12,
-  processBatch,
+  makeLog, loadPg, poolConfig, createEmbedder, embedText, sha12,
+  processBatch, upsertRows,
 } from './lib/ruvector-bulk.mjs';
 import { chunkPage } from './lib/corpus-chunker.mjs';
 
@@ -208,22 +208,11 @@ export async function applyPlan(plan, d) {
   const maxFailed = d.maxFailed ?? 1000;
   const stats = { embedded: 0, metadata_updated: 0, pruned: 0, failed_chunks: 0, failed_keys: [], aborted: null };
 
-  const upsert = async (items, embs) => {
-    const cols = []; const params = [];
-    items.forEach((it, i) => {
-      const base = params.length;
-      params.push(rowId(namespace, it.key), namespace, it.key,
-        JSON.stringify({ title: it.title, content: it.content, content_hash: it.contentHash }),
-        SOURCE_TYPE, JSON.stringify(it.metadata), vecToSql(embs[i]));
-      cols.push(`($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}::jsonb, $${base + 5}, $${base + 6}::jsonb, $${base + 7}::ruvector(${EMB_DIM}))`);
-    });
-    await pool.query(
-      `INSERT INTO memory_entries (id, namespace, key, value, source_type, metadata, embedding)
-       VALUES ${cols.join(', ')}
-       ON CONFLICT (id) DO UPDATE
-         SET value = EXCLUDED.value, metadata = EXCLUDED.metadata,
-             embedding = EXCLUDED.embedding, updated_at = NOW()`, params);
-  };
+  const upsert = (items, embs) => upsertRows(pool, items.map((it, i) => ({
+    id: rowId(namespace, it.key), namespace, key: it.key,
+    value: { title: it.title, content: it.content, content_hash: it.contentHash },
+    source_type: SOURCE_TYPE, metadata: it.metadata, embedding: embs[i],
+  })));
 
   const todo = plan.chunks.filter((c) => c.action === 'new' || c.action === 'changed');
   for (let i = 0; i < todo.length; i += batchSize) {
@@ -283,14 +272,12 @@ export function buildManifest({ generation, corpusVersion, counts, stats, includ
 async function writeManifest(d, value) {
   const text = `knowledge/pages corpus manifest ${value.corpus_version}`;
   const [emb] = await d.embedder.embedBatch([text]);
-  await d.pool.query(
-    `INSERT INTO memory_entries (id, namespace, key, value, source_type, metadata, embedding)
-     VALUES ($1, $2, $3, $4::jsonb, $5, $6::jsonb, $7::ruvector(${EMB_DIM}))
-     ON CONFLICT (id) DO UPDATE SET value = EXCLUDED.value, metadata = EXCLUDED.metadata,
-       embedding = EXCLUDED.embedding, updated_at = NOW()`,
-    [rowId(d.namespace, MANIFEST_KEY), d.namespace, MANIFEST_KEY, JSON.stringify(value), MANIFEST_SOURCE_TYPE,
-     JSON.stringify({ memory_type: 'semantic', tags: ['knowledge-pages', 'manifest'], generation: value.generation, corpus_version: value.corpus_version }),
-     vecToSql(emb)]);
+  await upsertRows(d.pool, [{
+    id: rowId(d.namespace, MANIFEST_KEY), namespace: d.namespace, key: MANIFEST_KEY, value,
+    source_type: MANIFEST_SOURCE_TYPE,
+    metadata: { memory_type: 'semantic', tags: ['knowledge-pages', 'manifest'], generation: value.generation, corpus_version: value.corpus_version },
+    embedding: emb,
+  }]);
 }
 
 /** Human summary of a plan. */
