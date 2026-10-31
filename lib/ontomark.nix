@@ -32,14 +32,17 @@
 # 0.6.1 applies one CommonMark fence rule everywhere: lines such as ```` ```prose``` ````
 # no longer open a fence, so `repair bodies --check` agrees with visionGraph CI.
 #
+# 0.7.0 adds `ontomark ingest` (external sources to a `vault propose` bundle);
+# the build path is unchanged, ontomark-compile stays 0.6.1.
+#
 # Repinning
 # ---------
 # Change `version`, `sha256` (from the release's .sha256 asset) and nothing else.
 # The asset name keeps the `-linux-gnu` suffix the first release used; the
 # binary itself is static-pie and runs on glibc and Nix hosts alike.
 
-{ lib, pkgs, jev ? false, version ? "0.6.1"
-, hash ? "sha256-fEHqSRgxCfYl8mGeve1OVEgKwVfjHxI0omBYcnmXL0Y=" }:
+{ lib, pkgs, jev ? false, version ? "0.7.0"
+, hash ? "sha256-K4FLBCMCZUDblod7hE8TZjp4fFCctmMrlJgCcO8HK0o=" }:
 
 # The release binary is built without the Jev feature. Build the same v0.6.1 source
 # with `jev` only for the enabled suggestion consumer; off retains the release bytes.
@@ -49,10 +52,10 @@ if jev then pkgs.rustPlatform.buildRustPackage {
   src = pkgs.fetchFromGitHub {
     owner = "DreamLab-AI";
     repo = "ontomark";
-    rev = "4699ee08b2184e3365d1e3236e26b6e6de698e6f"; # v0.6.1
-    hash = "sha256-7IVOWZI1kYbhbTsJ5uxsBuFivVqTo1v+ybDPpmdTmaI=";
+    rev = "0caae5d4b695cb720942b9b9212017c00a80ad41"; # v0.7.0
+    hash = "sha256-XZ0sLuTb+x3f9rDJUONwKrzN2HkKPhr4dURtYRePsNY=";
   };
-  cargoLock.lockFile = ./lockfiles/ontomark-4699ee08.Cargo.lock;
+  cargoLock.lockFile = ./lockfiles/ontomark-0caae5d4.Cargo.lock;
   buildAndTestSubdir = "crates/ontomark-cli";
   buildFeatures = [ "jev" ];
   nativeBuildInputs = [ pkgs.pkg-config ];
