@@ -7,8 +7,8 @@ implementation_status: partial
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: e070514d808b218574403377fb75e0e1a0a256b3
-verified_paths: []
+verified_commit: 1e41b64b624af97cf49771d08da82fbf3743acbd
+verified_paths: [mcp/servers/nostr-bridge.js, scripts/agentbox-config-validate.js, tests/config/semantic-rules.test.js]
 owner: jjohare
 review_trigger: provisioning per-stack nostr key material, changing the profiles root or `$WORKSPACE`, or any new consumer of `loadSigner`
 repo: agentbox
@@ -62,11 +62,9 @@ literal.
 - ADR-2064 stays `staged` until this ADR's prerequisite is met. The two are a
   pair: the fail-closed switch is only safe to leave on once the signer is
   reachable.
-- `scripts/agentbox-config-validate.js` also hard-codes `/workspace/profiles`
-  (lines 310-317). It is a validator that guards the read with `existsSync`, so
-  it degrades to "no profiles found" rather than failing; left untouched here to
-  keep this change to the signing path, and flagged for a follow-up sweep of the
-  retired literal.
+- `scripts/agentbox-config-validate.js` hard-coded `/workspace/profiles` in its E010 profile scan. Fixed
+  2026-10-31 (see the close-out): it now reads `$WORKSPACE/profiles`, falling back to
+  `/home/devuser/workspace/profiles`, the same rule as `loadSigner`.
 
 ## Verification
 
@@ -106,3 +104,11 @@ ADR-2078 amended). Once that lands, this record is superseded by ADR-2122 for "w
 signer gets its key". `superseded_by` is not set while ADR-2122 is `proposed`. With the flag off
 nothing here changes. Status fields are unchanged: this note records a dependency and is not a
 re-verification of this record's paths.
+
+## Close-out 2026-10-31 (in-scope half only)
+
+**Closed:** the validator's retired `/workspace/profiles`. `scripts/agentbox-config-validate.js` now derives the E010 profiles root from `$WORKSPACE` (fallback `/home/devuser/workspace`). The stale `/workspace/profiles` JSDoc in `mcp/servers/nostr-bridge.js` is corrected. `grep -rn "/workspace/profiles" scripts mcp` returns nothing.
+
+**Tests:** `tests/config/semantic-rules.test.js` E010 block drives the validator as a subprocess with `WORKSPACE` pointed at a temporary tree: no profiles directory -> no E010; a `headless_only = true` profile with `desktop.enabled` -> E010 and a non-zero exit; a `headless_only = false` profile -> no E010. The old test could not fire E010 at all on a machine without `/workspace`. Run: `management-api/node_modules/.bin/jest --rootDir . --roots=./tests/config --testMatch '**/semantic-rules.test.js'` -> 80 passed, 1 skipped.
+
+**Deliberately left open:** per-stack `nostr.key.enc` + `nostr.salt` provisioning and naming a signing stack. It is tied to owner-parked ADR-2078 (the pods signer moves to the identity port) and is not touched. `implementation_status` stays `partial` and `activation_status` stays `inactive`.

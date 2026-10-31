@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 75378856483d13f952569018421c4526da0aede2
+verified_commit: 1e41b64b624af97cf49771d08da82fbf3743acbd
 verified_paths: [skills/sealmap-review/scripts/review-cadence.cjs, skills/sealmap-review/run-cron.sh, skills/sealmap-review/crontab, schema/agentbox.toml.schema.json]
 owner: jjohare
 review_trigger: the first month of real Gemini spend (compare ledger cost with the estimate); a change to Gemini or Z.AI pricing; a GLM model change behind [consultants.zai]; a second corpus joining repos
@@ -148,3 +148,7 @@ gated Gemini audit are as recorded, and this record never fixed the triage budge
 `review-cadence.test.cjs`, one new assertion pins the cap. Takes effect at the next image rebuild.
 
 Re-verified 2026-10-31 at `b65c3d4ed`. Governed paths changed: `schema/agentbox.toml.schema.json`: the `[vault].working` description says pages sit at the working root (`f4beec643`). No section this record governs changed; the decision holds. Re-verified by `git diff f7aa7f68e..b65c3d4ed -- <verified_paths>`; no re-implementation was needed. The image carries it at the next rebuild.
+
+## Re-verification — 2026-10-31 (`1e41b64b624af97cf49771d08da82fbf3743acbd`)
+
+Tripped by the W8 ADR-sprint changes. Governed-path delta since `753788564`: `schema/agentbox.toml.schema.json` widens the `model_routing.routes` host pattern to `claude|codex|loom|zai` and adds those four keys (ADR-2130). No key, table or code path this record decides is touched, so the decision and status axes are unchanged. Judged from the diff (`git diff {old[:9]}..{V[:9]} -- <governed path>`), not by re-running this record's own acceptance checks.

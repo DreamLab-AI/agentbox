@@ -3,12 +3,12 @@ id: ADR-2105
 title: The agentbox 38xxx bands below 38400 are all reserved, so colloquy and settlement move to 38400-38499
 date: 2026-09-21
 decision_status: accepted
-implementation_status: partial
+implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 75378856483d13f952569018421c4526da0aede2
-verified_paths: [crates/colloquy/colloquy-nostr/src/kinds.rs, docs/PROTOCOL-registry.md, services/nostr-pod-bridge/src/colloquy_publish.rs, agentbox.toml]
+verified_commit: 1e41b64b624af97cf49771d08da82fbf3743acbd
+verified_paths: [crates/colloquy/colloquy-nostr/src/kinds.rs, docs/PROTOCOL-registry.md, services/nostr-pod-bridge/src/colloquy_publish.rs, agentbox.toml, schema/federation-kinds.json, tests/contract/federation-kind-parity.contract.spec.js]
 owner: jjohare
 review_trigger: the next agentbox Nostr kind allocation, or any change to the band table in docs/PROTOCOL-registry.md
 repo: agentbox
@@ -319,3 +319,22 @@ Re-verified 2026-10-30 at `29a4b4939`: the agentbox.toml delta is three lines in
 Re-verified 2026-10-30 at d0e9ca786: the only change to the governed paths is the new `[system_one].skill_list_at_least` key and its schema property (router runner-up listing, ADR-2091); no section this record governs changed.
 
 Re-verified 2026-10-31 at `b65c3d4ed`. Governed paths changed: `agentbox.toml`: comments only: corpus verbs named as `ontomark`, flat-layout wording (`f4beec643`, `7aa9365d4`). No section this record governs changed; the decision holds. Re-verified by `git diff 67ab0c541..b65c3d4ed -- <verified_paths>`; no re-implementation was needed. The image carries it at the next rebuild.
+
+## Close-out 2026-10-31
+
+**Residual verified at `2a36c42d8`:** `schema/federation-kinds.json` enumerated only the `urn:agentbox` kinds. Neither allocation (`38410`-`38415`, `38420`-`38425`) had a row, and `docs/PROTOCOL-registry.md` pointed at `tests/fixtures/federation-identity.v1.json`, which is frozen (2026-09-05) and is the wrong artefact.
+
+**Change:** the artefact (1.0.0 -> 1.1.0, additive) gains an `event_kinds` section: the band `38400`-`38499`, the four reserved bands that tile `38000`-`38399`, and twelve rows (six `spent` colloquy kinds, six `allocated-proposed` settlement kinds), each `crosses: false` with a reason. The registry's two "not fixture-backed" paragraphs now say so. The frozen identity fixture is left alone.
+
+**Tests:**
+
+```
+cd management-api && node_modules/.bin/jest tests/contract/federation-kind-parity
+# JS half: rows inside the band and outside every reserved band; reserved bands tile 38000-38399; unique numbers, owner agentbox,
+#   never cross; colloquy rows equal the colloquy-nostr KIND_* constants in order and name; every row appears in the registry;
+#   the 38100-38115 numbers are absent from kinds.rs. 61 passed with the existing urn-kind cases.
+cd services/nostr-pod-bridge && cargo test --lib colloquy_publish     # include_str! half: 10 passed (2 new)
+cargo test --lib                                                      # 105 passed
+```
+
+**What the reviewer should know:** the VisionClaw Rust twin (`src/uri/mod.rs`, `include_str!("../../agentbox/schema/federation-kinds.json")`) was not run, because it reads the primary submodule rather than this worktree. Its `FederationKindArtefact` struct has no `deny_unknown_fields` and ignores the new section, so compatibility is by inspection, not by execution. The VisionFlow host's mirror of the registry table is a separate change in that repository. The settlement half stays `proposed`; fixture-backing the numbers publishes nothing. `activation_status` stays `staged`.

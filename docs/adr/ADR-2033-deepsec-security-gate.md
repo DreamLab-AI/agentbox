@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 75378856483d13f952569018421c4526da0aede2
+verified_commit: 1e41b64b624af97cf49771d08da82fbf3743acbd
 verified_paths: [flake.nix, agentbox.toml, schema/agentbox.toml.schema.json, scripts/agentbox-config-validate.js, management-api/lib/system-manifest.js, skills/build-with-quality/scripts, skills/build-with-quality/references/deepsec-security-gate.md, .github/workflows/deepsec.yml]
 owner: jjohare
 review_trigger: a deepsec major version, a change to its CLI exit-code contract or model-route schema, any new model route, or the first paid full-repo run
@@ -455,3 +455,7 @@ Activation waited for the rebuild and a real `--diff` receipt. Both exist now:
 `implementation_status` stays `partial` because a `--full` pass and the labelled-PR CI run (`.github/workflows/deepsec.yml`) remain unexecuted.
 
 Re-verified 2026-10-31 at `b65c3d4ed`. Governed paths changed: `agentbox.toml`: comments only: corpus verbs named as `ontomark`, flat-layout wording (`f4beec643`, `7aa9365d4`); `flake.nix`: the ontomark comment now names the verbs it owns (`4a07fbfb3`); `management-api/lib/system-manifest.js`: the `[vault].pages` fallback is `"."`, matching the schema default (`eff6c29c1`); `schema/agentbox.toml.schema.json`: the `[vault].working` description says pages sit at the working root (`f4beec643`). No section this record governs changed; the decision holds. Re-verified by `git diff d0e9ca786..b65c3d4ed -- <verified_paths>`; no re-implementation was needed. The image carries it at the next rebuild.
+
+## Re-verification — 2026-10-31 (`1e41b64b624af97cf49771d08da82fbf3743acbd`)
+
+Tripped by the W8 ADR-sprint changes. Governed-path delta since `753788564`: `agentbox.toml` gains only four `[model_routing.routes]` entries (`diagram-polish`, `diagram-narrative`, `diagram-synthesis`, `seal-review`) and a comment block (ADR-2130); `schema/agentbox.toml.schema.json` widens the `model_routing.routes` host pattern to `claude|codex|loom|zai` and adds those four keys (ADR-2130); `scripts/agentbox-config-validate.js` changes only the E010 profiles root, from the retired `/workspace/profiles` to `$WORKSPACE/profiles` (ADR-2066). No key, table or code path this record decides is touched, so the decision and status axes are unchanged. Judged from the diff (`git diff {old[:9]}..{V[:9]} -- <governed path>`), not by re-running this record's own acceptance checks.
