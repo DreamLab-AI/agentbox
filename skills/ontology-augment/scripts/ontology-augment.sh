@@ -5,7 +5,7 @@
 # Every subcommand is a thin, honest wrapper over the two doors the estate has
 # onto the corpus (ADR-2107):
 #
-#   * `vault`  — the corpus on disk. Authoritative for what a page SAYS.
+#   * `ontomark` — the corpus on disk. Authoritative for what a page SAYS.
 #   * the Loom — http://192.168.2.132:8084, LAN. Authoritative for what the
 #                REASONER concluded: the Whelk closure, SPARQL, typed
 #                neighbours and paths.
@@ -80,10 +80,10 @@ toml_val() {
       print; exit }' "$1"
 }
 
-# The vault REPOSITORY root every `vault` call is pinned to. The boot exports
+# The vault REPOSITORY root every `ontomark` call is pinned to. The boot exports
 # VAULT_REPO; a shell that did not inherit it reads [vault].repo (or derives it
 # from [vault].root) from the manifest, as the entrypoint does. Without --repo
-# `vault` only finds the corpus from a cwd inside it.
+# `ontomark` only finds the corpus from a cwd inside it.
 if [ -z "${VAULT_REPO:-}" ]; then
   _cfg="${AGENTBOX_CONFIG:-/etc/agentbox.toml}"
   VAULT_REPO="$(toml_val "$_cfg" vault repo)"
@@ -106,17 +106,12 @@ VAULT() {
   if [ -n "$VAULT_REPO" ]; then "$bin" --repo "$VAULT_REPO" "$@"; else "$bin" "$@"; fi
 }
 
-# ontomark — the released shared-ontology CLI (Ontomark ADR-OM-005; agentbox
-# ADR-2136 first step), baked beside vault by lib/ontomark.nix. From ontomark
-# 0.3.0 it owns validate/gate/conflicts/build AND find/retrieve/tree/edit
-# (ported from vault, byte-identical; Ontomark ADR-OM-007). vault keeps only
-# propose and its Nostr transport.
-# ONTOMARK_BIN overrides the baked binary for a checkout under test. An image
-# built before ontomark was baked falls back to vault for the verbs both carry,
-# announced on stderr, so the skill keeps working across the rebuild.
-# need_corpus: a corpus reader is present (ontomark, or vault as the fallback).
-need_corpus() { ontomark_bin >/dev/null 2>&1 || need_vault; }
-corpus_src() { if ontomark_bin >/dev/null 2>&1; then printf ontomark; else printf vault; fi; }
+# ontomark — the shared-ontology CLI (Ontomark ADR-OM-005/-007; agentbox
+# ADR-2136), baked beside vault by lib/ontomark.nix. It owns every corpus verb
+# (validate/gate/conflicts/build and find/retrieve/tree/edit); `vault` keeps
+# only `propose` and its Nostr transport, so the VAULT() helper above is used
+# for propose alone. ONTOMARK_BIN overrides the baked binary for a checkout
+# under test. There is no fallback to vault for corpus verbs.
 ontomark_bin() {
   if [ -n "${ONTOMARK_BIN:-}" ] && [ -x "$ONTOMARK_BIN" ]; then printf '%s' "$ONTOMARK_BIN"; return 0; fi
   if command -v ontomark >/dev/null 2>&1; then command -v ontomark; return 0; fi
@@ -124,18 +119,21 @@ ontomark_bin() {
   return 1
 }
 
+# need_corpus: ontomark is present, or the run stops with a pointed message.
+need_corpus() {
+  ontomark_bin >/dev/null 2>&1 && return 0
+  die "no \`ontomark\` found: not on PATH, not at /opt/agentbox/bin/ontomark, and ONTOMARK_BIN is unset or not executable. It is baked by lib/ontomark.nix; rebuild the image, or point ONTOMARK_BIN at a binary."
+}
+corpus_src() { printf ontomark; }
+
 ONTOMARK() {
   local bin
-  if bin="$(ontomark_bin)"; then
-    if [ -n "$VAULT_REPO" ]; then "$bin" --repo "$VAULT_REPO" "$@"; else "$bin" "$@"; fi
-  else
-    echo "ontology-augment: no \`ontomark\` baked yet (lib/ontomark.nix); falling back to vault for: $*" >&2
-    VAULT "$@"
-  fi
+  bin="$(ontomark_bin)" || die "no \`ontomark\` found (see need_corpus); set ONTOMARK_BIN or rebuild the image."
+  if [ -n "$VAULT_REPO" ]; then "$bin" --repo "$VAULT_REPO" "$@"; else "$bin" "$@"; fi
 }
 
-# The generation a `vault` answer belongs to (ADR-2129 decision 3), as JSON.
-# `vault` reads the working tree, so two facts are cited: the last local build's
+# The generation an `ontomark` answer belongs to (ADR-2129 decision 3), as JSON.
+# `ontomark` reads the working tree, so two facts are cited: the last local build's
 # `.generation.json` (id, digests, and owl:versionIRI once the build carries an
 # ADR-2128 ontology_digest) and the working tree's HEAD. The build directory is
 # vault.toml [build].out, else the publish outputs; the newest marker wins.
@@ -157,13 +155,13 @@ vault_generation() {
         version_iri: (if (.ontology_digest // "") != "" then $base + "/" + .ontology_digest else null end),
         generated_at, from: $from,
         working_tree_commit: (if $head == "" then null else $head end),
-        basis: "last local vault build; vault itself read the working tree at working_tree_commit"
+        basis: "last local ontomark build; ontomark itself read the working tree at working_tree_commit"
       }' "$f"
   else
     jq -nc --arg head "$head" --arg repo "${VAULT_REPO:-unset}" '{
         id: null, content_digest: null, version_iri: null,
         working_tree_commit: (if $head == "" then null else $head end),
-        reason: ("no readable .generation.json under vault repo " + $repo + " ([build].out, site-data, www); run `vault build --out <dir>` or set VAULT_GENERATION_FILE")
+        reason: ("no readable .generation.json under vault repo " + $repo + " ([build].out, site-data, www); run `ontomark build --out <dir>` or set VAULT_GENERATION_FILE")
       }'
   fi
 }
@@ -188,7 +186,7 @@ emit() {
     # answer (ADR-2129). Shapes: arrays; SPARQL/vault row arrays; JSON-RPC
     # envelopes (.result); MCP tools/call content items, whose text items are
     # parsed as JSON when they are JSON (so "[]" is 0) and are otherwise
-    # uncountable; a `vault tree` node (id + title; vault omits an empty
+    # uncountable; an `ontomark tree` node (id + title; ontomark omits an empty
     # children array); a VisionClaw ADR-2127 verdict; and the live Loom /mcp
     # tool results: loom.neighbours (an IRI-keyed class with is_a / ancestors /
     # relations, or found:false), loom.paths (found + path + hops) and
@@ -422,7 +420,7 @@ vc_post() {
   return 0
 }
 
-# run_vault <mode> <vault args…> — run vault, envelope its JSON, keep its exit
+# run_vault <mode> <vault args…> — run vault (propose only), envelope its JSON, keep its exit
 # code. A vault that fails with no JSON is a broken environment, not a degraded
 # grounding: its output passes through untouched and the failure stands.
 run_vault() {
@@ -436,11 +434,9 @@ run_vault() {
   exit "$rc"
 }
 
-# run_ontomark <mode> <args…> — as run_vault, through ONTOMARK(). The envelope's
-# source names the binary that answered, so a fallback is visible in the result.
+# run_ontomark <mode> <args…> — as run_vault, through ONTOMARK().
 run_ontomark() {
   local mode="$1" out rc src=ontomark; shift
-  ontomark_bin >/dev/null 2>&1 || src=vault
   set +e; out="$(ONTOMARK "$@")"; rc=$?; set -e
   if [ -z "$out" ] || ! printf '%s' "$out" | jq . >/dev/null 2>&1; then
     [ -n "$out" ] && printf '%s\n' "$out"
@@ -474,7 +470,7 @@ case "$cmd" in
     # accepted too, so either shape seeds the expansion.
     # Page ids contain spaces ("Knowledge Graph"), so they are collected into an
     # array via NUL-delimited read. Do NOT pipe them to xargs: ONTOMARK is a shell
-    # function (it picks the binary and falls back to vault) and xargs execs a
+    # function (it resolves the binary) and xargs execs a
     # binary, so xargs would report "ONTOMARK: No such file".
     ids=()
     while IFS= read -r -d '' id; do ids+=("$id"); done < <(
