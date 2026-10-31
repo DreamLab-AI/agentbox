@@ -1,7 +1,7 @@
 # lib/sealmap.nix
 #
 # Builds only the `sealmap` binary (package `sealmap`, from the DreamLab-AI/sealmap
-# v0.2.1 tag) and puts it on PATH in the image. Why: it is a Rust code lens for agents
+# v0.3.0 tag) and puts it on PATH in the image. Why: it is a Rust code lens for agents
 # (`sealmap dense` / `sealmap generate` show the real call tree around a symbol); see
 # skills/sealmap-review/references/evidence.md. Pure-Rust closure, no native inputs.
 #
@@ -16,7 +16,7 @@
 { lib, pkgs }:
 
 let
-  version = "0.2.1";
+  version = "0.3.0";
 in
 pkgs.rustPlatform.buildRustPackage {
   pname = "sealmap";
@@ -25,8 +25,8 @@ pkgs.rustPlatform.buildRustPackage {
   src = pkgs.fetchFromGitHub {
     owner = "DreamLab-AI";
     repo  = "sealmap";
-    rev   = "v${version}"; # commit a7ce8cd254191b029503517b03abe81a8ab295b8
-    hash  = "sha256-2Z4LJf/YyqQEnRaua63pu/VtpynMJyt3R8kCTTjZqGI=";
+    rev   = "v${version}"; # commit b767769815934a9d53ac38023575f853893e010d
+    hash  = "sha256-U+brkIeWWMWp8Tv/3qZHQ5JVsAwR6R+hfdJA9krF/5Q=";
   };
 
   # Byte-identical to Cargo.lock at the tag; needs no hash.
