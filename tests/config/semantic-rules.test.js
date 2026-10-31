@@ -1096,4 +1096,16 @@ describe('E082: [system_one.backends.*].state_budget_tokens', () => {
       expect(r.exitCode).not.toBe(0);
     }
   });
+
+  test('a TOML float, even a whole one such as 73000.0, fires E082 (the projector refuses it)', () => {
+    const base = TOML.stringify(withSlot(undefined));
+    for (const lit of ['73000.0', '7.3e4', '1e3']) {
+      const tmp = path.join(os.tmpdir(), `agentbox-e082-${Date.now()}-${Math.random().toString(36).slice(2)}.toml`);
+      fs.writeFileSync(tmp, base.replace('[system_one.backends.subq]\n', `[system_one.backends.subq]\nstate_budget_tokens = ${lit}\n`), 'utf8');
+      const r = require('child_process').spawnSync(process.execPath, [VALIDATOR, tmp], { encoding: 'utf8' });
+      fs.unlinkSync(tmp);
+      expect(r.stderr).toContain('E082');
+      expect(r.status).not.toBe(0);
+    }
+  });
 });

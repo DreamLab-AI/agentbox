@@ -1404,19 +1404,23 @@ if (ldEnabled) {
 // ─── E083: the per-project routing bypass (ADR-2090) ─────────────────────────
 //
 // E083 — [skills.routing].bypass_projects must be a list of absolute paths with no
-//         whitespace, quotes, commas, colons or '#'. The list is projected as a PATH-style
-//         env value inlined into a shell command, and a relative or malformed entry
-//         would silently fail to protect the project it names.
+//         whitespace, quotes, commas, colons or '#',
+//         and no '[' or ']'. The list is projected as a PATH-style env value inlined
+//         into a shell command, and a relative or malformed entry would silently fail to
+//         protect the project it names. Brackets are forbidden because the shell
+//         projector (entrypoint `_ab_toml_array`) and the JS fallback end a multi-line
+//         array at the first ']' and strip '[': "/srv/p[1]" would project as "/srv/p1"
+//         and silently drop every later entry (a privacy gate that fails open).
 {
   const rt = (manifest.skills || {}).routing || {};
   if (rt.bypass_projects !== undefined) {
     const bad = !Array.isArray(rt.bypass_projects)
       ? [rt.bypass_projects]
-      : rt.bypass_projects.filter((p) => typeof p !== 'string' || !/^\/[^\s'",:#]*$/.test(p));
+      : rt.bypass_projects.filter((p) => typeof p !== 'string' || !/^\/[^\s'",:#\[\]]*$/.test(p));
     if (bad.length) {
       errors.push({
         code: 'E083',
-        message: `E083: [skills.routing].bypass_projects must be a list of absolute paths without whitespace, quotes, commas, colons or '#'; offending: ${bad.map((p) => JSON.stringify(String(p).slice(0, 40))).join(', ')} — ADR-2090`,
+        message: `E083: [skills.routing].bypass_projects must be a list of absolute paths without whitespace, quotes, commas, colons, brackets or '#'; offending: ${bad.map((p) => JSON.stringify(String(p).slice(0, 40))).join(', ')} — ADR-2090`,
       });
     }
   }
@@ -1584,8 +1588,14 @@ function isLocalEndpoint(endpoint) {
 //         local=false whose url is not https or whose key_env is empty. All
 //         backends are checked, not just the active one, because the projection
 //         file carries the whole map and a live switch may select any of them.
+function tomlSourceDeclaresFloatBudget(src) {
+  return String(src).split('\n').some((line) => {
+    const code = line.replace(/#.*$/, '');
+    return /\bstate_budget_tokens\s*=\s*[+-]?[0-9_]+(\.[0-9_]*|[eE][+-]?[0-9_]+)/.test(code);
+  });
+}
 // E082 — a backend's `state_budget_tokens` (ADR-2139 Decision 5) is not a non-negative
-//         integer. 0 / absent = undeclared; the projector refuses the slot otherwise.
+//         integer (a TOML float such as 73000.0 included). 0 / absent = undeclared; the projector refuses the slot otherwise.
 // E081 — [system_one].enabled and [features.sovereign_system_one].enabled both
 //         true: two projectors would race for the same consumers. The façade is
 //         reached through the proxy as the `laya` backend instead.
@@ -1618,7 +1628,10 @@ function isLocalEndpoint(endpoint) {
       const b = backends[name] || {};
       const url = String(b.url ?? '');
       const keyEnv = String(b.key_env ?? '');
-      if (b.state_budget_tokens !== undefined && !(Number.isInteger(b.state_budget_tokens) && b.state_budget_tokens >= 0)) {
+      // @iarna/toml parses 73000.0 to the JS number 73000, so float-ness is invisible
+      // on the parsed tree; the projector (serde_json is_u64) refuses it, so check the source.
+      const budgetIsFloat = tomlSourceDeclaresFloatBudget(raw);
+      if (b.state_budget_tokens !== undefined && (budgetIsFloat || !(Number.isInteger(b.state_budget_tokens) && b.state_budget_tokens >= 0))) {
         errors.push({ code: 'E082', message: `E082: [system_one.backends.${name}].state_budget_tokens must be a non-negative integer (got ${JSON.stringify(b.state_budget_tokens)}) — the projector refuses the whole slot otherwise (ADR-2139 Decision 5)` });
       }
       if (b.local === true) {

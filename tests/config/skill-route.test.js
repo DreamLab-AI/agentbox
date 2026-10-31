@@ -712,6 +712,14 @@ describe('validator — E076 / W074 (ADR-2095 addendum)', () => {
     expect(validate('[skills.routing]\nrouter = "jev"\nbypass_projects = ["relative/dir"]\n')).toMatch(/E083/);
   });
 
+  test('bypass_projects: brackets are rejected (the shell projector would end the array at the first "]" and drop later entries)', () => {
+    for (const bad of ['["/srv/p[1]"]', '["/srv/p]"]', '["/srv/[p"]', '[\n  "/srv/p[1]",\n  "/srv/secret",\n]']) {
+      const out = validate(`[skills.routing]\nrouter = "jev"\nbypass_projects = ${bad}\n`);
+      expect(out).toMatch(/E083/);
+      expect(out).not.toMatch(/manifest valid/i);
+    }
+  });
+
   test('entrypoint projects the bypass only when listed (byte-identical when empty)', () => {
     const src = fs.readFileSync(path.resolve(__dirname, '../../config/entrypoint-unified.sh'), 'utf8');
     expect(src).toMatch(/_SR_BYPASS_EXPORT=""\n\[ -z "\$_SR_BYPASS" \] \|\| _SR_BYPASS_EXPORT=/);

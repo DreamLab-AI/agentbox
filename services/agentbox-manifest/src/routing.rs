@@ -69,16 +69,22 @@ const PRUNE_DIRS: &[&str] = &["node_modules", ".git", "target", ".tmp", "dist"];
 /// the route instead of mislabelling Z.AI as the `codex` subscription tier.
 const PROVIDER_UNCONSTRUCTIBLE_ZAI: &str = "zai";
 
+/// Likewise for the Ontology Loom. Mapping it to `openai` would be a privacy
+/// and egress fault: agentic-qe's `openai` provider targets api.openai.com, and
+/// nothing here points OPENAI_BASE_URL at the Loom, so a loom-routed activity
+/// would send its prompt and the Loom model name to OpenAI. Fail closed: the
+/// route is skipped until a constructible base-URL provider exists.
+const PROVIDER_UNCONSTRUCTIBLE_LOOM: &str = "loom";
+
 /// host → agentic-qe ExtendedProviderType (subscription tier: $0 marginal).
 ///
 /// Every host the route grammar admits has an explicit arm (ADR-2130): `loom`
-/// is the nearest constructible type to `openai` (an OpenAI-compatible base
-/// URL), and `zai` has no constructible type at all.
+/// and `zai` have no constructible agentic-qe type, so both fail closed.
 fn host_provider(host: &str) -> &'static str {
     match host {
         "claude" => "claude-code",
         "codex" => "codex",
-        "loom" => "openai",
+        "loom" => PROVIDER_UNCONSTRUCTIBLE_LOOM,
         "zai" => PROVIDER_UNCONSTRUCTIBLE_ZAI,
         _ => "codex",
     }
@@ -503,9 +509,12 @@ mod tests {
     fn host_provider_has_an_explicit_arm_for_every_admitted_host() {
         assert_eq!(host_provider("claude"), "claude-code");
         assert_eq!(host_provider("codex"), "codex");
-        assert_eq!(host_provider("loom"), "openai");
+        assert_eq!(host_provider("loom"), "loom");
         assert_eq!(host_provider("zai"), "zai");
-        assert!(AQE_CONSTRUCTIBLE.contains(&host_provider("loom")));
+        assert!(
+            !AQE_CONSTRUCTIBLE.contains(&host_provider("loom")),
+            "loom must never map to openai: that provider targets api.openai.com"
+        );
         assert!(
             !AQE_CONSTRUCTIBLE.contains(&host_provider("zai")),
             "zai has no constructible agentic-qe type and must never be mislabelled codex"
@@ -521,8 +530,22 @@ mod tests {
         ));
         let o = cfg["agentOverrides"].as_object().unwrap();
         assert!(o.get("qe-code-reviewer").is_none(), "zai-started review is skipped");
-        assert_eq!(o["qe-test-architect"]["provider"], "openai");
-        assert_eq!(o["qe-test-architect"]["model"], "qwen3.8-27B");
+        assert!(
+            o.get("qe-test-architect").is_none(),
+            "loom-started testing is skipped (fail closed), never sent to openai"
+        );
+        assert!(
+            !o.values().any(|v| v["provider"] == "openai"),
+            "no loom route may surface an openai agent override"
+        );
+        for e in cfg["fallbackChain"]["entries"].as_array().unwrap() {
+            let models = e["models"].as_array().unwrap();
+            assert!(
+                !models.iter().any(|m| m == "qwen3.8-27B"),
+                "the Loom model leaked into {}",
+                e["provider"]
+            );
+        }
         // No chain entry for zai, and its model never lands under codex.
         let entries = cfg["fallbackChain"]["entries"].as_array().unwrap();
         for e in entries {

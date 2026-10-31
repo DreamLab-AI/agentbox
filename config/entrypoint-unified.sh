@@ -2634,7 +2634,7 @@ _SO_ON="$(_ab_toml_bool system_one enabled)"
 _SO_PROJECTION="${AGENTBOX_RUN_DIR:-/run/agentbox}/system-one.json"
 if [ "$_SO_ON" = "1" ] && command -v agentbox-manifest >/dev/null 2>&1; then
   _SO_JSON="$(agentbox-manifest system-one-project \
-    --manifest "${AGENTBOX_CONFIG:-/etc/agentbox.toml}" --format json 2>/dev/null || true)"
+    --manifest "${AGENTBOX_CONFIG:-/etc/agentbox.toml}" --format json || true)"
   if [ -n "$_SO_JSON" ]; then
     mkdir -p "$(dirname "$_SO_PROJECTION")"
     # Atomic: the proxy re-reads on mtime change and must never see a half file.
