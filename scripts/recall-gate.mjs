@@ -25,6 +25,15 @@
 //      the run (a recall number measured with a consumer off is not evidence
 //      for the same corpus with it on).
 //
+// Receipts from a v2 fixture (schema receipt@2, ADR-2018 amendment 2026-10-31)
+// are additionally refused when:
+//   8. stale gold (gold ids no longer in memory) exceeds the fixture band's
+//      max_stale_gold_fraction (or the stricter --max-stale-gold-fraction), so
+//      corpus drift is loud;
+//   9. the relevance floor the receipt was measured with differs from the
+//      floor the deployed agent path applies (RUVECTOR_SEARCH_MIN_SCORE).
+// v1 receipts take exactly the original path.
+//
 // Usage:
 //   node scripts/recall-gate.mjs                     # full gate, live probe
 //   node scripts/recall-gate.mjs --skip-live-probe   # offline (CI without xinference)
@@ -36,7 +45,7 @@
 import { createRequire } from 'node:module';
 import { createHash } from 'node:crypto';
 import { readFileSync, existsSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { dirname, join, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import http from 'node:http';
 
@@ -45,7 +54,8 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_DIR = join(__dirname, '..');
 
 const RECEIPT_PATH = join(REPO_DIR, 'backups', 'ruvector-sidecar', 'recall-runs', 'latest-receipt.json');
-const FIXTURE_PATH = join(REPO_DIR, 'scripts', 'recall-fixtures', 'recall-fixture.v1.json');
+const FIXTURE_DIR = join(REPO_DIR, 'scripts', 'recall-fixtures');
+const FIXTURE_PATH = join(FIXTURE_DIR, 'recall-fixture.v1.json');
 
 const XINFERENCE_URL = process.env.XINFERENCE_ENDPOINT || 'http://xinference:9997';
 const EMBEDDING_MODEL = process.env.EMBEDDING_MODEL || 'bge-small-en-v1.5';
@@ -53,13 +63,15 @@ const EMBEDDING_MODEL = process.env.EMBEDDING_MODEL || 'bge-small-en-v1.5';
 function sha12(s) { return createHash('sha256').update(String(s), 'utf8').digest('hex').slice(0, 12); }
 
 function parseArgs(argv) {
-  const o = { maxAgeHours: 24, skipLiveProbe: false, json: false, receipt: RECEIPT_PATH };
+  const o = { maxAgeHours: 24, skipLiveProbe: false, json: false, receipt: RECEIPT_PATH, fixture: null, maxStaleGoldFraction: null };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--skip-live-probe') o.skipLiveProbe = true;
     else if (a === '--json') o.json = true;
     else if (a === '--max-age-hours') o.maxAgeHours = Math.max(1, parseInt(argv[++i], 10) || 24);
     else if (a === '--receipt') o.receipt = argv[++i];
+    else if (a === '--fixture') o.fixture = argv[++i];
+    else if (a === '--max-stale-gold-fraction') o.maxStaleGoldFraction = Number(argv[++i]);
     else if (a === '-h' || a === '--help') o.help = true;
     else { process.stderr.write(`unknown option: ${a}\n`); process.exit(64); }
   }
@@ -96,6 +108,11 @@ function getEmbedding(text) {
 
 // The gate's own view of the retrieval-consumer gates. Only the ones that change
 // what a query RETURNS matter here; connection settings do not.
+// Value-valued geometry knobs (not on/off): compared as normalised strings.
+// Unset means the default ('blend'). A v1 receipt records every RUVECTOR_* env
+// at run time, so an absent entry there genuinely means unset.
+const VALUE_GATES = { RUVECTOR_HYBRID_FUSION: (v) => (String(v || '').trim().toLowerCase() === 'rrf' ? 'rrf' : 'blend') };
+
 const GEOMETRY_GATES = [
   'RUVECTOR_FEED_RETRIEVAL',
   'RUVECTOR_FEED_ROUTING',
@@ -122,7 +139,8 @@ async function gate(opts) {
   catch (e) { return { permitted: false, refusals: [`receipt is unreadable: ${e.message}`], notes, receipt: null }; }
 
   // 1. integrity
-  if (receipt.schema !== 'ruvector-recall-harness/receipt@1') {
+  const isV2 = receipt.schema === 'ruvector-recall-harness/receipt@2';
+  if (receipt.schema !== 'ruvector-recall-harness/receipt@1' && !isV2) {
     refusals.push(`unknown receipt schema "${receipt.schema}"`);
   }
   const claimed = receipt.receipt_hash;
@@ -193,10 +211,17 @@ async function gate(opts) {
     notes.push('live model probe SKIPPED — the deployed identity is unverified by this gate');
   }
 
-  // 6. fixture
-  if (existsSync(FIXTURE_PATH)) {
+  // 6. fixture. A v2 receipt names its fixture file (basename only, resolved in
+  // the fixtures directory); v1 keeps the single checked-in v1 path.
+  const fixturePath = opts.fixture
+    ? opts.fixture
+    : (isV2 && bound.fixture && bound.fixture.file ? join(FIXTURE_DIR, basename(bound.fixture.file)) : FIXTURE_PATH);
+  if (isV2 && !existsSync(fixturePath)) {
+    refusals.push(`the v2 fixture the receipt was measured against is missing: ${fixturePath}`);
+  }
+  if (existsSync(fixturePath)) {
     try {
-      const fx = JSON.parse(readFileSync(FIXTURE_PATH, 'utf8'));
+      const fx = JSON.parse(readFileSync(fixturePath, 'utf8'));
       if (bound.fixture && bound.fixture.hash && fx.fixture_hash !== bound.fixture.hash) {
         refusals.push(`the checked-in fixture (${fx.fixture_hash}) is not the one measured (${bound.fixture.hash})`);
       }
@@ -215,8 +240,38 @@ async function gate(opts) {
     const norm = (v) => (v === undefined || v === '' ? 'off' : (v === '1' || v === 'true' ? 'on' : 'off'));
     if (norm(now) !== norm(then)) drifted.push(`${g}: run=${norm(then)} now=${norm(now)}`);
   }
+  for (const [g, norm] of Object.entries(VALUE_GATES)) {
+    const now = norm(process.env[g]);
+    const then = norm(observed[g]);
+    if (now !== then) drifted.push(`${g}: run=${then} now=${now}`);
+  }
   if (drifted.length) {
     refusals.push(`retrieval-geometry gates changed since the run (${drifted.join(', ')}) — the receipt measured a different configuration`);
+  }
+
+  // 8/9. v2 only: loud corpus drift, and floor parity with the deployed path.
+  if (isV2) {
+    const sg = receipt.stale_gold;
+    const band = receipt.band || {};
+    let bound_ = band.max_stale_gold_fraction;
+    if (Number.isFinite(opts.maxStaleGoldFraction)) {
+      bound_ = Number.isFinite(bound_) ? Math.min(bound_, opts.maxStaleGoldFraction) : opts.maxStaleGoldFraction;
+    }
+    if (!sg || !Number.isFinite(sg.stale_fraction)) {
+      refusals.push('v2 receipt carries no stale-gold accounting');
+    } else if (!Number.isFinite(bound_)) {
+      refusals.push('v2 receipt has no max_stale_gold_fraction bound, so drift cannot be judged');
+    } else if (sg.stale_fraction > bound_) {
+      refusals.push(`stale gold ${sg.stale_gold}/${sg.gold_total} (${(sg.stale_fraction * 100).toFixed(1)}%) exceeds the ${(bound_ * 100).toFixed(1)}% bound — the corpus has drifted from the fixture; rebuild it and re-measure`);
+    } else {
+      notes.push(`stale gold ${sg.stale_gold}/${sg.gold_total} (${(sg.stale_fraction * 100).toFixed(1)}%, bound ${(bound_ * 100).toFixed(1)}%)`);
+    }
+    try {
+      const deployed = require(join(REPO_DIR, 'mcp', 'servers', 'lib', 'memory-tools.js')).DEFAULT_MIN_SCORE;
+      if (Number.isFinite(receipt.relevance_floor) && receipt.relevance_floor !== deployed) {
+        refusals.push(`relevance floor changed: receipt measured at ${receipt.relevance_floor}, deployed agent path applies ${deployed} (RUVECTOR_SEARCH_MIN_SCORE)`);
+      }
+    } catch (e) { notes.push(`could not read the deployed relevance floor (${e.message})`); }
   }
 
   // Corpus drift is reported, not refused: rows are added continuously and a
@@ -237,6 +292,8 @@ const HELP = `recall-gate.mjs — the release gate that consumes the recall rece
   --max-age-hours N   maximum receipt age (default 24)
   --skip-live-probe   do not probe the deployed embedding model (offline CI)
   --receipt PATH      read a different receipt
+  --fixture PATH      check the receipt against this fixture file (default: v1, or the v2 file the receipt names)
+  --max-stale-gold-fraction F  v2: tighten the stale-gold bound below the fixture band's
   --json              machine-readable result
   -h, --help          this help
 

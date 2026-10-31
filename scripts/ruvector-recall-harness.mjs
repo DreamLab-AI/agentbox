@@ -57,7 +57,7 @@
 import { createRequire } from 'node:module';
 import { createHash } from 'node:crypto';
 import { mkdirSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { dirname, join, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import http from 'node:http';
 
@@ -818,12 +818,431 @@ function writeReceipt(report) {
   return { path: RECEIPT_PATH, receipt };
 }
 
+// ══ FIXTURE v2 (ADR-2018 amendment, 2026-10-31) ═══════════════════════════════
+//
+// v2 is a NEW file and schema (scripts/recall-fixtures/recall-fixture.v2.json,
+// schema "ruvector-recall-fixture/v2"); v1 and its hash binding are untouched
+// and every v1 code path above is byte-for-byte as before. A v2 fixture is a
+// list of TEXT QUERY CASES judged on the path an agent actually uses
+// (memSearch -> shapeSearchResponse with the relevance floor), not the
+// self-embedding probes of v1:
+//
+//   positive case  { id, query, namespace?, min_docs?, gold:[{namespace,key,doc?}] }
+//       passes iff >= min_docs (default 1) DISTINCT gold source pages (`doc`,
+//       default = the entry itself) appear in the top-k with score >= floor.
+//   negative case  { id, query, namespace?, negative:true }
+//       the right answer is "nothing relevant": passes iff NO top-k result
+//       clears the relevance floor. A degraded (ILIKE) or errored search is
+//       never a pass.
+//
+// RELEVANCE FLOOR: the one the agent path already applies, the cosine floor
+// RUVECTOR_SEARCH_MIN_SCORE (default 0.55, memory-tools.js DEFAULT_MIN_SCORE,
+// calibrated 2026-09-25 on bge-small-en-v1.5). The fixture freezes its own copy
+// (`relevance_floor`, hash-bound) and the gate refuses if the deployed floor
+// differs from it.
+//
+// STALE GOLD: before measuring, every gold (namespace,key) is checked against
+// memory_entries (read-only). Missing gold is counted and reported separately
+// and EXCLUDED from the hit denominators rather than silently lowering them.
+// A positive case whose surviving gold cannot satisfy min_docs is excluded
+// whole. The verdict (and the gate) FAIL when stale gold exceeds
+// band.max_stale_gold_fraction, so corpus drift is loud, never absorbed.
+const FIXTURE_V2_SCHEMA = 'ruvector-recall-fixture/v2';
+const DEFAULT_FIXTURE_V2 = join(REPO_DIR, 'scripts', 'recall-fixtures', 'recall-fixture.v2.json');
+const V2_DEFAULT_BAND = {
+  positive_hit_rate_min: 0.7,
+  negative_pass_rate_min: 0.8,
+  max_stale_gold_fraction: 0.1,
+  median_of: 3,
+  k: 10,
+};
+
+function goldKey(g) { return `${g.namespace}\u0000${g.key}`; }
+function goldDoc(g) { return g.doc === undefined || g.doc === null || g.doc === '' ? goldKey(g) : `${g.namespace}\u0000${g.doc}`; }
+function caseNamespace(c) { return c.namespace || '*'; }
+
+// Hash over the load-bearing v2 fields. `baseline` is deliberately NOT bound:
+// it is the OUTPUT of measuring this fixture, so binding it would make the hash
+// change at the moment of measurement. The band, floor, embedding model and the
+// cases are bound, so loosening a threshold or editing a case changes the hash.
+function fixtureHashV2(fx) {
+  const canon = JSON.stringify({
+    schema: fx.schema,
+    floor: fx.relevance_floor,
+    model: fx.embedding && fx.embedding.model,
+    cases: fx.cases,
+    band: fx.band,
+  });
+  return 'sha256-' + createHash('sha256').update(canon, 'utf8').digest('hex');
+}
+
+// Structural validation; returns a list of error strings (empty = valid).
+function validateFixtureV2(fx) {
+  const errs = [];
+  if (!fx || fx.schema !== FIXTURE_V2_SCHEMA || fx.version !== 2) errs.push(`not a ${FIXTURE_V2_SCHEMA} fixture`);
+  if (!fx || !Array.isArray(fx.cases) || !fx.cases.length) { errs.push('cases[] missing or empty'); return errs; }
+  if (!Number.isFinite(fx.relevance_floor)) errs.push('relevance_floor must be a number');
+  if (!fx.band || typeof fx.band !== 'object') errs.push('band missing');
+  const seen = new Set();
+  for (const c of fx.cases) {
+    const where = `case ${JSON.stringify(c && c.id)}`;
+    if (!c || typeof c.id !== 'string' || !c.id) { errs.push('case without a string id'); continue; }
+    if (seen.has(c.id)) errs.push(`${where}: duplicate id`);
+    seen.add(c.id);
+    if (typeof c.query !== 'string' || !c.query.trim()) errs.push(`${where}: empty query`);
+    if (c.negative === true) {
+      if (c.gold && c.gold.length) errs.push(`${where}: a negative case must not carry gold`);
+      if (c.min_docs !== undefined) errs.push(`${where}: a negative case must not set min_docs`);
+    } else {
+      if (!Array.isArray(c.gold) || !c.gold.length) { errs.push(`${where}: positive case needs gold[]`); continue; }
+      for (const g of c.gold) if (!g || typeof g.namespace !== 'string' || typeof g.key !== 'string') errs.push(`${where}: gold entries need {namespace,key}`);
+      const docs = new Set(c.gold.filter((g) => g && g.namespace && g.key).map(goldDoc));
+      const need = c.min_docs === undefined ? 1 : c.min_docs;
+      if (!Number.isInteger(need) || need < 1) errs.push(`${where}: min_docs must be an integer >= 1`);
+      else if (docs.size < need) errs.push(`${where}: min_docs ${need} exceeds the ${docs.size} distinct gold doc(s)`);
+    }
+  }
+  return errs;
+}
+
+// READ-ONLY existence check of every distinct gold (namespace,key). Returns the
+// Set of goldKey()s that still exist in memory_entries. Existence only: a row
+// whose embedding is still pending is NOT stale (it is a real retrieval miss,
+// surfaced via the corpus pending_embeddings count, and must stay in the
+// denominator).
+async function checkGoldExistence(pool, fixture) {
+  const uniq = new Map();
+  for (const c of fixture.cases) for (const g of c.gold || []) uniq.set(goldKey(g), g);
+  const all = [...uniq.values()];
+  const existing = new Set();
+  const CHUNK = 500;
+  for (let i = 0; i < all.length; i += CHUNK) {
+    const slice = all.slice(i, i + CHUNK);
+    const r = await pool.query(
+      `SELECT namespace, key FROM memory_entries
+        WHERE (namespace, key) IN (SELECT * FROM unnest($1::text[], $2::text[]))`,
+      [slice.map((g) => g.namespace), slice.map((g) => g.key)],
+    );
+    for (const row of r.rows) existing.add(goldKey(row));
+  }
+  return existing;
+}
+
+// Pure. Split every case into scorable / excluded and count stale gold.
+// stale_fraction = distinct stale gold entries / distinct gold entries.
+function partitionGold(fixture, existing) {
+  const allGold = new Map();
+  const staleGold = new Map();
+  const cases = [];
+  for (const c of fixture.cases) {
+    if (c.negative === true) { cases.push({ case: c, status: 'scorable', live_gold: [], stale_gold: [] }); continue; }
+    const live = []; const stale = [];
+    for (const g of c.gold) {
+      allGold.set(goldKey(g), g);
+      if (existing.has(goldKey(g))) live.push(g); else { stale.push(g); staleGold.set(goldKey(g), g); }
+    }
+    const liveDocs = new Set(live.map(goldDoc)).size;
+    const need = c.min_docs === undefined ? 1 : c.min_docs;
+    cases.push({ case: c, status: liveDocs >= need ? 'scorable' : 'stale_excluded', live_gold: live, stale_gold: stale });
+  }
+  const total = allGold.size;
+  return {
+    cases,
+    stale: {
+      gold_total: total,
+      stale_gold: staleGold.size,
+      stale_fraction: total ? staleGold.size / total : 0,
+      stale_cases: cases.filter((x) => x.status === 'stale_excluded').map((x) => x.case.id),
+      stale_gold_entries: [...staleGold.values()].map((g) => ({ namespace: g.namespace, key: g.key })),
+    },
+  };
+}
+
+// Pure. Score one case from the (already floor-shaped, best-first) top-k rows
+// and the unfloored rows. `res` = { floored:[{key,namespace,score}], unfloored:[...], error? }.
+function scoreCaseV2(part, res) {
+  const c = part.case;
+  const base = { id: c.id, kind: c.negative === true ? 'negative' : 'positive' };
+  if (res.error) return { ...base, pass: false, error: res.error };
+  if (c.negative === true) {
+    const offenders = res.floored.map((r) => ({ namespace: r.namespace, key: r.key, score: r.score }));
+    return { ...base, pass: offenders.length === 0, offenders };
+  }
+  const goldDocOf = new Map(part.live_gold.map((g) => [goldKey(g), goldDoc(g)]));
+  const docsIn = (rows) => new Set(rows.map((r) => goldDocOf.get(goldKey(r))).filter(Boolean));
+  const need = c.min_docs === undefined ? 1 : c.min_docs;
+  const found = docsIn(res.floored);
+  const foundUnfloored = docsIn(res.unfloored);
+  let bestRank = null;
+  res.unfloored.forEach((r, i) => { if (bestRank === null && goldDocOf.has(goldKey(r))) bestRank = i + 1; });
+  return {
+    ...base, pass: found.size >= need, docs_found: found.size, docs_needed: need,
+    docs_found_ignoring_floor: foundUnfloored.size, best_gold_rank: bestRank,
+  };
+}
+
+// Pure. Per-run class counts from scored scorable cases.
+function summariseRunV2(scored) {
+  const pos = scored.filter((s) => s.kind === 'positive');
+  const neg = scored.filter((s) => s.kind === 'negative');
+  const hits = pos.filter((s) => s.pass).length;
+  const passes = neg.filter((s) => s.pass).length;
+  return {
+    positive: { hits, of: pos.length, rate: pos.length ? hits / pos.length : null },
+    negative: { passes, of: neg.length, rate: neg.length ? passes / neg.length : null },
+  };
+}
+
+// PASS/FAIL. A class that is required (band min non-null) but has NO scorable
+// cases fails: an empty denominator is never a silent pass.
+function verdictV2(medians, band, stale, declared) {
+  const reasons = [];
+  const need = (min, rate, label, nDeclared) => {
+    if (min === null || min === undefined) return;
+    if (rate === null || rate === undefined) {
+      if (nDeclared > 0) reasons.push(`${label}: no scorable case left (all ${nDeclared} excluded as stale) — a rate cannot be computed`);
+      else reasons.push(`${label}: the fixture declares no such cases but the band requires ${min}`);
+    } else if (rate < min) reasons.push(`${label} median ${rate.toFixed(3)} < ${min}`);
+  };
+  need(band.positive_hit_rate_min, medians.positive_hit_rate, 'positive hit rate', declared.positive);
+  need(band.negative_pass_rate_min, medians.negative_pass_rate, 'negative pass rate', declared.negative);
+  if (band.max_stale_gold_fraction !== null && band.max_stale_gold_fraction !== undefined
+      && stale.stale_fraction > band.max_stale_gold_fraction) {
+    reasons.push(`stale gold ${stale.stale_gold}/${stale.gold_total} (${(stale.stale_fraction * 100).toFixed(1)}%) exceeds the ${(band.max_stale_gold_fraction * 100).toFixed(1)}% bound — the corpus has drifted from the fixture; rebuild it`);
+  }
+  return { pass: reasons.length === 0, reasons };
+}
+
+function loadShape() {
+  return require(join(REPO_DIR, 'mcp', 'servers', 'lib', 'memory-tools.js')).shapeSearchResponse;
+}
+
+// One case through the agent retrieval path: memSearch, then the same
+// shapeSearchResponse the MCP tool applies (sort best-first, drop below floor,
+// cap at k). `unfloored` is the same rows with the floor lowered, for diagnosis.
+async function searchCaseV2(memTools, shape, c, k, floor) {
+  let raw;
+  try { raw = await memTools.memSearch(c.query, caseNamespace(c), k); }
+  catch (e) { return { error: `search threw: ${e.message}` }; }
+  if (!raw || raw.success !== true) return { error: `search failed: ${(raw && raw.error) || 'no response'}` };
+  if (raw.degraded) return { error: 'degraded (xinference unavailable -> ILIKE fallback): scores are not similarities' };
+  const floored = shape(raw, { full: true, minScore: floor, limit: k });
+  const unfloored = shape(raw, { full: true, minScore: -1, limit: k });
+  return { floored: floored.results || [], unfloored: unfloored.results || [] };
+}
+
+async function runHarnessV2(deps, fixture, { runs, k }) {
+  const { pool } = deps;
+  const memTools = deps.memTools;
+  const hybridTools = deps.hybridTools;
+  const shape = deps.shape || loadShape();
+  const ensure = deps.xinfEnsure || xinfEnsure;
+
+  const errs = validateFixtureV2(fixture);
+  if (errs.length) throw new Error(`invalid v2 fixture: ${errs.join('; ')}`);
+  const recomputed = fixtureHashV2(fixture);
+  const hashOk = recomputed === fixture.fixture_hash;
+  if (!hashOk) log('WARN', `fixture_hash mismatch (stored ${fixture.fixture_hash} vs recomputed ${recomputed}); fixture may have been hand-edited`);
+
+  // Stale-gold check first, once: gold existence does not vary between runs.
+  const existing = await checkGoldExistence(pool, fixture);
+  const part = partitionGold(fixture, existing);
+  if (part.stale.stale_gold) log('WARN', `stale gold: ${part.stale.stale_gold}/${part.stale.gold_total} entries missing; ${part.stale.stale_cases.length} case(s) excluded from the denominators`);
+  const scorable = part.cases.filter((p) => p.status === 'scorable');
+
+  const xinfUp = await ensure();
+  if (!xinfUp) log('WARN', `xinference unreachable (${XINFERENCE_URL}); every search degrades and no case can pass honestly`);
+  const floor = fixture.relevance_floor;
+
+  const runResults = [];
+  for (let i = 0; i < runs; i++) {
+    const scored = [];
+    for (const p of scorable) {
+      const res = await searchCaseV2(memTools, shape, p.case, k, floor);
+      scored.push(scoreCaseV2(p, res));
+    }
+    const sum = summariseRunV2(scored);
+    // Surfaced, never gated: how the hybrid path (whatever RUVECTOR_HYBRID_FUSION
+    // selects) ranks gold on namespace-scoped positive cases, floor ignored since
+    // hybrid scores are not cosines. This is the number a fusion comparison reads.
+    let hybrid = null;
+    if (hybridTools) {
+      let hits = 0; let of = 0;
+      for (const p of scorable) {
+        if (p.case.negative === true || caseNamespace(p.case) === '*') continue;
+        of++;
+        try {
+          const h = await hybridTools.memHybridSearch(p.case.query, caseNamespace(p.case), k);
+          const docOf = new Map(p.live_gold.map((g) => [goldKey(g), goldDoc(g)]));
+          const found = new Set((h.results || []).slice(0, k).map((r) => docOf.get(goldKey(r))).filter(Boolean));
+          if (found.size >= (p.case.min_docs === undefined ? 1 : p.case.min_docs)) hits++;
+        } catch { /* a failing hybrid case simply does not hit */ }
+      }
+      hybrid = { hits, of, rate: of ? hits / of : null, fusion: process.env.RUVECTOR_HYBRID_FUSION || 'blend' };
+    }
+    runResults.push({ run: i + 1, ...sum, hybrid_surfaced: hybrid, cases: scored });
+    log('INFO', `run ${i + 1}/${runs}: positive ${sum.positive.hits}/${sum.positive.of}, negative ${sum.negative.passes}/${sum.negative.of}`);
+  }
+
+  const medians = {
+    positive_hit_rate: median(runResults.map((r) => r.positive.rate)),
+    negative_pass_rate: median(runResults.map((r) => r.negative.rate)),
+  };
+  const declared = {
+    positive: fixture.cases.filter((c) => c.negative !== true).length,
+    negative: fixture.cases.filter((c) => c.negative === true).length,
+  };
+  const verdict = verdictV2(medians, fixture.band, part.stale, declared);
+  const binding = deps.collectBinding ? await deps.collectBinding() : {
+    embedding: await embeddingIdentity(),
+    corpus: await corpusRevision(pool),
+    filters: {
+      cases: { namespaces: [...new Set(fixture.cases.map(caseNamespace))], plan: 'memSearch + shapeSearchResponse (the agent retrieval path), relevance floor applied' },
+    },
+    gates: observedGates(),
+  };
+
+  return {
+    schema: 'ruvector-recall-harness/run@2',
+    ran_at: new Date().toISOString(),
+    fixture: {
+      path_version: fixture.version, built_at: fixture.built_at, fixture_hash: fixture.fixture_hash, hash_ok: hashOk,
+      sizes: { positive: declared.positive, negative: declared.negative, scorable: scorable.length },
+    },
+    config: { runs, k, embedding_model: EMBEDDING_MODEL, xinference: xinfUp ? 'up' : 'DOWN', relevance_floor: floor },
+    binding,
+    baseline: fixture.baseline || null,
+    band: fixture.band,
+    stale_gold: part.stale,
+    medians,
+    verdict,
+    runs_detail: runResults,
+  };
+}
+
+function printReportV2(report) {
+  const w = process.stdout;
+  const m = report.medians; const b = report.band; const s = report.stale_gold;
+  const pct = (x) => (x === null ? 'n/a' : (x * 100).toFixed(1) + '%');
+  w.write(`\nRecall-regression harness (fixture v2) — ${report.ran_at}\n`);
+  w.write(`fixture ${report.fixture.fixture_hash}${report.fixture.hash_ok ? '' : ' (HASH MISMATCH)'}  |  runs=${report.config.runs} k=${report.config.k} floor=${report.config.relevance_floor} xinference=${report.config.xinference}\n\n`);
+  w.write(`  stale gold        ${s.stale_gold}/${s.gold_total} (${pct(s.stale_fraction)}; bound ${pct(b.max_stale_gold_fraction)}), ${s.stale_cases.length} case(s) excluded from denominators\n`);
+  w.write(`  positive hit rate median ${pct(m.positive_hit_rate)}   (band >= ${pct(b.positive_hit_rate_min)}, over ${report.fixture.sizes.positive - s.stale_cases.length} scorable)\n`);
+  w.write(`  negative pass rate median ${pct(m.negative_pass_rate)}  (band >= ${pct(b.negative_pass_rate_min)}, over ${report.fixture.sizes.negative})\n\n`);
+  w.write(`  VERDICT: ${report.verdict.pass ? 'PASS' : 'FAIL'}`);
+  if (!report.verdict.pass) w.write(`  (${report.verdict.reasons.join('; ')})`);
+  w.write('\n\n');
+}
+
+function buildReceiptV2(report, fixtureFile) {
+  const claim = {
+    schema: 'ruvector-recall-harness/receipt@2',
+    adr: 'ADR-2018',
+    ran_at: report.ran_at,
+    verdict: report.verdict.pass ? 'PASS' : 'FAIL',
+    reasons: report.verdict.reasons || [],
+    medians: report.medians,
+    band: report.band,
+    runs: report.config.runs,
+    k: report.config.k,
+    relevance_floor: report.config.relevance_floor,
+    stale_gold: report.stale_gold && {
+      gold_total: report.stale_gold.gold_total,
+      stale_gold: report.stale_gold.stale_gold,
+      stale_fraction: report.stale_gold.stale_fraction,
+      stale_cases: report.stale_gold.stale_cases.length,
+    },
+    bound_to: {
+      model: {
+        name: report.binding.embedding.model,
+        fingerprint: report.binding.embedding.fingerprint,
+        pinned_fingerprint: report.binding.embedding.pinned_fingerprint || null,
+        identity_state: report.binding.embedding.state,
+      },
+      preprocessing: report.binding.embedding.preprocessing || null,
+      corpus: report.binding.corpus,
+      fixture: {
+        version: 2,
+        file: fixtureFile || null,
+        hash: report.fixture.fixture_hash,
+        hash_ok: report.fixture.hash_ok,
+        built_at: report.fixture.built_at,
+        sizes: report.fixture.sizes,
+      },
+      filters: report.binding.filters,
+      gates: report.binding.gates,
+      xinference: report.config.xinference,
+    },
+    degraded: report.config.xinference !== 'up',
+    identity_ok: report.binding.embedding.ok !== false,
+  };
+  claim.receipt_hash = 'sha256-12-' + sha12(JSON.stringify(claim));
+  return claim;
+}
+
+// ── v2 builder (--build-fixture-v2, one-shot, READ-ONLY, never run in tests
+//    against a live DB: the spec drives it with a fake pool) ───────────────────
+//
+// Input is a seeds file: { relevance_floor?, band?, cases:[...] } where a case
+// carries explicit `gold`, or `gold_match:{namespace, ilike, limit?, doc_regex?}`
+// resolved here by a bounded read-only scan (doc_regex's first capture group of
+// the key names the source page, so chunks of one page count once), or
+// `negative:true`. Every gold is verified to exist at build time; a seed that
+// names missing gold is an error, never silently dropped.
+async function buildFixtureV2(pool, seeds, { model = EMBEDDING_MODEL } = {}) {
+  const cases = [];
+  for (const s of seeds.cases || []) {
+    const c = { id: s.id, query: s.query };
+    if (s.namespace && s.namespace !== '*') c.namespace = s.namespace;
+    if (s.negative === true) { c.negative = true; cases.push(c); continue; }
+    let gold = (s.gold || []).map((g) => ({ namespace: g.namespace, key: g.key, ...(g.doc ? { doc: g.doc } : {}) }));
+    if (s.gold_match) {
+      const gm = s.gold_match;
+      const r = await pool.query(
+        `SELECT namespace, key FROM memory_entries
+          WHERE namespace = $1 AND embedding IS NOT NULL AND value::text ILIKE '%' || $2 || '%'
+          ORDER BY key LIMIT $3`,
+        [gm.namespace, gm.ilike, Math.min(50, Math.max(1, gm.limit || 10))],
+      );
+      const rx = gm.doc_regex ? new RegExp(gm.doc_regex) : null;
+      for (const row of r.rows) {
+        const m = rx ? rx.exec(row.key) : null;
+        gold.push({ namespace: row.namespace, key: row.key, ...(m && m[1] ? { doc: m[1] } : {}) });
+      }
+    }
+    if (gold.length) c.gold = gold;
+    if (s.min_docs !== undefined) c.min_docs = s.min_docs;
+    cases.push(c);
+  }
+  const fixture = {
+    schema: FIXTURE_V2_SCHEMA,
+    version: 2,
+    built_at: new Date().toISOString(),
+    builder: 'ruvector-recall-harness.mjs --build-fixture-v2',
+    embedding: { model, dim: EMBEDDING_DIM },
+    relevance_floor: Number.isFinite(seeds.relevance_floor) ? seeds.relevance_floor : require(join(REPO_DIR, 'mcp', 'servers', 'lib', 'memory-tools.js')).DEFAULT_MIN_SCORE,
+    band: { ...V2_DEFAULT_BAND, ...(seeds.band || {}) },
+    baseline: null,
+    cases,
+  };
+  const errs = validateFixtureV2(fixture);
+  if (errs.length) throw new Error(`seeds do not make a valid fixture: ${errs.join('; ')}`);
+  const existing = await checkGoldExistence(pool, fixture);
+  const missing = [];
+  for (const c of cases) for (const g of c.gold || []) if (!existing.has(goldKey(g))) missing.push(`${c.id}: ${g.namespace}/${g.key}`);
+  if (missing.length) throw new Error(`seeded gold not present in memory_entries (${missing.length}): ${missing.slice(0, 5).join(', ')}`);
+  fixture.fixture_hash = fixtureHashV2(fixture);
+  return fixture;
+}
+
 // ── main ─────────────────────────────────────────────────────────────────────────
 function parseArgs(argv) {
   const opts = { mode: 'run', runs: 3, k: 10, fixture: DEFAULT_FIXTURE, json: false, force: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--build-fixture') opts.mode = 'build';
+    else if (a === '--build-fixture-v2') opts.mode = 'build-v2';
+    else if (a === '--seeds') opts.seeds = argv[++i];
     else if (a === '--force') opts.force = true;
     else if (a === '--json') opts.json = true;
     else if (a === '--runs') opts.runs = Math.max(1, parseInt(argv[++i], 10) || 3);
@@ -844,7 +1263,13 @@ const HELP = `ruvector-recall-harness.mjs — recall-regression gate (ADR-040 D2
   --fixture PATH     use a different QuerySetFixture
   --json             print only the machine-readable run JSON
   --build-fixture    ONE-SHOT: re-sample the live corpus, write the fixture, exit
-  --force            with --build-fixture, overwrite an existing fixture
+  --force            with --build-fixture[-v2], overwrite an existing fixture
+  --build-fixture-v2 ONE-SHOT: build a v2 (text-query cases) fixture from --seeds FILE
+                     (default output scripts/recall-fixtures/recall-fixture.v2.json via --fixture).
+                     Read-only against the DB; never run it in tests.
+  --seeds FILE       seed cases for --build-fixture-v2 (see the v2 block comment)
+  A --fixture whose schema is ruvector-recall-fixture/v2 runs the v2 harness
+  (negatives, min_docs, stale-gold exclusion); v1 fixtures behave exactly as before.
   -h, --help         this help
 
 Exit code: 0 on PASS (or a successful build), non-zero on FAIL / error.
@@ -871,11 +1296,35 @@ async function main() {
       process.exit(0);
     }
 
+    if (opts.mode === 'build-v2') {
+      const out = opts.fixture === DEFAULT_FIXTURE ? DEFAULT_FIXTURE_V2 : opts.fixture;
+      if (!opts.seeds) die('--build-fixture-v2 needs --seeds FILE');
+      if (existsSync(out) && !opts.force) die(`fixture already exists: ${out} (use --force to overwrite)`);
+      const fixture = await buildFixtureV2(pool, JSON.parse(readFileSync(opts.seeds, 'utf8')));
+      writeFixture(fixture, out);
+      process.stdout.write(`built v2 fixture: ${fixture.cases.length} case(s) (${fixture.cases.filter((c) => c.negative).length} negative); hash ${fixture.fixture_hash}\n`);
+      process.exit(0);
+    }
+
     // run mode
     if (!existsSync(opts.fixture)) {
       die(`fixture not found: ${opts.fixture} — build it once with: node ${'ruvector-recall-harness.mjs'} --build-fixture`);
     }
     const fixture = JSON.parse(readFileSync(opts.fixture, 'utf8'));
+    if (fixture.version === 2) {
+      const { memTools, hybridTools } = makeMemoryTools(pool);
+      const reportV2 = await runHarnessV2({ pool, memTools, hybridTools }, fixture, { runs: opts.runs, k: opts.k });
+      reportV2.artifact = writeRunArtifact(reportV2);
+      mkdirSync(RUN_ARTIFACT_DIR, { recursive: true });
+      const receiptV2 = buildReceiptV2(reportV2, basename(opts.fixture));
+      writeFileSync(RECEIPT_PATH, JSON.stringify(receiptV2, null, 2) + '\n', 'utf8');
+      if (opts.json) process.stdout.write(JSON.stringify(reportV2, null, 2) + '\n');
+      else {
+        printReportV2(reportV2);
+        process.stdout.write(`  run artifact: ${reportV2.artifact}\n  receipt:      ${RECEIPT_PATH}  (${receiptV2.receipt_hash})\n\n`);
+      }
+      process.exit(reportV2.verdict.pass ? 0 : 2);
+    }
     const report = await runHarness(pool, fixture, { runs: opts.runs, k: opts.k });
     const artifactPath = writeRunArtifact(report);
     report.artifact = artifactPath;
@@ -915,4 +1364,16 @@ export {
   verdictFromMedians,
   fixtureHash,
   sha12,
+  // fixture v2
+  FIXTURE_V2_SCHEMA,
+  fixtureHashV2,
+  validateFixtureV2,
+  checkGoldExistence,
+  partitionGold,
+  scoreCaseV2,
+  summariseRunV2,
+  verdictV2,
+  runHarnessV2,
+  buildReceiptV2,
+  buildFixtureV2,
 };
