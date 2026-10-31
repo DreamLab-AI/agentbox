@@ -2,7 +2,7 @@
 
 Worked examples. Outputs marked **live** were captured against the Loom on
 `192.168.2.132:8084` on 2026-09-22. Outputs marked **shape** show the contract
-(C2) the `vault` binary returns; they are what to expect, not a transcript.
+(C2) the `ontomark` binary returns; they are what to expect, not a transcript.
 
 Throughout: `S=/opt/agentbox/skills/ontology-augment/scripts/ontology-augment.sh`.
 
@@ -28,7 +28,7 @@ These phrasings should send you here without an explicit invocation:
 $S ask "escrow oracle dispute resolution" --documents 8 --depth 2
 ```
 
-Two `vault` calls under the hood; the wrapper prints them to stderr so you can
+Two `ontomark` calls under the hood; the wrapper prints them to stderr so you can
 see what was actually asked:
 
 ```
@@ -59,7 +59,7 @@ With no seed match you get an explicit empty, not an error (captured
 2026-10-05 against the local corpus):
 
 ```jsonc
-{ "grounding": "silent", "degraded": false, "source": "vault",
+{ "grounding": "silent", "degraded": false, "source": "ontomark",
   "generation": { "id": "visionGraph@ae913f93a23e7cd604f4c5ec94d0d48dfee8aec8",
                   "from": ".../visionGraph/site-data/.generation.json",
                   "working_tree_commit": "ec5af2d9…", "version_iri": null, … },
@@ -177,10 +177,10 @@ HTTP 200) `neighbours` degrades to the corpus and says so on **stderr**, with th
 JSON still on stdout:
 
 ```
-ontology-augment: Loom did not answer (000); falling back to `vault tree` (asserted edges only, no inferred closure)
+ontology-augment: Loom did not answer (000); falling back to `ontomark tree` (asserted edges only, no inferred closure)
 ```
 ```jsonc
-{ "grounding": "answered", "source": "vault",
+{ "grounding": "answered", "source": "ontomark",
   "fallback": { "from": "loom.neighbours", "loom_status": "000",
                 "scope": "asserted edges only, no inferred closure" },
   "result": { "id": "Knowledge Graph", "children": [ { "id": "Ontology", "children": [] } ] } }
@@ -245,7 +245,7 @@ $S propose urn:ngm:class:single-use-seal-contract \
 ```jsonc
 { "level": "schema", "iri": "urn:ngm:class:single-use-seal-contract",
   "page": "Single Use Seal Contract", "hypothesis": "ADR-124 …",
-  "diff": "--- a/knowledge/pages/…\n+++ b/…\n+is-a: [\"[[Smart Contract]]\"]\n",
+  "diff": "--- a/knowledge/…\n+++ b/…\n+is-a: [\"[[Smart Contract]]\"]\n",
   "digest": "sha256:…", "blockers": [], "proposer": "process:vault/1.0",
   "generation": "visionGraph@a1b2c3d", "stale_after": "2026-10-06T00:00:00Z" }
 ```
@@ -269,6 +269,6 @@ about the model, and the hypothesis is not the thing that is wrong.
 - ❌ Quoting a SPARQL result as current without checking `generation.generated_at`.
   `ok: true` and "up to date" are different claims.
 - ❌ Passing a page id to `xargs` or leaving it unquoted. Ids contain spaces.
-- ❌ Using `vault edit` to apply a proposal by hand. Approval writes it, with an
+- ❌ Using `ontomark edit` to apply a proposal by hand. Approval writes it, with an
   `--expect` blast radius; a hand edit has neither signature nor ledger entry.
 - ❌ Looking for `mcp__ontology-bridge__*`. It is deleted — see ADR-2107/2108.

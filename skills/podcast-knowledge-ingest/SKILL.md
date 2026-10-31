@@ -43,7 +43,7 @@ crate's ledger round-trip tests.
 YouTube ──yt-dlp──► Markdown ──Loom──► Assertions ──Perplexity──► Verified
                         │                                             │
                         ▼                                             ▼
-                  ingest-status:           `vault find` / `vault tree` ◄┘
+                  ingest-status:           `ontomark find` / `ontomark tree` ◄┘
                    downloaded                      │  (placement)
                         │                          ▼
                         └──────► ingest-status: processed:DATE:N
@@ -56,7 +56,7 @@ YouTube ──yt-dlp──► Markdown ──Loom──► Assertions ──Perp
 | yt-dlp | Download new episodes | Free (local) |
 | Ontology Loom (Qwen 3.8 at :8084) | Extract assertions from transcripts | Free (local LAN) |
 | Perplexity MCP | Verify assertions + resolve URLs | Per-query |
-| `vault` CLI | Navigate the corpus, find placement, validate | Free (local, no network) |
+| `ontomark` CLI | Navigate the corpus, find placement, validate | Free (local, no network) |
 | `vault propose` | Submit a governed proposal for a human signature | Free (local) |
 
 ## Page format
@@ -82,7 +82,7 @@ working/podcast-evidence/<episode-slug>.md
 ```
 
 A **subdirectory**, never the retired flat `podcast-evidence___<slug>.md` name:
-`a___b.md` namespace filenames are a `vault validate` rejected construct. Never
+`a___b.md` namespace filenames are an `ontomark validate` rejected construct. Never
 `knowledge/` — nothing this skill writes reaches the curated corpus except
 through `vault propose`.
 
@@ -309,7 +309,7 @@ never touched.
 Survivors flow onward via `node submit-proposals.mjs` (weekly cron stage 3):
 each dossier's splice becomes a unified diff and is submitted as a governed
 content proposal with `vault propose --level content --diff <file>` (ADR-2107;
-contract C2). `vault` runs Whelk and the conflict detector as **blockers**, then
+contract C2). `vault` (the governance transport) runs Whelk and the conflict detector as **blockers**, then
 posts a forum 31402 for a human 31403 signature. There is no VisionClaw
 round-trip and no MCP server in this path any more.
 

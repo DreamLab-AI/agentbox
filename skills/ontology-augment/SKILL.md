@@ -1,6 +1,6 @@
 ---
 name: ontology-augment
-description: "Ground agent reasoning in dreamlab's sovereign corpus (visionGraph: ~8.4k OKF-typed pages, Whelk-reasoned by the Ontology Loom) through the `vault` CLI and the Loom's HTTP surface. Use when you want to ground or augment thinking in the ontology, check what the corpus says about a concept, retrieve a budget-bounded subgraph, run read-only SPARQL over the reasoned closure, find class neighbours or shortest paths, validate OKF conformance, or propose a governed enrichment. Read-pervasive, write-governed; budget-bounded and fail-open so it never bloats the context window or blocks a turn. Bash only — there is no MCP server for the corpus."
+description: "Ground agent reasoning in dreamlab's sovereign corpus (visionGraph: ~8.4k OKF-typed pages, Whelk-reasoned by the Ontology Loom) through the `ontomark` CLI and the Loom's HTTP surface. Use when you want to ground or augment thinking in the ontology, check what the corpus says about a concept, retrieve a budget-bounded subgraph, run read-only SPARQL over the reasoned closure, find class neighbours or shortest paths, validate OKF conformance, or propose a governed enrichment. Read-pervasive, write-governed; budget-bounded and fail-open so it never bloats the context window or blocks a turn. Bash only — there is no MCP server for the corpus."
 ---
 
 # Ontology Augment
@@ -21,10 +21,10 @@ Two doors, both reachable from Bash:
 
 | Door | Authoritative for | How you call it |
 |---|---|---|
-| **`vault`** | what a page **says** — frontmatter, types, relations, OKF lifecycle, link integrity | a binary on `PATH` (`/opt/agentbox/bin/vault`) |
+| **`ontomark`** | what a page **says** — frontmatter, types, relations, OKF lifecycle, link integrity | a binary on `PATH` (`/opt/agentbox/bin/ontomark`) |
 | **the Loom** | what the **reasoner concluded** — the Whelk closure, SPARQL, typed neighbours, shortest paths | HTTP on `http://192.168.2.132:8084` (LAN) |
 
-That split is not an implementation detail you can ignore. `vault` reads the
+That split is not an implementation detail you can ignore. `ontomark` reads the
 corpus on disk and knows nothing of inference; the Loom serves a *built
 generation* and may be hours behind the disk. When the two disagree, say which
 one you asked. A third, narrow door: `check` asks VisionClaw
@@ -43,9 +43,11 @@ verdict, the only answer that can be `contradicted`.
 
 ## Prerequisites
 
-`vault` is baked into the image by Nix and gated on `[vault].cli` in
-`agentbox.toml` (ADR-2108). The boot prints its version in Phase 5d; if it
-printed `vault MISSING`, the image predates the key and needs a rebuild.
+`ontomark` is baked into the image by Nix (`lib/ontomark.nix`, ADR-2136); check
+it with `ontomark --version`. If it is absent the wrapper stops with a message
+naming `ONTOMARK_BIN`, and the image needs a rebuild. `vault` is baked too
+(`[vault].cli`, ADR-2108) but carries only the governance transport: `vault
+propose` and `vault panel publish` (`vault --version` to check it).
 
 ```
 VAULT_ROOT=/home/devuser/workspace/visionGraph/knowledge   # [vault].root, ADR-2028
@@ -74,7 +76,7 @@ Every wrapper call prints one envelope: `grounding`, `source`, `generation`,
 | `contradicted` | `check` got `entailed_false` from VisionClaw (ADR-2127) | act on it as a real negative |
 
 `generation` is filled automatically: Loom calls carry `x-loom-generation` and
-`x-loom-content-digest`; `vault` calls carry the local build's
+`x-loom-content-digest`; `ontomark` calls carry the local build's
 `.generation.json` id plus the working-tree commit; `version_iri` is the
 `owl:versionIRI` whenever the response or build carries one. Quote it with any
 claim that matters. A SPARQL query using `FILTER NOT EXISTS` or `MINUS` gets a
@@ -100,13 +102,13 @@ $S validate --vault knowledge                  # OKF conformance, exit 0/1
 $S health                                      # is grounding available, how old
 ```
 
-Or drive `vault` directly — the wrapper has no privileges it does not:
+Or drive `ontomark` directly — the wrapper has no privileges it does not:
 
 ```bash
 ontomark find --query "knowledge graph" --limit 5 --json
 ontomark retrieve "Knowledge Graph" --expand is-a=2,requires=1 --max-documents 12 --json
 ontomark tree "Knowledge Graph" --depth 2 --json
-vault validate --vault all --json
+ontomark validate --vault all --json
 ```
 
 ## Tool surface — what each retired MCP tool became
@@ -121,9 +123,9 @@ vault validate --vault all --json
 | `kg_node_search` | `ontomark find` (same door as `ontology_search`; the split was an artefact of two backends) |
 | `kg_neighbors` | Loom `/mcp` → `loom.neighbours`; `ontomark tree` only if the Loom did not answer |
 | `kg_pathfind` | Loom `/mcp` → `loom.paths`; **no corpus fallback**, by design — see below |
-| `ontology_validate` | `vault validate` — OKF v0.2 + `vocabulary.yaml` + link integrity |
+| `ontology_validate` | `ontomark validate` — OKF v0.2 + `vocabulary.yaml` + link integrity |
 | `ontology_propose` | `vault propose <iri> --level content\|schema` |
-| `ontology_axiom_add` | **gone.** Axioms are not hand-added; they fall out of `vault build` from the frontmatter |
+| `ontology_axiom_add` | **gone.** Axioms are not hand-added; they fall out of `ontomark build` from the frontmatter |
 | `ontology_health` | `GET http://192.168.2.132:8084/health` |
 
 ### `neighbours` and `paths` ride the Loom's `/mcp`
@@ -162,7 +164,7 @@ default, not the habit.
 **blockers**, and posts a forum 31402 for a human signature. It does not write
 the page. A non-empty `blockers` array means nothing was posted at all.
 
-Direct page mutation exists (`vault edit`) but refuses to run without
+Direct page mutation exists (`ontomark edit`) but refuses to run without
 `--expect docs=N,blocks=M` — a declared blast radius. That guard is the point: an
 edit touching more than you predicted is a bug, and it should stop.
 

@@ -84,7 +84,7 @@ The interaction plane uses Agent of Empires behind the configured identity ingre
 | Browser/media/spatial tools | Browser, Mermaid, ComfyUI, Blender, QGIS and related tooling | Many execute in sidecars or on configured hosts; Mermaid renders in-process with a pinned Pele (`pele-render`, `mmdc` shim), with no browser |
 | Durable memory | MCP access to the RuVector/Postgres sidecar | The mandatory memory service has no in-process SQLite fallback |
 | Pods and identity | Native Solid pod service, bridges and configured signing paths | Feature gates, credential custody and receipts determine authority |
-| Knowledge work | Released Ontomark corpus tools plus `vault` governance/query surfaces and Loom integration | Retrieval does not authorise a mutation or validate every agent assertion |
+| Knowledge work | Released Ontomark corpus tools plus the `vault` governance transport (`propose`, `panel publish`) and Loom integration | Retrieval does not authorise a mutation or validate every agent assertion |
 | Repository improvement | Product-specific host over the extracted Dream Engine crates | A gate verdict, published draft and human merge are distinct stages |
 | Telemetry | Configured tracing, logs and metrics | Coverage follows the instrumented dispatch paths |
 

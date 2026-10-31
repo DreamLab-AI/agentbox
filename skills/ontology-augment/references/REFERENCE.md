@@ -14,15 +14,15 @@ to disagree with itself.
 
 ## The two authorities
 
-| | `vault` | the Loom |
+| | `ontomark` | the Loom |
 |---|---|---|
-| Reads | `visionGraph/{knowledge,working}/pages/**.md` on disk | a built generation (`vault build` output) |
+| Reads | `visionGraph/{knowledge,working}/*.md` on disk (flat layout, ADR-OM-007) | a built generation (`ontomark build` output) |
 | Knows | frontmatter: `type`, `resource`, `status`, relation keys, OKF trust fields | the Whelk EL++ closure: inferred ancestors, backlinks, derived edges |
 | Freshness | the working tree, this instant | whatever generation is promoted — possibly hours old |
 | Fails by | exiting non-zero with a report | degrading to a marked-empty result |
 | Network | none | LAN HTTP |
 
-A question about *what an author wrote* goes to `vault`. A question about *what
+A question about *what an author wrote* goes to `ontomark`. A question about *what
 follows from what authors wrote* goes to the Loom. Asking the wrong one gets a
 confidently wrong answer, which is worse than an error.
 
@@ -34,20 +34,22 @@ curl -s http://192.168.2.132:8084/health | jq '{id: .generation.id, classes: .in
 
 ---
 
-## `vault` subcommands this skill uses (contract C2)
+## `ontomark` subcommands this skill uses (contract C2)
+
+`propose` is the one exception: it stays on `vault`, the governance transport.
 
 ```
-vault find      --query <q> [--type T] [--limit N] [--fuzzy]   → [{id,title,type,score}]
-vault retrieve  <id>… [--expand is-a=2,requires=1,…] [--max-documents N]
+ontomark find      --query <q> [--type T] [--limit N] [--fuzzy]   → [{id,title,type,score}]
+ontomark retrieve  <id>… [--expand is-a=2,requires=1,…] [--max-documents N]
                                                                → {seeds:[…], expanded:[…]}
-vault tree      <id> [--depth N]                               → nested {id, children}
-vault validate  [--vault knowledge|working|all] [--strict]     → exit 0/1, report
+ontomark tree      <id> [--depth N]                               → nested {id, children}
+ontomark validate  [--vault knowledge|working|all] [--strict]     → exit 0/1, report
 vault propose   <iri> --level content|schema [--hypothesis "…"] [--dry-run]
-vault edit      <id> --set k=v… --expect docs=N,blocks=M       → refused without --expect
+ontomark edit      <id> --set k=v… --expect docs=N,blocks=M       → refused without --expect
 ```
 
 Every subcommand takes `--json`. **Identity of a page is its vault-relative path
-without `.md`**: `knowledge/pages/Knowledge Graph.md` ⇒ id `Knowledge Graph`.
+without `.md`**: `knowledge/Knowledge Graph.md` ⇒ id `Knowledge Graph`.
 Ids contain spaces; quote them, and never pipe them to `xargs` unquoted.
 
 ### `--expand` is the budget
@@ -137,7 +139,7 @@ calling `loom.neighbours` / `loom.paths`. `limit` and `max_hops` are clamped
 server-side.
 
 The six tools on the plane are `loom.manifest`, `loom.browse`, `loom.resolve`,
-`loom.sparql`, `loom.neighbours` and `loom.paths`. Prefer `vault` for
+`loom.sparql`, `loom.neighbours` and `loom.paths`. Prefer `ontomark` for
 browse/resolve of the working tree: the Loom reads a promoted generation.
 
 **Response shape (probed 2026-10-13).** A `tools/call` answer is
@@ -154,7 +156,7 @@ separately from the status code.
 | `loom.neighbours`: `{"iri":…,"found":false}` | `silent` — the corpus does not say |
 | `loom.paths`: `found: true` + `path` + `hops` | `answered` |
 | `loom.paths`: `found: false` | `silent` — no path asserted within `max_hops` |
-| top-level `error`, non-200, unreachable | the Loom did not answer: `neighbours` → `vault tree`; `paths` → `degraded` |
+| top-level `error`, non-200, unreachable | the Loom did not answer: `neighbours` → `ontomark tree`; `paths` → `degraded` |
 
 Using `/mcp` over curl is not a breach of "no MCP inside the estate" (ADR-2107).
 The rule bans MCP *servers registered in the estate* fronting the corpus — a
@@ -165,7 +167,7 @@ A curl POST to a LAN URL has none of those.
 
 ## Output envelope (ADR-2129)
 
-Every subcommand prints exactly one JSON object; the Loom or `vault` body is
+Every subcommand prints exactly one JSON object; the Loom or `ontomark` body is
 kept verbatim under `result`, so a former parser of the raw body reads
 `.result` instead of `.`.
 
@@ -173,7 +175,7 @@ kept verbatim under `result`, so a former parser of the raw body reads
 {
   "grounding": "silent",              // answered | silent | degraded | contradicted
   "degraded": false,                  // kept for older parsers; true iff grounding == degraded
-  "source": "loom",                   // loom | vault | visionclaw — which authority answered
+  "source": "loom",                   // loom | ontomark | vault (propose) | visionclaw — which authority answered
   "generation": {
     "id": "visionGraph@ae913f93…",    // the generation the answer belongs to
     "content_digest": "6afcf4aa…",
@@ -183,7 +185,7 @@ kept verbatim under `result`, so a former parser of the raw body reads
   "negation": { … },                  // only for FILTER NOT EXISTS / MINUS
   "shape": "unrecognised",            // only when a healthy body could not be counted
   "note": "healthy call, nothing asserted or inferred matched: …",
-  "fallback": { … },                  // only when neighbours fell back to vault tree
+  "fallback": { … },                  // only when neighbours fell back to ontomark tree
   "result": { "boolean": null, "columns": ["c"], "rows": [], "truncated": false }
 }
 ```
@@ -200,9 +202,9 @@ Evaluated in order; the first that holds wins.
    (`verdict: "entailed_false"` from `check`, VisionClaw ADR-2127). The wrapper
    never infers this; it needs disjointness in the corpus (VisionClaw ADR-2125).
 3. **`silent`** — a query call whose count is not positive: SPARQL `rows`
-   empty, an `ASK` that answered `false`, `vault find` returning `[]`, `ask` or
-   `get` with no seed (`missing` lists unmatched ids), a `vault tree` node with
-   no `children` (vault omits the key when empty), MCP `tools/call` content
+   empty, an `ASK` that answered `false`, `ontomark find` returning `[]`, `ask` or
+   `get` with no seed (`missing` lists unmatched ids), an `ontomark tree` node with
+   no `children` (ontomark omits the key when empty), MCP `tools/call` content
    whose text items parse to empty JSON, or a `check` verdict `not_asserted`.
    An `ASK` false is silent, not contradicted: no match in the closure is not
    entailed falsity. A healthy body with **no countable shape** (prose MCP text,
@@ -222,7 +224,7 @@ Evaluated in order; the first that holds wins.
 | Loom (`sparql`, `neighbours`, `paths`) | `x-loom-generation`, `x-loom-content-digest` headers; `version_iri` from an `x-loom-version-iri` header or a `version_iri` / `versionIRI` / `owl:versionIRI` body field |
 | `health` | the body's `generation.id` / `content_digest` |
 | `check` | VisionClaw's `check.scope.generation` as `id`, and as `version_iri` when it is an IRI (ADR-2128) |
-| `vault` (`ask`, `search`, `get`, `classes`, `validate`, `propose`, the `neighbours` fallback) | the newest `.generation.json` among `<repo>/<vault.toml [build].out>`, `<repo>/site-data`, `<repo>/www`; `version_iri` = `https://narrativegoldmine.com/ontology/<ontology_digest>` once the build records one (ADR-2128); plus `working_tree_commit`, because `vault` reads the working tree, not the build |
+| `ontomark` (`ask`, `search`, `get`, `classes`, `validate`, the `neighbours` fallback; `propose` rides `vault`) | the newest `.generation.json` among `<repo>/<vault.toml [build].out>`, `<repo>/site-data`, `<repo>/www`; `version_iri` = `https://narrativegoldmine.com/ontology/<ontology_digest>` once the build records one (ADR-2128); plus `working_tree_commit`, because `vault` reads the working tree, not the build |
 
 The vault repo is `VAULT_REPO` (exported at boot), else `[vault].repo` in
 `AGENTBOX_CONFIG` (default `/etc/agentbox.toml`), else derived from
@@ -272,9 +274,9 @@ All three exit **0** with `"grounding": "degraded"` and the reason under
 nobody answered. A **healthy** empty result is `silent`, the other empty, and is
 not "no" either.
 
-`vault` failures are the opposite and deliberately so: a corpus that cannot be
-read is not a degraded grounding, it is a broken environment, so `vault` exits
-non-zero and the wrapper lets that through unwrapped. A `vault` exit code that
+`ontomark` failures are the opposite and deliberately so: a corpus that cannot be
+read is not a degraded grounding, it is a broken environment, so `ontomark` exits
+non-zero and the wrapper lets that through unwrapped. An `ontomark` exit code that
 comes with a JSON report (`validate` exits 1 on errors) is kept, and the report
 is enveloped.
 
@@ -299,7 +301,7 @@ middleware into the binary, and got stricter:
 4. Schema-level proposals are floored at tier High (PRD Q7). You do not choose
    the tier; the panel operator does, and Schema has no lower setting.
 
-`vault edit` is the low-level mutation and refuses without
+`ontomark edit` is the low-level mutation and refuses without
 `--expect docs=N,blocks=M`. Governance decisions apply through it with an exact
 expectation; nothing else should call it by hand.
 
@@ -313,7 +315,7 @@ expectation; nothing else should call it by hand.
 | `VAULT_WORKING_ROOT` | the working vault | `…/visionGraph/working` |
 | `VAULT_REPO` | vault repository root; every `vault` call gets `--repo` | `[vault].repo` from `AGENTBOX_CONFIG` |
 | `AGENTBOX_CONFIG` | manifest read when `VAULT_REPO` is unset | `/etc/agentbox.toml` |
-| `VAULT_GENERATION_FILE` | pin the `.generation.json` cited for `vault` calls | newest under the repo's build outputs |
+| `VAULT_GENERATION_FILE` | pin the `.generation.json` cited for `ontomark` calls | newest under the repo's build outputs |
 | `LOOM_BASE_URL` | Loom façade base | `http://192.168.2.132:8084` |
 | `VISIONCLAW_API_URL` | VisionClaw REST base for `check` | `[skills.ontology].visionclaw_api_url`, else `http://visionclaw-server:4000` |
 | `ONTOLOGY_TIMEOUT_SECS` | per-Loom-call timeout | `10` |
@@ -330,11 +332,11 @@ documented cause of whole-session hangs.
 
 | Concern | Where |
 |---|---|
-| corpus CLI | VisionClaw `crates/vault` (baked by `agentbox/lib/vault.nix`) |
+| corpus CLI | `ontomark` (baked by `agentbox/lib/ontomark.nix`); `vault` (VisionClaw `crates/vault`, `agentbox/lib/vault.nix`) carries only `propose` and `panel publish` |
 | Nix gate | `agentbox/flake.nix` `vaultCliActive` ⇐ `[vault].root` + `[vault].cli` |
 | boot liveness gate | `agentbox/config/entrypoint-unified.sh`, Phase 5d(ii) |
 | wrapper | `agentbox/skills/ontology-augment/scripts/ontology-augment.sh` |
-| wrapper test (stub Loom + stub vault) | `agentbox/tests/skills/ontology-augment-grounding.test.sh` |
+| wrapper test (stub Loom + stub ontomark/vault) | `agentbox/tests/skills/ontology-augment-grounding.test.sh` |
 | Loom routes | `loom/crates/loom-facade/src/routes/mod.rs` |
 | Loom MCP tools | `loom/crates/loom-mcp/src/schema.rs` |
 | CLI contract | `VisionFlow/docs/engineering/sovereign-corpus-contracts.md` §C2 |

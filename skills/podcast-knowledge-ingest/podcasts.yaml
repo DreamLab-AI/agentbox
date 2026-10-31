@@ -13,7 +13,7 @@ podcasts:
     # The curated topic pages, READ-ONLY here: used only to resolve an
     # extracted topic to an existing page for the wikilinks on a ledger bullet.
     pages_dir: "${VAULT_PAGES}"
-    # The WORKING pages root. Everything this pipeline writes lands under it:
+    # The WORKING vault root (flat layout, ADR-OM-007: pages sit at its root). Everything this pipeline writes lands under it:
     # evidence ledgers in <working_dir>/podcast-evidence/ as `type: Episode`
     # pages with `public: false` (always, owner 2026-09-22 14:00; only a human
     # publishes an Episode), and proposed new pages as non-public `Draft Concept`

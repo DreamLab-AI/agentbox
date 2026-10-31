@@ -7,7 +7,7 @@ debugging the weekly ingest run itself, rather than just invoking it.
 
 Every page this skill writes is a vault page: V2 YAML frontmatter, then the
 body (`project/docs/VAULT-corpus-format.md` §V2/§V5, ADR-2028 D4). No writer
-emits `key:: value` property lines, and `vault validate` fails on any that
+emits `key:: value` property lines, and `ontomark validate` fails on any that
 survive.
 
 New working page (`new_page_content` in `services/podcast-ingest/src/ingest/newpage.rs`,
@@ -21,11 +21,11 @@ Assertion-ledger page (`build_ledger_header` in `ingest/ledger.rs`;
 `type: Episode` page at:
 
 ```
-working/pages/podcast-evidence/<episode-slug>.md
+working/podcast-evidence/<episode-slug>.md
 ```
 
 PRD Q16. A subdirectory, never the retired flat `podcast-evidence___<slug>.md`
-name (`a___b.md` is a rejected construct), and never `knowledge/pages`. It
+name (`a___b.md` is a rejected construct), and never under `knowledge/`. It
 carries the episode metadata as frontmatter keys — `public: false` (a real YAML
 boolean; ALWAYS false, owner 2026-09-22 14:00 — Q16 publishes `public: true`
 from EITHER vault, so the writer must never emit it. Publishing an Episode is a
@@ -89,7 +89,7 @@ what let unsigned machine output accumulate in the curated corpus indistinguisha
 from authored work. `sources: [{ id: origin, resource: "[[working/…]]" }]` on the
 knowledge page records the lineage, and the approval writes it — not you.
 
-`vault edit` exists but refuses without `--expect docs=N,blocks=M`. It is how an
+`ontomark edit` exists but refuses without `--expect docs=N,blocks=M`. It is how an
 approved decision is applied, not a way to apply one.
 
 ## Pipeline phases
@@ -142,7 +142,7 @@ For each assertion above threshold:
 
 For each verified assertion:
 
-- `vault find --query "<key terms>" --type Class --json` (ADR-2107; the
+- `ontomark find --query "<key terms>" --type Class --json` (ADR-2107; the
   `ontology_search` MCP tool is retired)
 - Score candidates by relevance to the claim and domain match. **Not by quality
   score.** The retired Python scored "lower quality = more room" and so aimed
@@ -153,7 +153,7 @@ For each verified assertion:
   `knowledge/` pages are never edited here — promotion is `vault propose`,
   which blocks on Whelk inconsistency and needs a human 31403 signature.
 - Record the assertion on the episode's evidence ledger page under
-  `working/pages/podcast-evidence/` — including assertions that name no
+  `working/podcast-evidence/` — including assertions that name no
   ontology term, which reach no Draft Concept page and would otherwise be
   lost
 - Derived data (`outboundWikilinks`, backlinks, link resolution, the OKF

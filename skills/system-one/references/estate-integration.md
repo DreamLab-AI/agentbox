@@ -39,7 +39,7 @@ it would cost, what class of data it would send, and what has to be true first.
 ## Candidates
 
 ### 1. Knowledge-graph annotation and contradiction detection
-**Where** — `ontology-augment` / the `vault` CLI and the Loom's reasoned closure
+**Where** — `ontology-augment` / the `ontomark` CLI and the Loom's reasoned closure
 (ADR-2107; no MCP surface). Judgments: classify a relationship type, judge whether two
 records contradict, score whether a proposed enrichment is supported by its evidence.
 **Replaces** — human triage of governed write-back proposals.

@@ -24,7 +24,7 @@ WORKSPACE_DIR="${WORKSPACE}"
 VAULT_ROOT="${VAULT_ROOT:-${WORKSPACE}/vault}"
 # The vault the Notes window opens. The working vault ([vault].working:
 # journals, decks, templates) is the operator's daily driver; the governed
-# knowledge vault ([vault].root) is what agents reach through `vault`. Opening
+# knowledge vault ([vault].root) is what agents reach through `ontomark`. Opening
 # the working vault by default is what makes window 9 a notebook rather than a
 # corpus browser. AGENTBOX_NOTES_ROOT overrides both.
 NOTES_ROOT="${AGENTBOX_NOTES_ROOT:-${VAULT_WORKING_ROOT:-${VAULT_ROOT}}}"

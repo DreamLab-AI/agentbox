@@ -31,7 +31,7 @@ described in "From instrument to pipeline" (`loom/docs/research/paper-v4/main.te
 > down to assertion fingerprints.
 
 Per the paper's own status register: the ledger stage `promote.py` reads
-(`working/pages/podcast-evidence/*.md`, written by `write_assertion_ledger`) is
+(`working/podcast-evidence/*.md`, written by `write_assertion_ledger`) is
 **built and running**. The two-instrument pre-filter and dossier assembly
 implemented here are **designed, with both instruments individually
 validated** elsewhere (page-judge scratchpad; the copy-ceiling matcher in
@@ -92,9 +92,9 @@ a candidate.
 
 ## Ledger format (PRD Q16, V2)
 
-Ledger pages are `working/pages/podcast-evidence/<episode-slug>.md`, typed
+Ledger pages are `working/podcast-evidence/<episode-slug>.md`, typed
 `Episode`. **Episode identity is the filename stem** — a subdirectory entry, not
-the retired flat `podcast-evidence___<slug>.md` name, which `vault validate`
+the retired flat `podcast-evidence___<slug>.md` name, which `ontomark validate`
 rejects as an `a___b.md` namespace filename. The page-level `source` key is the
 podcast (always `"AI Daily Brief"`); the per-assertion `source` is the
 speaker/publisher attribution, e.g. `Host (AI Daily Brief)`.
@@ -318,7 +318,7 @@ The adapter is `submit-proposals.mjs`, and it does this:
 
 1. Reads every `proposals/*.json` with `status == "candidate_survivor"` and
    a non-null `ontology_propose_payload`.
-2. Resolves `target_page` to a class IRI with `vault find --type Class`,
+2. Resolves `target_page` to a class IRI with `ontomark find --type Class`,
    demanding an **exact slug match**. A fuzzy hit must never receive someone
    else's amendment, so an unresolved page is reported and skipped. It needs a
    class *create* proposal, which stays human-initiated.

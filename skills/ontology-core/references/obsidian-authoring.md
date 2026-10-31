@@ -33,7 +33,7 @@ changes as schema changes before importing pages that depend on new fields.
 
 Validate a staged overlay of the full corpus: an isolated directory containing
 `vault.toml`, `ontology/vocabulary.yaml` and the proposed `knowledge/`/`working/`
-trees. Run the same `vault validate`, `vault conflicts` and relevant build checks
+trees. Run the same `ontomark validate`, `ontomark conflicts` and relevant build checks
 on the unchanged baseline and overlay. Inspect individual link findings rather
 than treating a successful exit as proof that every target resolves. Resolve
 aliases and fragments correctly; verify attachment existence and publication

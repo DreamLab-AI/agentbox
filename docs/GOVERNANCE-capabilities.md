@@ -517,7 +517,7 @@ ADR-2071 is **proposed, not landed**, and divergences 1 and 6 stay open: routing
   tools on the fail-open `ontology-bridge`; adds the `job` URN kind with a per-kind RFC 8785 JCS
   canonical form. Nothing of D2/D3 exists today, and the contrast it is drawn against no longer
   does either: ADR-2107/ADR-2108 retired `ontology-bridge` outright, so if ADR-2074 is ever taken
-  up it needs restating against the `vault` CLI rather than against a server that is gone. ADR-2023's "Remaining" is the ORIGIN of this
+  up it needs restating against the `ontomark` CLI rather than against a server that is gone. ADR-2023's "Remaining" is the ORIGIN of this
   gap and is referenced (`see`), not superseded.
 - **ADR-2075** (proposed) — the Loom exposes a generation descriptor and the client reports the
   **attested** generation; a configured value that disagrees fails labelled rather than being

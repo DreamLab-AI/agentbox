@@ -260,7 +260,7 @@
         },
         "working": {
           "type": "string",
-          "description": "ADR-2028 (amended 2026-09-02): absolute path of the second vault root (the working graph); pages live at <working>/pages. Exported as VAULT_WORKING_ROOT and VAULT_WORKING_PAGES. Needed because a corpus with sibling vault roots (jjohare/visionGraph: knowledge/ + working/) cannot be expressed by `root` alone.",
+          "description": "ADR-2028 (amended 2026-09-02): absolute path of the second vault root (the working graph); pages sit at the root of <working> (flat layout, ADR-OM-007). Exported as VAULT_WORKING_ROOT and VAULT_WORKING_PAGES. Needed because a corpus with sibling vault roots (jjohare/visionGraph: knowledge/ + working/) cannot be expressed by `root` alone.",
           "examples": [
             "/home/devuser/workspace/visionGraph/working"
           ]

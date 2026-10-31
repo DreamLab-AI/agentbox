@@ -17,16 +17,16 @@ omitClaudeMd: true
 
 There is no MCP server for the corpus (ADR-2107). Everything is Bash:
 
-- **`vault`** — the corpus on disk. Authoritative for what a page *says*.
+- **`ontomark`** — the corpus on disk. Authoritative for what a page *says*.
 - **the Loom**, `http://192.168.2.132:8084` on the LAN. Authoritative for what
   the reasoner *concluded*.
 
 The convenience wrapper is
 `/opt/agentbox/skills/ontology-augment/scripts/ontology-augment.sh`; it wraps the
-patterns below and nothing more. Prefer it for grounding; drop to `vault` and
+patterns below and nothing more. Prefer it for grounding; drop to `ontomark` and
 `curl` when you need a flag it does not expose.
 
-Know which door answered, and say so. `vault` reads the working tree this
+Know which door answered, and say so. `ontomark` reads the working tree this
 instant; the Loom serves a promoted generation that may be weeks old. `/health`
 returning `ok: true` means the reasoner is reachable, not that it is current —
 check `generation.generated_at` before quoting a SPARQL result as the state of
@@ -35,11 +35,11 @@ the corpus.
 ## Reading
 
 ```bash
-vault find --query "escrow oracle" --limit 5 --json           # entry points
-vault retrieve "Price Oracle" --expand is-a=2,requires=1 \
+ontomark find --query "escrow oracle" --limit 5 --json           # entry points
+ontomark retrieve "Price Oracle" --expand is-a=2,requires=1 \
       --max-documents 12 --json                               # bounded subgraph
-vault tree "Price Oracle" --depth 2 --json                    # asserted structure
-vault find --type Class --json                                # enumerate classes
+ontomark tree "Price Oracle" --depth 2 --json                    # asserted structure
+ontomark find --type Class --json                                # enumerate classes
 ```
 
 Prefer a bounded `retrieve` to a broad SPARQL dump. It is bounded *by
@@ -53,13 +53,13 @@ curl -sS --max-time 10 -H 'content-type: application/json' \
   http://192.168.2.132:8084/loom/sparql
 ```
 
-`vault find` before you conclude a class is absent. The corpus carries thousands
+`ontomark find` before you conclude a class is absent. The corpus carries thousands
 of pages and naming is rarely what you would guess; an absent *search hit* is not
 an absent *concept*.
 
 Neighbours and shortest paths live on the Loom's `/mcp` JSON-RPC plane
 (`loom.neighbours`, `loom.paths`; ADR-140). If `/mcp` answers 404 the plane is not
-deployed: use `vault tree` for neighbours and state plainly that a shortest path
+deployed: use `ontomark tree` for neighbours and state plainly that a shortest path
 is unavailable. Do not walk asserted wikilinks and call the result a path.
 
 The binding is fail-open: a Loom that is down yields a `"degraded": true` body and
@@ -69,14 +69,14 @@ empty result as evidence of absence.
 ## Validating
 
 ```bash
-vault validate --vault knowledge --json     # OKF v0.2 + vocabulary + link integrity
-vault validate --vault all --strict         # exit 1 on warnings too
+ontomark validate --vault knowledge --json     # OKF v0.2 + vocabulary + link integrity
+ontomark validate --vault all --strict         # exit 1 on warnings too
 ```
 
 Run this against the disk before you reason about a change. Exit code is the
 contract: 0 clean, 1 dirty.
 
-`vault conflicts` reports `SUBCLASS_CYCLE` for the corpus on disk. The graph a
+`ontomark conflicts` reports `SUBCLASS_CYCLE` for the corpus on disk. The graph a
 user is actually looking at is a different source: the host's graph server
 answers `GET $VISIONCLAW_API_URL/api/analytics/cycles` with the nodes on a directed cycle
 (`cyclicNodeIds`) and the multi-node loops (`components`). It reads the edges that
@@ -87,7 +87,8 @@ live graph can disagree when the live graph carries inferred edges.
 
 ## Writing
 
-Writes are **governed**. `vault propose` submits; it does not commit.
+Writes are **governed**. `vault propose` (the one `vault` verb you use, with
+`vault panel publish`) submits; it does not commit.
 
 ```bash
 vault propose urn:ngm:class:<slug> --level content|schema \
@@ -99,7 +100,7 @@ Before proposing:
 1. **Search for the class that already covers the concept.** Duplicate classes
    are the main way an ontology rots.
 2. **Place it under the narrowest correct parent**, not a convenient one.
-3. **Run `vault validate`.** A proposal that fails conformance is not a proposal,
+3. **Run `ontomark validate`.** A proposal that fails conformance is not a proposal,
    it is a bug report about your model.
 4. **State the provenance** in `--hypothesis`: what evidence supports this.
 
@@ -111,7 +112,7 @@ Do not retry with reworded prose; fix the model or report the contradiction.
 
 Schema-level proposals are floored at tier High. You do not choose the tier.
 
-`vault edit` exists and refuses to run without `--expect docs=N,blocks=M`, a
+`ontomark edit` exists and refuses to run without `--expect docs=N,blocks=M`, a
 declared blast radius. It is how an approved decision is applied, not how you
 apply one. Do not call it to shortcut a proposal.
 

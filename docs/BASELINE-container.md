@@ -149,13 +149,13 @@ Not supervised inside the box — external compose services on `visionclaw_netwo
 
 `[vault]` is a top-level manifest section and the **single** path authority for
 the authored knowledge corpus: `root` (absolute vault root), `pages` (relative,
-default `pages`), `format` (`obsidian` only; the `logseq-legacy` read-tolerance value was withdrawn 2026-09-22)
+default `.`: pages sit at the vault root), `format` (`obsidian` only; the `logseq-legacy` read-tolerance value was withdrawn 2026-09-22)
 and `tui` (`rune` | `none`, ADR-2029). It is schema-validated
 (`schema/agentbox.toml.schema.json`, `root` required).
 
 The current corpus tools consume Obsidian-compatible Markdown with YAML
 frontmatter. The source tree no longer packages the retired `ontology-tools`
-parser/writer; corpus validation, links, proposals and builds use `vault`.
+parser/writer; corpus validation, links and builds use `ontomark`; proposals use `vault propose`.
 Web-summary accepts `obsidian`, `plain`, and (for summaries) `markdown`, and
 rejects obsolete format aliases. ADR-2119 records the removal. Existing images
 retain their baked executables until rebuilt; source removal is not deployment.

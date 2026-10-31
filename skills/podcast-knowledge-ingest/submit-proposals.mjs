@@ -29,7 +29,7 @@
  * else's amendment), and the run is idempotent per assertion-fingerprint set via
  * promotions/.submitted.json.
  *
- * Class lookup is `ontomark find` (the vault CLI no longer has `find`). A lookup
+ * Class lookup is `ontomark find` (`vault` keeps only `propose` and `panel publish`). A lookup
  * that FAILS to run is reported as a failure and retried next week; only a
  * lookup that ran and found no exact class is "unresolved". Conflating the two
  * once reported a missing subcommand as "no exact class" for every topic.
@@ -155,8 +155,8 @@ function writeDiff(dossier) {
   const added = String(p.edit.content || '').split('\n');
   const before = p.edit.mode === 'insert_before';
   const body = [
-    `--- a/pages/${p.target_page}`,
-    `+++ b/pages/${p.target_page}`,
+    `--- a/${p.target_page}`,
+    `+++ b/${p.target_page}`,
     '@@ anchored splice @@',
     ...(before ? [] : anchor.map((l) => ` ${l}`)),
     ...added.map((l) => `+${l}`),

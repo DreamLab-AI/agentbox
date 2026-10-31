@@ -212,7 +212,7 @@ info_contact     = ""
 # connection to `relay_url` (NIP-42 AUTH with the agent key) subscribed to
 # `{kinds:[31403], authors:signers, since:<persisted cursor>}`, fetches the
 # answered 31402 by id when the pod has no copy, and the orchestrator applies
-# the decision to the vault (vault edit | create | apply) and commits that one
+# the decision to the vault (ontomark edit | create | apply) and commits that one
 # page in VAULT_REPO (pushing when the branch has an upstream).
 #   relay_url = the forum relay (wss://…). "" = feature off.
 #   signers   = 64-char hex pubkeys whose decisions may write the corpus.
@@ -1105,7 +1105,7 @@ direct_axiom_load = false
 # merely denied. A manifest key whose only reader has been removed is dead
 # config, and leaving a `false` behind would imply a switch that could be
 # flipped back on. The governed successor is `vault propose`; the only
-# mutation door left is `vault edit --expect docs=N,blocks=M`.
+# mutation door left is `ontomark edit --expect docs=N,blocks=M`.
 
 # Offline ontology condensation (PRD-020 WS-2 / ADR-113). A cheap LOCAL LLM
 # summarises every KG class into one retrieval sentence + a synonym list, which
@@ -1165,7 +1165,7 @@ tui    = "rune"                             # rune | none — see ADR-2029
 # to true; REBUILD-class like `tui`, and the boot runs `vault --version` in
 # Phase 5d as the liveness half of the gate (ADR-2107 / ADR-2108).
 cli    = true                               # true | false — see ADR-2107/ADR-2108
-# Second vault root (the working graph): pages at <working>/pages. Exported as
+# Second vault root (the working graph): pages sit at its root (flat layout, ADR-OM-007). Exported as
 # VAULT_WORKING_ROOT / VAULT_WORKING_PAGES. A layout with more than one vault
 # root cannot be expressed by `root` alone (ADR-2028 amendment, 2026-09-02).
 working     = "/home/devuser/workspace/visionGraph/working"

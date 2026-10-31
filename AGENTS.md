@@ -39,7 +39,7 @@ Narrative, Jev compaction (ADR-2093) and live skill routing (ADR-2091): [runtime
 | Path | Purpose |
 |---|---|
 | [`flake.nix`](flake.nix) | image composition, generated supervisor text |
-| [`agentbox.toml`](agentbox.toml) | feature gates, toolchains; `[vault]` is the single corpus path authority (ADR-2028; writes via `vault propose`/`vault edit --expect`, ADR-2107) |
+| [`agentbox.toml`](agentbox.toml) | feature gates, toolchains; `[vault]` is the single corpus path authority (ADR-2028; writes via `vault propose`/`ontomark edit --expect`, ADR-2107) |
 | [`config/instructions/`](config/instructions/) | source of the global and workspace instruction tiers, projected every boot (ADR-2118); tracked layer is public, `local/` is the gitignored estate layer — never edit the generated `~/.claude/CLAUDE.md` or `~/workspace/{AGENTS,CLAUDE}.md` |
 | [`config/entrypoint-unified.sh`](config/entrypoint-unified.sh) | boot reconciliation of `.mcp.json`, hooks, model routing |
 | [`services/agentbox-manifest`](services/agentbox-manifest) | Rust boot projector for every manifest read (python3 is not a boot dependency) |
