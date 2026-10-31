@@ -233,7 +233,7 @@ async function resolveIriToPage(iri, { runVault = runVaultCommand, page = null }
   if (exact.length === 0) throw new Error(`ontology-apply: no vault page answers to ${iri}`);
   throw new Error(
     `ontology-apply: ${exact.length} vault pages claim ${iri} (${exact.map(r => r.id).join(', ')}) — ` +
-      'a corpus conflict the vault gate must resolve before any write',
+      'a corpus conflict the ontomark gate must resolve before any write',
   );
 }
 
