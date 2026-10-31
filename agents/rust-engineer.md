@@ -13,6 +13,12 @@ model: inherit
 
 ## House rules
 
+**Read the steering first.** Before writing, reviewing or porting Rust, read
+`/opt/agentbox/skills/build-with-quality/references/rust/steering.md`. It covers
+ownership, API design, errors, unsafe, docs and tests, with the estate overlay in
+section 0. Its siblings `review.md` and `port.md` hold the review and port rubrics.
+`lints/` holds a drop-in `[lints]` table for crates whose table is empty.
+
 **Rust-first, but not Rust-always.** Port glue, CLIs, evaluators, config
 projection, crypto and boot-path code. Do *not* port Python that is a thin
 wrapper over a Python-only module — bpy, QGIS, GDAL, torch, Jupyter, vendored

@@ -3,9 +3,9 @@ name: build-with-quality
 description: "Implement features with tests and quality gates, debug hard bugs, and stress-test designs. Use when building a feature with TDD/EDD, chasing a stubborn multi-function bug (feedback-loop-first), interrogating a design before coding, or running a coverage/security/accessibility quality-gate pass. Supersedes agentic-qe, reasoningbank-*, and pair-programming."
 license: MIT
 metadata:
-  version: 1.4.0
+  version: 1.5.0
   author: Claude Flow
-  tags: [meta-skill, development, qa, edd, tdd, bdd, adr, ddd, agents, quality-gates, evidence, sona, hnsw, coverage, security, accessibility, chaos-testing]
+  tags: [meta-skill, development, qa, edd, tdd, bdd, adr, ddd, agents, quality-gates, evidence, hnsw, coverage, security, accessibility, chaos-testing]
   mcp_server: false
   supersedes: [agentic-qe, reasoningbank-intelligence, reasoningbank-agentdb, pair-programming]
 ---
@@ -25,11 +25,12 @@ system in place of several specialized skills.
 - **Worked examples:** [USAGE-EXAMPLES.md](./USAGE-EXAMPLES.md) — 5 complete project examples.
 - **EDD loop:** [EDD-PROTOCOL.md](./EDD-PROTOCOL.md) — Expectation-Driven Development, evidence categories, anti-fox separation.
 - **Debugging:** [DEBUGGING-PROTOCOL.md](./DEBUGGING-PROTOCOL.md) — feedback-loop-first protocol, design interrogation, **Diagram-Driven Diagnosis** (complex multi-function bug / suspected parallel implementations), and **Reasoning Without a Runtime (Static-Oracle Mode)** (implementing from a spec or restoring a stub with no shell/compiler/test runner).
-- **Agents catalog:** [references/agents.md](./references/agents.md) — 34 agents by domain.
+- **Agents catalog:** [references/agents.md](./references/agents.md) — 34 ruflo role labels and the registered subagent that runs each.
 - **Methodologies:** [references/methodologies.md](./references/methodologies.md) — DDD, ADR (+ ruflo ADR tooling), TDD.
 - **Quality gates & workflow:** [references/quality-gates-and-workflow.md](./references/quality-gates-and-workflow.md) — gate thresholds and the 5-phase flow.
 - **Review findings intake:** [references/quality-gates-and-workflow.md](./references/quality-gates-and-workflow.md#review-findings-intake) — `sealmap-review` findings (external Gemini lenses, inline fidelity) are hypotheses: reproduce with a failing test first, then fix, correct the corpus, or link the register.
 - **Security gate (deepsec):** [references/deepsec-security-gate.md](./references/deepsec-security-gate.md) — run `scripts/deepsec-gate.sh --diff origin/main`; policy from `[security.deepsec]`, receipts in `.deepsec-gate/reports/`. ADR-2033.
+- **Rust steering:** [references/rust/steering.md](./references/rust/steering.md) — idiomatic Rust (ownership, API design, errors, unsafe, docs, tests) with the estate overlay; [review](./references/rust/review.md) and [port](./references/rust/port.md) rubrics; drop-in [clippy lints](./references/rust/lints/lints.toml). From BeautifulRust (MIT).
 - **Architecture:** [references/architecture.md](./references/architecture.md) — learning system, memory, model roles, consensus, MCP/CLI execution, config.
 - **BHIL traceability:** [references/bhil-traceability.md](./references/bhil-traceability.md) — PRD→SPEC→ADR→TASK artifact chain, AI-native ADR types, eval/guardrail specs.
 - **Migration:** [references/migration.md](./references/migration.md) — moving off agentic-qe / reasoningbank-* / pair-programming.
@@ -42,6 +43,7 @@ system in place of several specialized skills.
 - Interrogating a design before writing code.
 - Running a coverage / security / accessibility / chaos quality-gate pass.
 - Reviewing changed code for vulnerabilities before merge (`scripts/deepsec-gate.sh --diff <base>`).
+- Writing, reviewing or porting Rust inside a build — load [references/rust/steering.md](./references/rust/steering.md) first.
 
 ## When not to use
 
@@ -126,11 +128,22 @@ runs deepsec in PR mode on the changed files, applies the manifest's
 the gate is disabled or the CLI is not baked — record it as SKIPPED, never as
 passed. See [references/deepsec-security-gate.md](./references/deepsec-security-gate.md).
 
+## Rust at a glance
+
+Any phase that touches `.rs` files or `Cargo.toml` reads
+[references/rust/steering.md](./references/rust/steering.md) before writing. Section 0 is
+the estate overlay (no hand-rolled crypto, the feature set CI uses rather than
+`--all-features`, a real `rust-version` for the lints). The Phase 2 Rust gate is
+`cargo fmt --check`, `cargo clippy --all-targets -- -D warnings` and `cargo test`, each
+executed and receipted like any other evidence. Rust reviews use
+[review.md](./references/rust/review.md) and feed the findings intake. Ports use
+[port.md](./references/rust/port.md): tests first, quirks kept, dead code deleted.
+
 ## Related skills (complementary)
 
 These work **alongside** build-with-quality:
 - `sparc-methodology` — higher-level orchestration framework
-- `swarm-orchestration` / `swarm-advanced` — lower-level swarm primitives
+- `swarm-advanced` — lower-level swarm primitives
 - `verification-quality` — truth scoring and rollback
 - `github-*` — GitHub-specific integrations
 - `hive-mind-advanced` — specialized Byzantine consensus features

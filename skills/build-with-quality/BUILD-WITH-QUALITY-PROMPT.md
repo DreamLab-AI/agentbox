@@ -420,6 +420,9 @@ commit_policy: After each green phase
 ## LEARNING CONFIGURATION
 
 ### SONA (Self-Optimizing Neural Architecture)
+
+> SONA is **off** in this estate: it ships inside ruvector (`@ruvector/sona@0.1.5`), but the binary drops 384-dim learns, so `[memory_learning].sona_learn_enabled`/`sona_apply_enabled` stay `false` (agentbox `docs/LEARNING-memory.md` D1). Learning runs through RuVector's trajectory → judgment → Wilson-aggregate → distilled `patterns` loop instead; recall it with `memory_search`. The block below is the upstream configuration shape only.
+
 ```yaml
 mode: balanced
 latency_target: 18ms

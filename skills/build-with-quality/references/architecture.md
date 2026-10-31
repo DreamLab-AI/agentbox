@@ -6,7 +6,7 @@ dual (MCP / CLI) execution model.
 
 ## Unified Learning System
 
-- **SONA (Self-Optimising Neural Architecture)**: 5 modes (real-time, balanced, research, edge, batch)
+- **SONA (Self-Optimising Neural Architecture)** — SONA is **off** in this estate: it ships inside ruvector (`@ruvector/sona@0.1.5`), but the binary drops 384-dim learns, so `[memory_learning].sona_learn_enabled`/`sona_apply_enabled` stay `false` (agentbox `docs/LEARNING-memory.md` D1). Learning runs through RuVector's trajectory → judgment → Wilson-aggregate → distilled `patterns` loop instead; recall it with `memory_search`. Upstream design: 5 modes (real-time, balanced, research, edge, batch)
 - **ReasoningBank**: Pattern storage with confidence tiers (Bronze -> Platinum)
 - **HNSW Indexing**: O(log n) vector search - 150x faster than linear
 - **Dream Cycles**: Background pattern consolidation
