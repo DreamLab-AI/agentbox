@@ -2,11 +2,17 @@
 # "Build with Quality" - Optimal project building with integrated quality engineering
 
 name: build-with-quality
-version: 1.3.0  # single source of truth: SKILL.md frontmatter metadata.version — keep in sync
+version: 1.5.0  # single source of truth: SKILL.md frontmatter metadata.version — keep in sync
 description: |
   Combined Claude Code V3 and Agentic QE skill for optimal project building
   with integrated quality engineering. Provides 34 specialized agents,
   unified learning (SONA + ReasoningBank), and comprehensive quality gates.
+
+  New in v1.5.0:
+  - Rust steering (references/rust/): BeautifulRust's rust-best-practices,
+    rust-review and rust-port bodies plus five source digests and a drop-in
+    clippy lints table, vendored at a9cdcfa (MIT, NOTICE.md), with an estate
+    overlay for crypto, publication, feature sets, MSRV and dead-code ports
 
   New in v1.2.0:
   - Expectation-Driven Development (EDD) as the design-time conversation layer
@@ -122,6 +128,7 @@ swarm:
 # Learning configuration
 learning:
   sona:
+    enabled: false  # ships in ruvector but drops 384-dim learns; [memory_learning].sona_learn/apply_enabled = false. Learning = RuVector trajectory->pattern loop
     mode: balanced  # real-time | balanced | research | edge | batch
     latency_target_ms: 18
     quality_target: 0.75

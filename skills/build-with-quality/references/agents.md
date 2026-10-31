@@ -1,10 +1,31 @@
 # Agents Catalog
 
-The full agent roster and per-domain breakdown for build-with-quality. Spawn these
-via `mcp__claude-flow__agent_spawn { agentType: "..." }`, the Claude Code `Task` tool
-(`subagent_type`), or `claude-flow agent spawn --type ...`.
+The role roster for build-with-quality. These 34 names are **ruflo / agentic-qe
+role labels**. Record them with `mcp__claude-flow__agent_spawn { agentType: "..." }` or
+`claude-flow agent spawn --type ...` so observers see the topology. They are **not**
+Claude Code `subagent_type`s. Since ADR-2092 the harness registers a curated set
+(`agents/registered-agents.txt`), and a spawn with an unregistered name fails. The
+work itself runs through the map below.
 
-## 34 Specialized Agents
+## Who runs each role in Claude Code
+
+| Role labels | `subagent_type` | Model (ADR-2134) |
+|---|---|---|
+| architect, security-architect, test-strategist | `system-architect` | Opus |
+| coder, deployer, security-implementer, tdd-green-phase, tdd-refactor-phase | the lead session, or `rust-engineer` for Rust | Sonnet |
+| unit/integration/e2e-test-generator, tdd-red-phase, tdd-stabilizer, flaky-test-hunter, mutation-tester, coverage-analyzer | `test-engineer` | Sonnet |
+| reviewer | `code-reviewer` (Rust: with [rust/review.md](./rust/review.md)) | Opus |
+| security-tester, sast-scanner, compliance-auditor | `security-reviewer`, plus `scripts/deepsec-gate.sh` | Opus |
+| chaos-engineer, resilience-validator, defect-predictor | `performance-engineer` or `test-engineer`, by what is measured | Sonnet |
+| memory-indexer, trajectory-tracker, reasoning-bank-manager, cross-project-transfer | `memory-curator` | Sonnet |
+| browser-agent, dast-scanner | the `browser` skill (browser-gpu MCP) | — |
+| expectation-author | the lead session, with the human | — |
+| evidence-producer | the lead session or `test-engineer` | Sonnet |
+| evidence-auditor | **Codex** (`codex exec -m gpt-6-astra`), never a Claude tier | cross-vendor |
+| search fan-out (no role label) | `Explore` | Haiku |
+| sona-optimizer, q-learning-optimizer | none: SONA is off; learning is RuVector's trajectory→pattern loop | — |
+
+## 34 role labels
 
 Recounted directly from the "Agent Domains" catalogue below (2026-09-09).
 

@@ -48,7 +48,7 @@
 
 | Skill | MCP | Key Capability | When to Choose |
 |-------|-----|----------------|----------------|
-| `build-with-quality` | No | 111+ agents, unified dev+QE, TDD, ADR, quality gates, SONA learning, TinyDancer routing. **Supersedes** pair-programming, reasoningbank-*, agentic-qe | Any multi-file feature, refactor, or project needing quality gates, coverage, and testing |
+| `build-with-quality` | No | 34 ruflo role labels mapped onto the registered subagents, unified dev+QE, TDD, ADR, quality gates, SONA learning, TinyDancer routing, Rust steering/review/port rubrics + clippy lints (BeautifulRust, `references/rust/`). **Supersedes** pair-programming, reasoningbank-*, agentic-qe | Any multi-file feature, refactor, or project needing quality gates, coverage, and testing |
 | `sparc-methodology` | No | SPARC 5-phase development (Specification, Pseudocode, Architecture, Refinement, Completion), 17 modes | Systematic multi-phase development from spec through deployment |
 | `prd2build` | No | PRD to complete documentation in a single command | Generating full project documentation from a product requirements document |
 | `bhil-methodology` | No | AI-first specification-driven methodology: PRD→SPEC→ADR→TASK traceability, AI-native ADRs (model/prompt/agent), eval suites, guardrails | Starting new features, architecture decisions, sprint planning, quality gates, artifact traceability |
@@ -352,7 +352,7 @@ PHASE 2 — IMPLEMENTATION
     (17 modes; delegates to sub-agents per phase)
 
   Multi-file feature with quality gates, TDD, coverage             → build-with-quality
-    (111+ agents; dev + QE unified; SONA learning; truth scoring)
+    (34 role labels on registered subagents; dev + QE unified; Rust steering; truth scoring)
 
 PHASE 3 — VERIFICATION
   Truth-score verification only, no full pipeline needed    → verification-quality
@@ -374,7 +374,7 @@ Q3: How complex is the task?
     +-- Need artifact traceability chain (PRD→SPEC→ADR→TASK) across a sprint
     |   --> bhil-methodology  [specification-only, no code execution]
     |
-    +-- Multi-file feature with quality gates, TDD, coverage, 111+ agents
+    +-- Multi-file feature with quality gates, TDD, coverage, Rust steering
     |   --> build-with-quality
     |
     +-- Systematic multi-phase (spec -> pseudo -> arch -> refine -> complete)
@@ -923,7 +923,7 @@ Generated 2026-09-09 from `skills/mcp.json` (the boot-projection registry; 28 se
 
 **8. V3 Implementation Skills (9 archived)**: All archived. Serve as reference only. Could be moved to a `/skills/archive/` subdirectory to reduce clutter.
 
-**9. Development Meta-Skills**: `build-with-quality` vs `sparc-methodology` -- distinct. BWQ focuses on quality engineering with 111+ agents; SPARC focuses on phased methodology. Both are needed.
+**9. Development Meta-Skills**: `build-with-quality` vs `sparc-methodology` -- distinct. BWQ focuses on quality engineering (34 role labels on registered subagents); SPARC focuses on phased methodology. Both are needed.
 
 **10. Flow Nexus Trio**: `flow-nexus-platform`, `flow-nexus-neural`, `flow-nexus-swarm` -- well-separated by concern (platform admin vs ML training vs swarm deployment). No merge needed.
 

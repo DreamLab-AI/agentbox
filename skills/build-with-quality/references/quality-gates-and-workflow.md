@@ -34,6 +34,10 @@ A reviewer may over-assert; this gate is where that is absorbed.
 
 ## Rust code lens
 
+Writing, reviewing and porting rules live in [rust/steering.md](./rust/steering.md),
+[rust/review.md](./rust/review.md) and [rust/port.md](./rust/port.md). This section covers
+reading a call tree when a Rust bug resists.
+
 On a hard Rust bug, or a resolver or flow question, run `sealmap dense` or
 `sealmap generate` around the suspect symbol and read the call tree before
 guessing. Generated views show missing or wrong call edges that no test asserts:
@@ -56,7 +60,7 @@ Phase 1: REQUIREMENTS & PLANNING
 ├── Architect agent analyzes requirements
 ├── Requirements-validation domain verifies specs
 ├── Code-intelligence builds knowledge graph
-└── SONA retrieves similar project patterns
+└── RuVector memory_search retrieves similar project patterns (SONA is off)
 
 Phase 1.5: EXPECTATION AUTHORING (NEW v1.2.0 — EDD step 1)
 ├── expectation-author agent + human draft EXP-NNN artifacts
@@ -67,6 +71,7 @@ Phase 1.5: EXPECTATION AUTHORING (NEW v1.2.0 — EDD step 1)
 
 Phase 2: DEVELOPMENT (Parallel)
 ├── Coder agent writes implementation against EXP-NNN + SPEC + ADR
+├── Rust: steering.md first; fmt --check, clippy -D warnings, test, each receipted
 ├── Test-generation creates tests IN PARALLEL
 ├── Security-architect reviews for vulnerabilities
 ├── deepsec-gate --diff-working on each coder increment (bounded, resumable)
@@ -115,7 +120,7 @@ Phase 4: DEPLOYMENT
 
 Phase 5: LEARNING
 ├── ReasoningBank stores test patterns AND high-quality expectation patterns
-├── SONA optimizes future builds
+├── RuVector trajectory→pattern loop distils lessons for future builds (SONA is off)
 ├── Cross-project transfer enables reuse (incl. expectation libraries)
 └── Archive: EXP + evidence + test reference becomes living docs
 ```
