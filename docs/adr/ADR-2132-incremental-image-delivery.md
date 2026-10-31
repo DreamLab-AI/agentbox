@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 1a5cd8e4105c3a6f96fca992c8c29f72903825e6
+verified_commit: 3d27cc11e5dcbeeab9584358ab5a614f921d6dba
 verified_paths: [agentbox.sh, scripts/runtime-delivery.*, scripts/refresh-compose.sh, config/build-registry.json, lib/image-layers.nix, flake.nix, tests/config/runtime-delivery*, .github/workflows/invariants.yml, docs/developer/incremental-builds.md]
 owner: jjohare
 review_trigger: layer grouping, delivery transport, candidate validation or cache retention changes
@@ -202,4 +202,4 @@ Re-verified 2026-10-31 at `b65c3d4ed`. Governed paths changed: `.github/workflow
 
 ## Re-verification — 2026-10-31
 
-Re-verified 2026-10-31 at `1a5cd8e4105c3a6f96fca992c8c29f72903825e6` (ADR-2007 evidence-gate port, branch `adr-sprint/w10`). Governed path changed: `.github/workflows/invariants.yml`: one new step, "adr-ratchet evidence gate self-test", running `tests/config/adr-ratchet-evidence.test.sh` beside the existing adr-ratchet self-test. It touches neither this record's decision nor the steps it relies on, so the decision and status axes stand. Re-run: `git diff 75378856483d13f952569018421c4526da0aede2..1a5cd8e4105c3a6f96fca992c8c29f72903825e6 -- .github/workflows/invariants.yml`.
+Re-verified 2026-10-31 at `3d27cc11e5dcbeeab9584358ab5a614f921d6dba` (evidence-gate port from VisionFlow ADR-2007, branch `adr-sprint/w10`). Governed path changed: `.github/workflows/invariants.yml`: one new step, "adr-ratchet evidence gate self-test", running `tests/config/adr-ratchet-evidence.test.sh` beside the existing adr-ratchet self-test. It touches neither this record's decision nor the steps it relies on, so the decision and status axes stand. Re-run: `git diff 75378856483d13f952569018421c4526da0aede2..3d27cc11e5dcbeeab9584358ab5a614f921d6dba -- .github/workflows/invariants.yml`.
