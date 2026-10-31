@@ -56,7 +56,7 @@
 
 import { createRequire } from 'node:module';
 import { createHash } from 'node:crypto';
-import { mkdirSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
+import { mkdirSync, writeFileSync, readFileSync, existsSync, realpathSync } from 'node:fs';
 import { dirname, join, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import http from 'node:http';
@@ -1358,7 +1358,12 @@ async function main() {
 }
 
 // Only run main when executed directly (not when imported by the unit test).
-const invokedDirectly = process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
+// Compare real paths: the workspace reaches this checkout through a symlink
+// (~/workspace/agentbox -> project/agentbox), and import.meta.url is always
+// the resolved path, so a symlinked argv[1] would never match and the
+// harness would exit 0 having measured nothing.
+const sameFile = (a, b) => { try { return realpathSync(a) === realpathSync(b); } catch { return false; } };
+const invokedDirectly = Boolean(process.argv[1]) && sameFile(fileURLToPath(import.meta.url), process.argv[1]);
 if (invokedDirectly) {
   main().catch((e) => { die(e.stack || e.message); });
 }
