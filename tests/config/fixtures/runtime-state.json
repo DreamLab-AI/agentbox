@@ -46,6 +46,7 @@
     "target-gc": "RUNNING",
     "teammate-gc": "RUNNING",
     "tmux-autostart": "EXITED",
+    "user-cron": "RUNNING",
     "xvnc": "RUNNING"
   },
   "containers": {

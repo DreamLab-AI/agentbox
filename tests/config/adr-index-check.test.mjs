@@ -130,6 +130,22 @@ scratch((dir) => {
     /implementation_status/.test(r.stderr) && !/is STALE/.test(r.stderr), r.stderr.trim());
 });
 
+// --- evidence_class value check (VisionFlow ADR-2007 port) -------------------
+console.log('\n[evidence_class values]');
+for (const [label, value, ok] of [
+  ['a valid single value passes', 'source', true],
+  ['a valid +-joined value passes', 'source+test', true],
+  ['an unknown value (vibes) fails', 'vibes', false],
+  ['an empty segment (source+) fails', 'source+', false],
+]) {
+  scratch((dir) => {
+    fs.writeFileSync(path.join(dir, 'ADR-9001-first.md'), record('ADR-9001', 'First', { evidence_class: value }));
+    const r = gen(dir, '--check');
+    check(`evidence_class: ${label}`, ok ? r.status === 0 : (r.status === 1 && /evidence_class/.test(r.stderr)),
+      `${r.status} ${r.stderr.trim()}`);
+  });
+}
+
 // --- the repository's own ledger --------------------------------------------
 // Reported, never repaired: regenerating docs/adr/README.md is deliberately out
 // of scope for this pass, because records are being added concurrently and a

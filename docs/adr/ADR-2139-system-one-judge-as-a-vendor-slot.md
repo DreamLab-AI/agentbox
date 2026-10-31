@@ -13,7 +13,7 @@ owner: jjohare
 review_trigger: SubQ Snap leaving public preview or changing its price, retention default or the Decisions request shape; a Kev, Clef or pplx-decider release that serves /v1/systemone on a 9B-class checkpoint; a system-one-eval run on the ADR-2089 corpus that moves any backend by more than 5 points; the first compaction replay whose keep-rate is above 5%
 repo: agentbox
 evidence_class: source+test
-acceptance_boundary: cargo system-one-proxy (13 + 7 passed), agentbox-manifest full suite, jest semantic-rules (80 passed), catalogue check and manifest validation. state_budget_tokens is advisory only and factrail, a pinned external, does not yet read stateBudgetTokens; the baked proxy and projector reach the image at the next rebuild
+acceptance_boundary: cargo system-one-proxy (13 + 7 passed), agentbox-manifest full suite, jest semantic-rules (80 passed), catalogue check and manifest validation. state_budget_tokens is advisory only and factrail, a pinned external, does not yet read stateBudgetTokens; the baked proxy and projector reach the image at the next rebuild. Tests ran at d149a0f33, re-verified at 97f298db5 (adr-sprint/w7); verified_commit 2f15c531b is a diff-only re-stamp after the w78 integration
 ---
 
 # ADR-2139 — Treat the System One judge as a vendor slot, measured per consumer, with SubQ Snap as the first alternative to Jev
