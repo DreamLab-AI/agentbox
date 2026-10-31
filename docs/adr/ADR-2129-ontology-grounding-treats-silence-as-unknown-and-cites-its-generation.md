@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: b65c3d4eda3c2449d7ea8512ae1bda33a24c2312
+verified_commit: dfee16693b8ae58379cb9f1161081e5b9853af51
 verified_paths: [skills/ontology-augment/scripts/ontology-augment.sh, skills/ontology-augment/SKILL.md, skills/ontology-augment/references/REFERENCE.md, skills/ontology-augment/references/EXAMPLES.md, tests/skills/ontology-augment-grounding.test.sh]
 owner: jjohare
 review_trigger: VisionClaw ADR-2128 (versionIRI) or ADR-2127 (tri-valued answers) landing; an agent decision traced to an empty Loom or vault result; the ontology-augment skill's output format changing; the first session on a booted image whose ontology-augment output cites its generation (activation → live)
@@ -84,3 +84,5 @@ Format change, as Consequences 3 anticipated: `source` gains the value `"ontomar
 Today's commits: `2d49681bf` (management API), `b7a1d0955` (ontology-augment), `f4beec643` (skills and docs), `7aa9365d4` (path tiers), `6aaf3bb46` (podcast submitter), `eff6c29c1`, `4a07fbfb3` (ontomark v0.6.1 pin). Owner decision 2026-10-31 (Ontomark DEPRECATION §14): `ontomark` is the one corpus CLI; `vault` keeps only the governance transport, `propose` and `panel publish`, per Ontomark ADR-OM-005 decisions 5-6.
 
 The `vault` fallback described in the 2026-10-17 note is removed (`b7a1d0955`): without `ontomark` the script stops and names PATH, `/opt/agentbox/bin/ontomark` and `ONTOMARK_BIN`. When the Loom does not answer, `neighbours` falls back to `ontomark tree` (asserted edges only) and still says so on stderr; the envelope `source` in the examples is `ontomark`. Envelope, silence and generation semantics are unchanged. Gate: `tests/skills/ontology-augment-grounding.test.sh` 87 passed, 0 failed. The decision holds.
+
+Re-verified 2026-10-31 at `dfee16693`. Governed paths changed: ontology-augment.sh adds call_id and refs (labels E/N/P/S) to every envelope and a --ref option on get, neighbours, paths, check and propose, SKILL.md gains explicit stop rules (1-2 rounds, at most 2 hops, evidence and generation for every link, silence is unknown), and the grounding test gains label and --ref cases. The envelope change is additive: grounding, degraded, source, generation, negation, shape, note and result are unchanged, so the silence-as-unknown decision stands as written. No section of this record's decision changed; re-verified by `git diff b65c3d4ed..dfee16693 -- <verified_paths>`.
