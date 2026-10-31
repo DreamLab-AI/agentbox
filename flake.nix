@@ -306,6 +306,7 @@
         # program spends on a metered API and may open draft PRs, so a
         # manifest with no section emits nothing. REBUILD-class.
         seoWatchEnabled = (agentboxConfig.seo_watch or {}).enabled or false;
+        userCronEnabled = (agentboxConfig.user_cron or {}).enabled or false;
         # [system_one] (ADR-2139): the typed-decision vendor slot. The proxy
         # holds vendor keys and is the endpoint every System One consumer is
         # projected at, so a manifest with no section emits nothing and the
@@ -3043,6 +3044,26 @@ startretries=30
 priority=60
 stdout_logfile=/var/log/system-one-proxy.log
 stderr_logfile=/var/log/system-one-proxy.error.log
+stdout_logfile_maxbytes=5MB
+stderr_logfile_maxbytes=5MB
+''}
+
+${lib.optionalString userCronEnabled ''
+; Operator-owned jobs: gated on [user_cron].enabled (default false). supercronic
+; reads ~/workspace/.config/agentbox/user.crontab from the persistent workspace
+; volume, outside every repository, so private job details never enter this
+; public flake. The wrapper waits for the file rather than failing when it is
+; absent; -inotify reloads edits without a rebuild. REBUILD-class to enable.
+[program:user-cron]
+command=${pkgs.bash}/bin/bash -c 'f=/home/devuser/workspace/.config/agentbox/user.crontab; while [ ! -f "$f" ]; do sleep 300; done; exec ${bgNice}${supercronicPkg}/bin/supercronic -inotify -split-logs "$f"'
+user=devuser
+environment=HOME="/home/devuser",PATH="/home/devuser/workspace/.local/bin:${lib.makeBinPath [ pkgs.coreutils pkgs.bash ]}:/usr/local/bin:/bin:/usr/bin"
+autostart=true
+autorestart=true
+startsecs=0
+priority=250
+stdout_logfile=/var/log/user-cron.log
+stderr_logfile=/var/log/user-cron.error.log
 stdout_logfile_maxbytes=5MB
 stderr_logfile_maxbytes=5MB
 ''}

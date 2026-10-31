@@ -1240,6 +1240,16 @@ gemini_monthly_usd = 10
 # each triage run as well (the interval and budget still apply).
 weekly_window = true
 
+[user_cron]
+# Operator-owned scheduled jobs that are not part of agentbox itself.
+# [program:user-cron] runs supercronic over ~/workspace/.config/agentbox/user.crontab
+# (outside every repository, on the persistent workspace volume), so the jobs,
+# their paths and any private project names stay out of this public file.
+# Edit the crontab to add or change jobs (-inotify reloads it); no rebuild is
+# needed after the first one. A missing crontab file leaves the program idle.
+# REBUILD-class to enable.
+enabled = false
+
 [seo_watch]
 # Website ADR-2010: nightly SEO and AI-agent-searchability watch for
 # dreamlab-ai.com, running ALONGSIDE the dream engine (never inside it: it
