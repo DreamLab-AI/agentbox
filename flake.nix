@@ -3050,12 +3050,12 @@ stderr_logfile_maxbytes=5MB
 
 ${lib.optionalString userCronEnabled ''
 ; Operator-owned jobs: gated on [user_cron].enabled (default false). supercronic
-; reads ~/workspace/.config/agentbox/user.crontab from the persistent workspace
+; reads ~/workspace/.local/etc/agentbox/user.crontab from the persistent workspace
 ; volume, outside every repository, so private job details never enter this
 ; public flake. The wrapper waits for the file rather than failing when it is
 ; absent; -inotify reloads edits without a rebuild. REBUILD-class to enable.
 [program:user-cron]
-command=${pkgs.bash}/bin/bash -c 'f=/home/devuser/workspace/.config/agentbox/user.crontab; while [ ! -f "$f" ]; do sleep 300; done; exec ${bgNice}${supercronicPkg}/bin/supercronic -inotify -split-logs "$f"'
+command=${pkgs.bash}/bin/bash -c 'f=/home/devuser/workspace/.local/etc/agentbox/user.crontab; while [ ! -f "$f" ]; do sleep 300; done; exec ${bgNice}${supercronicPkg}/bin/supercronic -inotify -split-logs "$f"'
 user=devuser
 environment=HOME="/home/devuser",PATH="/home/devuser/workspace/.local/bin:${lib.makeBinPath [ pkgs.coreutils pkgs.bash ]}:/usr/local/bin:/bin:/usr/bin"
 autostart=true

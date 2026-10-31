@@ -1242,7 +1242,7 @@ weekly_window = true
 
 [user_cron]
 # Operator-owned scheduled jobs that are not part of agentbox itself.
-# [program:user-cron] runs supercronic over ~/workspace/.config/agentbox/user.crontab
+# [program:user-cron] runs supercronic over ~/workspace/.local/etc/agentbox/user.crontab
 # (outside every repository, on the persistent workspace volume), so the jobs,
 # their paths and any private project names stay out of this public file.
 # Edit the crontab to add or change jobs (-inotify reloads it); no rebuild is
