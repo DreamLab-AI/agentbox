@@ -21,7 +21,9 @@
     "scripts/dream-forum-suggestions.mjs",
     "scripts/run-junkiejarvis.cjs",
     "scripts/run-per-user-agent.cjs",
-    "scripts/experiments/exp-b8-label-log.cjs"
+    "scripts/experiments/exp-b8-label-log.cjs",
+    "scripts/corpus-memory-ingest.mjs",
+    "scripts/lib/ruvector-bulk.mjs"
   ],
   "sources_exclude": [
     "(^|/)tests?/",
@@ -636,6 +638,7 @@
         "RUNTIME_ENV_FILE",
         "RUSTUP_HOME",
         "RUST_LOG",
+        "RUVECTOR_ADMIN_WRITE",
         "RUVECTOR_DATA_DIR",
         "RUVECTOR_HYBRID_FUSION",
         "RUVECTOR_PORT",

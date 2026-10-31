@@ -1,0 +1,615 @@
+{
+ "note": "Rows sampled from live RuVector knowledge/pages on 2026-10-31 (seeded). sections: unsplit rows (page text = the stored content); split: sections reconstructed from their parts.",
+ "sections": [
+  {
+   "file_name": "End Effector.md",
+   "key": "end-effector::future-directions",
+   "section": "Future Directions",
+   "content": "## Future Directions\n\n- Emerging trends include integration of soft robotics for safer human-robot interaction, enhanced sensory fusion combining vision and touch, and modular end effectors that can be rapidly reconfigured.\n- Anticipated challenges involve balancing complexity with reliability, ensuring cybersecurity in connected robotic systems, and meeting evolving safety standards.\n- Research priorities emphasise developing standardised interfaces, improving AI interpretability in control algorithms, and expanding applications in healthcare and service robotics.",
+   "content_hash": "4612f9f00a9b",
+   "title": "End Effector > Future Directions"
+  },
+  {
+   "file_name": "Loyalty Programs.md",
+   "key": "loyalty-programs::overview",
+   "section": "Overview",
+   "content": "## Overview\n\nLoyalty Programs represents an abstract concept in the metaverse ontology hierarchy.",
+   "content_hash": "d9c89464ef98",
+   "title": "Loyalty Programs > Overview"
+  },
+  {
+   "file_name": "Jurisdictional Boundary.md",
+   "key": "jurisdictional-boundary::core-problem",
+   "section": "Core Problem",
+   "content": "### Core Problem\n- Virtual world border transcendence\n- Territorial boundary irrelevance\n- Cross-border offense determination\n- Jurisdictional authority complexity\n- National boundary circumvention",
+   "content_hash": "dd686eabb498",
+   "title": "Jurisdictional Boundary > Core Problem"
+  },
+  {
+   "file_name": "Monetary System.md",
+   "key": "monetary-system::interoperability-focus",
+   "section": "Interoperability Focus",
+   "content": "### Interoperability Focus\n- Cross-system compatibility\n- Asset tokenisation\n- Settlement efficiency\n- Innovation testing\n- Industry collaboration",
+   "content_hash": "931aede1b909",
+   "title": "Monetary System > Interoperability Focus"
+  },
+  {
+   "file_name": "AI Office.md",
+   "key": "ai-office::1-gpai-model-supervision",
+   "section": "1. GPAI Model Supervision",
+   "content": "### 1. GPAI Model Supervision\n**Primary responsibility**:\n- Oversee compliance of general-purpose AI model providers\n- Monitor systemic risk models (Article 55)\n- Coordinate enforcement actions against GPAI providers\n\n**Powers**:\n- Request documentation and information\n- Conduct investigations\n- Impose corrective measures\n- Levy administrative fines",
+   "content_hash": "3ceed4c0bf24",
+   "title": "AI Office > 1. GPAI Model Supervision"
+  },
+  {
+   "file_name": "System Architecture.md",
+   "key": "system-architecture::references",
+   "section": "References",
+   "content": "## References\n\n- Dean, J. (2020). The Deep Learning Revolution and Its Implications for Computer Architecture and Chip Design. ISSCC 2020 Keynote.\n- Zaharia, M. et al. (2018). Accelerating the Machine Learning Lifecycle with MLflow. IEEE Data Engineering Bulletin, 41(4), 39-45.\n- Burns, B. et al. (2016). Borg, Omega, and Kubernetes. ACM Queue, 14(1), 70-93.",
+   "content_hash": "c9ab18b0847f",
+   "title": "System Architecture > References"
+  },
+  {
+   "file_name": "Inclusive Xr Design.md",
+   "key": "inclusive-xr-design::motor-disabilities",
+   "section": "Motor Disabilities",
+   "content": "### Motor Disabilities\n- Motion-tracked controller alternatives\n- Conventional interaction barriers\n- Physical movement requirements\n- Fine motor skill challenges",
+   "content_hash": "3694c011b565",
+   "title": "Inclusive Xr Design > Motor Disabilities"
+  },
+  {
+   "file_name": "AI Office.md",
+   "key": "ai-office::regulatory-context",
+   "section": "Regulatory Context",
+   "content": "## Regulatory Context\n\nThe AI Office represents a novel EU institutional structure, established within the European Commission to provide specialised AI governance expertise and ensure consistent application of the AI Act across Member States.",
+   "content_hash": "fd4737566017",
+   "title": "AI Office > Regulatory Context"
+  },
+  {
+   "file_name": "Arbitration Decision Engine.md",
+   "key": "arbitration-decision-engine::technical-details",
+   "section": "Technical Details",
+   "content": "### Technical Details\nKey components include:\n- **AI-Based Evaluation Layer**: Transformer and LSTM models classifying, interpreting, and evaluating evidence\n- **Smart Contract Agreement Layer**: Encoded legal terms and self-executing arbitration clauses\n- **Evidence Management Layer**: Blockchain-based authentication ensuring integrity, authenticity, and traceability\n- **Oracle Function**: Decisions automatically trigger or modify smart contracts, enabling self-enforcement",
+   "content_hash": "7da252e839c0",
+   "title": "Arbitration Decision Engine > Technical Details"
+  },
+  {
+   "file_name": "Vulnerability.md",
+   "key": "vulnerability::robotics",
+   "section": "Robotics",
+   "content": "### Robotics\n- **Unencrypted Protocols**: Communications interceptable and modifiable\n- **Sensor Fusion Gaps**: Inadequate validation of multi-sensor inputs\n- **Missing Fail-Safes**: Lack of safe operational state fallbacks\n- **Firmware Vulnerabilities**: Outdated or unpatched embedded software\n- **Physical Access**: Insufficient tamper detection and prevention",
+   "content_hash": "8901373c54ba",
+   "title": "Vulnerability > Robotics"
+  },
+  {
+   "file_name": "Physics Simulation.md",
+   "key": "physics-simulation::overview",
+   "section": "Overview",
+   "content": "## Overview\n\nPhysics Simulation represents an abstract concept in the metaverse ontology hierarchy.",
+   "content_hash": "901028982616",
+   "title": "Physics Simulation > Overview"
+  },
+  {
+   "file_name": "Monetary Sovereignty.md",
+   "key": "monetary-sovereignty::adoption-statistics",
+   "section": "Adoption Statistics",
+   "content": "### Adoption Statistics\n- 137 countries exploring CBDCs\n- 98% of global GDP represented\n- 72 countries in advanced phase\n- 49 pilot projects worldwide\n- 3 fully launched (Bahamas, Jamaica, Nigeria)",
+   "content_hash": "170c08a6922d",
+   "title": "Monetary Sovereignty > Adoption Statistics"
+  },
+  {
+   "file_name": "Making Available.md",
+   "key": "making-available::scenario-1:-software-reseller",
+   "section": "Scenario 1: Software Reseller",
+   "content": "### Scenario 1: Software Reseller\nA company resells HR recruitment AI from original provider.\n\n**Status**: Distributor making available\n**Obligations**: Verify CE marking, check documentation, maintain records",
+   "content_hash": "0974b158540e",
+   "title": "Making Available > Scenario 1: Software Reseller"
+  },
+  {
+   "file_name": "National Competent Authority.md",
+   "key": "national-competent-authority::for-prohibited-practices-article-5",
+   "section": "For Prohibited Practices (Article 5)",
+   "content": "### For Prohibited Practices (Article 5)\n- Investigate suspected prohibited AI use\n- Order immediate cessation\n- Impose maximum penalties (€35M or 7% turnover)\n- Inform AI Office of prohibited practice cases",
+   "content_hash": "6bd5c96195fa",
+   "title": "National Competent Authority > For Prohibited Practices (Article 5)"
+  },
+  {
+   "file_name": "Machine Learning Model.md",
+   "key": "machine-learning-model::scalable-ai",
+   "section": "Scalable AI",
+   "content": "### Scalable AI\n- Larger models\n- Efficient training\n- Edge deployment\n- Real-time inference\n- Cost reduction",
+   "content_hash": "17aafd9e399b",
+   "title": "Machine Learning Model > Scalable AI"
+  },
+  {
+   "file_name": "RoBERTa.md",
+   "key": "roberta::academic-foundations",
+   "section": "Academic Foundations",
+   "content": "## Academic Foundations\n\n**Primary Source**: Liu et al., \"RoBERTa: A Robustly Optimized BERT Pretraining Approach\", arXiv:1907.11692 (2019)\n\n**Key Findings**: Demonstrates that BERT was significantly undertrained and that careful hyperparameter tuning and training procedure choices matter substantially.",
+   "content_hash": "d167a5aa3b53",
+   "title": "RoBERTa > Academic Foundations"
+  },
+  {
+   "file_name": "Robotics.md",
+   "key": "robotics::market-overview-2025",
+   "section": "Market Overview (2025)",
+   "content": "## Market Overview (2025)\n\t- Global industrial robot installations reached all-time high of US$16.5 billion market value\n\t- Deal value surged to $7.3 billion in H1 2025 for humanoid and AI-driven robotics\n\t- Shift from traditional automation to autonomous, adaptive robotic systems\n\t- Robot-as-a-Service (RaaS) models enabling SME adoption",
+   "content_hash": "f21bb63073de",
+   "title": "Robotics > Market Overview (2025)"
+  },
+  {
+   "file_name": "Level of Detail.md",
+   "key": "level-of-detail::metaverse-considerations",
+   "section": "Metaverse Considerations",
+   "content": "## Metaverse Considerations\n\n- **Large Viewing Distances**: Metaverse often has vast sightlines\n- **Player Density**: Many avatars require efficient LOD\n- **Streaming**: LOD integrates with asset streaming\n- **User-Generated Content**: Automatic LOD for UGC\n- **Quality Settings**: Expose LOD control to users",
+   "content_hash": "f71e9a79264e",
+   "title": "Level of Detail > Metaverse Considerations"
+  },
+  {
+   "file_name": "Medical Imaging AI.md",
+   "key": "medical-imaging-ai::relationships",
+   "section": "Relationships",
+   "content": "## Relationships\n\n- **Superclass**: Medical AI\n- **Subclasses**: Radiology AI, Pathology AI\n- **Related**: Computer Vision, Deep Learning, Convolutional Neural Networks\n- **Standards**: DICOM, HL7 FHIR Imaging, IHE profiles",
+   "content_hash": "06ea8baac9ed",
+   "title": "Medical Imaging AI > Relationships"
+  },
+  {
+   "file_name": "Synchronous Execution.md",
+   "key": "synchronous-execution::digital-twin-systems",
+   "section": "Digital Twin Systems",
+   "content": "### Digital Twin Systems\n- **Configuration Updates**: Immediate system parameter changes\n- **Query Operations**: Database reads requiring immediate results\n- **Validation Checks**: Real-time constraint verification\n- **Synchronization Points**: Coordinating physical and digital states",
+   "content_hash": "2c56f3c9178b",
+   "title": "Synchronous Execution > Digital Twin Systems"
+  },
+  {
+   "file_name": "Inclusive Xr Experience.md",
+   "key": "inclusive-xr-experience::industry-collaboration",
+   "section": "Industry Collaboration",
+   "content": "### Industry Collaboration\n- Technology company partnerships\n- Disability organisation input\n- User testing programmes\n- Standards development",
+   "content_hash": "137a2dc74804",
+   "title": "Inclusive Xr Experience > Industry Collaboration"
+  },
+  {
+   "file_name": "Metadata Repository.md",
+   "key": "metadata-repository::execution-phase",
+   "section": "Execution Phase",
+   "content": "### Execution Phase\n- Connector setup\n- Ingestion configuration\n- Quality rules\n- Access controls\n- User training",
+   "content_hash": "359e463d069c",
+   "title": "Metadata Repository > Execution Phase"
+  },
+  {
+   "file_name": "Atomic Swap.md",
+   "key": "atomic-swap::protocol-flow",
+   "section": "Protocol Flow",
+   "content": "## Protocol Flow\n1. **Initiation**: Alice creates HTLC on Chain A with hash(secret)\n2. **Response**: Bob creates HTLC on Chain B with same hash\n3. **Claim**: Alice reveals secret to claim Bob's funds on Chain B\n4. **Complete**: Bob uses revealed secret to claim Alice's funds on Chain A\n5. **Refund**: If timeout expires, both parties reclaim funds",
+   "content_hash": "bf9f31a33a8b",
+   "title": "Atomic Swap > Protocol Flow"
+  },
+  {
+   "file_name": "Real-time Processing.md",
+   "key": "real-time-processing::performance-requirements",
+   "section": "Performance Requirements",
+   "content": "### Performance Requirements\n1. **Throughput**: Events/records processed per second\n2. **Latency**: End-to-end processing time (p50, p95, p99)\n3. **Scalability**: Ability to handle load spikes\n4. **Fault Tolerance**: Resilience to failures",
+   "content_hash": "0107a1c8530e",
+   "title": "Real-time Processing > Performance Requirements"
+  },
+  {
+   "file_name": "Stacking.md",
+   "key": "stacking::variants",
+   "section": "Variants",
+   "content": "### Variants\n**Blending:**\n- Simpler than stacking\n- Hold out validation set for meta-training\n- No cross-validation required\n- Less data for base model training\n\n**Multi-Level Stacking:**\n- Stack multiple meta-model layers\n- Level-2, Level-3 models\n- Rarely used (diminishing returns)\n\n**Feature-Weighted Stacking:**\n- Meta-model uses both base predictions and original features\n- Increases complexity",
+   "content_hash": "819d031d8c67",
+   "title": "Stacking > Variants"
+  },
+  {
+   "file_name": "Importer.md",
+   "key": "importer::research--literature",
+   "section": "Research & Literature",
+   "content": "## Research & Literature\n\n- Key academic sources on AI importers and regulatory compliance include:\n  - Veale, M., & Borgesius, F. Z. (2021). *Demystifying the Draft EU Artificial Intelligence Act*. Computer Law & Security Review, 41, 105567. https://doi.org/10.1016/j.clsr.2021.105567\n  - Wachter, S., Mittelstadt, B., & Floridi, L. (2017). *Why a Right to Explanation of Automated Decision-Making Does Not Exist in the General Data Protection Regulation*. International Data Privacy Law, 7(2), 76–99. https://doi.org/10.1093/idpl/ipx005\n- Ongoing research explores the importer's role in cross-border AI governance, supply chain transparency, and liability frameworks.",
+   "content_hash": "1378c29b77d2",
+   "title": "Importer > Research & Literature"
+  },
+  {
+   "file_name": "Blockchain Infrastructure.md",
+   "key": "blockchain-infrastructure::modern-architecture-patterns-2025",
+   "section": "Modern Architecture Patterns (2025)",
+   "content": "### Modern Architecture Patterns (2025)\n\n#### Modular Blockchains\n- Separation of execution, consensus, data availability\n- Specialized layers for each function\n- Examples: Celestia (DA), Fuel (execution)\n\n#### BlockDAG Systems\n- Multiple blocks created simultaneously\n- Parallel transaction processing\n- Improved throughput under load\n\n#### Parachain Architecture\n- Multiple parallel chains sharing security\n- Application-specific blockchains\n- Central relay chain coordination\n\n#### Hierarchical Sharding\n- Network divided into processing shards\n- Local transaction processing\n- Cross-shard coordination",
+   "content_hash": "de299354ef22",
+   "title": "Blockchain Infrastructure > Modern Architecture Patterns (2025)"
+  },
+  {
+   "file_name": "Surgical Robot.md",
+   "key": "surgical-robot::research--literature",
+   "section": "Research & Literature",
+   "content": "## Research & Literature\n\n- Key academic sources include:\n  - Michels et al. (2020), \"Pooled CRISPR-Cas9 screening in colon patient-derived organoids,\" *Nature Communications*, DOI: 10.1038/s41467-020-XXXX-X.\n  - Dekkers et al. (2020), \"Tumour suppressor gene knockouts in breast PDOs,\" *Cell Reports*, DOI: 10.1016/j.celrep.2020.XX.XXX.\n  - Ubhi et al. (2024), \"Genetic screening in pancreatic cancer organoids,\" *Cancer Research*, DOI: 10.1158/0008-5472.CAN-23-XXXX.\n- Ongoing research explores integration of AI for surgical planning, enhanced haptic feedback, telesurgery capabilities, and improved patient-specific modelling using organoid and imaging technologies.",
+   "content_hash": "0ce69cc6b5b6",
+   "title": "Surgical Robot > Research & Literature"
+  },
+  {
+   "file_name": "Avatar Standard.md",
+   "key": "avatar-standard::standardization-progress-2024",
+   "section": "Standardization Progress (2024)",
+   "content": "### Standardization Progress (2024)\nKhronos Group and VRM Consortium collaboration (October 2024) advancing VRM as official glTF extensions. Successful ratification would elevate global recognition and encourage broader platform support.",
+   "content_hash": "f69ce3e77f24",
+   "title": "Avatar Standard > Standardization Progress (2024)"
+  },
+  {
+   "file_name": "Machine Learning Model.md",
+   "key": "machine-learning-model::vaes-variational-autoencoders",
+   "section": "VAEs (Variational Autoencoders)",
+   "content": "### VAEs (Variational Autoencoders)\n- Latent space learning\n- Content reconstruction\n- Feature interpolation\n- Anomaly detection\n- Data compression",
+   "content_hash": "cf290cbe9f72",
+   "title": "Machine Learning Model > VAEs (Variational Autoencoders)"
+  },
+  {
+   "file_name": "Machine Learning Platform.md",
+   "key": "machine-learning-platform::nvidia-run:ai",
+   "section": "NVIDIA Run:ai",
+   "content": "### NVIDIA Run:ai\n- GPU orchestration\n- Dynamic allocation\n- Utilisation maximisation\n- Cost reduction\n- Multi-cloud support",
+   "content_hash": "a3bf554ed62e",
+   "title": "Machine Learning Platform > NVIDIA Run:ai"
+  },
+  {
+   "file_name": "Authorised Representative.md",
+   "key": "authorised-representative::step-1:-provider-selection",
+   "section": "Step 1: Provider Selection",
+   "content": "### Step 1: Provider Selection\nNon-EU provider identifies suitable EU-established entity:\n- **Legal expertise**: AI Act knowledge\n- **Technical competence**: Understanding of AI system\n- **Logistical capacity**: Documentation management, authority liaison\n- **Language capabilities**: EU Member States where system sold",
+   "content_hash": "a34e7aba3aac",
+   "title": "Authorised Representative > Step 1: Provider Selection"
+  },
+  {
+   "file_name": "Authorised Representative.md",
+   "key": "authorised-representative::step-4:-notification",
+   "section": "Step 4: Notification",
+   "content": "### Step 4: Notification\n- Inform market surveillance authorities of appointment\n- Update product documentation with representative details",
+   "content_hash": "201ee49e0af1",
+   "title": "Authorised Representative > Step 4: Notification"
+  },
+  {
+   "file_name": "Pressure Sensor.md",
+   "key": "pressure-sensor::research--literature",
+   "section": "Research & Literature",
+   "content": "## Research & Literature\n\n- Key academic and technical sources include:\n  - Emerson’s product data sheets and technical manuals (Emerson, 2025) detailing sensor specifications and installation guidelines.\n  - Peer-reviewed studies on non-intrusive temperature measurement techniques and RTD sensor performance in industrial environments.\n- Representative citation:\n  - Emerson. (2025). *Rosemount 0085 Pipe Clamp Sensor Product Data Sheet*. Emerson Automation Solutions. Available at Emerson.com.\n- Ongoing research focuses on improving sensor response times, enhancing thermal conductivity algorithms, and integrating wireless communication for Industry 4.0 applications.",
+   "content_hash": "957c31ffae7c",
+   "title": "Pressure Sensor > Research & Literature"
+  },
+  {
+   "file_name": "Random Number Generation.md",
+   "key": "random-number-generation::verifiable-random-functions-vrf",
+   "section": "Verifiable Random Functions (VRF)",
+   "content": "## Verifiable Random Functions (VRF)\n- Provides publicly verifiable randomness\n- Used in blockchain consensus (Algorand, Cardano)\n- Combines randomness with proof of correct generation\n- Prevents manipulation while proving unpredictability",
+   "content_hash": "6703dc0dc2e0",
+   "title": "Random Number Generation > Verifiable Random Functions (VRF)"
+  },
+  {
+   "file_name": "Asset Format Standards.md",
+   "key": "asset-format-standards::future-directions-2024",
+   "section": "Future Directions (2024)",
+   "content": "### Future Directions (2024)\nIndustry exploring NERFs, Gaussian Splats, and alignment between physically-based rendering approaches across standards.",
+   "content_hash": "27706526d6d5",
+   "title": "Asset Format Standards > Future Directions (2024)"
+  },
+  {
+   "file_name": "Perception System.md",
+   "key": "perception-system::testing--validation",
+   "section": "Testing & Validation",
+   "content": "### Testing & Validation\n- **[[Scenario-Based Testing]]**: NHTSA, Euro NCAP test protocols\n- **[[Virtual Testing]]**: [[CARLA]], [[LGSVL]], [[Carmaker]] simulation platforms\n- **[[Hardware-in-the-Loop]]**: [[HIL]] testing with real sensors and simulated environment\n- **[[On-Road Testing]]**: Millions of miles for statistical validation",
+   "content_hash": "78eec8793d6b",
+   "title": "Perception System > Testing & Validation"
+  },
+  {
+   "file_name": "Virtual Group Dynamics.md",
+   "key": "virtual-group-dynamics::rituals--identity",
+   "section": "Rituals & Identity",
+   "content": "### Rituals & Identity\n- Onboarding ceremonies for new members\n- Regular events and traditions\n- Symbolic markers (badges, titles, outfits)\n- Recognition and rewards systems",
+   "content_hash": "68b7007246a6",
+   "title": "Virtual Group Dynamics > Rituals & Identity"
+  },
+  {
+   "file_name": "Distributor.md",
+   "key": "distributor::non-compliance-detection-article-242",
+   "section": "Non-Compliance Detection (Article 24(2))",
+   "content": "### Non-Compliance Detection (Article 24(2))\nIf distributor identifies non-compliance:\n- **Inform provider/importer** for resolution\n- **Inform authorities** if serious risk",
+   "content_hash": "16cebd3ad884",
+   "title": "Distributor > Non-Compliance Detection (Article 24(2))"
+  },
+  {
+   "file_name": "Oracle.md",
+   "key": "oracle::network-comparisons-2025",
+   "section": "Network Comparisons (2025)",
+   "content": "### Network Comparisons (2025)\n\n- **[[Chainlink]]**: 1,500+ integrated projects, $75B+ secured, 1,000+ price feeds, 15+ supported blockchains.\n- **[[Pyth Network]]**: 200+ [[DeFi]] protocols, 200+ price feeds, 40+ blockchains, 90+ first-party publishers.\n- **[[Band Protocol]]**: 30+ blockchains, 100+ validators, [[Cosmos]] ecosystem leader.\n- **[[API3]]**: 100+ dAPIs, $100M+ DAO treasury, OEV recapture innovation.\n- **[[UMA]]**: $200M+ secured, 500+ Optimistic Oracle requests monthly.",
+   "content_hash": "d6b9b8c5e21e",
+   "title": "Oracle > Network Comparisons (2025)"
+  },
+  {
+   "file_name": "Honesty.md",
+   "key": "honesty::section-0",
+   "section": "Section 0",
+   "content": "- ### OntologyBlock\n  id:: honesty-ontology\n  collapsed:: true\n\t- ontology:: true\n\t- term-id:: AI-0275\n\t- preferred-term:: Honesty\n\t- source-domain:: mv\n\t- status:: draft\n- definition:: An alignment objective ensuring AI systems provide truthful and accurate information, avoiding false claims and acknowledging uncertainty when appropriate. Honesty (also called truthfulness) represents a critical dimension of trustworthy AI alongside helpfulness and harmlessness.",
+   "content_hash": "38bba1f2ac32",
+   "title": "Honesty > Section 0"
+  },
+  {
+   "file_name": "Generative Content.md",
+   "key": "generative-content::section-0",
+   "section": "Section 0",
+   "content": "- ### OntologyBlock\n  id:: mv9618-ontology\n  collapsed:: true\n\t- ontology:: true\n\t- term-id:: MV-9618\n\t- preferred-term:: Generative Content\n\t- source-domain:: mv\n\t- owl:class:: mv:GenerativeContent\n\t- owl:physicality:: abstract\n\t- owl:role:: concept\n\t- public-access:: true\n\t- status:: draft\n- definition:: Generative Content is a concept within the metaverse domain. Further enrichment pending.",
+   "content_hash": "cf7f272a0800",
+   "title": "Generative Content > Section 0"
+  },
+  {
+   "file_name": "Orchestration.md",
+   "key": "orchestration::section-0",
+   "section": "Section 0",
+   "content": "- domain:: mv\n  - term-id:: MV-9179\n\n# Orchestration\n\nOrchestration represents a key component in Metaverse infrastructure and technology. Research: Orchestration in distributed Metaverse - service orchestration, microservices, container orchestration",
+   "content_hash": "57684ad24a11",
+   "title": "Orchestration > Section 0"
+  },
+  {
+   "file_name": "Reliability.md",
+   "key": "reliability::section-0",
+   "section": "Section 0",
+   "content": "- ### OntologyBlock\n  id:: reliability-ontology\n  collapsed:: true\n\t- ontology:: true\n\t- term-id:: AI-0069\n\t- preferred-term:: Reliability\n\t- source-domain:: mv\n\t- status:: draft\n- definition:: The degree to which an AI system performs its intended function consistently and accurately over time and across repeated operations, producing predictable and dependable results under specified conditions.",
+   "content_hash": "1a1cfbb85106",
+   "title": "Reliability > Section 0"
+  }
+ ],
+ "split": [
+  {
+   "file_name": "Digital Twin of Society (DToS).md",
+   "base": "digital-twin-of-society-dtos::current-landscape-2025",
+   "section": "Current Landscape (2025)",
+   "section0": false,
+   "text": "## Current Landscape (2025)\n\n- Industry adoption and implementations\n  - Major technology providers now offer comprehensive digital twin suites: Microsoft Azure Digital Twins, Siemens, General Electric, Nvidia, Bentley, and IBM provide integrated hardware, data processors, synchronisation services, simulation engines, and analytics platforms[5]\n  - Smart city digital twin market projected to reach $5.9 billion by 2029, with over 500 smart-city digital twins anticipated to be operational by 2025[3]\n  - More than 95% of IoT platforms will offer digital twinning capability by 2029, with digital twinning becoming standard in IoT application enablement by 2028[3]\n  - Fujitsu has emerged as a pioneer in Social Digital Twin development, positioning SDTs as tools for addressing interdependent societal challenges: ageing populations, urban congestion, climate resilience, and economic inequality[1]\n\n- UK and North England context\n  - Progressive UK cities are adopting digital twin frameworks for urban planning and infrastructure management, though specific North England implementations remain limited in publicly available literature\n  - The UK public sector faces similar pressures to those driving adoption elsewhere: aging infrastructure, climate commitments, and demand for evidence-based policymaking\n  - Opportunities exist for Manchester, Leeds, Newcastle, and Sheffield to pilot SDT applications in transport optimisation, urban regeneration, and climate adaptation—particularly given these cities' existing smart city initiatives and devolved governance structures\n\n- Technical capabilities and current limitations\n  - Real-time monitoring and simulation across asset lifecycles: design, production, maintenance, decommissioning[5]\n  - Predictive maintenance, process optimisation, supply chain modelling, and product development applications are well-established[5]\n  - Substantial barriers remain: implementation requires significant investment, technical expertise, integration of large datasets, and phased pilot approaches[2]\n  - Definitional ambiguity persists, particularly for social systems where human behaviour, institutional dynamics, and environmental factors interact in non-linear ways[4]\n  - Ethical and governance frameworks for SDTs remain underdeveloped—questions around data privacy, algorithmic bias, and democratic legitimacy of model-based policymaking require urgent attention[4]\n\n- Standards and frameworks\n  - The Digital Twin Consortium defines a digital twin as \"an integrated data-driven virtual representation of real-world entities and processes, with synchronized bidirectional data flow\"[8]\n  - Open data standards and existing smart city frameworks can streamline implementation efficiency[2]\n  - No unified international standard yet exists; academic and industry communities are actively working to establish common definitions and technical requirements[4][6]",
+   "parts": [
+    {
+     "key": "digital-twin-of-society-dtos::current-landscape-2025::p0",
+     "content_hash": "2a39d8b0d6b2",
+     "title": "Digital Twin of Society (DToS) > Current Landscape (2025) (part 1)",
+     "sub_index": 0
+    },
+    {
+     "key": "digital-twin-of-society-dtos::current-landscape-2025::p1",
+     "content_hash": "4fb4bc7ff208",
+     "title": "Digital Twin of Society (DToS) > Current Landscape (2025) (part 2)",
+     "sub_index": 1
+    }
+   ]
+  },
+  {
+   "file_name": "Bitcoin Centralisation Risks.md",
+   "base": "bitcoin-centralisation-risks::references-and-citations",
+   "section": "References and Citations",
+   "section0": false,
+   "text": "## References and Citations\n\nThe following sources informed this comprehensive analysis of Bitcoin centralisation risks:\n\n1. **SSRN Institutional Positioning Research (2025)** - Analysis of systemic risks from institutional Bitcoin adoption exceeding 40% of supply, featuring the Decker Sentiment-Short Interest Model (DSSIM) demonstrating 85% correlation between institutional positioning and flash crash events. [[SSRN Research on Institutional Bitcoin Positioning|SSRN Institutional Positioning]]\n\n2. **Brookings Institution Analysis (2025)** - Examination of regulatory capture risks and weakening oversight in cryptocurrency markets, documenting the defunding of federal enforcement agencies and regulatory pullback on banks' crypto activities. [[Brookings Institution Research|Brookings Analysis]]\n\n3. **ECB Research on CBDC and Monetary Sovereignty (2022-2025)** - Central Bank Digital Currency threat analysis showing 130 countries representing 98% of global economy exploring CBDCs as alternatives to Bitcoin. [[ECB CBDC Research|ECB Digital Money]]\n\n4. **SHS Conferences Study on Derivatives Leverage (2025)** - Quantitative analysis demonstrating how cryptocurrency derivatives with leverage up to 100x create cascading liquidation mechanisms and systemic risk transmission through margin calls. [[SHS Conferences Derivatives Analysis|SHS Leverage Research]]\n\n5. **Mining Pool Distribution Data (2025)** - Current hash rate concentration metrics showing Foundry USA (30%), AntPool (25%), F2Pool (12%), Poolin (10%), with top 3 pools controlling 67% of network hash power. [[Mining Pool Concentration Data|Mining Pool Distribution]]\n\n6. **Geographic Concentration Analysis (2025)** - Documentation of U.S. hash rate dominance at 44% globally, with Texas accounting for 28% of U.S. operations post-China mining ban in 2021. [[Geographic Distribution of Mining|Bitcoin Mining Geography]]\n\n---\n\n**Document Classification**: [[Risk Analysis]] | [[Blockchain Governance]] | [[Bitcoin Security]]\n\n**Related Pages**: [[Bitcoin Core]], [[Cryptocurrency Risks]], [[Regulatory Frameworks]], [[Mining Economics]], [[Institutional Adoption]], [[Decentralization Metrics]]\n  \n  <!--EndFragment-->",
+   "parts": [
+    {
+     "key": "bitcoin-centralisation-risks::references-and-citations::p0",
+     "content_hash": "4d15c92207a8",
+     "title": "Bitcoin Centralisation Risks > References and Citations (part 1)",
+     "sub_index": 0
+    },
+    {
+     "key": "bitcoin-centralisation-risks::references-and-citations::p1",
+     "content_hash": "b7a4d62663ea",
+     "title": "Bitcoin Centralisation Risks > References and Citations (part 2)",
+     "sub_index": 1
+    }
+   ]
+  },
+  {
+   "file_name": "Sustainable Development.md",
+   "base": "sustainable-development::see-also",
+   "section": "See Also",
+   "section0": false,
+   "text": "## See Also\n\n- Environmental Sustainability (AI-0169)\n- Inclusive Growth (AI-0156)\n- Green AI (research literature)\n- Computational Sustainability (AI framework concepts)\n\n---\n\n*Part of AI Grounded Ontology - OECD AI Principles Framework*\n*Aligned with OECD AI Principles 2024 and UN Sustainable Development Goals*\n\t-\n\t- ### Original Content\n\t  collapsed:: true\n\t\t- ```\n# Sustainable Development\n\t\t  \n\t\t  **Term ID**: AI-0157\n\t\t  **Category**: OECD AI Principle\n\t\t  **Status**: Essential\n\t\t  **Version**: 1.0\n\t\t  **Last Updated**: 2025-10-27\n\t\t  \n\t\t  ## Definition\n\t\t  \n\t\t  AI should contribute to the United Nations Sustainable Development Goals by addressing global challenges including climate change, resource depletion, biodiversity loss, and environmental degradation whilst ensuring development meets present needs without compromising future generations' ability to meet their own needs.\n\t\t  \n\t\t  ## Source\n\t\t  \n\t\t  - **Primary**: OECD AI Principles 2024 revision (Principle 1.1)\n\t\t  - **Related**: UN Sustainable Development Goals, OECD Recommendation on Artificial Intelligence (2024)\n\t\t  \n\t\t  ## Context\n\t\t  \n\t\t  Sustainable development as an OECD AI principle recognises that artificial intelligence systems have significant environmental footprints through energy consumption, resource use and electronic waste, whilst simultaneously offering potential solutions to sustainability challenges. The 2024 revision elevated environmental considerations to core principle status.\n\t\t  \n\t\t  ## Key Characteristics\n\t\t  \n\t\t  - **Environmental protection**: Minimising AI's negative environmental impacts\n\t\t  - **Resource efficiency**: Optimising use of computational and material resources\n\t\t  - **Climate action**: Contributing to climate change mitigation and adaptation\n\t\t  - **Long-term thinking**: Considering intergenerational impacts\n\t\t  - **Systemic approach**: Addressing sustainability across full AI lifecycle\n\t\t  \n\t\t  ## Relationships\n\t\t  \n\t\t  - **Parent Concept**: OECD AI Principle 1 (Inclusive Growth, Sustainable Development and Well-Being)\n\t\t  - **Related Terms**:\n\t\t    - Environmental Sustainability (AI-0169)\n\t\t    - Inclusive Growth (AI-0156)\n\t\t    - Well-Being (AI-0158)\n\t\t    - People and Planet Context (AI-0171)\n\t\t  - **Enables**: Green AI, computational sustainability, sustainable AI operations\n\t\t  \n\t\t  ## Implementation Considerations\n\t\t  \n\t\t  1. **Energy efficiency**: Optimising computational requirements and using renewable energy\n\t\t  2. **Model efficiency**: Reducing training and inference costs through architectural improvements\n\t\t  3. **Hardware lifecycle**: Considering embodied carbon in AI infrastructure\n\t\t  4. **E-waste management**: Responsible disposal and recycling of AI hardware\n\t\t  5. **Beneficial applications**: Deploying AI for environmental monitoring, climate modelling, resource optimisation\n\t\t  \n\t\t  ## OECD Framework Alignment\n\t\t  \n\t\t  - **Dimension**: People and Planet Context\n\t\t  - **Principle Number**: P1 (part 2 of 3)\n\t\t  - **Actor Responsibility**: Providers, deployers, and infrastructure operators\n\t\t  \n\t\t  ## Environmental Impact Dimensions\n\t\t  \n\t\t  ### Direct Impacts\n\t\t  - Training large models (carbon emissions from computation)\n\t\t  - Inference operations (ongoing energy consumption)\n\t\t  - Data centre cooling and infrastructure\n\t\t  - Hardware manufacturing and disposal\n\t\t  \n\t\t  ### Indirect Impacts\n\t\t  - Enabling resource-intensive applications\n\t\t  - Rebound effects from efficiency gains\n\t\t  - Behavioural changes induced by AI systems\n\t\t  \n\t\t  ### Beneficial Applications\n\t\t  - Climate modelling and prediction\n\t\t  - Renewable energy optimisation\n\t\t  - Biodiversity monitoring\n\t\t  - Precision agriculture\n\t\t  - Circular economy enablement\n\t\t  \n\t\t  ## 2024 Revision Updates\n\t\t  \n\t\t  The 2024 OECD revision significantly strengthened sustainable development by:\n\t\t  - Elevating environmental sustainability from implicit to explicit principle component\n\t\t  - Adding explicit reference to protecting natural environments\n\t\t  - Connecting to UN Sustainable Development Goals framework\n\t\t  - Addressing lifecycle environmental impacts\n\t\t  \n\t\t  ## Measurement Approaches\n\t\t  \n\t\t  Sustainable development in AI can be measured through:\n\t\t  - Carbon footprint per training run and inference operation\n\t\t  - Energy efficiency metrics (FLOPs per watt)\n\t\t  - Renewable energy percentage in AI infrastructure\n\t\t  - Environmental impact assessments across lifecycle\n\t\t  - Contribution to SDG targets through beneficial applications\n\t\t  \n\t\t  ## Regulatory Context\n\t\t  \n\t\t  Sustainable development principles inform:\n\t\t  - EU AI Act environmental considerations (recitals)\n\t\t  - Corporate sustainability reporting directives\n\t\t  - Energy efficiency regulations for data centres\n\t\t  - Extended producer responsibility for AI hardware\n\t\t  \n\t\t  ## Related Standards\n\t\t  \n\t\t  - ISO 14001:2015 - Environmental management systems\n\t\t  - ISO 14067:2018 - Greenhouse gases — Carbon footprint of products\n\t\t  - IEEE 7010-2020 - Assessing impact on human well-being (including environmental well-being)\n\t\t  \n\t\t  ## Challenges\n\t\t  \n\t\t  - **Measurement complexity**: Difficulty in comprehensive lifecycle assessment\n\t\t  - **Trade-offs**: Balancing performance with environmental impact\n\t\t  - **Scale effects**: Exponential growth in computational requirements for advanced models\n\t\t  - **Attribution**: Separating AI-specific impacts from general digital infrastructure\n\t\t  - **Rebound effects**: Efficiency gains potentially leading to increased overall consumption\n\t\t  \n\t\t  ## See Also\n\t\t  \n\t\t  - Environmental Sustainability (AI-0169)\n\t\t  - Inclusive Growth (AI-0156)\n\t\t  - Green AI (research literature)\n\t\t  - Computational Sustainability (AI framework concepts)\n\t\t  \n\t\t  ---\n\t\t  \n\t\t  *Part of AI Grounded Ontology - OECD AI Principles Framework*\n\t\t  *Aligned with OECD AI Principles 2024 and UN Sustainable Development Goals*\n\t\t  \n\t\t  ```\n\n- public-access:: true\n\t- definition:: AI should contribute to the United Nations Sustainable Development Goals by addressing global challenges including climate change, resource depletion, biodiversity loss, and environmental degradation whilst ensuring development meets present needs without compromising future generations' ability to meet their own needs.",
+   "parts": [
+    {
+     "key": "sustainable-development::see-also::p0",
+     "content_hash": "805b86915d68",
+     "title": "Sustainable Development > See Also (part 1)",
+     "sub_index": 0
+    },
+    {
+     "key": "sustainable-development::see-also::p1",
+     "content_hash": "ffdfa85a992d",
+     "title": "Sustainable Development > See Also (part 2)",
+     "sub_index": 1
+    },
+    {
+     "key": "sustainable-development::see-also::p2",
+     "content_hash": "7e4f7843e31e",
+     "title": "Sustainable Development > See Also (part 3)",
+     "sub_index": 2
+    }
+   ]
+  },
+  {
+   "file_name": "Model Performance.md",
+   "base": "model-performance::formal-ontology",
+   "section": "Formal Ontology",
+   "section0": false,
+   "text": "## Formal Ontology\n\n<details>\n<summary>OWL Functional Syntax</summary>\n\n```clojure\n;; Class Declaration\n(Declaration (Class :ModelPerformance))\n(SubClassOf :ModelPerformance :QualityMeasure)\n(SubClassOf :ModelPerformance :EvaluationConcept)\n\n;; Core relationships\n(SubClassOf :ModelPerformance\n  (ObjectSomeValuesFrom :measuresQualityOf :MachineLearningModel))\n(SubClassOf :ModelPerformance\n  (ObjectSomeValuesFrom :assessedVia :PerformanceMetric))\n(SubClassOf :ModelPerformance\n  (ObjectSomeValuesFrom :informsDecisionFor :ModelSelection))\n(SubClassOf :ModelPerformance\n  (ObjectSomeValuesFrom :informsDecisionFor :DeploymentReadiness))\n\n;; Performance dimensions\n(Declaration (Class :PredictionQuality))\n(Declaration (Class :ReliabilityAndRobustness))\n(Declaration (Class :CalibrationAndUncertainty))\n(Declaration (Class :ComputationalEfficiency))\n(Declaration (Class :DistributionalPerformance))\n(Declaration (ObjectProperty :hasDimension))\n\n(SubClassOf :ModelPerformance\n  (ObjectUnionValuesFrom :hasDimension\n    :PredictionQuality\n    :ReliabilityAndRobustness\n    :CalibrationAndUncertainty\n    :ComputationalEfficiency\n    :DistributionalPerformance))\n\n;; Classification metrics\n(Declaration (ObjectProperty :measuredBy))\n(SubClassOf :ModelPerformance\n  (ObjectUnionValuesFrom :measuredBy\n    :Accuracy :Precision :Recall :F1Score :AUC :ConfusionMatrix))\n\n;; Regression metrics\n(SubClassOf :ModelPerformance\n  (ObjectUnionValuesFrom :measuredBy\n    :MeanAbsoluteError :RootMeanSquareError :MeanAbsolutePercentageError))\n\n;; Multi-dimensional nature\n(Declaration (Class :MultiDimensionalAssessment))\n(SubClassOf :ModelPerformance :MultiDimensionalAssessment)\n(AnnotationAssertion rdfs:comment :MultiDimensionalAssessment\n  \"Model performance must be evaluated across multiple complementary metrics, not a single number\"@en)\n\n;; Context dependence\n(Declaration (Class :ContextDependentQuality))\n(Declaration (ObjectProperty :dependsOn))\n(SubClassOf :ModelPerformance :ContextDependentQuality)\n(SubClassOf :ModelPerformance\n  (ObjectSomeValuesFrom :dependsOn :ApplicationContext))\n(SubClassOf :ModelPerformance\n  (ObjectSomeValuesFrom :dependsOn :StakeholderRequirements))\n\n;; Trade-offs\n(Declaration (Class :AccuracyInterpretabilityTradeOff))\n(Declaration (Class :PrecisionRecallTradeOff))\n(Declaration (Class :PerformanceEfficiencyTradeOff))\n(Declaration (ObjectProperty :involvesTradeOff))\n\n(SubClassOf :ModelPerformance\n  (ObjectUnionValuesFrom :involvesTradeOff\n    :AccuracyInterpretabilityTradeOff\n    :PrecisionRecallTradeOff\n    :PerformanceEfficiencyTradeOff))\n\n;; Temporal dynamics\n(Declaration (Class :PerformanceDegradation))\n(Declaration (Class :DataDrift))\n(Declaration (ObjectProperty :affectedBy))\n(SubClassOf :ModelPerformance\n  (ObjectSomeValuesFrom :affectedBy :DataDrift))\n(SubClassOf :ModelPerformance\n  (ObjectSomeValuesFrom :canExperience :PerformanceDegradation))\n\n;; Monitoring requirement\n(Declaration (Class :AIMonitoring))\n(Declaration (ObjectProperty :requiresContinuous))\n(SubClassOf :ModelPerformance\n  (ObjectSomeValuesFrom :requiresContinuous :AIMonitoring))\n\n;; Disaggregation for fairness\n(Declaration (Class :SubgroupAnalysis))\n(Declaration (ObjectProperty :shouldInclude))\n(SubClassOf :ModelPerformance\n  (ObjectSomeValuesFrom :shouldInclude :SubgroupAnalysis))\n\n;; Annotations\n(AnnotationAssertion rdfs:label :ModelPerformance \"Model Performance\"@en)\n(AnnotationAssertion rdfs:comment :ModelPerformance\n  \"The quantitative and qualitative measure of how effectively an artificial intelligence model accomplishes its designated tasks, assessed through statistical metrics and evaluated across different conditions and stakeholder requirements.\"@en)\n(AnnotationAssertion dcterms:source :ModelPerformance <https://www.iso.org/standard/74438.html>)\n(AnnotationAssertion :termID :ModelPerformance \"AI-0106\"^^xsd:string)\n\n;; ISO/IEC and standards alignment\n(AnnotationAssertion :alignedWith :ModelPerformance :ISO25059)\n(AnnotationAssertion :alignedWith :ModelPerformance :ISO25010)\n(AnnotationAssertion :alignedWith :ModelPerformance :NISTAIRFM_MEASURE)\n(AnnotationAssertion :alignedWith :ModelPerformance :NISTAIRFM_MEASURE22)\n(AnnotationAssertion :alignedWith :ModelPerformance :NISTAIRFM_MEASURE23)\n```\n\n</details>",
+   "parts": [
+    {
+     "key": "model-performance::formal-ontology::p0",
+     "content_hash": "79f4d1da6249",
+     "title": "Model Performance > Formal Ontology (part 1)",
+     "sub_index": 0
+    },
+    {
+     "key": "model-performance::formal-ontology::p1",
+     "content_hash": "55fa81966f17",
+     "title": "Model Performance > Formal Ontology (part 2)",
+     "sub_index": 1
+    },
+    {
+     "key": "model-performance::formal-ontology::p2",
+     "content_hash": "dfe236d4ff5a",
+     "title": "Model Performance > Formal Ontology (part 3)",
+     "sub_index": 2
+    }
+   ]
+  },
+  {
+   "file_name": "ETSI_Domain_Immersive_Experiences.md",
+   "base": "etsidomainimmersiveexperiences::current-landscape-2025",
+   "section": "Current Landscape (2025)",
+   "section0": false,
+   "text": "## Current Landscape (2025)\n\n- Industry adoption and technical implementations\n  - 3D simulation applications now routinely place manipulable, interactive 3D objects within virtual environments, with particular prevalence in gaming, simulations, and professional training contexts[1]\n  - The MPEG-I Immersive Audio standard has been finalised, providing compelling, spatially-adaptive audio experiences essential for viable VR and AR deployments[3]\n  - First-person transfer immersive live experiences (FT-ILE) represent an emerging architectural paradigm, enabling users to experience events from the performer's perspective rather than the audience's viewpoint—imagine attending a piano recital whilst simultaneously experiencing the pianist's haptic sensations[4]\n  - F5G Advanced networks now support immersive AR/VR gaming services for remote players, demonstrating end-to-end quality-of-delivery capabilities through dedicated optical transport networks[6]\n  - Device adoption trajectories indicate rapid growth in MR-capable hardware, with adoption rates expected to accelerate substantially in the near term[1]\n\n- Technical capabilities and current limitations\n  - High-specification devices remain necessary for demanding 3D simulation applications, though accessibility continues to improve[1]\n  - Spatial audio adaptation to user head orientation and movement is now standardised, creating genuine presence sensations[3]\n  - First-person immersive experiences require sophisticated individual data capture and conversion mechanisms to scale sensory information to receiver capabilities—a technically demanding proposition[4]\n  - Quality-of-Service differentiation between best-effort and guaranteed-QoS traffic remains essential for reliable immersive service delivery[6]\n\n- Standards and frameworks\n  - ETSI GR CIM 052 V1.1.1 (2025-01) establishes the framework for immersive and functional AR experiences, addressing technical requirements, data models, implementation specifications, and UI/UX considerations[1][2]\n  - Experience API (XAPI) and SCORM represent the primary standards for e-learning immersive experiences data modelling, with XAPI demonstrating particular prevalence in interactive immersive contexts[2]\n  - ETSI GR ARF 020 Virtual Worlds Recommendations Report (2025) provides strategic guidance across eight technological domains: Infrastructure, Data Management, Artificial Intelligence, Reality Capture, Human Interface Systems, Immersive Experiences, Virtual Society, and Virtual Economy[5]\n  - ITU-T H.ILE-FT recommendations establish taxonomy, requirements, functional components, and architectural frameworks for first-person transfer immersive live experiences[4]\n  - ETSI TS 126 250 V18.2.0 (2025-01) specifies codec requirements for immersive voice and audio services within 5G and LTE environments[10]",
+   "parts": [
+    {
+     "key": "etsidomainimmersiveexperiences::current-landscape-2025::p0",
+     "content_hash": "5a550249f222",
+     "title": "ETSI_Domain_Immersive_Experiences > Current Landscape (2025) (part 1)",
+     "sub_index": 0
+    },
+    {
+     "key": "etsidomainimmersiveexperiences::current-landscape-2025::p1",
+     "content_hash": "9e3c000bbb42",
+     "title": "ETSI_Domain_Immersive_Experiences > Current Landscape (2025) (part 2)",
+     "sub_index": 1
+    }
+   ]
+  },
+  {
+   "file_name": "Transformer.md",
+   "base": "transformer::current-landscape-2025",
+   "section": "Current Landscape (2025)",
+   "section0": false,
+   "text": "## Current Landscape (2025)\n\n- Industry adoption and implementations\n\t- Transformers are widely adopted across industries for tasks such as machine translation, text generation, summarisation, and speech recognition\n\t- Major platforms leveraging transformer models include OpenAI’s GPT series, Google’s BERT, and Meta’s Llama, among others\n\t- In the UK, organisations such as DeepMind (London), Faculty (London), and the Alan Turing Institute have been instrumental in advancing transformer-based research and applications\n\n- Notable organisations and platforms\n\t- DeepMind has developed several transformer-based models for both language and multimodal tasks\n\t- The Alan Turing Institute supports collaborative research on transformer architectures, including their application to healthcare and social sciences\n\t- UK-based startups and SMEs are increasingly adopting transformer models for customer service chatbots, content generation, and data analysis\n\n- UK and North England examples where relevant\n\t- In Manchester, the University of Manchester’s Department of Computer Science has active research groups exploring transformer applications in healthcare and bioinformatics\n\t- Leeds University’s Institute for Artificial Intelligence is investigating transformer models for environmental monitoring and smart city applications\n\t- Newcastle University’s School of Computing is involved in developing transformer-based systems for assistive technologies and robotics\n\t- Sheffield’s Advanced Manufacturing Research Centre (AMRC) is exploring the use of transformers in industrial automation and predictive maintenance\n\n- Technical capabilities and limitations\n\t- Transformers excel at capturing long-range dependencies and contextual relationships in data, making them highly effective for language and sequence tasks\n\t- However, they can be computationally intensive, particularly for very large models, and may require significant resources for training and inference\n\t- Ongoing research is focused on improving efficiency, reducing memory requirements, and enhancing interpretability\n\n- Standards and frameworks\n\t- Popular frameworks for implementing transformer models include PyTorch, TensorFlow, and Hugging Face Transformers\n\t- Open-source libraries and pre-trained models have democratized access to transformer technology, enabling rapid prototyping and deployment",
+   "parts": [
+    {
+     "key": "transformer::current-landscape-2025::p0",
+     "content_hash": "2a2388d1cc16",
+     "title": "Transformer > Current Landscape (2025) (part 1)",
+     "sub_index": 0
+    },
+    {
+     "key": "transformer::current-landscape-2025::p1",
+     "content_hash": "ac80c3fbd5ac",
+     "title": "Transformer > Current Landscape (2025) (part 2)",
+     "sub_index": 1
+    }
+   ]
+  },
+  {
+   "file_name": "Human Interface Device.md",
+   "base": "human-interface-device::current-landscape-2025",
+   "section": "Current Landscape (2025)",
+   "section0": false,
+   "text": "## Current Landscape (2025)\n\n- Technical architecture and protocol design\n  - The HID protocol operates on a host-device model: the device interacts directly with humans (keyboard, mouse, touchscreen), whilst the host (typically a PC, though smartphones and PDAs can serve this role) communicates with the device and processes input data[2]\n  - Devices present a \"HID descriptor\"—a hardcoded byte array describing data packets, including packet count, size, and the purpose of each byte and bit[2]\n  - Implementation is notably simple; devices need not intrinsically parse their own descriptors, allowing even 8-bit CPUs to manage keyboard and mouse hardware[2]\n\n- Industry adoption and implementations\n  - HID is supported across major operating systems including Windows, macOS, Linux, Android, and Ubuntu[4][6]\n  - Generic drivers are built into modern operating systems, enabling plug-and-play functionality without requiring special driver installation[4][6]\n  - Device categories encompassing the HID standard include keyboards, mice, game controllers, joysticks, touchscreens, medical measuring devices, and industrial control systems[6]\n  - KVM (Keyboard-Video-Mouse) matrices and switches rely heavily on HID support to manage multiple input devices with low latency, critical for real-time applications[6]\n\n- UK and North England context\n  - Whilst the search results do not provide specific North England case studies, HID standardisation has been widely adopted across UK institutions, particularly in research facilities and control room environments where KVM systems are prevalent\n  - The standard's flexibility and cross-platform support have made it foundational to UK industrial automation and healthcare technology implementations\n\n- Standards and frameworks\n  - HID is formally defined within the USB specification framework, though Bluetooth HID profiles now standardise peripheral device connections over Bluetooth Low Energy[5]\n  - The standard's extensible specifications allow adaptation to emerging technologies without requiring fundamental protocol revision[6]",
+   "parts": [
+    {
+     "key": "human-interface-device::current-landscape-2025::p0",
+     "content_hash": "6f7173b70408",
+     "title": "Human Interface Device > Current Landscape (2025) (part 1)",
+     "sub_index": 0
+    },
+    {
+     "key": "human-interface-device::current-landscape-2025::p1",
+     "content_hash": "94bd413323cd",
+     "title": "Human Interface Device > Current Landscape (2025) (part 2)",
+     "sub_index": 1
+    }
+   ]
+  },
+  {
+   "file_name": "Bitcoin Mining.md",
+   "base": "bitcoin-mining::key-policy-findings:",
+   "section": "Key Policy Findings:",
+   "section0": false,
+   "text": "### Key Policy Findings:\n\n1. **National Interest Framework**: [[Bitcoin]]'s value—its [[economic value]] and promotion of [[American values]] and [[American national interests]]—must frame any discussion of its [[environmental impact]].\n\n2. **Proof-of-Work Essentiality**: [[Bitcoin]]'s value is inherently tied to its [[consensus mechanism]]: [[proof of work]]. Alternative mechanisms ([[proof-of-stake]]) sacrifice [[security]] and [[decentralization]] properties that define [[Bitcoin]].^[Bitcoin Policy Institute PoW Analysis 2023]\n\n3. **Energy Use Characterization**: While [[Bitcoin mining]] is [[energy-intensive]], its [[energy use]] is often overestimated and improperly characterized as a function of [[transaction volume]]. Energy use is actually a function of [[block reward]] value, [[mining competition]], and [[hardware efficiency]].\n\n4. **Emissions Trajectory**: Due to [[Bitcoin]]'s exponentially decreasing schedule of [[issuance]] (the [[halving]]), [[mining]]'s actual [[emissions]] are likely to peak at under **1% of global emissions**, even if prices rise more than tenfold within the decade. As of 2025, [[Bitcoin]] represents **0.14% of global emissions**.^[Cambridge Bitcoin Energy Analysis 2025]\n\n5. **Unique Energy Profile**: [[Mining]]'s profile as a consumer of [[energy]] is unique: extremely [[cost-sensitive]], and invariant across times and locations. This enables [[mining]] to utilize [[stranded energy]] and provide [[grid services]] impossible for traditional [[data centers]].\n\n6. **Renewable Buildout Incentive**: [[Bitcoin mining]], as a [[buyer of first and last resort]], incentivizes the buildout of [[renewable power]] production. As a [[controllable load resource]] (CLR), [[Bitcoin mining]] also strengthens the [[grid]], allowing it to reliably function at high levels of [[renewable penetration]]. **Texas ERCOT data confirms 23% reduction in peak pricing events 2022-2024.**^[ERCOT Impact Report 2024]\n\n7. **Non-Rival Energy Consumption**: [[Mining]]'s [[energy use]] is increasingly non-rival, trending towards a diet of [[renewables]] and [[stranded energy|stranded, wasted energy resources]] such as [[flared methane]]. As of 2025, **52.4% sustainable energy mix**.^[Bitcoin Mining Council Q4 2024]",
+   "parts": [
+    {
+     "key": "bitcoin-mining::key-policy-findings:::p0",
+     "content_hash": "6ce707a72924",
+     "title": "Bitcoin Mining > Key Policy Findings: (part 1)",
+     "sub_index": 0
+    },
+    {
+     "key": "bitcoin-mining::key-policy-findings:::p1",
+     "content_hash": "ad691b55a2ae",
+     "title": "Bitcoin Mining > Key Policy Findings: (part 2)",
+     "sub_index": 1
+    }
+   ]
+  },
+  {
+   "file_name": "Context Awareness.md",
+   "base": "context-awareness::research--literature",
+   "section": "Research & Literature",
+   "section0": false,
+   "text": "## Research & Literature\n\n- Key academic sources and foundational work\n  - Dey, A. K., & Abowd, G. D. (1999). \"Towards a Better Understanding of Context and Context-Awareness.\" *Proceedings of the Workshop on the What, Who, Where, When, and How of Context-Awareness*. Foundational framework distinguishing location, identity, activity, and time as core context dimensions.[1]\n  - Kaltz, E., Ziegert, T., & Mönks, U. (2005). Context-aware web applications. *Proceedings of the 5th International Conference on Web Engineering*. Extended categorisation framework addressing user roles, processes, tasks, and device contexts across mobile and web scenarios.[1]\n  - Nguyen, H. V., Zheng, Y., & Zeng, Z. (2010). \"Contextual Graphs for Activity Recognition.\" *IEEE Transactions on Mobile Computing*. Demonstrates contextual graph modelling and similarity-based reasoning approaches.[2]\n  - Yang, J., Nguyen, M. N., San, P. P., Li, X. L., & Krishnaswamy, S. (2013). \"Deep Convolutional Neural Networks on Multimodal Learning for Skeleton-based Action Recognition.\" *IEEE Transactions on Pattern Analysis and Machine Intelligence*. Addresses predicate-based context specification in distributed systems.[2]\n  - Rahmati, A., Zhong, L., & Balan, R. K. (2012). \"Context-for-Wireless: Context-Sensitive Energy-Efficient Wireless Data Radios.\" *IEEE Transactions on Mobile Computing*. Explores probabilistic and machine learning approaches to context modelling.[2]\n  - Zeng, Y. (2019). \"Context-Aware Machine Learning: A Survey.\" *ACM Computing Surveys*. Comprehensive review of embedding-based decompositions and classifier ensemble methods.[2]\n\n- Ongoing research directions\n  - Integration of generative AI with context awareness to enhance personalisation and anticipatory adaptation[4]\n  - Scalability of context-aware systems handling high-volume event streams (40+ million context events daily in production environments)[3]\n  - Privacy-preserving context inference without compromising system responsiveness[3]\n  - Cross-domain context transfer and generalisation beyond single-application silos[2]",
+   "parts": [
+    {
+     "key": "context-awareness::research--literature::p0",
+     "content_hash": "bd7bc9995b29",
+     "title": "Context Awareness > Research & Literature (part 1)",
+     "sub_index": 0
+    },
+    {
+     "key": "context-awareness::research--literature::p1",
+     "content_hash": "14d6a43f7186",
+     "title": "Context Awareness > Research & Literature (part 2)",
+     "sub_index": 1
+    }
+   ]
+  },
+  {
+   "file_name": "Transformer Architecture.md",
+   "base": "transformer-architecture::current-landscape-2025",
+   "section": "Current Landscape (2025)",
+   "section0": false,
+   "text": "## Current Landscape (2025)\n\n- Encoder-decoder architecture remains foundational\n  - Encoder transforms input sequence into contextual representation (context vector)\n  - Decoder generates output sequence iteratively, consuming encoder output and previously generated tokens[4]\n  - Original design: 6 encoder and 6 decoder layers (now variable based on task requirements)[1]\n  - Each layer comprises multi-head self-attention sublayer plus position-wise feed-forward network[2]\n\n- Adapted architectures dominate modern applications\n  - Decoder-only models: GPT family predicts next token in sequence[5]\n  - Encoder-only models: BERT performs masked token prediction for bidirectional context[5]\n  - Reflects practical finding that full encoder-decoder architecture unnecessary for many tasks\n  - Significantly reduces computational requirements compared to original design\n\n- Technical components and processing pipeline\n  - Embedding layer converts tokens into fixed-size vectors capturing semantic nuance[2]\n  - Positional embeddings compensate for transformers' lack of inherent sequential awareness[2]\n  - Linear and softmax blocks convert internal representations into probability distributions over vocabulary[3]\n  - Residual connections and layer normalisation stabilise training across deep architectures[2]\n\n- Industry adoption and implementations\n  - Large language models (LLMs) trained on massive datasets now standard across technology sector\n  - Applications span machine translation, speech recognition, protein sequence analysis, computer vision (vision transformers), reinforcement learning, multimodal learning, and robotics[5]\n  - Pre-trained transformer systems enable transfer learning across diverse downstream tasks\n  - Computational efficiency advantages over RNNs enable training on unprecedented dataset scales[5]\n\n- UK and North England context\n  - DeepMind (London-based, Alphabet subsidiary) continues foundational AI research utilising transformer architectures\n  - University of Manchester hosts significant machine learning research groups exploring transformer applications in healthcare and scientific computing\n  - Leeds and Sheffield universities contribute to NLP research and industrial applications\n  - UK AI sector increasingly adopts transformers for financial services, healthcare diagnostics, and language processing applications",
+   "parts": [
+    {
+     "key": "transformer-architecture::current-landscape-2025::p0",
+     "content_hash": "3cb6b462add7",
+     "title": "Transformer Architecture > Current Landscape (2025) (part 1)",
+     "sub_index": 0
+    },
+    {
+     "key": "transformer-architecture::current-landscape-2025::p1",
+     "content_hash": "2c30cdb6d016",
+     "title": "Transformer Architecture > Current Landscape (2025) (part 2)",
+     "sub_index": 1
+    }
+   ]
+  }
+ ],
+ "single": [
+  {
+   "file_name": "Trust Architecture.md",
+   "key": "trust-architecture::section-0::p0",
+   "section": "Section 0",
+   "text": "- ### OntologyBlock\n  id:: trust-architecture-ontology\n  collapsed:: true\n\t- ontology:: true\n\t- public-access:: true\n\t- term-id:: MV-10091\n\t- source-domain:: mv\n\t- preferred-term:: Trust Architecture\n\t- status:: active\n\t- definition:: The structural framework of protocols, technologies, and governance mechanisms that establish, verify, and maintain trust relationships between users, platforms, and services in decentralized digital environments and metaverse ecosystems.\n\t- owl:class:: mv:TrustArchitecture\n\t- belongsToDomain:: [[metaverse]]\n\t- #### Relationships\n\t\t- is-subclass-of:: [[Security Architecture]]\n\t\t- related-to:: [[Decentralized Identity]]\n\t\t- related-to:: [[Verifiable Credentials]]\n\t\t- related-to:: [[Zero Trust]]\n\t  id:: trust-architecture-relationships\n\t  collapsed:: true\n- ## Overview\n\t- Trust architecture in digital environments defines how trust is established, verified, and maintained across decentralized systems. This includes identity verification, credential management, cryptographic proofs, and governance structures that enable secure interactions without centralized authorities.\n- ## Technical Details\n\t- ### Trust Models\n\t\t- **Zero Trust**: Never trust, always verify - continuous authentication and authorization\n\t\t- **Decentralized Trust**: Distributed consensus and cryptographic verification\n\t\t- **Federated Trust**: Trust relationships between identity providers\n\t\t- **Reputation-Based Trust**: Historical behavior-based trust scores\n\t- ### Key Components\n\t\t- **Decentralized Identifiers (DIDs)**: Self-sovereign identity anchors\n\t\t- **Verifiable Credentials**: Cryptographically signed attestations\n\t\t- **Smart Contract Enforcement**: Automated trust rule execution\n\t\t- **Consensus Mechanisms**: Distributed agreement on truth\n\t- ### Implementation Patterns\n\t\t- Multi-signature authorization\n\t\t- Threshold cryptography\n\t\t- Proof-of-stake validation\n\t\t- Trusted execution environments (TEE)\n- ## Applications\n\t- Cross-platform metaverse identity verification\n\t- Secure asset transfer between virtual worlds\n\t- DAO governance trust frameworks\n\t- Decentralized marketplace escrow\n\t- Privacy-preserving authentication",
+   "content_hash": "098b83f22c01",
+   "title": "Trust Architecture > Section 0 (part 1)"
+  },
+  {
+   "file_name": "Transparency Metrics.md",
+   "key": "transparency-metrics::section-0::p0",
+   "section": "Section 0",
+   "text": "- ### OntologyBlock\n  id:: transparency-metrics-ontology\n  collapsed:: true\n\t- ontology:: true\n\t- public-access:: true\n\t- term-id:: MV-10085\n\t- source-domain:: mv\n\t- preferred-term:: Transparency Metrics\n\t- status:: active\n\t- definition:: Quantitative and qualitative measures used to assess and communicate the openness, accountability, and visibility of governance, operations, and decision-making processes in digital platforms, DAOs, and metaverse environments.\n\t- owl:class:: mv:TransparencyMetrics\n\t- belongsToDomain:: [[metaverse]]\n\t- #### Relationships\n\t\t- is-subclass-of:: [[Governance]]\n\t\t- related-to:: [[Transparent Governance]]\n\t\t- related-to:: [[Accountability]]\n\t\t- related-to:: [[Open Data]]\n\t  id:: transparency-metrics-relationships\n\t  collapsed:: true\n- ## Overview\n\t- Transparency metrics enable measurement and benchmarking of organizational openness and accountability. The T-Index measures real transparency using 14 de facto components across 129 countries. Sustainability reporting frameworks like GRI, SASB, and TCFD provide standardized ESG metrics.\n- ## Technical Details\n\t- ### Measurement Frameworks\n\t\t- **T-Index**: 14 de facto components based on website observations + 5 de jure components from laws\n\t\t- **WEF Stakeholder Capitalism Metrics**: 55 metrics for corporate transparency\n\t\t- **GRI (Global Reporting Initiative)**: Sustainability reporting standards\n\t\t- **SASB**: Industry-specific sustainability accounting standards\n\t- ### Key Metrics Categories\n\t\t- **Data Disclosure**: Open data availability and accessibility\n\t\t- **Decision Transparency**: Visibility of governance processes\n\t\t- **Financial Reporting**: Revenue, spending, and allocation disclosure\n\t\t- **Performance Tracking**: Measurable goals and progress reporting\n\t- ### Blockchain-Enabled Transparency\n\t\t- On-chain voting records\n\t\t- Treasury balance visibility\n\t\t- Smart contract execution logs\n\t\t- Token distribution analytics\n- ## Applications\n\t- DAO governance transparency reporting\n\t- Corporate ESG compliance measurement\n\t- Government open data initiatives\n\t- Metaverse platform accountability\n\t- Digital identity transparency verification",
+   "content_hash": "e46cfd73b5ad",
+   "title": "Transparency Metrics > Section 0 (part 1)"
+  },
+  {
+   "file_name": "Digital Twin Construction.md",
+   "key": "digital-twin-construction::section-0::p0",
+   "section": "Section 0",
+   "text": "- ### OntologyBlock\n  id:: digital-twin-construction-ontology\n  collapsed:: true\n\t- ontology:: true\n\t- public-access:: true\n\t- term-id:: MV-9874\n\t- source-domain:: mv\n\t- preferred-term:: Digital Twin Construction\n\t- definition:: The application of digital twin technology within the architecture, engineering, and construction (AEC) industry, extending BIM capabilities through real-time sensor integration and IoT connectivity to create dynamic virtual replicas of buildings and infrastructure throughout their lifecycle.\n\t- status:: active\n\t- owl:class:: mv:DigitalTwinConstruction\n\t- belongsToDomain:: [[metaverse]]\n\t- #### Relationships\n\t  id:: digital-twin-construction-relationships\n\t  collapsed:: true\n\t\t- is-subclass-of:: [[Digital Twin]]\n\t\t- enables:: [[Building Lifecycle Management]], [[Predictive Maintenance]], [[Construction Optimization]]\n\t\t- requires:: [[BIM]], [[IoT Sensors]], [[Cloud Platform]]\n\t\t- related-to:: [[Smart Building]], [[Construction Metaverse]], [[Facility Management]]\n- ## Technical Details\n\t- **BIM to Digital Twin Evolution**:\n\t\t- BIM: Static digital representation requiring manual updates\n\t\t- Digital Twin: Dynamic model with real-time sensor integration\n\t\t- Metaverse: Immersive 3D platform combining DT data with VR/AR interaction\n\t- **Key Technologies**:\n\t\t- Building Information Modeling (BIM) as foundation\n\t\t- IoT sensors and Internet of Things connectivity\n\t\t- AI/ML for predictive analytics\n\t\t- AR/VR for immersive visualization\n\t\t- Cloud computing for data processing\n\t- **Integration Benefits**:\n\t\t- Complete platform for building lifecycle management\n\t\t- Real-time simulation and scenario testing\n\t\t- Enhanced stakeholder collaboration\n\t\t- Improved schedule, cost, quality, and safety outcomes\n\t- **2024 Recognition**: World Economic Forum named \"Immersive Technology for the Built World\" as Top 10 Emerging Technologies\n- ## Applications\n\t- Construction project monitoring\n\t- Building operations optimization\n\t- Predictive maintenance scheduling\n\t- Virtual design review and coordination\n\t- Training and safety simulation",
+   "content_hash": "5dc619808845",
+   "title": "Digital Twin Construction > Section 0 (part 1)"
+  },
+  {
+   "file_name": "Standards Conformance Testing.md",
+   "key": "standards-conformance-testing::section-0::p0",
+   "section": "Section 0",
+   "text": "- ### OntologyBlock\n  id:: standards-conformance-testing-ontology\n  collapsed:: true\n\t- ontology:: true\n\t- public-access:: true\n\t- term-id:: MV-10072\n\t- source-domain:: mv\n\t- preferred-term:: Standards Conformance Testing\n\t- status:: active\n\t- definition:: Testing or verification activities that determine whether a process, product, or service complies with the requirements of a specification, technical standard, contract, or regulation, verifying that implementations faithfully meet specified requirements.\n\t- owl:class:: mv:StandardsConformanceTesting\n\t- belongsToDomain:: [[metaverse]]\n\t- #### Relationships\n\t\t- is-subclass-of:: [[Standards]]\n\t\t- related-to:: [[Standards Conformance]]\n\t\t- related-to:: [[Standards Validation]]\n\t\t- related-to:: [[Interoperability]]\n\t  id:: standards-conformance-testing-relationships\n\t  collapsed:: true\n- ## Overview\n\t- Conformance testing, also known as compliance testing or type testing, is an element of conformity assessment that ensures implementations correctly meet standard requirements. The fundamental components include having a defined standard or specification, a conformance clause or test method, and mechanisms for testing such as test suites or testing tools.\n- ## Technical Details\n\t- ### Core Requirements\n\t\t- A standard or specification defining requirements\n\t\t- A conformance clause that defines what compliance means\n\t\t- Test suites or testing tools for verification\n\t\t- Development of test suites is often the most costly part of conformity assessment\n\t- ### Key Standards\n\t\t- **ISO/IEC/IEEE 29119**: International standard for software testing defining vocabulary, processes, documentation, and techniques\n\t\t- **ISO/IEC 27001**: IT security compliance standard\n\t\t- **NIST Cybersecurity Framework**: Security testing framework\n\t\t- **IEC 60870-6, 61850, DLMS**: Protocol conformance testing standards\n- ## Applications\n\t- Software product verification against specifications\n\t- Protocol conformance testing for interoperability\n\t- IT security compliance verification\n\t- Compiler testing against language standards\n\t- Portability and interoperability assurance",
+   "content_hash": "06293ae927f6",
+   "title": "Standards Conformance Testing > Section 0 (part 1)"
+  }
+ ]
+}
