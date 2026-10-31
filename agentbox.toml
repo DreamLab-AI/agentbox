@@ -1247,8 +1247,8 @@ weekly_window = true
 # their paths and any private project names stay out of this public file.
 # Edit the crontab to add or change jobs (-inotify reloads it); no rebuild is
 # needed after the first one. A missing crontab file leaves the program idle.
-# REBUILD-class to enable.
-enabled = false
+# REBUILD-class. Shipped true: harmless when the crontab file is absent.
+enabled = true
 
 [seo_watch]
 # Website ADR-2010: nightly SEO and AI-agent-searchability watch for
