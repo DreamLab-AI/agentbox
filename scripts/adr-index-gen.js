@@ -5,17 +5,36 @@
  * adr-index-gen.js — walk an ADR docs tree, parse YAML frontmatter, validate,
  * and (re)generate a README.md index table from the frontmatter.
  *
- * Usage:  node scripts/adr-index-gen.js <dir> [--check] [--check-index]
+ * Usage:  node scripts/adr-index-gen.js <dir> [--check] [--check-index] [--exclude NAME]...
  *
  *   <dir>          directory to walk recursively for *.md ADR files
  *   --check        validate only; do not write README.md (still exits 1 on error)
  *   --check-index  additionally compare the generated table against the README
  *                  on disk and FAIL when they differ (implies --check)
+ *   --exclude NAME skip a file that is not a decision record (e.g. a hand-kept
+ *                  pointer index). NAME is a path relative to <dir> or a bare
+ *                  file name. Repeatable; `--exclude=NAME` also works. Adds to
+ *                  the `exclude` list of the ledger config.
+ *
+ * Ledger config (optional): <dir>/.ledger.json
+ *
+ *   { "repo": "ontomark",                  // string, or an array of accepted values
+ *     "exclude": ["ESTATE-ADRS.md"],       // files to skip, as for --exclude
+ *     "regenerate": "bash scripts/adr-ledger.sh write" }
+ *                                          // command printed in the index and in
+ *                                          // stale-index failures (default:
+ *                                          // `node scripts/adr-index-gen.js <dir>`)
+ *
+ *   Without the file the behaviour is the historical one: `repo` must be
+ *   `visionclaw` or `agentbox`, nothing extra is excluded, and the generated
+ *   index is byte-for-byte what it was before the config existed. A config file
+ *   that is not valid JSON, or has a field of the wrong type, is a usage error
+ *   (exit 2) rather than a silent fallback to the defaults.
  *
  * Exit codes:
  *   0  all validations passed (README written unless --check/--check-index)
  *   1  one or more validation errors, or (with --check-index) a stale index
- *   2  usage / IO error
+ *   2  usage / IO / ledger-config error
  *
  * ADR-2001. `--check` validates RECORDS; on its own it says nothing about the
  * README. That is a real gap, not a nicety: a fixture with a deliberately stale
@@ -41,11 +60,14 @@ const REQUIRED_FIELDS = [
   'owner', 'review_trigger', 'repo',
 ];
 
+const DEFAULT_REPOS = ['visionclaw', 'agentbox'];
+const CONFIG_NAME = '.ledger.json';
+
 const ENUMS = {
   decision_status: ['proposed', 'accepted', 'rejected', 'superseded'],
   implementation_status: ['none', 'partial', 'complete'],
   activation_status: ['inactive', 'staged', 'live'],
-  repo: ['visionclaw', 'agentbox'],
+  repo: DEFAULT_REPOS,
 };
 
 // Files that are templates/skeletons: validated for structure but excluded
@@ -83,10 +105,12 @@ function parseFrontmatter(text, file) {
   return out;
 }
 
-function walk(dir, acc) {
+function walk(dir, acc, root = dir, exclude = new Set()) {
   for (const ent of fs.readdirSync(dir, { withFileTypes: true })) {
     const p = path.join(dir, ent.name);
-    if (ent.isDirectory()) walk(p, acc);
+    const rel = path.relative(root, p).split(path.sep).join('/');
+    if (exclude.has(rel) || exclude.has(ent.name)) continue;
+    if (ent.isDirectory()) walk(p, acc, root, exclude);
     else if (
       ent.isFile() &&
       ent.name.endsWith('.md') &&
@@ -98,17 +122,79 @@ function walk(dir, acc) {
   return acc;
 }
 
+// Read <dir>/.ledger.json. Returns { repos, exclude, regenerate } or throws an
+// Error whose message is a usage-level complaint (the caller exits 2).
+function loadLedgerConfig(dir) {
+  const cfg = { repos: DEFAULT_REPOS.slice(), exclude: [], regenerate: null };
+  const file = path.join(dir, CONFIG_NAME);
+  if (!fs.existsSync(file)) return cfg;
+  let j;
+  try { j = JSON.parse(fs.readFileSync(file, 'utf8')); }
+  catch (e) { throw new Error(`${file}: not valid JSON (${e.message})`); }
+  if (j === null || typeof j !== 'object' || Array.isArray(j)) {
+    throw new Error(`${file}: must be a JSON object`);
+  }
+  const strList = (v, name) => {
+    const a = typeof v === 'string' ? [v] : v;
+    if (!Array.isArray(a) || a.length === 0 || a.some(x => typeof x !== 'string' || x.trim() === '')) {
+      throw new Error(`${file}: '${name}' must be a non-empty string or array of non-empty strings`);
+    }
+    return a.map(x => x.trim());
+  };
+  if ('repo' in j) cfg.repos = strList(j.repo, 'repo');
+  if ('exclude' in j) {
+    if (!Array.isArray(j.exclude) || j.exclude.some(x => typeof x !== 'string' || x.trim() === '')) {
+      throw new Error(`${file}: 'exclude' must be an array of non-empty strings`);
+    }
+    cfg.exclude = j.exclude.map(x => x.trim());
+  }
+  if ('regenerate' in j) {
+    if (typeof j.regenerate !== 'string' || j.regenerate.trim() === '') {
+      throw new Error(`${file}: 'regenerate' must be a non-empty string`);
+    }
+    cfg.regenerate = j.regenerate.trim();
+  }
+  for (const k of Object.keys(j)) {
+    if (!['repo', 'exclude', 'regenerate'].includes(k)) {
+      throw new Error(`${file}: unknown key '${k}' (known: repo, exclude, regenerate)`);
+    }
+  }
+  return cfg;
+}
+
 function main() {
   const args = process.argv.slice(2);
+  const USAGE = 'usage: adr-index-gen.js <dir> [--check] [--check-index] [--exclude NAME]...';
   const checkIndex = args.includes('--check-index');
   const check = args.includes('--check') || checkIndex;
-  const dir = args.find(a => !a.startsWith('--'));
-  if (!dir) { fail('usage: adr-index-gen.js <dir> [--check] [--check-index]'); process.exit(2); }
+  // Positional <dir> is the first token that is neither a flag nor the value of
+  // --exclude (otherwise `--exclude X <dir>` would mistake X for the directory).
+  let dir = null;
+  const cliExclude = [];
+  for (let i = 0; i < args.length; i++) {
+    const a = args[i];
+    if (a === '--exclude') {
+      if (i + 1 >= args.length) { fail(`--exclude needs a value; ${USAGE}`); process.exit(2); }
+      cliExclude.push(args[++i]);
+    } else if (a.startsWith('--exclude=')) {
+      cliExclude.push(a.slice('--exclude='.length));
+    } else if (!a.startsWith('--') && dir === null) {
+      dir = a;
+    }
+  }
+  if (!dir) { fail(USAGE); process.exit(2); }
   if (!fs.existsSync(dir) || !fs.statSync(dir).isDirectory()) {
     fail(`not a directory: ${dir}`); process.exit(2);
   }
+  let cfg;
+  try { cfg = loadLedgerConfig(dir); }
+  catch (e) { fail(e.message); process.exit(2); }
+  if (cliExclude.some(x => x.trim() === '')) { fail(`--exclude needs a non-empty value; ${USAGE}`); process.exit(2); }
+  ENUMS.repo = cfg.repos;
+  const regenerateCmd = cfg.regenerate || `node scripts/adr-index-gen.js ${dir}`;
+  const exclude = new Set([...cfg.exclude, ...cliExclude.map(x => x.trim())].map(x => x.replace(/^\.\//, '')));
 
-  const files = walk(dir, []);
+  const files = walk(dir, [], dir, exclude);
   const records = [];
   let errors = 0;
 
@@ -243,7 +329,7 @@ function main() {
   if (fs.existsSync(preamblePath)) {
     md += fs.readFileSync(preamblePath, 'utf8').trim() + '\n\n';
   }
-  md += `_${rows.length} record(s). Regenerate with_ \`node scripts/adr-index-gen.js ${dir}\`.\n\n`;
+  md += `_${rows.length} record(s). Regenerate with_ \`${regenerateCmd}\`.\n\n`;
   md += '| ID | Title | Domain | Date | Decision | Impl | Activation | Supersedes | Superseded by | Owner | Repo |\n';
   md += '|----|-------|--------|------|----------|------|------------|------------|---------------|-------|------|\n';
   for (const r of rows) {
@@ -279,7 +365,7 @@ function main() {
     console.error(`  first difference at line ${at + 1}`);
     console.error(`    on disk:   ${JSON.stringify(cur[at] ?? '<end of file>')}`);
     console.error(`    generated: ${JSON.stringify(gen[at] ?? '<end of file>')}`);
-    console.error(`  regenerate with: node scripts/adr-index-gen.js ${dir}`);
+    console.error(`  regenerate with: ${regenerateCmd}`);
     process.exit(1);
   }
 
