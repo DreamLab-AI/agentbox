@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: b65c3d4eda3c2449d7ea8512ae1bda33a24c2312
+verified_commit: 75378856483d13f952569018421c4526da0aede2
 verified_paths: [flake.nix, comfyui-sidecar/Dockerfile, docker-compose.comfyui.yml, docker-compose.gui-tools.yml, gui-tools-sidecar, skills/blender/tools, skills/comfyui/mcp-server, skills/comfyui/scripts, skills/comfyui/models/stopmotion-candidates.json]
 owner: jjohare
 review_trigger: media control-plane protocol, sidecar dependencies, workflow state handling or model provisioning changes
@@ -16,6 +16,15 @@ domain: BASELINE-container
 ---
 
 # ADR-2148: Typed remote media control planes alongside existing bridges
+
+## Scoped re-verification — 2026-10-31
+
+Reviewed the governed-path delta since the previous verification: only the
+operator user-cron gate, devuser supervisor block, rebuild-class catalogue entry
+and its boolean schema registration changed. Existing capability, identity,
+storage and network contracts are unchanged. Preflight, manifest validation,
+25 role-isolation supervisor checks and the user-cron schema regression pass.
+This does not promote any activation status or claim a live role-isolation rehearsal.
 
 ## Deployment verification — 2026-10-30 (SpEdE)
 

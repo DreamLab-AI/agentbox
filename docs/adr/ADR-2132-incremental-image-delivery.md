@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: b65c3d4eda3c2449d7ea8512ae1bda33a24c2312
+verified_commit: 75378856483d13f952569018421c4526da0aede2
 verified_paths: [agentbox.sh, scripts/runtime-delivery.*, scripts/refresh-compose.sh, config/build-registry.json, lib/image-layers.nix, flake.nix, tests/config/runtime-delivery*, .github/workflows/invariants.yml, docs/developer/incremental-builds.md]
 owner: jjohare
 review_trigger: layer grouping, delivery transport, candidate validation or cache retention changes
@@ -16,6 +16,15 @@ domain: BASELINE-container
 ---
 
 # ADR-2132 — Incremental image delivery and explicit activation
+
+## Scoped re-verification — 2026-10-31
+
+Reviewed the governed-path delta since the previous verification: only the
+operator user-cron gate, devuser supervisor block, rebuild-class catalogue entry
+and its boolean schema registration changed. Existing capability, identity,
+storage and network contracts are unchanged. Preflight, manifest validation,
+25 role-isolation supervisor checks and the user-cron schema regression pass.
+This does not promote any activation status or claim a live role-isolation rehearsal.
 
 ## Re-verification — 2026-10-29 at 3b498088e (ADR-2153 cutover)
 

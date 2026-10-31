@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: inactive
 supersedes: []
 superseded_by: [ADR-2153]
-verified_commit: b65c3d4eda3c2449d7ea8512ae1bda33a24c2312
+verified_commit: 75378856483d13f952569018421c4526da0aede2
 verified_paths: [config/nip98-proxy/proxy.mjs, flake.nix]
 owner: jjohare
 review_trigger: next image rebuild (activation), or any new consumer of :9095, or per-process isolation becoming available
@@ -15,6 +15,15 @@ repo: agentbox
 ---
 
 # ADR-2002 — AoE interaction plane requires token auth — loopback is not a boundary
+
+## Scoped re-verification — 2026-10-31
+
+Reviewed the governed-path delta since the previous verification: only the
+operator user-cron gate, devuser supervisor block, rebuild-class catalogue entry
+and its boolean schema registration changed. Existing capability, identity,
+storage and network contracts are unchanged. Preflight, manifest validation,
+25 role-isolation supervisor checks and the user-cron schema regression pass.
+This does not promote any activation status or claim a live role-isolation rehearsal.
 
 ## Re-verification — 2026-10-29 at 3b498088e (ADR-2153 cutover)
 

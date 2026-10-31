@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: b65c3d4eda3c2449d7ea8512ae1bda33a24c2312
+verified_commit: 75378856483d13f952569018421c4526da0aede2
 verified_paths: [agentbox.toml, flake.nix]
 owner: jjohare
 review_trigger: ingress_policy changes from allowlist, or the ADR-040 D3 governance-publisher key-split lands
@@ -17,6 +17,15 @@ lineage: legacy ADR-040 (learning consumers / governance publisher key-split), s
 ---
 
 # ADR-2012 — Relay ingress is allowlist-only, no fallback, no auto-add
+
+## Scoped re-verification — 2026-10-31
+
+Reviewed the governed-path delta since the previous verification: only the
+operator user-cron gate, devuser supervisor block, rebuild-class catalogue entry
+and its boolean schema registration changed. Existing capability, identity,
+storage and network contracts are unchanged. Preflight, manifest validation,
+25 role-isolation supervisor checks and the user-cron schema regression pass.
+This does not promote any activation status or claim a live role-isolation rehearsal.
 
 ## Re-verification — 2026-10-29 at 3b498088e (ADR-2153 cutover)
 
