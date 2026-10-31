@@ -1549,63 +1549,83 @@
           "properties": {
             "specification": {
               "type": "string",
-              "pattern": "^(claude|codex):[A-Za-z0-9._-]+([ ]*->[ ]*(claude|codex):[A-Za-z0-9._-]+)?$",
+              "pattern": "^(claude|codex|loom|zai):[A-Za-z0-9._-]+([ ]*->[ ]*(claude|codex|loom|zai):[A-Za-z0-9._-]+)?$",
               "description": "\"host:model\" with an optional \" -> host:model\" escalation rung (cross-vendor preferred)."
             },
             "architecture": {
               "type": "string",
-              "pattern": "^(claude|codex):[A-Za-z0-9._-]+([ ]*->[ ]*(claude|codex):[A-Za-z0-9._-]+)?$",
+              "pattern": "^(claude|codex|loom|zai):[A-Za-z0-9._-]+([ ]*->[ ]*(claude|codex|loom|zai):[A-Za-z0-9._-]+)?$",
               "description": "\"host:model\" with an optional \" -> host:model\" escalation rung (cross-vendor preferred)."
             },
             "design": {
               "type": "string",
-              "pattern": "^(claude|codex):[A-Za-z0-9._-]+([ ]*->[ ]*(claude|codex):[A-Za-z0-9._-]+)?$",
+              "pattern": "^(claude|codex|loom|zai):[A-Za-z0-9._-]+([ ]*->[ ]*(claude|codex|loom|zai):[A-Za-z0-9._-]+)?$",
               "description": "\"host:model\" with an optional \" -> host:model\" escalation rung (cross-vendor preferred)."
             },
             "implementation": {
               "type": "string",
-              "pattern": "^(claude|codex):[A-Za-z0-9._-]+([ ]*->[ ]*(claude|codex):[A-Za-z0-9._-]+)?$",
+              "pattern": "^(claude|codex|loom|zai):[A-Za-z0-9._-]+([ ]*->[ ]*(claude|codex|loom|zai):[A-Za-z0-9._-]+)?$",
               "description": "\"host:model\" with an optional \" -> host:model\" escalation rung (cross-vendor preferred)."
             },
             "testing": {
               "type": "string",
-              "pattern": "^(claude|codex):[A-Za-z0-9._-]+([ ]*->[ ]*(claude|codex):[A-Za-z0-9._-]+)?$",
+              "pattern": "^(claude|codex|loom|zai):[A-Za-z0-9._-]+([ ]*->[ ]*(claude|codex|loom|zai):[A-Za-z0-9._-]+)?$",
               "description": "\"host:model\" with an optional \" -> host:model\" escalation rung (cross-vendor preferred)."
             },
             "review": {
               "type": "string",
-              "pattern": "^(claude|codex):[A-Za-z0-9._-]+([ ]*->[ ]*(claude|codex):[A-Za-z0-9._-]+)?$",
+              "pattern": "^(claude|codex|loom|zai):[A-Za-z0-9._-]+([ ]*->[ ]*(claude|codex|loom|zai):[A-Za-z0-9._-]+)?$",
               "description": "\"host:model\" with an optional \" -> host:model\" escalation rung (cross-vendor preferred)."
             },
             "security-scan": {
               "type": "string",
-              "pattern": "^(claude|codex):[A-Za-z0-9._-]+([ ]*->[ ]*(claude|codex):[A-Za-z0-9._-]+)?$",
+              "pattern": "^(claude|codex|loom|zai):[A-Za-z0-9._-]+([ ]*->[ ]*(claude|codex|loom|zai):[A-Za-z0-9._-]+)?$",
               "description": "\"host:model\" with an optional \" -> host:model\" escalation rung (cross-vendor preferred)."
             },
             "security-analysis": {
               "type": "string",
-              "pattern": "^(claude|codex):[A-Za-z0-9._-]+([ ]*->[ ]*(claude|codex):[A-Za-z0-9._-]+)?$",
+              "pattern": "^(claude|codex|loom|zai):[A-Za-z0-9._-]+([ ]*->[ ]*(claude|codex|loom|zai):[A-Za-z0-9._-]+)?$",
               "description": "\"host:model\" with an optional \" -> host:model\" escalation rung (cross-vendor preferred)."
             },
             "documentation": {
               "type": "string",
-              "pattern": "^(claude|codex):[A-Za-z0-9._-]+([ ]*->[ ]*(claude|codex):[A-Za-z0-9._-]+)?$",
+              "pattern": "^(claude|codex|loom|zai):[A-Za-z0-9._-]+([ ]*->[ ]*(claude|codex|loom|zai):[A-Za-z0-9._-]+)?$",
               "description": "\"host:model\" with an optional \" -> host:model\" escalation rung (cross-vendor preferred)."
             },
             "debugging": {
               "type": "string",
-              "pattern": "^(claude|codex):[A-Za-z0-9._-]+([ ]*->[ ]*(claude|codex):[A-Za-z0-9._-]+)?$",
+              "pattern": "^(claude|codex|loom|zai):[A-Za-z0-9._-]+([ ]*->[ ]*(claude|codex|loom|zai):[A-Za-z0-9._-]+)?$",
               "description": "\"host:model\" with an optional \" -> host:model\" escalation rung (cross-vendor preferred)."
             },
             "packaging": {
               "type": "string",
-              "pattern": "^(claude|codex):[A-Za-z0-9._-]+([ ]*->[ ]*(claude|codex):[A-Za-z0-9._-]+)?$",
+              "pattern": "^(claude|codex|loom|zai):[A-Za-z0-9._-]+([ ]*->[ ]*(claude|codex|loom|zai):[A-Za-z0-9._-]+)?$",
               "description": "\"host:model\" with an optional \" -> host:model\" escalation rung (cross-vendor preferred)."
             },
             "release": {
               "type": "string",
-              "pattern": "^(claude|codex):[A-Za-z0-9._-]+([ ]*->[ ]*(claude|codex):[A-Za-z0-9._-]+)?$",
+              "pattern": "^(claude|codex|loom|zai):[A-Za-z0-9._-]+([ ]*->[ ]*(claude|codex|loom|zai):[A-Za-z0-9._-]+)?$",
               "description": "\"host:model\" with an optional \" -> host:model\" escalation rung (cross-vendor preferred)."
+            },
+            "diagram-polish": {
+              "type": "string",
+              "pattern": "^(claude|codex|loom|zai):[A-Za-z0-9._-]+([ ]*->[ ]*(claude|codex|loom|zai):[A-Za-z0-9._-]+)?$",
+              "description": "ADR-2130: sealmap diagram polish. Starts on the Loom (host `loom`, OpenAI chat-completions, LAN, $0 marginal); escalation triggers are checked by the skill."
+            },
+            "diagram-narrative": {
+              "type": "string",
+              "pattern": "^(claude|codex|loom|zai):[A-Za-z0-9._-]+([ ]*->[ ]*(claude|codex|loom|zai):[A-Za-z0-9._-]+)?$",
+              "description": "ADR-2130: sealmap narrative writing (T2)."
+            },
+            "diagram-synthesis": {
+              "type": "string",
+              "pattern": "^(claude|codex|loom|zai):[A-Za-z0-9._-]+([ ]*->[ ]*(claude|codex|loom|zai):[A-Za-z0-9._-]+)?$",
+              "description": "ADR-2130: sealmap whole-corpus synthesis (T3)."
+            },
+            "seal-review": {
+              "type": "string",
+              "pattern": "^(claude|codex|loom|zai):[A-Za-z0-9._-]+([ ]*->[ ]*(claude|codex|loom|zai):[A-Za-z0-9._-]+)?$",
+              "description": "ADR-2130: seal review, always a different model family from the author (host `zai` = GLM on the Z.AI Anthropic Messages API; metered, leaves the estate, ADR-2053)."
             }
           }
         },

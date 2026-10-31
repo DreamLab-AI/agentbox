@@ -230,13 +230,20 @@ describe('ADR-2105 event-kind rows — the 38400-38499 band fixture', () => {
     expect(rows.map((r) => snake(r.name))).toEqual(consts.map(([c]) => c));
   });
 
-  test('every row appears in docs/PROTOCOL-registry.md and the old 3810x/3811x numbers are retired', () => {
+  test('every row appears in docs/PROTOCOL-registry.md', () => {
     for (const row of EK.kinds) {
-      const inRow = new RegExp(`\\\`${row.kind}\\\``).test(registry)
-        || (row.kind >= 38421 && /`38421`-`38425`/.test(registry) && row.kind <= 38425);
-      expect({ kind: row.kind, documented: inRow }).toEqual({ kind: row.kind, documented: true });
+      const named = new RegExp(`\`${row.kind}\``).test(registry);
+      // 38421-38425 are documented as one range row in the registry.
+      const ranged = row.kind >= 38421 && row.kind <= 38425 && registry.includes('`38421`-`38425`');
+      expect({ kind: row.kind, documented: named || ranged }).toEqual({ kind: row.kind, documented: true });
     }
-    for (const row of EK.kinds) expect(row.kind).not.toBeLessThan(38400);
+  });
+
+  test('the pre-move 38100-38105 numbers are gone from the colloquy kind constants', () => {
+    const numbers = [...kindsRs.matchAll(/pub const KIND_[A-Z_]+: u64 = (\d+(?:_\d+)*);/g)]
+      .map((m) => Number(m[1].replace(/_/g, '')));
+    for (const n of numbers) expect(n >= 38100 && n <= 38115).toBe(false);
+    expect(registry).not.toMatch(/`3810[0-5]`\s*\|\s*\*\*agentbox/);
   });
 });
 

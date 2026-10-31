@@ -1022,7 +1022,13 @@ async function start() {
           logger,
           manifest,
           adapters: resolvedAdapters,
-          execution: { snapshot: require('./lib/action-plane').getCoverageSnapshot },
+          // Lazy and fail-open: a failing action-plane load degrades the block
+          // to `declared`; it must never stop /v1/system mounting.
+          execution: {
+            snapshot: () => {
+              try { return require('./lib/action-plane').getCoverageSnapshot(); } catch (_) { return {}; }
+            },
+          },
         });
         logger.debug({ event: 'system.mounted' }, 'System surface ready at /v1/system');
       } catch (err) {

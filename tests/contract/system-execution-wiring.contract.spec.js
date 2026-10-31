@@ -23,12 +23,14 @@ async function build(execution) {
 }
 
 describe('ADR-2041 /v1/system execution wiring', () => {
-  test('server.js passes action-plane.getCoverageSnapshot as execution.snapshot', () => {
+  test('server.js passes a fail-open action-plane.getCoverageSnapshot as execution.snapshot', () => {
     const src = fs.readFileSync(path.join(__dirname, '../../management-api/server.js'), 'utf8');
     const at = src.indexOf("require('./routes/system')");
     expect(at).toBeGreaterThan(-1);
     const call = src.slice(at, at + 600);
-    expect(call).toMatch(/execution:\s*\{\s*snapshot:\s*require\('\.\/lib\/action-plane'\)\.getCoverageSnapshot\s*\}/);
+    expect(call).toMatch(/execution:\s*\{\s*snapshot:/);
+    expect(call).toContain("require('./lib/action-plane').getCoverageSnapshot()");
+    expect(call).toMatch(/catch \(_\) \{ return \{\}; \}/); // fail-open
   });
 
   test('with the real snapshot and no built plane, execution is declared (never fabricated live)', async () => {
