@@ -3957,6 +3957,14 @@
         }
       }
     },
+    "user_cron": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Operator-owned crontab on the persistent workspace; rebuild-class enable gate.",
+      "properties": {
+        "enabled": { "type": "boolean", "default": false }
+      }
+    },
     "seo_watch": {
       "type": "object",
       "additionalProperties": false,

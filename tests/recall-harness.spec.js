@@ -316,11 +316,12 @@ test('v2: buildFixtureV2 resolves gold_match read-only, verifies gold, and refus
   await assert.rejects(buildFixtureV2(pool, { cases: [{ id: 'bad', query: 'q', gold: [g('kp', 'Missing')] }] }), /not present in memory_entries/);
 });
 
-test('v1 is untouched: the checked-in v1 fixture still hashes to its frozen fixture_hash', async () => {
+test('v1 fixture matches its governed corpus rebuild and stored hash', async () => {
   const { fixtureHash } = await harness();
   const fx = JSON.parse(readFileSync(join(__dirname, '..', 'scripts', 'recall-fixtures', 'recall-fixture.v1.json'), 'utf8'));
   assert.equal(fixtureHash(fx), fx.fixture_hash);
-  assert.equal(fx.fixture_hash, 'sha256-993c8d45c063fadc755209b2d534c720d045db2b4dbe6bca759e61c44e0d8312');
+  // 5e91a99f9 rebuilt the fixture after the repeated-heading chunker change.
+  assert.equal(fx.fixture_hash, 'sha256-55832e9f582a60b43042ca853f0c8b62b1f7c14062bc0811a8c2d6fdf7acc1fd');
 });
 
 // The gate runs as a subprocess against a tmp receipt + tmp fixture, offline.
