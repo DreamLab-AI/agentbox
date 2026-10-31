@@ -119,7 +119,12 @@ export function splitSections(body) {
   }
   return sections.map((s) => {
     const raw = s.lines.join('\n');
-    return { section: s.section, content: raw.trim(), rawLength: raw.length };
+    // A heading with nothing under it (the page template's empty
+    // "### Provenance", "### Content" ...) carries no text of its own: kept,
+    // thousands of byte-identical chunks tie on one vector, so none of them
+    // can be retrieved and each crowds out real neighbours.
+    const bodyOnly = s.section === 'Section 0' ? raw : s.lines.slice(1).join('\n');
+    return { section: s.section, content: bodyOnly.trim() ? raw.trim() : '', rawLength: raw.length };
   });
 }
 

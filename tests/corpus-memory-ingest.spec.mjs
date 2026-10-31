@@ -39,6 +39,12 @@ test('slugify: section slugs keep ":" and "/" (even trailing: a split part is "x
 });
 
 // ── Key scheme: reproduction over rows sampled from the live namespace ───────
+test('chunkPage: a heading with nothing under it yields no chunk', () => {
+  const text = '---\ntitle: T\n---\nIntro.\n\n## Real\nBody text.\n\n### Provenance\n\n### Content\n   \n## Last\nMore.\n';
+  const { chunks } = chunkPage({ fileName: 'T.md', text });
+  assert.deepEqual(chunks.map((c) => c.key), ['t::section-0', 't::real', 't::last']);
+});
+
 test('live rows: every sampled unsplit section regenerates its exact key, title and content hash', () => {
   assert.ok(live.sections.length >= 30, `fixture has ${live.sections.length} sections`);
   let exact = 0;
