@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: dfee16693b8ae58379cb9f1161081e5b9853af51
+verified_commit: 9dadda3ed7ad1ff2546d4d81077a93e2b46d100f
 verified_paths: [mcp/servers/lib/orchestration-proxy.js, mcp/servers/ruvector-mcp.cjs, mcp/servers/lib/ruvector-gates.js, config/entrypoint-unified.sh]
 owner: jjohare
 review_trigger: next image rebuild (activation), a Ruflo release that changes plugin/runtime resolution or renames the swarm/agent/task/coordination tools, or any proposal to forward a memory_* tool
@@ -270,4 +270,4 @@ The record's activation event was the next image rebuild. Executed against the b
 
 Re-verified 2026-10-31 at `b65c3d4ed`. Governed paths changed: `config/entrypoint-unified.sh`: the `ONTOLOGY_PAGES_DIR` / `AGENTBOX_VAULT_LEGACY_PATHS` override tier is removed (ADR-2028 re-verification), `ONTO_PAGES` reads `VAULT_PAGES`, and the Phase 5d skip line says "[vault] liveness gate" (`7aa9365d4`). No section this record governs changed; the decision holds. Re-verified by `git diff 3b498088e..b65c3d4ed -- <verified_paths>`; no re-implementation was needed. The image carries it at the next rebuild.
 
-Re-verified 2026-10-31 at `dfee16693`. Governed paths changed: mcp/servers/lib/ruvector-gates.js gains one read-only param, hybridFusion (RUVECTOR_HYBRID_FUSION, default blend, env-gated reciprocal rank fusion in memory-hybrid.js); the proxy's denied memory_* prefixes and the filtered child are untouched. No section of this record's decision changed; re-verified by `git diff b65c3d4ed..dfee16693 -- <verified_paths>`.
+Re-verified 2026-10-31 at `9dadda3ed`. Governed paths changed: mcp/servers/lib/ruvector-gates.js gains one read-only param, hybridFusion (RUVECTOR_HYBRID_FUSION, default blend, env-gated reciprocal rank fusion in memory-hybrid.js); the proxy's denied memory_* prefixes and the filtered child are untouched. No section of this record's decision changed; re-verified by `git diff b65c3d4ed..9dadda3ed -- <verified_paths>`.

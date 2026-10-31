@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: dfee16693b8ae58379cb9f1161081e5b9853af51
+verified_commit: 9dadda3ed7ad1ff2546d4d81077a93e2b46d100f
 verified_paths: [scripts/hp-loom-reconcile.sh, config/entrypoint-unified.sh, agentbox.toml, management-api/lib/system-manifest.js, schema/agentbox.toml.schema.json, tests/config/hp-loom-reconcile.test.sh, skills/ontology-augment/scripts/ontology-augment.sh, tests/skills/ontology-augment-grounding.test.sh]
 owner: jjohare
 review_trigger: a reconcile failure or change to the builder pin or published-generation schema; any proposal to run an agentbox on the HP again; any proposal for the HP to read the vault directly; a second consumer of the built generation
@@ -202,4 +202,4 @@ Today's commits: `2d49681bf` (management API), `b7a1d0955` (ontology-augment), `
 
 `lib/ontomark.nix` pins ontomark 0.6.1 (ADR-2136 re-verification). The corpus verbs this record names run through `ontomark` with no `vault` fallback; the `neighbours` fallback when the Loom does not answer is `ontomark tree` (`b7a1d0955`). Flat-layout wording is corrected in `agentbox.toml`, the schema's `[vault].working` description and `config/tmux-autostart.sh` (`f4beec643`), and `system-manifest.js` defaults `pages` to `"."` (`eff6c29c1`). The decision (the vault is canonical here; HP is a Loom host) holds. Gates: grounding 87/0, path precedence 10/0, consumer fallback 11/0.
 
-Re-verified 2026-10-31 at `dfee16693`. Governed paths changed: ontology-augment.sh and its grounding test gain result labels and --ref (additive envelope fields); the Loom-host reconcile this record decides is untouched. No section of this record's decision changed; re-verified by `git diff b65c3d4ed..dfee16693 -- <verified_paths>`.
+Re-verified 2026-10-31 at `9dadda3ed`. Governed paths changed: ontology-augment.sh and its grounding test gain result labels and --ref (additive envelope fields); the Loom-host reconcile this record decides is untouched. No section of this record's decision changed; re-verified by `git diff b65c3d4ed..9dadda3ed -- <verified_paths>`.

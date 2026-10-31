@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: dfee16693b8ae58379cb9f1161081e5b9853af51
+verified_commit: 9dadda3ed7ad1ff2546d4d81077a93e2b46d100f
 verified_paths: [agentbox.toml, setup/agentbox.default.toml, schema/agentbox.toml.schema.json, config/entrypoint-unified.sh, mcp/servers/lib/ontology-local.js, mcp/servers/lib/ontology-index-build.js, scripts/ontology-condense-scheduler.mjs, scripts/ontology-condense-refresh.sh, skills/podcast-knowledge-ingest/SKILL.md, skills/ontology-core/SKILL.md, skills/ontology-enrich/SKILL.md, skills/ontology-augment/SKILL.md, skills/web-summary/SKILL.md]
 owner: jjohare
 review_trigger: any new skill, MCP server, or supervised program that reads or writes authored markdown
@@ -341,4 +341,4 @@ The middle tier of the precedence is gone. `7aa9365d4` deletes the `ONTOLOGY_PAG
 
 Gates: `tests/config/vault-path-precedence.test.sh` 10 passed, 0 failed (rewritten to assert the retired pair is ignored); `tests/config/vault-consumer-fallback.test.mjs` 11 passed, 0 failed. The decision (the manifest is the path authority) holds and is stricter. Takes effect at the next image rebuild.
 
-Re-verified 2026-10-31 at `dfee16693`. Governed paths changed: the ontology-augment skill gains per-call result labels, a --ref option and explicit stop rules in SKILL.md (new envelope fields only); the vault path authority this record decides is untouched. No section of this record's decision changed; re-verified by `git diff b65c3d4ed..dfee16693 -- <verified_paths>`.
+Re-verified 2026-10-31 at `9dadda3ed`. Governed paths changed: the ontology-augment skill gains per-call result labels, a --ref option and explicit stop rules in SKILL.md (new envelope fields only); the vault path authority this record decides is untouched. No section of this record's decision changed; re-verified by `git diff b65c3d4ed..9dadda3ed -- <verified_paths>`.

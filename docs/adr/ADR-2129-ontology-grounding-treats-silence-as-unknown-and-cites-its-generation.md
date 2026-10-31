@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: dfee16693b8ae58379cb9f1161081e5b9853af51
+verified_commit: 9dadda3ed7ad1ff2546d4d81077a93e2b46d100f
 verified_paths: [skills/ontology-augment/scripts/ontology-augment.sh, skills/ontology-augment/SKILL.md, skills/ontology-augment/references/REFERENCE.md, skills/ontology-augment/references/EXAMPLES.md, tests/skills/ontology-augment-grounding.test.sh]
 owner: jjohare
 review_trigger: VisionClaw ADR-2128 (versionIRI) or ADR-2127 (tri-valued answers) landing; an agent decision traced to an empty Loom or vault result; the ontology-augment skill's output format changing; the first session on a booted image whose ontology-augment output cites its generation (activation → live)
@@ -85,4 +85,4 @@ Today's commits: `2d49681bf` (management API), `b7a1d0955` (ontology-augment), `
 
 The `vault` fallback described in the 2026-10-17 note is removed (`b7a1d0955`): without `ontomark` the script stops and names PATH, `/opt/agentbox/bin/ontomark` and `ONTOMARK_BIN`. When the Loom does not answer, `neighbours` falls back to `ontomark tree` (asserted edges only) and still says so on stderr; the envelope `source` in the examples is `ontomark`. Envelope, silence and generation semantics are unchanged. Gate: `tests/skills/ontology-augment-grounding.test.sh` 87 passed, 0 failed. The decision holds.
 
-Re-verified 2026-10-31 at `dfee16693`. Governed paths changed: ontology-augment.sh adds call_id and refs (labels E/N/P/S) to every envelope and a --ref option on get, neighbours, paths, check and propose, SKILL.md gains explicit stop rules (1-2 rounds, at most 2 hops, evidence and generation for every link, silence is unknown), and the grounding test gains label and --ref cases. The envelope change is additive: grounding, degraded, source, generation, negation, shape, note and result are unchanged, so the silence-as-unknown decision stands as written. No section of this record's decision changed; re-verified by `git diff b65c3d4ed..dfee16693 -- <verified_paths>`.
+Re-verified 2026-10-31 at `9dadda3ed`. Governed paths changed: ontology-augment.sh adds call_id and refs (labels E/N/P/S) to every envelope and a --ref option on get, neighbours, paths, check and propose, SKILL.md gains explicit stop rules (1-2 rounds, at most 2 hops, evidence and generation for every link, silence is unknown), and the grounding test gains label and --ref cases. The envelope change is additive: grounding, degraded, source, generation, negation, shape, note and result are unchanged, so the silence-as-unknown decision stands as written. No section of this record's decision changed; re-verified by `git diff b65c3d4ed..9dadda3ed -- <verified_paths>`.
