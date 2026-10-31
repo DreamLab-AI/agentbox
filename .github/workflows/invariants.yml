@@ -209,6 +209,9 @@ jobs:
       - name: adr-ratchet self-test (an ADR added already decided is not backlog)
         run: bash tests/config/adr-ratchet.test.sh
 
+      - name: adr-ratchet evidence gate self-test (ADR-2007: closing transitions need evidence_class and acceptance_boundary)
+        run: bash tests/config/adr-ratchet-evidence.test.sh
+
       - name: adr-ratchet (planning cycle 2026-09-21 — a new proposal must close a proposed one)
         env:
           BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
