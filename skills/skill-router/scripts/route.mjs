@@ -65,7 +65,7 @@ if (evalPath) {
   for (const it of items) {
     let h = 0;
     for (let r = 0; r < reps; r++) {
-      const a = await lib.route(it.prompt, cfg, { retries: 2, candidates });
+      const a = await lib.route(it.prompt, cfg, { retries: 2, candidates, cwd: process.cwd() });
       calls++;
       if (a.outcome !== 'routed') { failed++; continue; }
       usd += a.usd; ms += a.ms;
@@ -87,7 +87,7 @@ if (!task) {
   process.exit(0);
 }
 
-const r = await lib.route(task, cfg, { retries: 2 });
+const r = await lib.route(task, cfg, { retries: 2, cwd: process.cwd() });
 lib.appendLog(cfg, { ...r, consumer: 'cli' });
 if (asJson) { console.log(JSON.stringify(r, null, 2)); process.exit(0); }
 

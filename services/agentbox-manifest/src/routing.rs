@@ -64,10 +64,28 @@ const MANAGED_KEYS: &[&str] = &[
 
 const PRUNE_DIRS: &[&str] = &["node_modules", ".git", "target", ".tmp", "dist"];
 
+/// Provider label for a host that agentic-qe cannot construct (ADR-2130). It is
+/// deliberately absent from [`AQE_CONSTRUCTIBLE`], so the override loop skips
+/// the route instead of mislabelling Z.AI as the `codex` subscription tier.
+const PROVIDER_UNCONSTRUCTIBLE_ZAI: &str = "zai";
+
+/// Likewise for the Ontology Loom. Mapping it to `openai` would be a privacy
+/// and egress fault: agentic-qe's `openai` provider targets api.openai.com, and
+/// nothing here points OPENAI_BASE_URL at the Loom, so a loom-routed activity
+/// would send its prompt and the Loom model name to OpenAI. Fail closed: the
+/// route is skipped until a constructible base-URL provider exists.
+const PROVIDER_UNCONSTRUCTIBLE_LOOM: &str = "loom";
+
 /// host → agentic-qe ExtendedProviderType (subscription tier: $0 marginal).
+///
+/// Every host the route grammar admits has an explicit arm (ADR-2130): `loom`
+/// and `zai` have no constructible agentic-qe type, so both fail closed.
 fn host_provider(host: &str) -> &'static str {
     match host {
         "claude" => "claude-code",
+        "codex" => "codex",
+        "loom" => PROVIDER_UNCONSTRUCTIBLE_LOOM,
+        "zai" => PROVIDER_UNCONSTRUCTIBLE_ZAI,
         _ => "codex",
     }
 }
@@ -81,7 +99,7 @@ struct Route {
 
 fn route_re() -> Regex {
     Regex::new(
-        r"^\s*(claude|codex):([A-Za-z0-9._\-]+)(?:\s*->\s*(claude|codex):([A-Za-z0-9._\-]+))?\s*$",
+        r"^\s*(claude|codex|loom|zai):([A-Za-z0-9._\-]+)(?:\s*->\s*(claude|codex|loom|zai):([A-Za-z0-9._\-]+))?\s*$",
     )
     .expect("static regex")
 }
@@ -464,6 +482,97 @@ mod tests {
     fn no_chain_means_no_fallback_key() {
         let cfg = build_config(&mr("[model_routing.routes]\nreview = \"claude:a\"\n"));
         assert!(cfg.get("fallbackChain").is_none());
+    }
+
+    #[test]
+    fn the_four_diagram_routes_parse_as_start_and_as_rung() {
+        let re = route_re();
+        for raw in [
+            "loom:qwen3.8-27B -> claude:claude-sonnet-5-5",
+            "claude:claude-sonnet-5-5 -> claude:claude-opus-5-5",
+            "claude:claude-opus-5-5 -> claude:claude-fable-5-1",
+            "zai:glm-5.3 -> claude:claude-fable-5-1",
+        ] {
+            assert!(parse_route(&re, raw).is_some(), "{raw} must parse");
+        }
+        let r = parse_route(&re, "zai:glm-5.3 -> claude:claude-fable-5-1").unwrap();
+        assert_eq!((r.host.as_str(), r.model.as_str()), ("zai", "glm-5.3"));
+        assert_eq!(r.esc_host.as_deref(), Some("claude"));
+        // A new host is also admissible as the escalation rung.
+        let r = parse_route(&re, "claude:a -> loom:b").unwrap();
+        assert_eq!(r.esc_host.as_deref(), Some("loom"));
+        assert!(parse_route(&re, "gemini:pro").is_none());
+        assert!(parse_route(&re, "zai2:glm").is_none());
+    }
+
+    #[test]
+    fn host_provider_has_an_explicit_arm_for_every_admitted_host() {
+        assert_eq!(host_provider("claude"), "claude-code");
+        assert_eq!(host_provider("codex"), "codex");
+        assert_eq!(host_provider("loom"), "loom");
+        assert_eq!(host_provider("zai"), "zai");
+        assert!(
+            !AQE_CONSTRUCTIBLE.contains(&host_provider("loom")),
+            "loom must never map to openai: that provider targets api.openai.com"
+        );
+        assert!(
+            !AQE_CONSTRUCTIBLE.contains(&host_provider("zai")),
+            "zai has no constructible agentic-qe type and must never be mislabelled codex"
+        );
+    }
+
+    #[test]
+    fn a_zai_route_is_never_projected_as_an_agent_override() {
+        let cfg = build_config(&mr(
+            "[model_routing]\naqe_fallback_chain = \"claude-code,codex,openai\"\n\
+             [model_routing.routes]\nreview = \"zai:glm-5.3 -> claude:claude-fable-5-1\"\n\
+             testing = \"loom:qwen3.8-27B -> claude:claude-sonnet-5-5\"\n",
+        ));
+        let o = cfg["agentOverrides"].as_object().unwrap();
+        assert!(o.get("qe-code-reviewer").is_none(), "zai-started review is skipped");
+        assert!(
+            o.get("qe-test-architect").is_none(),
+            "loom-started testing is skipped (fail closed), never sent to openai"
+        );
+        assert!(
+            !o.values().any(|v| v["provider"] == "openai"),
+            "no loom route may surface an openai agent override"
+        );
+        for e in cfg["fallbackChain"]["entries"].as_array().unwrap() {
+            let models = e["models"].as_array().unwrap();
+            assert!(
+                !models.iter().any(|m| m == "qwen3.8-27B"),
+                "the Loom model leaked into {}",
+                e["provider"]
+            );
+        }
+        // No chain entry for zai, and its model never lands under codex.
+        let entries = cfg["fallbackChain"]["entries"].as_array().unwrap();
+        for e in entries {
+            let models = e["models"].as_array().unwrap();
+            assert!(!models.iter().any(|m| m == "glm-5.3"), "glm-5.3 leaked into {}", e["provider"]);
+        }
+    }
+
+    /// The shipped manifest's routes all parse, including the four ADR-2130
+    /// diagram activities, and none is silently skipped.
+    #[test]
+    fn the_shipped_manifest_routes_all_parse_and_include_the_diagram_activities() {
+        let text = include_str!("../../../agentbox.toml");
+        let cfg = tomlval::parse(text).unwrap();
+        let routes = cfg["model_routing"]["routes"].as_object().unwrap();
+        let re = route_re();
+        for (activity, raw) in routes {
+            let raw = raw.as_str().unwrap_or("");
+            assert!(parse_route(&re, raw).is_some(), "route {activity} = {raw:?} does not parse");
+        }
+        for a in ["diagram-polish", "diagram-narrative", "diagram-synthesis", "seal-review"] {
+            assert!(routes.contains_key(a), "agentbox.toml lacks the {a} route");
+        }
+        let sr = parse_route(&re, routes["seal-review"].as_str().unwrap()).unwrap();
+        assert_eq!(sr.host, "zai");
+        let dp = parse_route(&re, routes["diagram-polish"].as_str().unwrap()).unwrap();
+        assert_eq!(dp.host, "loom");
     }
 
     #[test]

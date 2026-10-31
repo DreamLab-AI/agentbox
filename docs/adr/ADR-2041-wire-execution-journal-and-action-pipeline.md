@@ -3,12 +3,12 @@ id: ADR-2041
 title: Wire the execution journal and action pipeline onto POST /v1/tasks
 date: 2026-09-05
 decision_status: accepted
-implementation_status: partial
+implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 89301ec7c911eab270c00a0cf81596d0d4f15535
-verified_paths: []
+verified_commit: 1e41b64b624af97cf49771d08da82fbf3743acbd
+verified_paths: [management-api/server.js, management-api/lib/action-plane.js, management-api/lib/execution-coverage.js, tests/contract/system-execution-wiring.contract.spec.js]
 owner: jjohare
 review_trigger: a second route or MCP tool needs to become an AgentAction, or task-spawn's `local` classification is challenged by a real incident
 repo: agentbox
@@ -138,3 +138,24 @@ is untouched.
 Verification ran on the uncommitted agentbox working tree above `verified_commit`
 (agentbox's own `HEAD`, a submodule of the outer VisionClaw repo) and must be re-run at
 the landing commit.
+
+## Close-out 2026-10-31
+
+**Gap verified at `2a36c42d8`:** `management-api/server.js` registered `routes/system` with no `execution` option, so `/v1/system` always reported the journal and pipeline as `declared`.
+
+**Change:** the registration now passes `execution: { snapshot }`, where `snapshot` lazily calls `lib/action-plane.js` `getCoverageSnapshot()` inside a `try`. A failing action-plane load degrades the block to `declared` and never stops `/v1/system` mounting. The stale comment in `execution-coverage.js` is updated. The earlier Consequences bullet ("`/v1/system` still under-reports until `server.js` is touched") is now closed by this note.
+
+**Evidence** (worktree `adr-sprint/w8`, code at `1e41b64b6`):
+
+```
+cd management-api && node_modules/.bin/jest tests/contract/system-execution-wiring tests/contract/execution-coverage
+# system-execution-wiring: 3 passed (server.js wires a fail-open snapshot; no built plane -> journal.status declared;
+#   a live snapshot via the wired option -> journal.status live with the session)
+cd management-api && node_modules/.bin/jest      # 101 suites: 100 passed, 1 failed; 1674 tests passed, 1 failed
+```
+
+The one failure, `web-interfaces.contract.spec.js` (cockpit tab markup), fails identically on the primary checkout at `2a36c42d8` and is unrelated.
+
+**Not claimed:** `/v1/system` on the running container is unchanged until management-api restarts with this code (no restart was made). The `local` classification of task-spawn and the narrowing of GOVERNANCE-capabilities divergence #1 are unchanged and stay with the domain owner.
+
+**Scope of `activation_status: live`:** `live` covers only the surfaces that were already live before this close-out: the `POST /v1/tasks` journal and pipeline path (`action-plane.js`) and the `declared` report on `/v1/system`. The new `execution: { snapshot }` wiring in `server.js` is **staged, not live**: it takes effect when management-api next restarts, and until then `/v1/system` keeps reporting `declared`. No restart was made here, so nothing in this close-out may be read as a statement about the running container. The record's `live` axis should be re-read after the owner restarts management-api and `GET /v1/system` shows `journal.status: "live"` for a spawned session.

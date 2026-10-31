@@ -286,3 +286,49 @@ async fn browser_shaped_requests_are_refused_before_any_upstream_call() {
     }
     assert_eq!(seen.lock().unwrap().bodies.len(), 2, "refused requests never reach the backend");
 }
+
+#[tokio::test]
+async fn state_budget_tokens_is_reported_but_never_enforced() {
+    let (up, seen) = serve_stub().await;
+    let f = tmpfile("budget.json");
+    // Declare a tiny budget on the stub backend; the request's state is far over it.
+    let mut v: Value = serde_json::from_str(&projection(up, "stub", Some(false))).unwrap();
+    v["backends"]["stub"]["state_budget_tokens"] = json!(5);
+    std::fs::write(&f, serde_json::to_string(&v).unwrap()).unwrap();
+    let (addr, _p) = serve_proxy(&f).await;
+    let client = reqwest::Client::new();
+    let r = client
+        .post(format!("http://{addr}/v1/systemone"))
+        .json(&json!({"state": "x".repeat(4000), "questions": {"q": {"type": "noul", "instructions": "?"}}}))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(r.status(), 200, "advisory only: an over-budget state is still forwarded");
+    assert_eq!(r.headers()["x-system-one-state-budget-tokens"], "5");
+    assert_eq!(seen.lock().unwrap().bodies.len(), 1);
+    let b: Value = client
+        .get(format!("http://{addr}/v1/backend"))
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    assert_eq!(b["state_budget_tokens"], 5);
+}
+
+#[tokio::test]
+async fn undeclared_state_budget_adds_no_header() {
+    let (up, _seen) = serve_stub().await;
+    let f = tmpfile("nobudget.json");
+    std::fs::write(&f, projection(up, "stub", Some(false))).unwrap();
+    let (addr, _p) = serve_proxy(&f).await;
+    let r = reqwest::Client::new()
+        .post(format!("http://{addr}/v1/systemone"))
+        .json(&json!({"questions": {"q": {}}}))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(r.status(), 200);
+    assert!(r.headers().get("x-system-one-state-budget-tokens").is_none());
+}

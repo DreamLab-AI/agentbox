@@ -306,9 +306,11 @@ for (const [name, provConf] of Object.entries(providers)) {
 }
 
 // E010: desktop.enabled=true forbids any profile marked headless_only=true.
-// Profile files are read from /workspace/profiles/*/profile.toml when desktop is enabled.
+// Profile files are read from $WORKSPACE/profiles/*/profile.toml when desktop is enabled.
+// ADR-2066: the literal /workspace is retired; the root follows $WORKSPACE and
+// falls back to /home/devuser/workspace (same rule as nostr-bridge loadSigner).
 if (desktop.enabled === true) {
-  const profilesRoot = '/workspace/profiles';
+  const profilesRoot = path.join(process.env.WORKSPACE || '/home/devuser/workspace', 'profiles');
   if (fs.existsSync(profilesRoot)) {
     let profileDirs = [];
     try {
@@ -1399,6 +1401,30 @@ if (ldEnabled) {
   }
 }
 
+// ─── E083: the per-project routing bypass (ADR-2090) ─────────────────────────
+//
+// E083 — [skills.routing].bypass_projects must be a list of absolute paths with no
+//         whitespace, quotes, commas, colons or '#',
+//         and no '[' or ']'. The list is projected as a PATH-style env value inlined
+//         into a shell command, and a relative or malformed entry would silently fail to
+//         protect the project it names. Brackets are forbidden because the shell
+//         projector (entrypoint `_ab_toml_array`) and the JS fallback end a multi-line
+//         array at the first ']' and strip '[': "/srv/p[1]" would project as "/srv/p1"
+//         and silently drop every later entry (a privacy gate that fails open).
+{
+  const rt = (manifest.skills || {}).routing || {};
+  if (rt.bypass_projects !== undefined) {
+    const bad = !Array.isArray(rt.bypass_projects)
+      ? [rt.bypass_projects]
+      : rt.bypass_projects.filter((p) => typeof p !== 'string' || !/^\/[^\s'",:#\[\]]*$/.test(p));
+    if (bad.length) {
+      errors.push({
+        code: 'E083',
+        message: `E083: [skills.routing].bypass_projects must be a list of absolute paths without whitespace, quotes, commas, colons, brackets or '#'; offending: ${bad.map((p) => JSON.stringify(String(p).slice(0, 40))).join(', ')} — ADR-2090`,
+      });
+    }
+  }
+}
 // ─── E076 / W074: the local routing cascade and the judge's latency budget ───
 // (ADR-2095 addendum 2026-09-23)
 //
@@ -1562,6 +1588,14 @@ function isLocalEndpoint(endpoint) {
 //         local=false whose url is not https or whose key_env is empty. All
 //         backends are checked, not just the active one, because the projection
 //         file carries the whole map and a live switch may select any of them.
+function tomlSourceDeclaresFloatBudget(src) {
+  return String(src).split('\n').some((line) => {
+    const code = line.replace(/#.*$/, '');
+    return /\bstate_budget_tokens\s*=\s*[+-]?[0-9_]+(\.[0-9_]*|[eE][+-]?[0-9_]+)/.test(code);
+  });
+}
+// E082 — a backend's `state_budget_tokens` (ADR-2139 Decision 5) is not a non-negative
+//         integer (a TOML float such as 73000.0 included). 0 / absent = undeclared; the projector refuses the slot otherwise.
 // E081 — [system_one].enabled and [features.sovereign_system_one].enabled both
 //         true: two projectors would race for the same consumers. The façade is
 //         reached through the proxy as the `laya` backend instead.
@@ -1594,6 +1628,12 @@ function isLocalEndpoint(endpoint) {
       const b = backends[name] || {};
       const url = String(b.url ?? '');
       const keyEnv = String(b.key_env ?? '');
+      // @iarna/toml parses 73000.0 to the JS number 73000, so float-ness is invisible
+      // on the parsed tree; the projector (serde_json is_u64) refuses it, so check the source.
+      const budgetIsFloat = tomlSourceDeclaresFloatBudget(raw);
+      if (b.state_budget_tokens !== undefined && (budgetIsFloat || !(Number.isInteger(b.state_budget_tokens) && b.state_budget_tokens >= 0))) {
+        errors.push({ code: 'E082', message: `E082: [system_one.backends.${name}].state_budget_tokens must be a non-negative integer (got ${JSON.stringify(b.state_budget_tokens)}) — the projector refuses the whole slot otherwise (ADR-2139 Decision 5)` });
+      }
       if (b.local === true) {
         if (keyEnv) errors.push({ code: 'E080', message: `E080: [system_one.backends.${name}] is local=true but names key_env="${keyEnv}" — local backends are keyless; a key only ever goes to its paired cloud host (ADR-2139)` });
         if (!isLocalEndpoint(url)) errors.push({ code: 'E080', message: `E080: [system_one.backends.${name}] is local=true but url "${url}" is not a LAN/loopback host (ADR-2094 §5)` });

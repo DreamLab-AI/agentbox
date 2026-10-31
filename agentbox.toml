@@ -898,7 +898,12 @@ log = "/home/devuser/.local/share/system-one-proxy/requests.jsonl"  # one line p
 
 # Each backend: url (its /v1/systemone), model, key_env (name of the env var
 # holding its key; empty = keyless), local (DECLARED locality, never inferred
-# from the URL), timeout_ms, usd_per_mtok_in (for the consumers' cost lines).
+# from the URL), timeout_ms, usd_per_mtok_in (for the consumers' cost lines),
+# state_budget_tokens (optional, default 0 = undeclared; ADR-2139 Decision 5, validator
+# E082): the largest compaction state the backend should receive whole, so factrail can
+# stop shrinking early. Projected as stateBudgetTokens (factrail userConfig, applied
+# once a factrail release declares the key) and AGENTBOX_SYSTEM_ONE_STATE_BUDGET_TOKENS;
+# surfaced by the proxy on /v1/backend. Advisory — the proxy never refuses over it.
 [system_one.consumers]
 # Boot-projected to supervised services AND interactive shells. Rebuild to bake.
 # Outcome-changing thresholds remain unset: advisory/shadow guards still apply.
@@ -941,6 +946,7 @@ key_env = "SUBQ_API_KEY"
 local = false
 timeout_ms = 30000
 usd_per_mtok_in = 0.05
+state_budget_tokens = 73000      # ADR-2139 Decision 5: SubQ accepted a 73,612-token state in 1.5 s (measured 2026-10-12); a floor, not its limit. 0 = undeclared
 
 [system_one.backends.laya]
 # The ADR-2094 façade sidecar (./agentbox.sh systemone up), engine per
@@ -1305,6 +1311,15 @@ hook = true                     # register the UserPromptSubmit hook (router = "
 model = "jev-latest"            # resolved server-side; pin (e.g. "jev-1.13.0") to freeze behaviour
 timeout_ms = 4000               # hook budget per call; the hook itself is registered at 8000
 min_prompt_chars = 24           # shorter turns are never sent (and never routed)
+# ADR-2090 per-project bypass. Absolute project roots whose turns never reach the skill-routing judge (hook and /route only; factrail and the jev-checkpoints plugin still call it): a
+# session whose cwd is one of these or lies beneath it (path-boundary match, symlinks
+# resolved: "/x/proj" covers "/x/proj/sub", never "/x/proj2") is skipped before the request
+# is built, so the Choice and every verify/intent/facet extra stay home. Fails closed: with
+# a non-empty list and no cwd, nothing is sent. A local cascade answer (no egress) still
+# applies; only an escalation to the judge is stopped. Empty = today's behaviour, byte for
+# byte (no env, no change to the registered hook command). Entries: absolute, no
+# whitespace, quotes, commas, colons, brackets or '#' (validator E083). BOOT-class, like its neighbours.
+bypass_projects = []
 # Local cascade (ADR-2095 addendum 2026-09-23). A BM25 ranker over the same skill
 # rubrics answers a turn in-process when its relative top-two margin reaches
 # cascade_cutoff; only the rest go to the judge. Measured on the 86-turn corpus:
@@ -1730,6 +1745,20 @@ documentation     = "codex:gpt-6-astra"
 debugging         = "claude:claude-fable-5-1"
 packaging         = "codex:gpt-6-astra"          # kit-originated activity (no upstream template)
 release           = "claude:claude-sonnet-5-5" # kit-originated activity (no upstream template)
+
+# ADR-2130: diagram work (sealmap) routes by activity and never names a model id
+# in a skill. Hosts: `loom` = the Ontology Loom facade (${LOOM_BASE_URL}, the :8084
+# door, OpenAI chat-completions, LAN, $0 marginal; never target the model port);
+# `zai` = GLM on Z.AI's Anthropic Messages API (metered, leaves the estate,
+# ADR-2053; credentials under [providers.zai], auth home [consultants.zai].home).
+# Tiers are SOFT defaults until the measured descent has run on held-out data
+# (docs/diagrams/.tiers.json records a confirmed, sticky de-escalation per corpus).
+# Seal review must be a different model family from the author. Claude ids follow
+# the live ids above (ADR-2130 names the families sonnet-5 / opus-5 / fable-5-1).
+diagram-polish    = "loom:qwen3.8-27B -> claude:claude-sonnet-5-5"          # T1
+diagram-narrative = "claude:claude-sonnet-5-5 -> claude:claude-opus-5-5"    # T2
+diagram-synthesis = "claude:claude-opus-5-5 -> claude:claude-fable-5-1"     # T3
+seal-review       = "zai:glm-5.3 -> claude:claude-fable-5-1"                # T3 cross-family
 
 # ── ADR-2080: metaharness cost-optimal router as a dedicated AoE session ─────
 # Phase 0 of ADR-2079. The baked ruflo closure carries @metaharness/router

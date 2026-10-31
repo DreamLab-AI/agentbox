@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 16139219351978674a549ea943f6005f8010f7b1
+verified_commit: 1e41b64b624af97cf49771d08da82fbf3743acbd
 verified_paths: [management-api/lib/junkiejarvis-clarify.js, management-api/lib/junkiejarvis-agent.js, management-api/server.js, scripts/dream-forum-suggestions.mjs, scripts/run-junkiejarvis.cjs, tests/sovereign/junkiejarvis-clarify.test.js, tests/sovereign/junkiejarvis-dm-send.test.js, tests/sovereign/dream-forum-suggestions-jj-gate.test.js]
 owner: jjohare
 review_trigger: any change to the clarity signals, MIN_SPECIFICITY, the 7-day expiry, or the forum-suggestions ingest path
@@ -189,3 +189,7 @@ The DM leg was waiting for the rebuilt image to bake `junkiejarvis = true`. On t
 - `/var/log/management-api.log`, 2026-10-30T14:22:47Z (pid 446): `junkiejarvis: started` (provider ollama), `junkiejarvis watching — gift-wrapped DMs (#p) + kind-42 mentions`, `junkiejarvis published kind-0 profile`.
 - `management-api/lib/junkiejarvis-clarify.js` and `junkiejarvis-agent.js` in the image are byte-identical to `e786197ccb9f56c638d4b0181e77f33ab38b7db9`.
 No clarifying DM was triggered for this close-out; the gate logic is covered by the tests above.
+
+## Re-verification — 2026-10-31 (`1e41b64b624af97cf49771d08da82fbf3743acbd`)
+
+Tripped by the W8 ADR-sprint changes. Governed-path delta since `161392193`: `management-api/server.js` changes only the `routes/system` registration, which now passes a fail-open `execution.snapshot` (ADR-2041). No key, table or code path this record decides is touched, so the decision and status axes are unchanged. Judged from the diff (re-runnable: `git diff 161392193..1e41b64b6 -- management-api/lib/junkiejarvis-clarify.js management-api/lib/junkiejarvis-agent.js management-api/server.js scripts/dream-forum-suggestions.mjs scripts/run-junkiejarvis.cjs tests/sovereign/junkiejarvis-clarify.test.js tests/sovereign/junkiejarvis-dm-send.test.js tests/sovereign/dream-forum-suggestions-jj-gate.test.js`; re-run at integration and the summary above matches it), not by re-running this record's own acceptance checks.

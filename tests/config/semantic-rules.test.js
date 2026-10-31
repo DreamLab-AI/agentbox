@@ -341,14 +341,40 @@ describe('E018: enabled provider env_var must not contain a placeholder value', 
 
 // ─── E010 ─────────────────────────────────────────────────────────────────────
 describe('E010: desktop.enabled=true forbids headless_only profiles', () => {
-  // This rule reads /workspace/profiles/*/profile.toml at runtime.
-  // On test machines that directory likely does not exist, so we test only
-  // the negative path (no profiles dir → no E010 error).
+  // This rule reads $WORKSPACE/profiles/*/profile.toml at runtime (ADR-2066:
+  // the retired literal /workspace/profiles is no longer consulted).
+  function workspaceWithProfile(headlessOnly) {
+    const ws = fs.mkdtempSync(path.join(os.tmpdir(), 'agentbox-e010-'));
+    fs.mkdirSync(path.join(ws, 'profiles', 'p1'), { recursive: true });
+    fs.writeFileSync(path.join(ws, 'profiles', 'p1', 'profile.toml'), `headless_only = ${headlessOnly}\n`);
+    return ws;
+  }
+
   test('valid: desktop.enabled=true with no profiles directory present', () => {
     const m = baseValid();
     m.desktop.enabled = true;
-    // /workspace/profiles is not present on CI, so E010 cannot fire
-    const r = runValidator(m);
+    const empty = fs.mkdtempSync(path.join(os.tmpdir(), 'agentbox-e010-empty-'));
+    const r = runValidator(m, { WORKSPACE: empty });
+    fs.rmSync(empty, { recursive: true, force: true });
+    expect(stderrContains(r, 'E010')).toBe(false);
+  });
+
+  test('invalid: a headless_only profile under $WORKSPACE/profiles triggers E010', () => {
+    const m = baseValid();
+    m.desktop.enabled = true;
+    const ws = workspaceWithProfile(true);
+    const r = runValidator(m, { WORKSPACE: ws });
+    fs.rmSync(ws, { recursive: true, force: true });
+    expect(stderrContains(r, 'E010')).toBe(true);
+    expect(r.exitCode).not.toBe(0);
+  });
+
+  test('valid: a non-headless profile under $WORKSPACE/profiles does not trigger E010', () => {
+    const m = baseValid();
+    m.desktop.enabled = true;
+    const ws = workspaceWithProfile(false);
+    const r = runValidator(m, { WORKSPACE: ws });
+    fs.rmSync(ws, { recursive: true, force: true });
     expect(stderrContains(r, 'E010')).toBe(false);
   });
 
@@ -1037,5 +1063,49 @@ describe('forum governance roster (E078 / W075)', () => {
     const m = baseValid();
     m.sovereign_mesh.forum_governance = { relay_url: '', signers: [], roster: [] };
     expect(stderrContains(runValidator(m), 'E016')).toBe(true);
+  });
+});
+
+// ─── E082: System One backend state_budget_tokens (ADR-2139 Decision 5) ────────
+
+describe('E082: [system_one.backends.*].state_budget_tokens', () => {
+  function withSlot(budget) {
+    const m = baseValid();
+    const backend = {
+      url: 'https://api.subq.ai/v1/systemone', model: 'subq-snap-preview',
+      key_env: 'SUBQ_API_KEY', local: false
+    };
+    if (budget !== undefined) backend.state_budget_tokens = budget;
+    m.system_one = { enabled: true, backend: 'subq', bind: '127.0.0.1:8094', backends: { subq: backend } };
+    return m;
+  }
+
+  test('absent and 0 (undeclared) and a positive integer pass', () => {
+    for (const v of [undefined, 0, 73000]) {
+      const r = runValidator(withSlot(v));
+      expect(stderrContains(r, 'E082')).toBe(false);
+      expect(stderrContains(r, 'E016')).toBe(false);
+      expect(r.exitCode).toBe(0);
+    }
+  });
+
+  test('a negative number or a float fires E082', () => {
+    for (const v of [-1, 1.5]) {
+      const r = runValidator(withSlot(v));
+      expect(stderrContains(r, 'E082') || stderrContains(r, 'E016')).toBe(true);
+      expect(r.exitCode).not.toBe(0);
+    }
+  });
+
+  test('a TOML float, even a whole one such as 73000.0, fires E082 (the projector refuses it)', () => {
+    const base = TOML.stringify(withSlot(undefined));
+    for (const lit of ['73000.0', '7.3e4', '1e3']) {
+      const tmp = path.join(os.tmpdir(), `agentbox-e082-${Date.now()}-${Math.random().toString(36).slice(2)}.toml`);
+      fs.writeFileSync(tmp, base.replace('[system_one.backends.subq]\n', `[system_one.backends.subq]\nstate_budget_tokens = ${lit}\n`), 'utf8');
+      const r = require('child_process').spawnSync(process.execPath, [VALIDATOR, tmp], { encoding: 'utf8' });
+      fs.unlinkSync(tmp);
+      expect(r.stderr).toContain('E082');
+      expect(r.status).not.toBe(0);
+    }
   });
 });

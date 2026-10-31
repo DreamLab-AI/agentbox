@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: b65c3d4eda3c2449d7ea8512ae1bda33a24c2312
+verified_commit: 2f15c531b02b8f8393d68d29ce3491712bdd862c
 verified_paths: [config/entrypoint-unified.sh, services/agentbox-manifest/src/tui_write.rs, mcp/consultants/antigravity/server.js, skills/mcp.json]
 owner: jjohare
 review_trigger: any change to a consultant's default model, a Gemini model retirement, the 2027-01-01 Gemini tariff step, or a wizard that starts exposing the consultant model field; activation — a receipt on the running image for the absent, empty and explicit override cases and a TUI save (explicit case observed live 2026-10-30)
@@ -254,3 +254,7 @@ Re-verified 2026-10-29 at `00039efb1e4a70402df86ad19cf76894fe3b9a8f` for ADR-215
 Security follow-up re-verified 2026-10-29 at `7d8c3b2dfe165f4ab3f8a5e4f62b8294ea7b155d`: the changed hunks drop privilege before workspace credential writes, replace credentials atomically, reject typed-decision redirects and retain the timeout through response parsing. The stalled-body, planted-symlink and HTTP307 regressions pass. These strengthen the existing boundaries; status axes and activation limits are unchanged. The original Deepsec report remains BLOCK with a separate remediation receipt, not a claimed clean rescan.
 
 Re-verified 2026-10-31 at `b65c3d4ed`. Governed paths changed: `config/entrypoint-unified.sh`: the `ONTOLOGY_PAGES_DIR` / `AGENTBOX_VAULT_LEGACY_PATHS` override tier is removed (ADR-2028 re-verification), `ONTO_PAGES` reads `VAULT_PAGES`, and the Phase 5d skip line says "[vault] liveness gate" (`7aa9365d4`). No section this record governs changed; the decision holds. Re-verified by `git diff 3b498088e..b65c3d4ed -- <verified_paths>`; no re-implementation was needed. The image carries it at the next rebuild.
+
+Re-verified 2026-10-31 at `97f298db5`: the only delta on this record's governed paths since the previous verification is the sprint-W7 additive work (ADR-2139 Decision 5 `state_budget_tokens`; ADR-2090 `bypass_projects`): new optional keys that default to today's behaviour, in config/entrypoint-unified.sh. None of it touches this record's decision. Re-verified by `git diff b65c3d4ed..97f298db5 -- <governed paths>`; status axes unchanged.
+
+Re-verified 2026-10-31 at `2f15c531b02b8f8393d68d29ce3491712bdd862c` (W7 and W8 integration, `adr-sprint/w78`). Governed-path delta since `97f298db5`: `config/entrypoint-unified.sh`: one line, the `system-one-project --format json` call no longer discards stderr, so a refused slot's reason reaches the boot log (zero bytes on the shipped manifest, checked; the call is still `|| true`, so boot behaviour is unchanged). Read from the diff and checked against the merged tree's gates (cargo, jest, validator); nothing it changes is a key, table or code path this record decides, so the decision and status axes are unchanged. Re-run: `git diff 97f298db5..2f15c531b -- config/entrypoint-unified.sh`.

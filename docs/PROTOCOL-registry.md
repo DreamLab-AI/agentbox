@@ -142,11 +142,13 @@ event id of the signed `31403` ActionResponse that authorised the promotion, so
 string. `colloquy_core::graduation::GraduationPolicy` refuses promotion to the
 public tier without it.
 
-**Open acceptance.** This allocation is **not yet fixture-backed**. Extending
-`tests/fixtures/federation-identity.v1.json` with these kinds under the ADR-2061
-symmetric kind-map contract is a merge requirement before any `38410` event is
-published to a relay outside the container, and is the `review_trigger` recorded
-on ADR-2085. Owner: agentbox maintainers.
+**Fixture-backed (2026-10-31).** These kinds are rows in the `event_kinds` section of
+[`schema/federation-kinds.json`](../schema/federation-kinds.json) (artefact 1.1.0), the ADR-2061
+shared kind-map artefact. `tests/fixtures/federation-identity.v1.json` is frozen (2026-09-05) and
+is not extended. The JS contract (`tests/contract/federation-kind-parity.contract.spec.js`) checks
+each row against the band table above and the `colloquy-nostr` constants; the Rust twin
+(`services/nostr-pod-bridge/src/colloquy_publish.rs`, `include_str!`) checks them against the
+signing door. Every row is `crosses: false`: none of these kinds federates to VisionClaw.
 
 
 ## sidestr chain plane — Nostr kinds and two URN kinds, PROPOSED 2026-09-21
@@ -183,11 +185,11 @@ kinds and document shapes are provisional. We do not control their evolution, so
 so rather than implying a stability we do not have. An upstream change to any of these kind numbers
 or tag shapes is the recorded `review_trigger` on ADR-2098.
 
-**Acceptance is open.** This allocation is not fixture-backed. Extending
-[`tests/fixtures/federation-identity.v1.json`](../tests/fixtures/federation-identity.v1.json) under
-the ADR-2061 symmetric kind-map contract is a merge requirement before any `38420` event is
-published to a relay outside the container, on the same terms as the 38410-38415 allocation above.
-The mirror of this table in the VisionFlow host's `PROTOCOL-registry.md` is part of the same change.
+**Fixture-backed (2026-10-31).** `38420`-`38425` are `allocated-proposed` rows in the `event_kinds`
+section of [`schema/federation-kinds.json`](../schema/federation-kinds.json), under the same tests
+as the 38410-38415 allocation above (the frozen `federation-identity.v1.json` is not extended). Backing
+the numbers is not a licence to publish: the records stay proposed and parked. The mirror of this
+table in the VisionFlow host's `PROTOCOL-registry.md` is a separate change in that repository.
 
 ### External kinds from solidpayorg teller, recorded 2026-10-02
 

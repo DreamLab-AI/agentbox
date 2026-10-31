@@ -217,6 +217,14 @@ async fn systemone(State(proxy): State<Shared>, headers: HeaderMap, body: Bytes)
             .headers_mut()
             .insert("x-system-one-usd-per-mtok-in", v);
     }
+    // Only when declared, so an undeclared backend's responses are unchanged.
+    if b.state_budget_tokens > 0 {
+        if let Ok(v) = HeaderValue::from_str(&b.state_budget_tokens.to_string()) {
+            response
+                .headers_mut()
+                .insert("x-system-one-state-budget-tokens", v);
+        }
+    }
     tracing::info!(backend = %name, model = %b.model, status = status.as_u16(), ms, input_tokens, questions, "request served");
     proxy.log_line(
         &p.log,
@@ -307,6 +315,7 @@ async fn backend(State(proxy): State<Shared>) -> Response {
         "projected_local": p.projected_local,
         "projected_at": p.projected_at,
         "usd_per_mtok_in": b.usd_per_mtok_in,
+        "state_budget_tokens": b.state_budget_tokens,
         "locality_ok": locality_ok(&p, b).is_ok(),
         "uptime_s": proxy.started.elapsed().as_secs(),
         "projection": proxy.watched.path().display().to_string(),

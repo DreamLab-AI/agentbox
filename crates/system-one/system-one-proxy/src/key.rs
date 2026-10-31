@@ -115,6 +115,7 @@ mod tests {
             local,
             timeout_ms: 1000,
             usd_per_mtok_in: 0.0,
+            state_budget_tokens: 0,
         }
     }
 
