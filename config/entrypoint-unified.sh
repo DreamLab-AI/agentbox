@@ -2695,6 +2695,13 @@ _SR_CASCADE_CUTOFF="$(_ab_toml_val skills.routing cascade_cutoff)"; _SR_CASCADE_
 _SR_LABEL_LOG="$(_ab_toml_bool skills.routing label_log)"
 _SR_LABEL_EMBED_URL="$(_ab_toml_val skills.routing label_embeddings_url)"
 _SR_LABEL_EMBED_URL="${_SR_LABEL_EMBED_URL:-http://192.168.2.132:9997/v1/embeddings}"
+# ADR-2090 per-project bypass: `bypass_projects = ["/a", "/b"]` → "/a:/b" (PATH-style). Empty
+# unless the manifest lists projects, in which case the hook command and runtime-env.sh are
+# EXACTLY what they were before (byte-identical-when-off). The validator (E083) guarantees no
+# whitespace, quote, comma or colon inside an entry, so the transform below is lossless.
+_SR_BYPASS="$(_ab_toml_val skills.routing bypass_projects | tr -d '[] ' | tr ',' ':' | sed 's/^:*//; s/:*$//')"
+_SR_BYPASS_EXPORT=""
+[ -z "$_SR_BYPASS" ] || _SR_BYPASS_EXPORT="export AGENTBOX_SKILL_ROUTE_BYPASS_PROJECTS='$_SR_BYPASS'"
 _SR_CASCADE_EXPORTS=""
 if [ "$_SR_CASCADE" = "1" ]; then
   _SR_CASCADE_EXPORTS="export AGENTBOX_SKILL_ROUTE_CASCADE=1
@@ -2718,7 +2725,7 @@ if [ "$_SR_ROUTER" = "jev" ] && [ "$_SR_HOOK" = "1" ] \
   SR_API="$_SSO_API" SR_PROXY="$_SR_PROXY" \
   SR_TIMEOUT="$_SR_TIMEOUT" SR_MIN_CHARS="$_SR_MIN_CHARS" \
   SR_CASCADE="$_SR_CASCADE" SR_CASCADE_CUTOFF="$_SR_CASCADE_CUTOFF" \
-  SR_LABEL_LOG="$_SR_LABEL_LOG" node <<'SRJS' || true
+  SR_LABEL_LOG="$_SR_LABEL_LOG" SR_BYPASS="$_SR_BYPASS" node <<'SRJS' || true
 const fs = require('fs');
 const f = process.env.SETTINGS, hook = process.env.SR_HOOK;
 // ADR-2094: SR_API is the sovereign façade endpoint, empty unless
@@ -2735,7 +2742,9 @@ const pfx = `AGENTBOX_SKILL_ROUTER=jev AGENTBOX_SKILL_ROUTE_MODEL=${process.env.
     ? ` AGENTBOX_SKILL_ROUTE_CASCADE=1 AGENTBOX_SKILL_ROUTE_CASCADE_CUTOFF=${Number(process.env.SR_CASCADE_CUTOFF) || 0.3718}`
     : '') +
   // ADR-2110 (proposed): hashed session tag on log lines, for the label join. Absent when off.
-  (process.env.SR_LABEL_LOG === '1' ? ' AGENTBOX_SKILL_ROUTE_LABEL_LOG=1' : '');
+  (process.env.SR_LABEL_LOG === '1' ? ' AGENTBOX_SKILL_ROUTE_LABEL_LOG=1' : '') +
+  // ADR-2090 per-project bypass: absent when no project is listed, so the command is unchanged.
+  (process.env.SR_BYPASS ? ` AGENTBOX_SKILL_ROUTE_BYPASS_PROJECTS='${process.env.SR_BYPASS}'` : '');
 let s = {}, origText = ''; try { origText = fs.readFileSync(f, 'utf8'); s = JSON.parse(origText); } catch {}
 s.hooks = s.hooks || {};
 s.hooks.UserPromptSubmit = (s.hooks.UserPromptSubmit || []).filter((g) =>
@@ -3833,6 +3842,8 @@ export AGENTBOX_SKILL_ROUTE_MIN_CHARS="${_SR_MIN_CHARS:-24}"
 $_SSO_EXPORTS
 # ADR-2095 addendum: the local routing cascade, only when [skills.routing].cascade.
 $_SR_CASCADE_EXPORTS
+# ADR-2090: per-project routing bypass, only when [skills.routing].bypass_projects lists one.
+$_SR_BYPASS_EXPORT
 # ADR-2028: the vault path authority. Sourced by every tmux window and
 # interactive shell (bash via /etc/profile.d, fish via conf.d) so the Notes
 # window, the skills and the MCP servers all agree on one corpus root. Empty

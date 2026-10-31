@@ -367,6 +367,9 @@ function config(env = process.env, opts = {}) {
     router = t.router; model = model || t.model;
     timeoutMs = timeoutMs || t.timeout_ms; minChars = minChars || t.min_prompt_chars;
     cascade = cascade ?? t.cascade; cutoff = cutoff ?? t.cascade_cutoff;
+    if (!env.AGENTBOX_SKILL_ROUTE_BYPASS_PROJECTS && t.bypass_projects) {
+      env = { ...env, AGENTBOX_SKILL_ROUTE_BYPASS_PROJECTS: t.bypass_projects.replace(/[\[\]"'\s]/g, '').split(',').filter(Boolean).join(path.delimiter) };
+    }
   }
   return {
     router: (router || 'table').toLowerCase(),
@@ -397,6 +400,10 @@ function config(env = process.env, opts = {}) {
     claudeDir: env.AGENTBOX_SKILL_ROUTE_CLAUDE_DIR === '0' ? '' :
       (env.AGENTBOX_SKILL_ROUTE_CLAUDE_DIR || env.CLAUDE_CONFIG_DIR || path.join(env.HOME || os.homedir(), '.claude')),
     key: env.TYPESAFE_API_KEY || '',
+    // ADR-2090 per-project bypass: PATH-style list of absolute project roots whose turns never
+    // reach the judge. Unset/empty = no bypass (byte-identical to before).
+    bypassProjects: String(env.AGENTBOX_SKILL_ROUTE_BYPASS_PROJECTS || '')
+      .split(path.delimiter).map((x) => x.trim()).filter(Boolean),
     // The Jev option (AB-22-S1-01/-04): both refinements off unless their env flag is set.
     jev: jevConfig(env),
     // ADR-2139: behind the loopback proxy the vendor key lives in the proxy; the
@@ -409,6 +416,27 @@ function config(env = process.env, opts = {}) {
     logPath: env.AGENTBOX_SKILL_ROUTE_LOG === '0' ? '' :
       (env.AGENTBOX_SKILL_ROUTE_LOG || path.join(os.homedir(), '.claude', 'skill-route.jsonl')),
   };
+}
+
+/**
+ * ADR-2090 per-project bypass. `list` is the resolved `[skills.routing].bypass_projects`
+ * (absolute paths). A project matches when the session cwd IS it or lies beneath it, on a
+ * path boundary: `/x/proj` covers `/x/proj/sub` and never `/x/proj2`. Both sides are
+ * realpath-resolved (falling back to a lexical resolve for a path that does not exist), so a
+ * symlinked cwd cannot slip past. An empty list never bypasses (today's behaviour exactly);
+ * a non-empty list with an unknown or non-absolute cwd bypasses, because the gate is a privacy
+ * control and must fail closed.
+ */
+function projectBypassed(cwd, list) {
+  if (!Array.isArray(list) || !list.length) return false;
+  if (typeof cwd !== 'string' || !path.isAbsolute(cwd)) return true;
+  const real = (p) => { try { return fs.realpathSync(p); } catch { return path.resolve(p); } };
+  const here = real(cwd);
+  return list.some((entry) => {
+    if (typeof entry !== 'string' || !path.isAbsolute(entry)) return false;
+    const root = real(entry);
+    return here === root || here.startsWith(root.endsWith(path.sep) ? root : root + path.sep);
+  });
 }
 
 /** Keep the judge inside its token budget on a pasted-document turn. */
@@ -568,7 +596,7 @@ function applyJev(result, answers, plan, jc) {
  * Route one prompt. Resolves to an outcome object; never rejects.
  * `retries` is 0 for the hook (a turn must not wait on 429/529) and small for the CLI.
  */
-async function route(prompt, cfg, { retries = 0, candidates, registeredOnly = false } = {}) {
+async function route(prompt, cfg, { retries = 0, candidates, registeredOnly = false, cwd } = {}) {
   const text = String(prompt || '').trim();
   if (cfg.router !== 'jev') return skip('router-off', { router: cfg.router });
   // With the cascade off the judge is the only path, so no key means nothing to do. With it
@@ -620,6 +648,10 @@ async function route(prompt, cfg, { retries = 0, candidates, registeredOnly = fa
     esc = { cascade: 'escalated', margin: local ? local.margin : 0 };
     if (!cfg.key && !cfg.proxy) return skip('no-key', { ...esc, ...scoped });
   }
+  // ADR-2090 per-project bypass — the ONE gate in front of the ONE egress site below (the
+  // Choice and every verify/intent/facet extra ride the same request). A local cascade answer
+  // above involves no egress and is still allowed; only an escalation to the judge stops here.
+  if (projectBypassed(cwd, cfg.bypassProjects)) return skip('project-bypass', { ...esc, ...scoped });
   if (typeof fetch !== 'function') return fail('no-fetch', { ...esc, ...scoped });
 
   const { text: state, truncated } = clampPrompt(text);
@@ -779,5 +811,5 @@ module.exports = {
   tokenise, stripExclusion, bm25, localRank, DEFAULT_CASCADE_CUTOFF,
   readRegisteredManifest, restrictToRegistered, REGISTERED_MANIFEST_CANDIDATES, MAX_CONTEXT_CHARS,
   loadLoadableExtras, SYNCED_NAMESPACE,
-  jevConfig, jevPlan, applyJev, explicitSkillRequest, shortlist, JEV_SKILL_QUESTION_SET, JEV_FACETS,
+  projectBypassed, jevConfig, jevPlan, applyJev, explicitSkillRequest, shortlist, JEV_SKILL_QUESTION_SET, JEV_FACETS,
 };

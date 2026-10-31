@@ -527,6 +527,103 @@ describe('hook — fail-open (ADR-2090: the table is the normal path, not an err
   });
 });
 
+describe('hook — per-project bypass (ADR-2090; [skills.routing].bypass_projects)', () => {
+  let proj, sibling, link;
+  beforeAll(() => {
+    proj = path.join(tmp, 'secret-proj');
+    sibling = path.join(tmp, 'secret-proj2');
+    link = path.join(tmp, 'secret-link');
+    fs.mkdirSync(path.join(proj, 'sub'), { recursive: true });
+    fs.mkdirSync(sibling);
+    fs.symlinkSync(proj, link);
+  });
+  const hookAt = (cwd, env) => run([HOOK], env, JSON.stringify({ hook_event_name: 'UserPromptSubmit', prompt: PROMPT, cwd }));
+
+  test('a bypassed project, its subdirectory and a symlink to it send nothing to the judge', async () => {
+    const env = baseEnv({ AGENTBOX_SKILL_ROUTE_BYPASS_PROJECTS: proj });
+    for (const cwd of [proj, path.join(proj, 'sub'), link]) {
+      const r = await hookAt(cwd, env);
+      expect(r.code).toBe(0);
+      expect(r.out.trim()).toBe('');
+    }
+    expect(seen).toHaveLength(0);
+    for (const l of logLines()) expect(l).toMatchObject({ outcome: 'skipped', reason: 'project-bypass' });
+    expect(logLines()).toHaveLength(3);
+    expect(JSON.stringify(logLines())).not.toContain('architecture');
+  });
+
+  test('a sibling that merely shares the prefix still routes', async () => {
+    const r = await hookAt(sibling, baseEnv({ AGENTBOX_SKILL_ROUTE_BYPASS_PROJECTS: proj }));
+    expect(JSON.parse(r.out.trim()).hookSpecificOutput.additionalContext).toContain('alpha-diagrams');
+    expect(seen).toHaveLength(1);
+  });
+
+  test('several projects: any match bypasses; the list is PATH-delimited', async () => {
+    const env = baseEnv({ AGENTBOX_SKILL_ROUTE_BYPASS_PROJECTS: [sibling, proj].join(path.delimiter) });
+    await hookAt(proj, env); await hookAt(sibling, env);
+    expect(seen).toHaveLength(0);
+  });
+
+  test('fails closed: a non-empty list with no cwd in the hook input sends nothing', async () => {
+    const r = await run([HOOK], baseEnv({ AGENTBOX_SKILL_ROUTE_BYPASS_PROJECTS: proj }),
+      JSON.stringify({ hook_event_name: 'UserPromptSubmit', prompt: PROMPT }));
+    expect(r.out.trim()).toBe('');
+    expect(seen).toHaveLength(0);
+  });
+
+  test('default (unset or empty list) is unchanged: routes with or without a cwd', async () => {
+    for (const extra of [{}, { AGENTBOX_SKILL_ROUTE_BYPASS_PROJECTS: '' }]) {
+      const r = await hookAt(proj, baseEnv(extra));
+      expect(JSON.parse(r.out.trim()).hookSpecificOutput.additionalContext).toContain('alpha-diagrams');
+    }
+    expect(await runHook(PROMPT, baseEnv())).toContain('alpha-diagrams');
+    expect(seen).toHaveLength(3);
+    expect(lib.config(baseEnv()).bypassProjects).toEqual([]);
+  });
+
+  test('a verify/intent-enabled request is bypassed too (every extra rides the one gated request)', async () => {
+    const env = baseEnv({ AGENTBOX_SKILL_ROUTE_BYPASS_PROJECTS: proj, AGENTBOX_JEV_SKILL_VERIFY: '1', AGENTBOX_JEV_SKILL_INTENT: '1' });
+    await hookAt(proj, env);
+    expect(seen).toHaveLength(0);
+  });
+
+  test('the local cascade may still answer a bypassed project, but never escalates to the judge', async () => {
+    const env = baseEnv({ AGENTBOX_SKILL_ROUTE_BYPASS_PROJECTS: proj, AGENTBOX_SKILL_ROUTE_CASCADE: '1', AGENTBOX_SKILL_ROUTE_CASCADE_CUTOFF: '1' });
+    // A prompt with no vocabulary overlap has no local margin, so it must escalate — and the
+    // bypass must stop that escalation before the request is built.
+    await run([HOOK], env, JSON.stringify({ hook_event_name: 'UserPromptSubmit', cwd: proj, prompt: 'qqzx wwvk jjpf zzrt mmnb vvcx' }));
+    expect(seen).toHaveLength(0);
+    expect(logLines()[0]).toMatchObject({ outcome: 'skipped', reason: 'project-bypass', cascade: 'escalated' });
+  });
+
+  test('the shared library gate serves /route too: route() with a bypassed cwd makes no request', async () => {
+    // The CLI prefers the baked lib under /opt, so exercise the repo lib in-process, and pin
+    // that the CLI passes its cwd (source check) so a future edit cannot drop the gate.
+    const cfg = lib.config(baseEnv({ AGENTBOX_SKILL_ROUTE_BYPASS_PROJECTS: proj }));
+    const r = await lib.route(PROMPT, cfg, { retries: 0, cwd: path.join(proj, 'sub') });
+    expect(r).toMatchObject({ outcome: 'skipped', reason: 'project-bypass' });
+    expect(seen).toHaveLength(0);
+    const ok = await lib.route(PROMPT, cfg, { retries: 0, cwd: sibling });
+    expect(ok.outcome).toBe('routed');
+    expect(fs.readFileSync(CLI, 'utf8')).toMatch(/lib\.route\(task, cfg, \{[^}]*cwd: process\.cwd\(\)/);
+  });
+
+  test('projectBypassed: boundary, relative and empty cases', () => {
+    expect(lib.projectBypassed('/x/proj/sub', ['/x/proj'])).toBe(true);
+    expect(lib.projectBypassed('/x/proj2', ['/x/proj'])).toBe(false);
+    expect(lib.projectBypassed('/x/proj', [])).toBe(false);
+    expect(lib.projectBypassed(undefined, ['/x/proj'])).toBe(true);
+    expect(lib.projectBypassed('relative', ['/x/proj'])).toBe(true);
+    expect(lib.projectBypassed('/x/proj', ['relative'])).toBe(false);
+  });
+
+  test('manifest fallback: [skills.routing].bypass_projects is read when the env is silent', () => {
+    const toml = path.join(tmp, 'bypass-fallback.toml');
+    fs.writeFileSync(toml, `[skills.routing]\nrouter = "jev"\nbypass_projects = ["/a/one", "/b/two"]\n`);
+    expect(lib.config({}, { fallbackToml: toml }).bypassProjects).toEqual(['/a/one', '/b/two']);
+  });
+});
+
 describe('/route CLI', () => {
   test('routed: ranked picks and a dispatch line', async () => {
     const out = await runCli([PROMPT], baseEnv());
@@ -582,6 +679,21 @@ describe('validator — E076 / W074 (ADR-2095 addendum)', () => {
   test('a non-boolean cascade and an out-of-range cutoff are E076', () => {
     expect(validate('[skills.routing]\nrouter = "jev"\ncascade = "yes"\n')).toMatch(/E076: \[skills\.routing\]\.cascade must be/);
     expect(validate('[skills.routing]\nrouter = "jev"\ncascade_cutoff = 1.5\n')).toMatch(/E076: \[skills\.routing\]\.cascade_cutoff/);
+  });
+
+  test('bypass_projects: absolute paths pass; relative, colon, quote or non-list values are E083 (or a schema error)', () => {
+    expect(validate('[skills.routing]\nrouter = "jev"\nbypass_projects = ["/home/devuser/workspace/p", "/srv/x"]\n')).not.toMatch(/E083/);
+    expect(validate('[skills.routing]\nrouter = "jev"\nbypass_projects = []\n')).not.toMatch(/E083/);
+    for (const bad of ['["relative/dir"]', '["/a:b"]', '["/a b"]', '["/a,b"]', '"/not/a/list"']) {
+      expect(validate(`[skills.routing]\nrouter = "jev"\nbypass_projects = ${bad}\n`)).toMatch(/E083|E016/);
+    }
+    expect(validate('[skills.routing]\nrouter = "jev"\nbypass_projects = ["relative/dir"]\n')).toMatch(/E083/);
+  });
+
+  test('entrypoint projects the bypass only when listed (byte-identical when empty)', () => {
+    const src = fs.readFileSync(path.resolve(__dirname, '../../config/entrypoint-unified.sh'), 'utf8');
+    expect(src).toMatch(/_SR_BYPASS_EXPORT=""\n\[ -z "\$_SR_BYPASS" \] \|\| _SR_BYPASS_EXPORT=/);
+    expect(src).toMatch(/process\.env\.SR_BYPASS \? ` AGENTBOX_SKILL_ROUTE_BYPASS_PROJECTS=/);
   });
 
   test('the shipped values (off, 0.3718) are clean', () => {

@@ -87,9 +87,9 @@
       "summary": "Use proxy protocol headers and the configured public origin for native pod authentication; the launcher flag is baked."
     },
     "interaction_plane": {
-      "class": "boot",
-      "name": "Interaction plane (Agent of Empires)",
-      "summary": "AoE serve dashboard + session manager (loopback :9095) behind the NIP-98 proxy that is its sole ingress; declarative [[interaction_plane.session_seeds]] replace the MAD tmux harness, each binding a did:nostr/URN/beads-epic/scoped-namespace at create (PRD-021/ADR-042/ADR-043). Daemon + proxy + seeds are boot-class; the aoe-with-web binary is a rebuild-class flake input (see aoe-serve-binary)."
+      "class": "rebuild",
+      "name": "Interaction plane (agentbox-sessions)",
+      "summary": "ADR-2153: manifest-reconciled tmux sessions on a SO_PEERCRED-authorised unix socket. Named operator routes retain NIP-98 ingress on :9096; the web board and :9095 are retired."
     },
     "linked_data": {
       "class": "boot",
@@ -334,7 +334,7 @@
     "skills.routing.router": {
       "class": "boot",
       "name": "Live skill router (System One / Jev)",
-      "summary": "ADR-2091: [skills.routing].router=\"jev\" registers config/hooks/skill-route.cjs on UserPromptSubmit — one Choice over the REGISTERED skill descriptions per turn (ADR-2111; /route still ranks every routable skill), pick injected as hookSpecificOutput.additionalContext — and /route (skills/skill-router/scripts/route.mjs) uses the same library. FAILS OPEN to router=\"table\" (the pre-2091 path: always-loaded descriptions + routing-table.md) on any error, timeout, 429/529, missing TYPESAFE_API_KEY or a `none` pick. Egress of the routing prompt is accepted for skill routing only (ADR-2090). BOOT-class: the entrypoint inlines model/timeout/min-chars into the hook command and runtime-env.sh; router=\"table\" or hook=false retracts the registration on the next boot (byte-identical-when-off). No image change on either value. cascade=true (ADR-2095 addendum, default off) answers turns whose local BM25 margin reaches cascade_cutoff in-process and escalates only the rest to the judge. label_log=true (ADR-2110, proposed, default off) registers config/hooks/routing-label-recorder.cjs on Stop to record per-turn teacher labels (prompt embedding, skills the main model used, router pick) into routing_labels — never prompt text, LAN-only embeddings, email turns excluded."
+      "summary": "ADR-2091: [skills.routing].router=\"jev\" registers config/hooks/skill-route.cjs on UserPromptSubmit — one Choice over the REGISTERED skill descriptions per turn (ADR-2111; /route still ranks every routable skill), pick injected as hookSpecificOutput.additionalContext — and /route (skills/skill-router/scripts/route.mjs) uses the same library. FAILS OPEN to router=\"table\" (the pre-2091 path: always-loaded descriptions + routing-table.md) on any error, timeout, 429/529, missing TYPESAFE_API_KEY or a `none` pick. Egress of the routing prompt is accepted for skill routing only (ADR-2090). BOOT-class: the entrypoint inlines model/timeout/min-chars into the hook command and runtime-env.sh; router=\"table\" or hook=false retracts the registration on the next boot (byte-identical-when-off). No image change on either value. cascade=true (ADR-2095 addendum, default off) answers turns whose local BM25 margin reaches cascade_cutoff in-process and escalates only the rest to the judge. bypass_projects=[...] (ADR-2090 per-project bypass, default empty = byte-identical) lists absolute project roots whose turns never reach the judge: a session cwd equal to or beneath one (path-boundary match, symlinks resolved, fail-closed on an unknown cwd) is skipped before the request is built, covering the hook and /route; BOOT-class, inlined into the hook command and runtime-env.sh only when non-empty (validator E083). label_log=true (ADR-2110, proposed, default off) registers config/hooks/routing-label-recorder.cjs on Stop to record per-turn teacher labels (prompt embedding, skills the main model used, router pick) into routing_labels — never prompt text, LAN-only embeddings, email turns excluded."
     },
     "skills.ruvnet_brain": {
       "class": "boot",
@@ -379,7 +379,7 @@
     "system_one": {
       "class": "boot",
       "name": "System One vendor slot (typed-decision proxy)",
-      "summary": "ADR-2139: the System One judge is a vendor slot. [program:system-one-proxy] (crates/system-one/system-one-proxy, loopback [system_one].bind, default 127.0.0.1:8094) fronts all three typed-decision consumers (the live skill router ADR-2091, factrail compaction ADR-2121, the advisor checkpoints ADR-2135) and forwards POST /v1/systemone to the backend named by [system_one].backend out of [system_one.backends.*] (shipped: typesafe = Jev, subq = SubQ Snap, laya = the ADR-2094 facade sidecar, kev = a local Kev-9B server). The proxy owns the vendor keys (read from each backend's key_env, sent only to that key's hard-coded host over https, never to a local backend, redirects off), overwrites `model` with the backend's own and drops the Authorization a consumer sent. BOOT-class projection: the entrypoint runs `agentbox-manifest system-one-project`, writes /run/agentbox/system-one.json (the proxy's only config; re-read on change) and projects the proxy URL, the selected model and backendLocal = the selected backend's declared locality into runtime-env.sh, the router hook and both plugins' userConfig. LIVE subset: `./agentbox.sh systemone backend <name>` re-projects the JSON in place and the next request follows it — allowed between two backends of one locality class and from cloud to local; local-to-cloud is refused (and the proxy answers 503 backend_locality_changed) until the container restarts, because the consumers' email fence was projected at boot (ADR-2094 §5). The program itself is REBUILD-class (flake.nix bakes it from the in-repo workspace). Mutually exclusive with [features.sovereign_system_one].enabled (E081). Observability: GET /v1/backend (active backend, per-backend counters, estimated spend) and the JSONL request log at [system_one].log (never content). Validator: E080/E081/W076; W071/W072 stand down because the vendor key lives in the proxy — the consumers still need TYPESAFE_API_KEY or FACTRAIL_API_KEY present as their own gate token."
+      "summary": "ADR-2139: the System One judge is a vendor slot. [program:system-one-proxy] (crates/system-one/system-one-proxy, loopback [system_one].bind, default 127.0.0.1:8094) fronts all three typed-decision consumers (the live skill router ADR-2091, factrail compaction ADR-2121, the advisor checkpoints ADR-2135) and forwards POST /v1/systemone to the backend named by [system_one].backend out of [system_one.backends.*] (shipped: typesafe = Jev, subq = SubQ Snap, laya = the ADR-2094 facade sidecar, kev = a local Kev-9B server). The proxy owns the vendor keys (read from each backend's key_env, sent only to that key's hard-coded host over https, never to a local backend, redirects off), overwrites `model` with the backend's own and drops the Authorization a consumer sent. BOOT-class projection: the entrypoint runs `agentbox-manifest system-one-project`, writes /run/agentbox/system-one.json (the proxy's only config; re-read on change) and projects the proxy URL, the selected model and backendLocal = the selected backend's declared locality into runtime-env.sh, the router hook and both plugins' userConfig. LIVE subset: `./agentbox.sh systemone backend <name>` re-projects the JSON in place and the next request follows it — allowed between two backends of one locality class and from cloud to local; local-to-cloud is refused (and the proxy answers 503 backend_locality_changed) until the container restarts, because the consumers' email fence was projected at boot (ADR-2094 §5). The program itself is REBUILD-class (flake.nix bakes it from the in-repo workspace). Mutually exclusive with [features.sovereign_system_one].enabled (E081). Observability: GET /v1/backend (active backend, per-backend counters, estimated spend) and the JSONL request log at [system_one].log (never content). Decision 5: an optional per-backend `state_budget_tokens` (0 = undeclared, validator E082) is projected as stateBudgetTokens to factrail's userConfig and AGENTBOX_SYSTEM_ONE_STATE_BUDGET_TOKENS, and reported (advisory, never enforced) on /v1/backend and the x-system-one-state-budget-tokens header. Validator: E080/E081/E082/W076; W071/W072 stand down because the vendor key lives in the proxy — the consumers still need TYPESAFE_API_KEY or FACTRAIL_API_KEY present as their own gate token."
     },
     "system_one.consumers.approval_review": {
       "class": "boot",
@@ -476,6 +476,11 @@
       "name": "System One website advisories",
       "summary": "Explicit consumer opt-in projected before supervisord and into runtime-env; existing advisory, locality and threshold guards remain authoritative."
     },
+    "system_one.network": {
+      "class": "boot",
+      "name": "System One proxy on the private docker network",
+      "summary": "ADR-2139 amendment 2026-10-30: [system_one].network = true lets [system_one].bind be 0.0.0.0 or an RFC 1918 address so host containers on visionclaw_network reach the proxy as agentbox:8094. Never published (check-ports-loopback sanctions the listener); the proxy refuses Origin-bearing and non-JSON requests. Off = loopback only."
+    },
     "toolchains.agentic_qe": {
       "class": "rebuild",
       "name": "Agentic QE fleet (aqe)",
@@ -550,6 +555,11 @@
       "class": "rebuild",
       "name": "Rust toolchain",
       "summary": "cargo/rustc in the image."
+    },
+    "user_cron.enabled": {
+      "class": "rebuild",
+      "name": "Operator-owned scheduled jobs (user crontab)",
+      "summary": "[program:user-cron] runs supercronic over ~/workspace/.local/etc/agentbox/user.crontab on the persistent workspace volume, outside every repository, so private job details stay out of this public repo. Idle until the file exists; edits reload without a rebuild. REBUILD-class to enable."
     },
     "vault.cli": {
       "class": "rebuild",

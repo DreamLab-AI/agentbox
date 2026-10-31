@@ -1399,6 +1399,26 @@ if (ldEnabled) {
   }
 }
 
+// ─── E083: the per-project routing bypass (ADR-2090) ─────────────────────────
+//
+// E083 — [skills.routing].bypass_projects must be a list of absolute paths with no
+//         whitespace, quotes, commas or colons. The list is projected as a PATH-style
+//         env value inlined into a shell command, and a relative or malformed entry
+//         would silently fail to protect the project it names.
+{
+  const rt = (manifest.skills || {}).routing || {};
+  if (rt.bypass_projects !== undefined) {
+    const bad = !Array.isArray(rt.bypass_projects)
+      ? [rt.bypass_projects]
+      : rt.bypass_projects.filter((p) => typeof p !== 'string' || !/^\/[^\s'",:]*$/.test(p));
+    if (bad.length) {
+      errors.push({
+        code: 'E083',
+        message: `E083: [skills.routing].bypass_projects must be a list of absolute paths without whitespace, quotes, commas or colons; offending: ${bad.map((p) => JSON.stringify(String(p).slice(0, 40))).join(', ')} — ADR-2090`,
+      });
+    }
+  }
+}
 // ─── E076 / W074: the local routing cascade and the judge's latency budget ───
 // (ADR-2095 addendum 2026-09-23)
 //

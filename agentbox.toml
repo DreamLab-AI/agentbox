@@ -1311,6 +1311,15 @@ hook = true                     # register the UserPromptSubmit hook (router = "
 model = "jev-latest"            # resolved server-side; pin (e.g. "jev-1.13.0") to freeze behaviour
 timeout_ms = 4000               # hook budget per call; the hook itself is registered at 8000
 min_prompt_chars = 24           # shorter turns are never sent (and never routed)
+# ADR-2090 per-project bypass. Absolute project roots whose turns NEVER reach the judge: a
+# session whose cwd is one of these or lies beneath it (path-boundary match, symlinks
+# resolved: "/x/proj" covers "/x/proj/sub", never "/x/proj2") is skipped before the request
+# is built, so the Choice and every verify/intent/facet extra stay home. Fails closed: with
+# a non-empty list and no cwd, nothing is sent. A local cascade answer (no egress) still
+# applies; only an escalation to the judge is stopped. Empty = today's behaviour, byte for
+# byte (no env, no change to the registered hook command). Entries: absolute, no
+# whitespace, quotes, commas or colons (validator E083). BOOT-class, like its neighbours.
+bypass_projects = []
 # Local cascade (ADR-2095 addendum 2026-09-23). A BM25 ranker over the same skill
 # rubrics answers a turn in-process when its relative top-two margin reaches
 # cascade_cutoff; only the rest go to the judge. Measured on the 86-turn corpus:
