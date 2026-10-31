@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 97f298db552a61b8edd6147c68a3191d434db6fa
+verified_commit: 2f15c531b02b8f8393d68d29ce3491712bdd862c
 verified_paths: [crates/colloquy/colloquy-nostr/src/kinds.rs, docs/PROTOCOL-registry.md, services/nostr-pod-bridge/src/colloquy_publish.rs, agentbox.toml]
 owner: jjohare
 review_trigger: the next agentbox Nostr kind allocation, or any change to the band table in docs/PROTOCOL-registry.md
@@ -340,3 +340,5 @@ cargo test --lib                                                      # 105 pass
 ```
 
 **What the reviewer should know:** the VisionClaw Rust twin (`src/uri/mod.rs`, `include_str!("../../agentbox/schema/federation-kinds.json")`) was not run, because it reads the primary submodule rather than this worktree. Its `FederationKindArtefact` struct has no `deny_unknown_fields` and ignores the new section, so compatibility is by inspection, not by execution. The VisionFlow host's mirror of the registry table is a separate change in that repository. The settlement half stays `proposed`; fixture-backing the numbers publishes nothing. `activation_status` stays `staged`.
+
+Re-verified 2026-10-31 at `2f15c531b02b8f8393d68d29ce3491712bdd862c` (W7 and W8 integration, `adr-sprint/w78`). Governed-path delta since `97f298db5`: `agentbox.toml`: the four `[model_routing.routes]` diagram routes with their comment block (ADR-2130), and a wording fix on the `bypass_projects` comment (brackets forbidden, scoped to skill routing; ADR-2090); `docs/PROTOCOL-registry.md`: the 38410-38415 and 38420-38425 allocations move from open acceptance to fixture-backed in `schema/federation-kinds.json` (ADR-2105); `services/nostr-pod-bridge/src/colloquy_publish.rs`: test-only `include_str!` parity tests against `schema/federation-kinds.json` (ADR-2105); no production code. Read from the diff and checked against the merged tree's gates (cargo, jest, validator); nothing it changes is a key, table or code path this record decides, so the decision and status axes are unchanged. Re-run: `git diff 97f298db5..2f15c531b -- agentbox.toml docs/PROTOCOL-registry.md services/nostr-pod-bridge/src/colloquy_publish.rs`.

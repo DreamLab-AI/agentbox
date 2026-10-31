@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: 1e41b64b624af97cf49771d08da82fbf3743acbd
+verified_commit: 2f15c531b02b8f8393d68d29ce3491712bdd862c
 verified_paths: [mcp/servers/nostr-bridge.js, scripts/agentbox-config-validate.js, tests/config/semantic-rules.test.js]
 owner: jjohare
 review_trigger: provisioning per-stack nostr key material, changing the profiles root or `$WORKSPACE`, or any new consumer of `loadSigner`
@@ -112,3 +112,5 @@ re-verification of this record's paths.
 **Tests:** `tests/config/semantic-rules.test.js` E010 block drives the validator as a subprocess with `WORKSPACE` pointed at a temporary tree: no profiles directory -> no E010; a `headless_only = true` profile with `desktop.enabled` -> E010 and a non-zero exit; a `headless_only = false` profile -> no E010. The old test could not fire E010 at all on a machine without `/workspace`. Run: `management-api/node_modules/.bin/jest --rootDir . --roots=./tests/config --testMatch '**/semantic-rules.test.js'` -> 80 passed, 1 skipped.
 
 **Deliberately left open:** per-stack `nostr.key.enc` + `nostr.salt` provisioning and naming a signing stack. It is tied to owner-parked ADR-2078 (the pods signer moves to the identity port) and is not touched. `implementation_status` stays `partial` and `activation_status` stays `inactive`.
+
+Re-verified 2026-10-31 at `2f15c531b02b8f8393d68d29ce3491712bdd862c` (W7 and W8 integration, `adr-sprint/w78`). Governed-path delta since `1e41b64b6`: `scripts/agentbox-config-validate.js` and `tests/config/semantic-rules.test.js`: additions only for E083 (brackets) and E082 (floats) and their tests; the E010 `$WORKSPACE` profiles-root code this record's close-out rests on is not touched. Read from the diff and checked against the merged tree's gates (cargo, jest, validator); nothing it changes is a key, table or code path this record decides, so the decision and status axes are unchanged. Re-run: `git diff 1e41b64b6..2f15c531b -- scripts/agentbox-config-validate.js tests/config/semantic-rules.test.js`.

@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 97f298db552a61b8edd6147c68a3191d434db6fa
+verified_commit: 2f15c531b02b8f8393d68d29ce3491712bdd862c
 verified_paths: [skills/sealmap-review/scripts/review-cadence.cjs, skills/sealmap-review/run-cron.sh, skills/sealmap-review/crontab, schema/agentbox.toml.schema.json]
 owner: jjohare
 review_trigger: the first month of real Gemini spend (compare ledger cost with the estimate); a change to Gemini or Z.AI pricing; a GLM model change behind [consultants.zai]; a second corpus joining repos
@@ -154,3 +154,5 @@ Re-verified 2026-10-31 at `97f298db5`: the only delta on this record's governed 
 ## Re-verification — 2026-10-31 (`1e41b64b624af97cf49771d08da82fbf3743acbd`)
 
 Tripped by the W8 ADR-sprint changes. Governed-path delta since `753788564`: `schema/agentbox.toml.schema.json` widens the `model_routing.routes` host pattern to `claude|codex|loom|zai` and adds those four keys (ADR-2130). No key, table or code path this record decides is touched, so the decision and status axes are unchanged. Judged from the diff (re-runnable: `git diff 753788564..1e41b64b6 -- skills/sealmap-review/scripts/review-cadence.cjs skills/sealmap-review/run-cron.sh skills/sealmap-review/crontab schema/agentbox.toml.schema.json`; re-run at integration and the summary above matches it), not by re-running this record's own acceptance checks.
+
+Re-verified 2026-10-31 at `2f15c531b02b8f8393d68d29ce3491712bdd862c` (W7 and W8 integration, `adr-sprint/w78`). Governed-path delta since `97f298db5`: `schema/agentbox.toml.schema.json`: the `model_routing.routes` host pattern widened to `claude|codex|loom|zai` with four route keys (ADR-2130), and the `bypass_projects` item pattern forbidding `[` and `]` with its description scoped to skill routing (ADR-2090). Read from the diff and checked against the merged tree's gates (cargo, jest, validator); nothing it changes is a key, table or code path this record decides, so the decision and status axes are unchanged. Re-run: `git diff 97f298db5..2f15c531b -- schema/agentbox.toml.schema.json`.

@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: 97f298db552a61b8edd6147c68a3191d434db6fa
+verified_commit: 2f15c531b02b8f8393d68d29ce3491712bdd862c
 verified_paths: [agentbox.toml, schema/agentbox.toml.schema.json, scripts/agentbox-config-validate.js, config/entrypoint-unified.sh, config/hooks/skill-route.cjs, config/hooks/lib/skill-route.cjs, skills/skill-router/scripts/route.mjs, config/egress-policy.json, tests/config/skill-route.test.js]
 owner: jjohare
 review_trigger: the first project whose content must not reach the judge, or any proposal to widen this beyond skill routing
@@ -117,3 +117,5 @@ node scripts/agentbox-config-validate.js agentbox.toml → valid
 ```
 
 **Owner question (open):** should `bypass_projects` also gate factrail compaction and the jev-checkpoints plugin, or is a project that must not reach the judge to be handled by disabling `jev_compaction` and `jev_checkpoints` for it? Until the owner answers, listing a project protects it from skill routing alone.
+
+Re-verified 2026-10-31 at `2f15c531b02b8f8393d68d29ce3491712bdd862c` (W7 and W8 integration, `adr-sprint/w78`). Governed-path delta since `97f298db5`: `agentbox.toml`: the four `[model_routing.routes]` diagram routes with their comment block (ADR-2130), and a wording fix on the `bypass_projects` comment (brackets forbidden, scoped to skill routing; ADR-2090); `config/egress-policy.json`: the `skill-router` row's `notes` only, now saying the bypass stops the skill router and not factrail or jev-checkpoints (ADR-2090); `config/entrypoint-unified.sh`: one line, the `system-one-project --format json` call no longer discards stderr, so a refused slot's reason reaches the boot log (zero bytes on the shipped manifest, checked; the call is still `|| true`, so boot behaviour is unchanged); `schema/agentbox.toml.schema.json`: the `model_routing.routes` host pattern widened to `claude|codex|loom|zai` with four route keys (ADR-2130), and the `bypass_projects` item pattern forbidding `[` and `]` with its description scoped to skill routing (ADR-2090); `scripts/agentbox-config-validate.js`: the E010 profiles root follows `$WORKSPACE` (ADR-2066), E083 forbids brackets and E082 rejects a TOML float (ADR-2090, ADR-2139); `tests/config/skill-route.test.js`: a bracket E083 test (ADR-2090). Read from the diff and checked against the merged tree's gates (cargo, jest, validator); the changes to this record's own surface are the ones its close-out above already records (and the status axes there stand), and nothing else it changes touches what it decides. Re-run: `git diff 97f298db5..2f15c531b -- agentbox.toml config/egress-policy.json config/entrypoint-unified.sh schema/agentbox.toml.schema.json scripts/agentbox-config-validate.js tests/config/skill-route.test.js`.

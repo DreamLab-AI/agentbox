@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: 97f298db552a61b8edd6147c68a3191d434db6fa
+verified_commit: 2f15c531b02b8f8393d68d29ce3491712bdd862c
 verified_paths: [config/hooks/activity-sink.cjs, config/entrypoint-unified.sh, services/agentbox-manifest/src/stacks.rs, services/agentbox-manifest/src/stacks_env.rs, tests/config/activity-sink.test.js, config/egress-policy.json]
 owner: jjohare
 review_trigger: a second consumer of the sink, a change to the wire body, a new event or tool class, moving the token under role isolation (ADR-2122), or any change to the ADR-2026 redactor
@@ -114,3 +114,5 @@ Security follow-up re-verified 2026-10-29 at `7d8c3b2dfe165f4ab3f8a5e4f62b8294ea
 Re-verified 2026-10-31 at `b65c3d4ed`. Governed paths changed: `config/entrypoint-unified.sh`: the `ONTOLOGY_PAGES_DIR` / `AGENTBOX_VAULT_LEGACY_PATHS` override tier is removed (ADR-2028 re-verification), `ONTO_PAGES` reads `VAULT_PAGES`, and the Phase 5d skip line says "[vault] liveness gate" (`7aa9365d4`). No section this record governs changed; the decision holds. Re-verified by `git diff e786197cc..b65c3d4ed -- <verified_paths>`; no re-implementation was needed. The image carries it at the next rebuild.
 
 Re-verified 2026-10-31 at `97f298db5`: the only delta on this record's governed paths since the previous verification is the sprint-W7 additive work (ADR-2139 Decision 5 `state_budget_tokens`; ADR-2090 `bypass_projects`): new optional keys that default to today's behaviour, in config/egress-policy.json, config/entrypoint-unified.sh. None of it touches this record's decision. Re-verified by `git diff b65c3d4ed..97f298db5 -- <governed paths>`; status axes unchanged.
+
+Re-verified 2026-10-31 at `2f15c531b02b8f8393d68d29ce3491712bdd862c` (W7 and W8 integration, `adr-sprint/w78`). Governed-path delta since `97f298db5`: `config/egress-policy.json`: the `skill-router` row's `notes` only, now saying the bypass stops the skill router and not factrail or jev-checkpoints (ADR-2090); `config/entrypoint-unified.sh`: one line, the `system-one-project --format json` call no longer discards stderr, so a refused slot's reason reaches the boot log (zero bytes on the shipped manifest, checked; the call is still `|| true`, so boot behaviour is unchanged). Read from the diff and checked against the merged tree's gates (cargo, jest, validator); nothing it changes is a key, table or code path this record decides, so the decision and status axes are unchanged. Re-run: `git diff 97f298db5..2f15c531b -- config/egress-policy.json config/entrypoint-unified.sh`.
