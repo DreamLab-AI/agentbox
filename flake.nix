@@ -947,9 +947,9 @@
         };
         # ontomark — the released shared-ontology CLI (Ontomark ADR-OM-005; agentbox
         # ADR-2136 first step). Baked BESIDE vault under the same gate: it owns
-        # validate/gate/conflicts/build (both scopes); vault keeps the governance
-        # verbs (find, retrieve, tree, edit, propose) until their typed-model port
-        # lands, then retires verb by verb (Ontomark DEPRECATION §13, AB-P6).
+        # find/retrieve/tree/edit/create/validate/gate/conflicts/build (both scopes);
+        # vault keeps only the governance transport, `propose` and `panel publish`
+        # (Ontomark ADR-OM-005 decisions 5-6, DEPRECATION §13-14).
         # Fetched as the release's static binary by digest, so this image runs the
         # same bytes as visionGraph's publish pipeline and the Loom host.
         ontomarkPkg = import ./lib/ontomark.nix {

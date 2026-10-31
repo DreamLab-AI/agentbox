@@ -29,28 +29,30 @@
 #
 # 0.6.0 adds opt-in derivation certificates; default corpus output is unchanged.
 #
+# 0.6.1 applies one CommonMark fence rule everywhere: lines such as ```` ```prose``` ````
+# no longer open a fence, so `repair bodies --check` agrees with visionGraph CI.
+#
 # Repinning
 # ---------
 # Change `version`, `sha256` (from the release's .sha256 asset) and nothing else.
 # The asset name keeps the `-linux-gnu` suffix the first release used; the
-# binary itself is static-pie musl and runs on glibc and Nix hosts alike.
+# binary itself is static-pie and runs on glibc and Nix hosts alike.
 
-{ lib, pkgs, jev ? false, version ? "0.6.0"
-, hash ? "sha256-TPH5RFrK4R5ZZT8wqEpMn/2z+sSm6rbT0grBqT4Jo1c=" }:
+{ lib, pkgs, jev ? false, version ? "0.6.1"
+, hash ? "sha256-fEHqSRgxCfYl8mGeve1OVEgKwVfjHxI0omBYcnmXL0Y=" }:
 
-# The released 0.6.0 binary predates the Jev feature. Build the pinned upstream (0.6.1:
-# ONTOMARK_JEV_ALLOW_CLOUD lifts local-only) source only for the enabled suggestion
-# consumer; off retains the release bytes.
+# The release binary is built without the Jev feature. Build the same v0.6.1 source
+# with `jev` only for the enabled suggestion consumer; off retains the release bytes.
 if jev then pkgs.rustPlatform.buildRustPackage {
   pname = "ontomark";
   inherit version;
   src = pkgs.fetchFromGitHub {
     owner = "DreamLab-AI";
     repo = "ontomark";
-    rev = "13af42340448022d4d43ac349a8bb5f3ae6d1d47";
-    hash = "sha256-HMuN3L69BF0uGF0xN3TfEORG9eUHeclji0nk0gmzrCc=";
+    rev = "4699ee08b2184e3365d1e3236e26b6e6de698e6f"; # v0.6.1
+    hash = "sha256-7IVOWZI1kYbhbTsJ5uxsBuFivVqTo1v+ybDPpmdTmaI=";
   };
-  cargoLock.lockFile = ./lockfiles/ontomark-13af4234.Cargo.lock;
+  cargoLock.lockFile = ./lockfiles/ontomark-4699ee08.Cargo.lock;
   buildAndTestSubdir = "crates/ontomark-cli";
   buildFeatures = [ "jev" ];
   nativeBuildInputs = [ pkgs.pkg-config ];
