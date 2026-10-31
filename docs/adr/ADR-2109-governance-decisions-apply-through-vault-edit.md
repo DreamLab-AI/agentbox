@@ -12,6 +12,8 @@ verified_paths: [management-api/lib/ontology-apply.js, management-api/lib/ontolo
 owner: jjohare
 review_trigger: the `vault` binary landing on PATH (VisionClaw WS-C), or Loom deploying `/loom/attest` (WS-H)
 repo: agentbox
+evidence_class: source+test
+acceptance_boundary: 95 + 24 node tests passing, and the forum e2e script green against vault 0.1.0 and ontomark 0.7.0 on a scratch corpus (100 passed real-binary, 30 stub). The ledger was a local recording stub and relay publication was dry-run only; a forum-signed decision applied in the running image is unproven until the owner rebuilds
 ---
 
 # ADR-2109 — Ontology proposals and decisions both go through `vault`

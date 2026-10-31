@@ -12,6 +12,8 @@ verified_paths: [agentbox.toml, schema/agentbox.toml.schema.json, scripts/agentb
 owner: jjohare
 review_trigger: the first project whose content must not reach the judge, or any proposal to widen this beyond skill routing
 repo: agentbox
+evidence_class: source+test
+acceptance_boundary: jest skill-route 70 passed, semantic-rules and routing-labels green, egress register in sync, manifest validates. The bypass gates the skill router only, not factrail compaction or jev-checkpoints; the shipped list is empty so no project is gated until the operator lists one and boots. Tests ran at 97f298db5 (adr-sprint/w7, code f8b02b93d); verified_commit 2f15c531b is a diff-only re-stamp after the w78 integration
 ---
 
 # ADR-2090 — Skill-routing prompts may egress to the judge; per-project gates are deferred, not waived
