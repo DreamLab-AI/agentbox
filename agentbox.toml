@@ -898,7 +898,12 @@ log = "/home/devuser/.local/share/system-one-proxy/requests.jsonl"  # one line p
 
 # Each backend: url (its /v1/systemone), model, key_env (name of the env var
 # holding its key; empty = keyless), local (DECLARED locality, never inferred
-# from the URL), timeout_ms, usd_per_mtok_in (for the consumers' cost lines).
+# from the URL), timeout_ms, usd_per_mtok_in (for the consumers' cost lines),
+# state_budget_tokens (optional, default 0 = undeclared; ADR-2139 Decision 5, validator
+# E082): the largest compaction state the backend should receive whole, so factrail can
+# stop shrinking early. Projected as stateBudgetTokens (factrail userConfig, applied
+# once a factrail release declares the key) and AGENTBOX_SYSTEM_ONE_STATE_BUDGET_TOKENS;
+# surfaced by the proxy on /v1/backend. Advisory — the proxy never refuses over it.
 [system_one.consumers]
 # Boot-projected to supervised services AND interactive shells. Rebuild to bake.
 # Outcome-changing thresholds remain unset: advisory/shadow guards still apply.
@@ -941,6 +946,7 @@ key_env = "SUBQ_API_KEY"
 local = false
 timeout_ms = 30000
 usd_per_mtok_in = 0.05
+state_budget_tokens = 73000      # ADR-2139 Decision 5: SubQ accepted a 73,612-token state in 1.5 s (measured 2026-10-12); a floor, not its limit. 0 = undeclared
 
 [system_one.backends.laya]
 # The ADR-2094 façade sidecar (./agentbox.sh systemone up), engine per

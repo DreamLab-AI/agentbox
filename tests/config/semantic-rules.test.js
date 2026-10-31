@@ -1039,3 +1039,35 @@ describe('forum governance roster (E078 / W075)', () => {
     expect(stderrContains(runValidator(m), 'E016')).toBe(true);
   });
 });
+
+// ─── E082: System One backend state_budget_tokens (ADR-2139 Decision 5) ────────
+
+describe('E082: [system_one.backends.*].state_budget_tokens', () => {
+  function withSlot(budget) {
+    const m = baseValid();
+    const backend = {
+      url: 'https://api.subq.ai/v1/systemone', model: 'subq-snap-preview',
+      key_env: 'SUBQ_API_KEY', local: false
+    };
+    if (budget !== undefined) backend.state_budget_tokens = budget;
+    m.system_one = { enabled: true, backend: 'subq', bind: '127.0.0.1:8094', backends: { subq: backend } };
+    return m;
+  }
+
+  test('absent and 0 (undeclared) and a positive integer pass', () => {
+    for (const v of [undefined, 0, 73000]) {
+      const r = runValidator(withSlot(v));
+      expect(stderrContains(r, 'E082')).toBe(false);
+      expect(stderrContains(r, 'E016')).toBe(false);
+      expect(r.exitCode).toBe(0);
+    }
+  });
+
+  test('a negative number or a float fires E082', () => {
+    for (const v of [-1, 1.5]) {
+      const r = runValidator(withSlot(v));
+      expect(stderrContains(r, 'E082') || stderrContains(r, 'E016')).toBe(true);
+      expect(r.exitCode).not.toBe(0);
+    }
+  });
+});

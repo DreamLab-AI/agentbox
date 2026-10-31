@@ -38,6 +38,11 @@ pub struct Backend {
     /// Input price per million tokens.
     #[serde(default)]
     pub usd_per_mtok_in: f64,
+    /// ADR-2139 Decision 5: largest compaction state, in tokens, this backend should
+    /// receive whole; 0 = undeclared. Advisory metadata for factrail — the proxy
+    /// reports it but never refuses a request over it.
+    #[serde(default)]
+    pub state_budget_tokens: u64,
 }
 
 fn default_timeout_ms() -> u64 {
@@ -391,6 +396,18 @@ mod tests {
         assert_eq!(p.selected().timeout_ms, 30_000);
         assert_eq!(p.backends["laya"].timeout_ms, 5000);
         assert_eq!(p.projected_local, Some(false));
+    }
+
+    #[test]
+    fn state_budget_tokens_defaults_to_undeclared_and_parses_when_present() {
+        let p = Projection::parse(&sample()).unwrap();
+        assert_eq!(p.selected().state_budget_tokens, 0);
+        let with = sample().replace(
+            r#""local":false}"#,
+            r#""local":false,"state_budget_tokens":73000}"#,
+        );
+        let p = Projection::parse(&with).unwrap();
+        assert_eq!(p.selected().state_budget_tokens, 73_000);
     }
 
     #[test]

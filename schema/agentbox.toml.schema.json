@@ -3223,6 +3223,12 @@
                 "type": "number",
                 "minimum": 0,
                 "description": "Input price per million tokens, for the consumers' cost lines and /v1/backend's estimate."
+              },
+              "state_budget_tokens": {
+                "type": "integer",
+                "minimum": 0,
+                "default": 0,
+                "description": "ADR-2139 Decision 5: the largest compaction state, in tokens, this backend should be given whole. 0 / unset = no declaration (factrail keeps its own 25,000-token budget). Projected as stateBudgetTokens to factrail's userConfig, as AGENTBOX_SYSTEM_ONE_STATE_BUDGET_TOKENS to consumers, and reported by the proxy on /v1/backend and the x-system-one-state-budget-tokens header. Advisory: the proxy never refuses a request over it."
               }
             }
           }
