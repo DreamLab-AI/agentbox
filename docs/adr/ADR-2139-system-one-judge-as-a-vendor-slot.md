@@ -3,12 +3,12 @@ id: ADR-2139
 title: Treat the System One judge as a vendor slot, measured per consumer, with SubQ Snap as the first alternative to Jev
 date: 2026-10-12
 decision_status: accepted
-implementation_status: partial
+implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 75378856483d13f952569018421c4526da0aede2
-verified_paths: [agentbox.toml, crates/system-one/system-one-proxy/src/server.rs, crates/system-one/system-one-proxy/src/key.rs, services/agentbox-manifest/src/system_one.rs, config/entrypoint-unified.sh, config/hooks/lib/skill-route.cjs, config/seal-bootstrap.sh, lib/system-one-proxy.nix, flake.nix, scripts/agentbox-config-validate.js, agentbox.sh]
+verified_commit: 97f298db552a61b8edd6147c68a3191d434db6fa
+verified_paths: [agentbox.toml, schema/agentbox.toml.schema.json, crates/system-one/system-one-proxy/src/config.rs, crates/system-one/system-one-proxy/tests/proxy.rs, tests/config/semantic-rules.test.js, crates/system-one/system-one-proxy/src/server.rs, crates/system-one/system-one-proxy/src/key.rs, services/agentbox-manifest/src/system_one.rs, config/entrypoint-unified.sh, config/hooks/lib/skill-route.cjs, config/seal-bootstrap.sh, lib/system-one-proxy.nix, flake.nix, scripts/agentbox-config-validate.js, agentbox.sh]
 owner: jjohare
 review_trigger: SubQ Snap leaving public preview or changing its price, retention default or the Decisions request shape; a Kev, Clef or pplx-decider release that serves /v1/systemone on a 9B-class checkpoint; a system-one-eval run on the ADR-2089 corpus that moves any backend by more than 5 points; the first compaction replay whose keep-rate is above 5%
 repo: agentbox
@@ -323,3 +323,25 @@ Re-verified 2026-10-30 at `cd3a29899`: agentbox-config-validate.js E080 now admi
 Re-verified 2026-10-30 at d0e9ca786: adds `[system_one].skill_list_at_least` (0..=1, shipped 0.6). The projector exports AGENTBOX_JEV_SKILL_LIST_AT_LEAST only with consumers.skill_verify on and warns on an out-of-range value; it tunes how many runner-up skills the router lists and changes no route, backend or locality claim here.
 
 Re-verified 2026-10-31 at `b65c3d4ed`. Governed paths changed: `agentbox.toml`: comments only: corpus verbs named as `ontomark`, flat-layout wording (`f4beec643`, `7aa9365d4`); `config/entrypoint-unified.sh`: the `ONTOLOGY_PAGES_DIR` / `AGENTBOX_VAULT_LEGACY_PATHS` override tier is removed (ADR-2028 re-verification), `ONTO_PAGES` reads `VAULT_PAGES`, and the Phase 5d skip line says "[vault] liveness gate" (`7aa9365d4`); `flake.nix`: the ontomark comment now names the verbs it owns (`4a07fbfb3`). No section this record governs changed; the decision holds. Re-verified by `git diff d0e9ca786..b65c3d4ed -- <verified_paths>`; no re-implementation was needed. The image carries it at the next rebuild.
+
+## Close-out 2026-10-31
+
+Decision 5's `state_budget_tokens` is implemented at every layer the 2026-10-13 amendment named as missing, at `d149a0f33` (re-verified at `97f298db5`; the commits after it only add the ADR-2090 bypass). `implementation_status` moves `partial` → `complete`; `activation_status` stays `staged` (the proxy and projector are baked, so a rebuild is needed).
+
+- **Manifest and schema**: `[system_one.backends.<name>].state_budget_tokens`, a non-negative integer, `default 0` = undeclared (`schema/agentbox.toml.schema.json`). `subq` ships `73000`, the measured floor (SubQ accepted 73,612 tokens in 1.5 s; not its limit); every other backend is undeclared.
+- **Boot projector** (`services/agentbox-manifest/src/system_one.rs`): a negative, fractional or non-numeric value refuses the whole slot (E082, as every other invalid backend field does). The value goes into `/run/agentbox/system-one.json` per backend; `export AGENTBOX_SYSTEM_ONE_STATE_BUDGET_TOKENS` and `stateBudgetTokens=` (plugin-config) are emitted **only** when the *active* backend declares one, so every existing output is byte-identical (`plugin_config_lines_are_exact` is unchanged).
+- **Proxy** (`crates/system-one/system-one-proxy`): `Backend.state_budget_tokens` with `#[serde(default)]` (an old projection file still parses); reported on `GET /v1/backend` and the `x-system-one-state-budget-tokens` response header (only when declared). **Advisory by decision**: the proxy never refuses or truncates a request over it. Decision 5 says the slot *carries* the budget for factrail to read; a 413 would change outcomes for every consumer, the router included, on a token estimate that differs from factrail's.
+- **Validator**: E082 (a new code; E080 is already overloaded, per the 2026-10-13 amendment) for a non-integer or negative value. The `system-one-proxy` catalogue summary is updated and `schema/agentbox.toml.apply.json` regenerated.
+- **Not done, and why**: factrail is a pinned external. The entrypoint's `_jc_project` loop already passes every plugin-config line and logs `plugin declares no userConfig key 'stateBudgetTokens' — not projecting it` until a factrail release declares the key. That log line is the exact boundary of what remains: a factrail release that reads `stateBudgetTokens` and stops shrinking early, then the first compaction replay (the ADR-2094 threshold-drift check in reverse).
+
+Evidence (worktree branch `adr-sprint/w7`):
+
+```
+cargo test -p system-one-proxy             → 13 (lib) + 7 (tests/proxy.rs) passed, 0 failed
+cargo test (agentbox-manifest, full)     → 161+3+10+17+17 passed, 0 failed
+jest tests/config/semantic-rules.test.js    → 80 passed, 1 skipped (E082: absent/0/73000 pass; -1/1.5 fail)
+node scripts/ci/check-manifest-catalogue.js → PASS (118 gate paths)
+node scripts/agentbox-config-validate.js agentbox.toml → valid
+```
+
+`tests/config/setup-ui-drift.test.mjs` has three failures that predate this change (`user_cron` has no UI label or seed entry); a fourth, a stale `apply.json`, is fixed by the regeneration.

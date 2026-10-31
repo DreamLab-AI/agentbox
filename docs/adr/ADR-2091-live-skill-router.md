@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: b65c3d4eda3c2449d7ea8512ae1bda33a24c2312
+verified_commit: 97f298db552a61b8edd6147c68a3191d434db6fa
 verified_paths: [config/hooks/lib/skill-route.cjs, config/hooks/skill-route.cjs, skills/skill-router/scripts/route.mjs, config/entrypoint-unified.sh, tests/config/skill-route.test.js]
 owner: jjohare
 review_trigger: the first project that needs a per-project routing bypass (ADR-2090), a Jev model change, or a measured runtime-path accuracy below 85% on the 40-item set
@@ -258,3 +258,5 @@ Security follow-up re-verified 2026-10-29 at `7d8c3b2dfe165f4ab3f8a5e4f62b8294ea
 Implementation axis and `verified_commit` are unchanged; this is an activation receipt only. Accuracy against the 85 % trigger is not re-measured here.
 
 Re-verified 2026-10-31 at `b65c3d4ed`. Governed paths changed: `config/entrypoint-unified.sh`: the `ONTOLOGY_PAGES_DIR` / `AGENTBOX_VAULT_LEGACY_PATHS` override tier is removed (ADR-2028 re-verification), `ONTO_PAGES` reads `VAULT_PAGES`, and the Phase 5d skip line says "[vault] liveness gate" (`7aa9365d4`). No section this record governs changed; the decision holds. Re-verified by `git diff 3b498088e..b65c3d4ed -- <verified_paths>`; no re-implementation was needed. The image carries it at the next rebuild.
+
+Re-verified 2026-10-31 at `97f298db5`: the only delta on this record's governed paths since the previous verification is the sprint-W7 additive work (ADR-2139 Decision 5 `state_budget_tokens`; ADR-2090 `bypass_projects`): new optional keys that default to today's behaviour, in config/entrypoint-unified.sh, config/hooks/lib/skill-route.cjs, config/hooks/skill-route.cjs, skills/skill-router/scripts/route.mjs, tests/config/skill-route.test.js. The router gains one optional gate, `[skills.routing].bypass_projects` (ADR-2090), checked in `route()` immediately before the single fetch; the entrypoint adds the env to the registered hook command only when the list is non-empty. With the shipped empty list the hook command, env and request are byte-identical (`tests/config/skill-route.test.js`, 70 passing). Re-verified by `git diff b65c3d4ed..97f298db5 -- <governed paths>`; status axes unchanged.

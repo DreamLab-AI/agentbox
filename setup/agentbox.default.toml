@@ -872,6 +872,7 @@ key_env = "SUBQ_API_KEY"
 local = false
 timeout_ms = 30000
 usd_per_mtok_in = 0.05
+state_budget_tokens = 73000      # ADR-2139 Decision 5: SubQ accepted a 73,612-token state in 1.5 s (measured 2026-10-12); a floor, not its limit. 0 = undeclared
 
 [system_one.backends.laya]
 url = "http://systemone:8097/v1/systemone"

@@ -68,6 +68,9 @@ pub struct Backend {
     pub timeout_ms: i64,
     /// Input price per million tokens.
     pub usd_per_mtok_in: f64,
+    /// ADR-2139 Decision 5: largest compaction state, in tokens, the backend should
+    /// receive whole. 0 = undeclared (factrail keeps its own budget).
+    pub state_budget_tokens: u64,
 }
 
 /// The resolved, wholly valid slot.
@@ -205,6 +208,18 @@ pub fn resolve(manifest: &Value, warn: &mut dyn FnMut(String)) -> Option<Project
                 .get("usd_per_mtok_in")
                 .and_then(Value::as_f64)
                 .unwrap_or(0.0),
+            state_budget_tokens: match raw.get("state_budget_tokens") {
+                None => 0,
+                Some(v) => match v.as_u64() {
+                    Some(n) => n,
+                    None => {
+                        warn(format!(
+                            "[system-one] backend {name} state_budget_tokens = {v} is not a non-negative integer — refusing to project (E082)"
+                        ));
+                        return None;
+                    }
+                },
+            },
         };
         if b.url.is_empty() {
             warn(format!(
@@ -359,6 +374,7 @@ pub fn render_json(p: &Projection, active: &str, existing: Option<&Existing>) ->
                 "local": b.local,
                 "timeout_ms": b.timeout_ms,
                 "usd_per_mtok_in": b.usd_per_mtok_in,
+                "state_budget_tokens": b.state_budget_tokens,
             }),
         );
     }
@@ -659,15 +675,27 @@ pub fn render(
                     b.usd_per_mtok_in
                 ),
             ];
+            if b.state_budget_tokens > 0 {
+                lines.push(format!(
+                    "export AGENTBOX_SYSTEM_ONE_STATE_BUDGET_TOKENS={}",
+                    b.state_budget_tokens
+                ));
+            }
             lines.extend(consumer_exports(manifest, &p, warn));
             lines.join("\n")
         }
-        Format::PluginConfig => [
-            format!("baseUrl={endpoint}"),
-            format!("model={}", b.model),
-            format!("backendLocal={}", b.local),
-        ]
-        .join("\n"),
+        Format::PluginConfig => {
+            let mut lines = vec![
+                format!("baseUrl={endpoint}"),
+                format!("model={}", b.model),
+                format!("backendLocal={}", b.local),
+            ];
+            // Only when declared: an undeclared budget leaves the output byte-identical.
+            if b.state_budget_tokens > 0 {
+                lines.push(format!("stateBudgetTokens={}", b.state_budget_tokens));
+            }
+            lines.join("\n")
+        }
         Format::Json => serde_json::to_string_pretty(&render_json(&p, &active, existing))
             .unwrap_or_else(|_| "{}".to_string()),
     })
@@ -1012,6 +1040,56 @@ timeout_ms = 20000
         assert!(out
             .unwrap()
             .contains(r"export AGENTBOX_SYSTEM_ONE_MODEL='a'\''; rm -rf /'"));
+    }
+
+    #[test]
+    fn state_budget_tokens_is_projected_only_when_declared() {
+        // Undeclared: every format is byte-identical to the pre-Decision-5 output.
+        let (plain, _) = quiet(&manifest(SLOT), Format::PluginConfig, None, None);
+        assert!(!plain.unwrap().contains("stateBudgetTokens"));
+        let (shell, _) = quiet(&manifest(SLOT), Format::Shell, None, None);
+        assert!(!shell.unwrap().contains("STATE_BUDGET_TOKENS"));
+        let (json, _) = quiet(&manifest(SLOT), Format::Json, None, None);
+        let v: Value = serde_json::from_str(&json.unwrap()).unwrap();
+        assert_eq!(v["backends"]["subq"]["state_budget_tokens"], json!(0));
+
+        // Declared on the ACTIVE backend (subq in SLOT): projected to all three.
+        let mut m = manifest(SLOT);
+        m["system_one"]["backends"]["subq"]["state_budget_tokens"] = json!(73000);
+        let (cfg, _) = quiet(&m, Format::PluginConfig, None, None);
+        assert_eq!(
+            cfg.unwrap().lines().collect::<Vec<_>>(),
+            vec![
+                "baseUrl=http://127.0.0.1:8094/v1/systemone",
+                "model=subq-snap-preview",
+                "backendLocal=false",
+                "stateBudgetTokens=73000",
+            ]
+        );
+        let (shell, _) = quiet(&m, Format::Shell, None, None);
+        assert!(shell
+            .unwrap()
+            .contains("export AGENTBOX_SYSTEM_ONE_STATE_BUDGET_TOKENS=73000"));
+        let (json, _) = quiet(&m, Format::Json, None, None);
+        let v: Value = serde_json::from_str(&json.unwrap()).unwrap();
+        assert_eq!(v["backends"]["subq"]["state_budget_tokens"], json!(73000));
+
+        // Declared only on an INACTIVE backend: consumers are not told.
+        let mut other = manifest(SLOT);
+        other["system_one"]["backends"]["typesafe"]["state_budget_tokens"] = json!(9000);
+        let (cfg, _) = quiet(&other, Format::PluginConfig, None, None);
+        assert!(!cfg.unwrap().contains("stateBudgetTokens"));
+    }
+
+    #[test]
+    fn invalid_state_budget_tokens_refuses_to_project() {
+        for bad in [json!(-1), json!(1.5), json!("big")] {
+            let mut m = manifest(SLOT);
+            m["system_one"]["backends"]["subq"]["state_budget_tokens"] = bad.clone();
+            let (out, warns) = quiet(&m, Format::Shell, None, None);
+            assert_eq!(out.unwrap(), "", "{bad} must refuse");
+            assert!(warns.iter().any(|w| w.contains("E082")), "{bad}: {warns:?}");
+        }
     }
 
     #[test]

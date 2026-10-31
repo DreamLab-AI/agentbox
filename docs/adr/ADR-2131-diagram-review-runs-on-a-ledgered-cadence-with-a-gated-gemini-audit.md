@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 75378856483d13f952569018421c4526da0aede2
+verified_commit: 97f298db552a61b8edd6147c68a3191d434db6fa
 verified_paths: [skills/sealmap-review/scripts/review-cadence.cjs, skills/sealmap-review/run-cron.sh, skills/sealmap-review/crontab, schema/agentbox.toml.schema.json]
 owner: jjohare
 review_trigger: the first month of real Gemini spend (compare ledger cost with the estimate); a change to Gemini or Z.AI pricing; a GLM model change behind [consultants.zai]; a second corpus joining repos
@@ -148,3 +148,5 @@ gated Gemini audit are as recorded, and this record never fixed the triage budge
 `review-cadence.test.cjs`, one new assertion pins the cap. Takes effect at the next image rebuild.
 
 Re-verified 2026-10-31 at `b65c3d4ed`. Governed paths changed: `schema/agentbox.toml.schema.json`: the `[vault].working` description says pages sit at the working root (`f4beec643`). No section this record governs changed; the decision holds. Re-verified by `git diff f7aa7f68e..b65c3d4ed -- <verified_paths>`; no re-implementation was needed. The image carries it at the next rebuild.
+
+Re-verified 2026-10-31 at `97f298db5`: the only delta on this record's governed paths since the previous verification is the sprint-W7 additive work (ADR-2139 Decision 5 `state_budget_tokens`; ADR-2090 `bypass_projects`): new optional keys that default to today's behaviour, in schema/agentbox.toml.schema.json. None of it touches this record's decision. Re-verified by `git diff 753788564..97f298db5 -- <governed paths>`; status axes unchanged.

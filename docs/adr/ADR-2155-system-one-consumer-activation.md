@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: d0e9ca7865c7e120bd657b0ffc66e54b043dfa1a
+verified_commit: 97f298db552a61b8edd6147c68a3191d434db6fa
 verified_paths: [services/agentbox-manifest/src/system_one.rs, config/hooks/lib/jev-option.cjs, tests/system-one/consumer-activation.test.mjs]
 owner: operator
 review_trigger: a passing acceptance run per docs/reference/system-one-activation.md on the booted image, memory recall included once its six frozen fixture IDs resolve (activation → live); changes to consumer locality or acceptance thresholds
@@ -60,3 +60,5 @@ Security follow-up re-verified 2026-10-29 at `7d8c3b2dfe165f4ab3f8a5e4f62b8294ea
 Re-verified 2026-10-30 at `29a4b4939`: AMENDED 2026-10-30 (operator): the local-only flags this record lists no longer default to 1. `[system_one].local_only` (empty by default) now drives AGENTBOX_JEV_<X>_LOCAL_ONLY for twelve consumers (the five listed here plus failure taxonomy, manifest plan, voice intent, approval review, memory rerank, headroom evidence, which were literal localOnly:true), so every consumer takes the selected backend through the proxy. The private route itself is unchanged and is used exactly for the names listed; a listed consumer with no usable local backend is off, never cloud. Data-level fences (email taint, private ontology seeds) unchanged.
 
 Re-verified 2026-10-30 at d0e9ca786: system_one.rs gains the skill_list_at_least export (verify-gated, warned when out of range). The consumer activation set and its staged status are unchanged.
+
+Re-verified 2026-10-31 at `97f298db5`: the only delta on this record's governed paths since the previous verification is the sprint-W7 additive work (ADR-2139 Decision 5 `state_budget_tokens`; ADR-2090 `bypass_projects`): new optional keys that default to today's behaviour, in services/agentbox-manifest/src/system_one.rs. `system_one.rs` gains the optional per-backend `state_budget_tokens` (ADR-2139 Decision 5), emitted in shell and plugin-config only when the active backend declares one; the consumer opt-ins and activation behaviour are unchanged. Re-verified by `git diff d0e9ca786..97f298db5 -- <governed paths>`; status axes unchanged.

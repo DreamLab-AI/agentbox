@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 9dadda3ed7ad1ff2546d4d81077a93e2b46d100f
+verified_commit: 97f298db552a61b8edd6147c68a3191d434db6fa
 verified_paths: [mcp/servers/lib/orchestration-proxy.js, mcp/servers/ruvector-mcp.cjs, mcp/servers/lib/ruvector-gates.js, config/entrypoint-unified.sh]
 owner: jjohare
 review_trigger: next image rebuild (activation), a Ruflo release that changes plugin/runtime resolution or renames the swarm/agent/task/coordination tools, or any proposal to forward a memory_* tool
@@ -271,3 +271,5 @@ The record's activation event was the next image rebuild. Executed against the b
 Re-verified 2026-10-31 at `b65c3d4ed`. Governed paths changed: `config/entrypoint-unified.sh`: the `ONTOLOGY_PAGES_DIR` / `AGENTBOX_VAULT_LEGACY_PATHS` override tier is removed (ADR-2028 re-verification), `ONTO_PAGES` reads `VAULT_PAGES`, and the Phase 5d skip line says "[vault] liveness gate" (`7aa9365d4`). No section this record governs changed; the decision holds. Re-verified by `git diff 3b498088e..b65c3d4ed -- <verified_paths>`; no re-implementation was needed. The image carries it at the next rebuild.
 
 Re-verified 2026-10-31 at `9dadda3ed`. Governed paths changed: mcp/servers/lib/ruvector-gates.js gains one read-only param, hybridFusion (RUVECTOR_HYBRID_FUSION, default blend, env-gated reciprocal rank fusion in memory-hybrid.js); the proxy's denied memory_* prefixes and the filtered child are untouched. No section of this record's decision changed; re-verified by `git diff b65c3d4ed..9dadda3ed -- <verified_paths>`.
+
+Re-verified 2026-10-31 at `97f298db5`: the only delta on this record's governed paths since the previous verification is the sprint-W7 additive work (ADR-2139 Decision 5 `state_budget_tokens`; ADR-2090 `bypass_projects`): new optional keys that default to today's behaviour, in config/entrypoint-unified.sh. None of it touches this record's decision. Re-verified by `git diff 9dadda3ed..97f298db5 -- <governed paths>`; status axes unchanged.

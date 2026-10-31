@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 75378856483d13f952569018421c4526da0aede2
+verified_commit: 97f298db552a61b8edd6147c68a3191d434db6fa
 verified_paths: [agentbox.toml, setup/agentbox.default.toml, schema/agentbox.toml.schema.json, config/entrypoint-unified.sh, mcp/servers/lib/ontology-local.js, mcp/servers/lib/ontology-index-build.js, scripts/ontology-condense-scheduler.mjs, scripts/ontology-condense-refresh.sh, skills/podcast-knowledge-ingest/SKILL.md, skills/ontology-core/SKILL.md, skills/ontology-enrich/SKILL.md, skills/ontology-augment/SKILL.md, skills/web-summary/SKILL.md]
 owner: jjohare
 review_trigger: any new skill, MCP server, or supervised program that reads or writes authored markdown
@@ -351,3 +351,5 @@ The middle tier of the precedence is gone. `7aa9365d4` deletes the `ONTOLOGY_PAG
 Gates: `tests/config/vault-path-precedence.test.sh` 10 passed, 0 failed (rewritten to assert the retired pair is ignored); `tests/config/vault-consumer-fallback.test.mjs` 11 passed, 0 failed. The decision (the manifest is the path authority) holds and is stricter. Takes effect at the next image rebuild.
 
 Re-verified 2026-10-31 at `9dadda3ed`. Governed paths changed: the ontology-augment skill gains per-call result labels, a --ref option and explicit stop rules in SKILL.md (new envelope fields only); the vault path authority this record decides is untouched. No section of this record's decision changed; re-verified by `git diff b65c3d4ed..9dadda3ed -- <verified_paths>`.
+
+Re-verified 2026-10-31 at `97f298db5`: the only delta on this record's governed paths since the previous verification is the sprint-W7 additive work (ADR-2139 Decision 5 `state_budget_tokens`; ADR-2090 `bypass_projects`): new optional keys that default to today's behaviour, in agentbox.toml, config/entrypoint-unified.sh, schema/agentbox.toml.schema.json, setup/agentbox.default.toml. None of it touches this record's decision. Re-verified by `git diff 753788564..97f298db5 -- <governed paths>`; status axes unchanged.

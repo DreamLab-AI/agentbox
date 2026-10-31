@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: [ADR-2022, ADR-2054]
 superseded_by: []
-verified_commit: 75378856483d13f952569018421c4526da0aede2
+verified_commit: 97f298db552a61b8edd6147c68a3191d434db6fa
 verified_paths: [lib/vault.nix, flake.nix, agentbox.toml, schema/agentbox.toml.schema.json, config/entrypoint-unified.sh, mcp/mcp.json, services/agentbox-manifest/tests/golden, management-api/lib/ontology-propose.js]
 owner: jjohare
 review_trigger: a `vault --version` gate failure at boot; a request to re-register any deleted server; ontology-monitor, typed-spawn and ontology-workingset re-pointed off mcp/servers/lib/ontology-local.js (vault shipped, so this is now due; ADR-2136); a vaultSrc bump that changes the vault verb set
@@ -253,3 +253,5 @@ Not claimed: the review-trigger follow-on (re-point `ontology-monitor`, `typed-s
 Today's commits: `2d49681bf` (management API), `b7a1d0955` (ontology-augment), `f4beec643` (skills and docs), `7aa9365d4` (path tiers), `6aaf3bb46` (podcast submitter), `eff6c29c1`, `4a07fbfb3` (ontomark v0.6.1 pin). Owner decision 2026-10-31 (Ontomark DEPRECATION §14): `ontomark` is the one corpus CLI; `vault` keeps only the governance transport, `propose` and `panel publish`, per Ontomark ADR-OM-005 decisions 5-6.
 
 The discrepancy recorded in the 2026-10 note above is fixed: `flake.nix` no longer says `vault` keeps `find`/`retrieve`/`tree`/`edit`; its comment names the verbs `ontomark` owns and the two `vault` keeps. `lib/ontomark.nix` pins ontomark 0.6.1 (release asset sha256 `7c41ea49…`, SRI `sha256-fEHq…`; the `jev` source build at `4699ee08b`, NAR hash computed by a method that reproduces the previous `13af4234` pin). The decision (`ontology-bridge` retired; the corpus CLIs baked by Nix) holds. The running image still carries 0.6.0 until the owner's rebuild.
+
+Re-verified 2026-10-31 at `97f298db5`: the only delta on this record's governed paths since the previous verification is the sprint-W7 additive work (ADR-2139 Decision 5 `state_budget_tokens`; ADR-2090 `bypass_projects`): new optional keys that default to today's behaviour, in agentbox.toml, config/entrypoint-unified.sh, schema/agentbox.toml.schema.json. None of it touches this record's decision. Re-verified by `git diff 753788564..97f298db5 -- <governed paths>`; status axes unchanged.

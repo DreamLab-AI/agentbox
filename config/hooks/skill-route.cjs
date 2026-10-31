@@ -34,7 +34,7 @@ async function main() {
   try { hook = JSON.parse(input || '{}'); } catch { return; }
   const prompt = hook.userInput || hook.prompt || '';
   const cfg = lib.config(process.env);
-  const r = await lib.route(prompt, cfg, { retries: 0, registeredOnly: true });
+  const r = await lib.route(prompt, cfg, { retries: 0, registeredOnly: true, cwd: hook.cwd });
   const session = cfg.labelLog && hook.session_id
     ? require('crypto').createHash('sha256').update(String(hook.session_id)).digest('hex').slice(0, 12)
     : undefined;

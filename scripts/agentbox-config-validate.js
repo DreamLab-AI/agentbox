@@ -1399,6 +1399,26 @@ if (ldEnabled) {
   }
 }
 
+// ─── E083: the per-project routing bypass (ADR-2090) ─────────────────────────
+//
+// E083 — [skills.routing].bypass_projects must be a list of absolute paths with no
+//         whitespace, quotes, commas, colons or '#'. The list is projected as a PATH-style
+//         env value inlined into a shell command, and a relative or malformed entry
+//         would silently fail to protect the project it names.
+{
+  const rt = (manifest.skills || {}).routing || {};
+  if (rt.bypass_projects !== undefined) {
+    const bad = !Array.isArray(rt.bypass_projects)
+      ? [rt.bypass_projects]
+      : rt.bypass_projects.filter((p) => typeof p !== 'string' || !/^\/[^\s'",:#]*$/.test(p));
+    if (bad.length) {
+      errors.push({
+        code: 'E083',
+        message: `E083: [skills.routing].bypass_projects must be a list of absolute paths without whitespace, quotes, commas, colons or '#'; offending: ${bad.map((p) => JSON.stringify(String(p).slice(0, 40))).join(', ')} — ADR-2090`,
+      });
+    }
+  }
+}
 // ─── E076 / W074: the local routing cascade and the judge's latency budget ───
 // (ADR-2095 addendum 2026-09-23)
 //
@@ -1562,6 +1582,8 @@ function isLocalEndpoint(endpoint) {
 //         local=false whose url is not https or whose key_env is empty. All
 //         backends are checked, not just the active one, because the projection
 //         file carries the whole map and a live switch may select any of them.
+// E082 — a backend's `state_budget_tokens` (ADR-2139 Decision 5) is not a non-negative
+//         integer. 0 / absent = undeclared; the projector refuses the slot otherwise.
 // E081 — [system_one].enabled and [features.sovereign_system_one].enabled both
 //         true: two projectors would race for the same consumers. The façade is
 //         reached through the proxy as the `laya` backend instead.
@@ -1594,6 +1616,9 @@ function isLocalEndpoint(endpoint) {
       const b = backends[name] || {};
       const url = String(b.url ?? '');
       const keyEnv = String(b.key_env ?? '');
+      if (b.state_budget_tokens !== undefined && !(Number.isInteger(b.state_budget_tokens) && b.state_budget_tokens >= 0)) {
+        errors.push({ code: 'E082', message: `E082: [system_one.backends.${name}].state_budget_tokens must be a non-negative integer (got ${JSON.stringify(b.state_budget_tokens)}) — the projector refuses the whole slot otherwise (ADR-2139 Decision 5)` });
+      }
       if (b.local === true) {
         if (keyEnv) errors.push({ code: 'E080', message: `E080: [system_one.backends.${name}] is local=true but names key_env="${keyEnv}" — local backends are keyless; a key only ever goes to its paired cloud host (ADR-2139)` });
         if (!isLocalEndpoint(url)) errors.push({ code: 'E080', message: `E080: [system_one.backends.${name}] is local=true but url "${url}" is not a LAN/loopback host (ADR-2094 §5)` });
