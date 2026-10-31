@@ -520,11 +520,15 @@ function buildSystemView(manifest, adapters, health) {
   // boot and the container needs a restart to pick it up.
   const vaultSection = manifest && typeof manifest.vault === 'object' ? manifest.vault : null;
   const vaultRoot = vaultSection && typeof vaultSection.root === 'string' ? vaultSection.root : null;
-  const vaultPagesRel = vaultSection && typeof vaultSection.pages === 'string' ? vaultSection.pages : 'pages';
+  // Pages sit at the vault root unless the manifest says otherwise (schema
+  // default "."; the `pages/` subfolder was Logseq's layout).
+  const vaultPagesRel = vaultSection && typeof vaultSection.pages === 'string' ? vaultSection.pages : '.';
   const vault = {
     enabled: Boolean(vaultRoot),
     root: vaultRoot,
-    pages: vaultRoot ? `${vaultRoot.replace(/\/+$/, '')}/${vaultPagesRel}` : null,
+    pages: vaultRoot
+      ? (vaultPagesRel === '.' ? vaultRoot.replace(/\/+$/, '') : `${vaultRoot.replace(/\/+$/, '')}/${vaultPagesRel}`)
+      : null,
     format: (vaultSection && vaultSection.format) || (vaultRoot ? 'obsidian' : null),
     tui: (vaultSection && vaultSection.tui) || (vaultRoot ? 'none' : null),
     // ADR-2028 amendment (2026-09-02): sibling vault roots + transcript store.
