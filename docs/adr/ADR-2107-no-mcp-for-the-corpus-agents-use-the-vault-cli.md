@@ -134,7 +134,7 @@ The decision stands: no MCP server inside the estate fronts the corpus, and agen
 
 ## Close-out 2026-10-31
 
-Status moves to `accepted / complete / staged`. The two gaps named at the 2026-10-30 park are closed: the binary exists (`vault` and `ontomark` are baked) and the Loom `/mcp` plane lists `loom.neighbours` / `loom.paths`. The park's remaining item, that `agents/ontology-curator.md` and `AGENTS.md` still taught `vault find/retrieve/tree/edit`, had already been fixed by the 2026-10-31 amendment (`f4beec643`); this pass re-verified it and swept the last residues (`3e3e09b1d`: `runtime-files.md:127`, two stale comments in `ontology-apply.js`).
+Status moves to `accepted / complete / staged`. The two gaps named at the 2026-10-30 park are closed: the binary exists (`vault` and `ontomark` are baked) and the Loom `/mcp` plane lists `loom.neighbours` / `loom.paths` (observed 2026-10-30, park-2026-10-30.md:182). The park's remaining item, that `agents/ontology-curator.md` and `AGENTS.md` still taught `vault find/retrieve/tree/edit`, had already been fixed by the 2026-10-31 amendment (`f4beec643`); this pass re-verified it and swept the last residues (`3e3e09b1d`: `runtime-files.md:127`, two stale comments in `ontology-apply.js`).
 
 `verified_paths` is armed with the ADR's prescribed set plus `AGENTS.md`, each confirmed to exist. Activation stays `staged`: the running image predates the re-point until the owner rebuilds.
 
@@ -147,4 +147,4 @@ Executed at `3e3e09b1d` (binaries on PATH: `vault 0.1.0`, `ontomark 0.7.0`):
 
 Not re-verified: the live-image behaviour (needs the owner's rebuild) and the `/mcp` plane against the deployed Loom.
 
-Left as is on purpose: the `flake.nix` ontomark note (it omits `apply` from its verb list) and `skills/ontology-augment/references/REFERENCE.md:263` ("`vault` reads the working tree"). Both are governed paths of other ADRs; editing them stales 23 records at once, so they wait for a batch that re-verifies those records. Neither teaches an unavailable verb.
+Left as is on purpose: the `flake.nix` ontomark note (it omits `apply` from its verb list) and `skills/ontology-augment/references/REFERENCE.md:263` ("`vault` reads the working tree"). Both are governed paths of other ADRs; editing `flake.nix` stales 23 records at once and editing `REFERENCE.md` stales ADR-2028, ADR-2129 and ADR-2140, so they wait for a batch that re-verifies those records. `REFERENCE.md` lines 265–268 are equally stale and are deferred with line 263. Neither teaches an unavailable verb.
