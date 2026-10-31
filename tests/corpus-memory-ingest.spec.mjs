@@ -10,7 +10,7 @@ import { readFileSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { slugify, pageSlug, chunkPage, splitParts, splitSections, contentHash, parseFrontmatter, wikilinksOf, SECTION_MAX, OVERLAP } from '../scripts/lib/corpus-chunker.mjs';
+import { slugify, pageSlug, chunkPage, splitParts, splitSections, contentHash, parseFrontmatter, wikilinksOf, SECTION_MAX, OVERLAP, CHUNKER_VERSION } from '../scripts/lib/corpus-chunker.mjs';
 import { processBatch, createEmbedder, EMB_DIM, embedText, wellFormed, upsertRows } from '../scripts/lib/ruvector-bulk.mjs';
 import { planIngest, run, parseArgs, applyPlan, collectCorpus, vaultGeneration, MANIFEST_KEY } from '../scripts/corpus-memory-ingest.mjs';
 
@@ -437,4 +437,19 @@ test('vaultGeneration: HEAD sha, with +dirty when the ingested dirs have local c
   const seen = [];
   vaultGeneration({ repo: '/r', pagesDir: '/k', workingDir: '/w' }, { includeWorking: false, git: (a) => { seen.push(a); return a[0] === 'rev-parse' ? head : ''; } });
   assert.ok(!seen.flat().includes('/w'), 'private vault changes do not taint a public-only run');
+});
+
+test('run: a manifest from an older chunker re-plans an unchanged corpus without re-embedding', async () => {
+  const db = fakeDb([]); const emb = fakeEmbedder();
+  const env = { RUVECTOR_ADMIN_WRITE: 'true' };
+  const opts = { ...base, write: true, prune: true };
+  await run(opts, { pool: db, embedder: emb, env, corpus: corpus(['Demo Page.md']), ...quiet });
+  assert.equal(db.rows.get(MANIFEST_KEY).value.chunker_version, CHUNKER_VERSION);
+  db.rows.get(MANIFEST_KEY).value.chunker_version = CHUNKER_VERSION - 1;
+  const before = emb.seen.length;
+  const r = await run(opts, { pool: db, embedder: emb, env, corpus: corpus(['Demo Page.md']), ...quiet });
+  assert.notEqual(r.skipped, 'up-to-date');
+  assert.equal(r.plan.counts.new + r.plan.counts.changed, 0);
+  assert.equal(emb.seen.length, before + 1, 'only the manifest probe is embedded');
+  assert.equal(db.rows.get(MANIFEST_KEY).value.chunker_version, CHUNKER_VERSION);
 });

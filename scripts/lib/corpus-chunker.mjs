@@ -27,6 +27,14 @@ import { createHash } from 'node:crypto';
 import { wellFormed } from './ruvector-bulk.mjs';
 
 /** A section longer than this (chars, after trim) is split into parts. */
+/**
+ * Bump when chunk boundaries or skipped sections change. The ingester's
+ * manifest fast path compares it, so a chunker change re-plans an
+ * unchanged corpus; content hashes still keep unchanged rows from
+ * re-embedding.
+ */
+export const CHUNKER_VERSION = 2;
+
 export const SECTION_MAX = 2048;
 /** Characters of the previous part repeated at the head of the next one. */
 export const OVERLAP = 128;

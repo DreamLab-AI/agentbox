@@ -59,7 +59,7 @@ import {
   makeLog, loadPg, poolConfig, createEmbedder, embedText, sha12,
   processBatch, upsertRows,
 } from './lib/ruvector-bulk.mjs';
-import { chunkPage } from './lib/corpus-chunker.mjs';
+import { chunkPage, CHUNKER_VERSION } from './lib/corpus-chunker.mjs';
 
 export const SOURCE_TYPE = 'knowledge';              // matches the existing rows
 export const MANIFEST_SOURCE_TYPE = 'corpus-memory-ingest';
@@ -264,7 +264,7 @@ export function buildManifest({ generation, corpusVersion, counts, stats, includ
     pages: counts.pages, chunks: counts.chunks, new: counts.new, changed: counts.changed, unchanged: counts.unchanged,
     embedded: stats.embedded, metadata_updated: stats.metadata_updated, pruned: stats.pruned,
     failed_chunks: stats.failed_chunks, collisions: counts.collisions,
-    include_working: includeWorking, prune_enabled: prune,
+    include_working: includeWorking, prune_enabled: prune, chunker_version: CHUNKER_VERSION,
     script: 'scripts/corpus-memory-ingest.mjs',
   };
 }
@@ -332,6 +332,7 @@ export async function run(opts, deps) {
   const { pages, known, shadowed } = deps.corpus || collectCorpus(opts, { includeWorking: opts.includeWorking });
   const manifest = await loadManifest(pool, opts.namespace);
   if (opts.write && !opts.force && manifest && manifest.generation === gen.generation && !manifest.failed_chunks
+      && manifest.chunker_version === CHUNKER_VERSION
       && manifest.include_working === opts.includeWorking && (!opts.prune || manifest.prune_enabled)) {
     log(`corpus up to date (${gen.generation}) — nothing to do`);
     return { plan: null, stats: null, mode: 'write', skipped: 'up-to-date' };
