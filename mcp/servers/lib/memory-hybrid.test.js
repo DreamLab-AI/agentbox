@@ -95,6 +95,41 @@ function mk(fakeRows, env) {
     } finally { m.restore(); }
   });
 
+  await test('rrf SQL: every placeholder is bound, none dangling; query text, half-life and list size land in the right slots', async () => {
+    for (const opts of [{}, { sourceType: 'agentbox' }, { tags: ['t1', 't2'] }, { sourceType: 'agentbox', tags: ['t1'] }]) {
+      const m = mk(() => [], 'rrf');
+      try {
+        await m.tools.memHybridSearch('find me', 'ns', 4, opts);
+        const { sql, params } = m.queries[0];
+        const used = [...sql.matchAll(/\$(\d+)/g)].map((x) => Number(x[1]));
+        assert.strictEqual(Math.max(...used), params.length, 'highest $N equals the param count');
+        for (let i = 1; i <= params.length; i++) assert.ok(used.includes(i), `$${i} is referenced`);
+        assert.strictEqual(params[1], 'ns');
+        assert.ok(params.includes('find me') && params.includes(14), 'query text and default half-life bound');
+        assert.strictEqual(params[params.length - 1], 50, 'list size = max(limit*5, 50)');
+        assert.strictEqual(params.length, 2 + (opts.sourceType ? 1 : 0) + (opts.tags ? 1 : 0) + 3);
+        assert.ok(/ORDER BY vec_sim DESC/.test(sql), 'vector list is cosine-ordered');
+        assert.ok(!/ruvector_hybrid_score|\$\d+::real/.test(sql), 'no alpha/blend in the rrf query');
+      } finally { m.restore(); }
+    }
+  });
+
+  await test('rrf withholds the FEED_RETRIEVAL effectiveness bonus: fused order unchanged, aggregates never read', async () => {
+    const saved = process.env.RUVECTOR_FEED_RETRIEVAL; process.env.RUVECTOR_FEED_RETRIEVAL = '1';
+    const row = (lst, rnk, id, tags) => ({ lst, rnk, id, key: 'k' + id, value: {}, namespace: 'n', source_type: 's', metadata: { tags }, vec_sim: 0.5, importance: 0.5, recency: 1, kw: 0 });
+    const m = mk(() => [row('vec', 1, 'A', []), row('vec', 2, 'B', ['action:x'])], 'rrf');
+    try {
+      const r = await m.tools.memHybridSearch('q', 'n', 5);
+      assert.deepStrictEqual(r.results.map((x) => x.key), ['kA', 'kB'], 'a tagged row is not promoted');
+      assert.strictEqual(m.queries.length, 1, 'the aggregates namespace was not queried');
+      assert.strictEqual(r.results[1].components.effectiveness_bonus_withheld, 'rrf-fusion-is-rank-only');
+      assert.ok(r.results[1].score < 0.04, 'score stays in the RRF range');
+    } finally {
+      m.restore();
+      if (saved === undefined) delete process.env.RUVECTOR_FEED_RETRIEVAL; else process.env.RUVECTOR_FEED_RETRIEVAL = saved;
+    }
+  });
+
   await test('rrf honours the HYBRID GUARD: unscoped (namespace "*") is unchanged and has no FTS', async () => {
     const m = mk(() => [{ key: 'k', value: {}, namespace: 'n', source_type: 's', metadata: {}, vec_sim: 0.9, importance: 0.5, recency: 1, kw: 0, score: 0.8 }], 'rrf');
     try {

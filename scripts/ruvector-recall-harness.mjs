@@ -849,6 +849,10 @@ function writeReceipt(report) {
 // band.max_stale_gold_fraction, so corpus drift is loud, never absorbed.
 const FIXTURE_V2_SCHEMA = 'ruvector-recall-fixture/v2';
 const DEFAULT_FIXTURE_V2 = join(REPO_DIR, 'scripts', 'recall-fixtures', 'recall-fixture.v2.json');
+// v2 receipts NEVER go to latest-receipt.json: that file is what the release gate
+// reads by default, and the ADR-2018 v1 band must keep being what it judges. A v2
+// receipt is judged only when named: recall-gate.mjs --receipt <this path>.
+const RECEIPT_PATH_V2 = join(RUN_ARTIFACT_DIR, 'latest-receipt.v2.json');
 const V2_DEFAULT_BAND = {
   positive_hit_rate_min: 0.7,
   negative_pass_rate_min: 0.8,
@@ -1270,6 +1274,8 @@ const HELP = `ruvector-recall-harness.mjs — recall-regression gate (ADR-040 D2
   --seeds FILE       seed cases for --build-fixture-v2 (see the v2 block comment)
   A --fixture whose schema is ruvector-recall-fixture/v2 runs the v2 harness
   (negatives, min_docs, stale-gold exclusion); v1 fixtures behave exactly as before.
+  A v2 run writes latest-receipt.v2.json, never latest-receipt.json (the v1 receipt
+  the release gate reads by default); judge it with recall-gate.mjs --receipt PATH.
   -h, --help         this help
 
 Exit code: 0 on PASS (or a successful build), non-zero on FAIL / error.
@@ -1317,11 +1323,11 @@ async function main() {
       reportV2.artifact = writeRunArtifact(reportV2);
       mkdirSync(RUN_ARTIFACT_DIR, { recursive: true });
       const receiptV2 = buildReceiptV2(reportV2, basename(opts.fixture));
-      writeFileSync(RECEIPT_PATH, JSON.stringify(receiptV2, null, 2) + '\n', 'utf8');
+      writeFileSync(RECEIPT_PATH_V2, JSON.stringify(receiptV2, null, 2) + '\n', 'utf8');
       if (opts.json) process.stdout.write(JSON.stringify(reportV2, null, 2) + '\n');
       else {
         printReportV2(reportV2);
-        process.stdout.write(`  run artifact: ${reportV2.artifact}\n  receipt:      ${RECEIPT_PATH}  (${receiptV2.receipt_hash})\n\n`);
+        process.stdout.write(`  run artifact: ${reportV2.artifact}\n  receipt:      ${RECEIPT_PATH_V2}  (${receiptV2.receipt_hash})\n  judge it with: node scripts/recall-gate.mjs --receipt ${RECEIPT_PATH_V2}\n\n`);
       }
       process.exit(reportV2.verdict.pass ? 0 : 2);
     }
@@ -1364,6 +1370,8 @@ export {
   verdictFromMedians,
   fixtureHash,
   sha12,
+  RECEIPT_PATH,
+  RECEIPT_PATH_V2,
   // fixture v2
   FIXTURE_V2_SCHEMA,
   fixtureHashV2,

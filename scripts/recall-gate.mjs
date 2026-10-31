@@ -291,7 +291,8 @@ const HELP = `recall-gate.mjs — the release gate that consumes the recall rece
 
   --max-age-hours N   maximum receipt age (default 24)
   --skip-live-probe   do not probe the deployed embedding model (offline CI)
-  --receipt PATH      read a different receipt
+  --receipt PATH      read a different receipt (a v2 run's latest-receipt.v2.json is judged only this way;
+                      the default stays the v1 receipt so the ADR-2018 band is never bypassed)
   --fixture PATH      check the receipt against this fixture file (default: v1, or the v2 file the receipt names)
   --max-stale-gold-fraction F  v2: tighten the stale-gold bound below the fixture band's
   --json              machine-readable result

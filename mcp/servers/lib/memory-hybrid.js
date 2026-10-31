@@ -14,10 +14,14 @@
  *
  *     RANK FUSION (env RUVECTOR_HYBRID_FUSION=rrf, default 'blend' = the above):
  *     the namespace-scoped path instead fuses two RANK lists, the vector side
- *     (composite order) and the FTS side (rows with a keyword match, ts_rank
+ *     (cosine order) and the FTS side (rows with a keyword match, ts_rank
  *     order), by reciprocal rank fusion, score = sum 1/(60 + rank). Raw scores
  *     from the two sides are never compared; rows are deduplicated by row id.
  *     The unscoped path has no FTS list (HYBRID GUARD) so it is unchanged.
+ *     importance/recency are not rank signals under rrf (they stay in
+ *     `components`), and the FEED_RETRIEVAL effectiveness bonus is WITHHELD under
+ *     rrf: it is an absolute score delta (+0.1*wilson) that dwarfs the whole RRF
+ *     score range (<= 2/61), so adding it would re-introduce raw-score mixing.
  *
  *     HYBRID GUARD (ADR-036 D4): the FTS keyword blend runs an *unindexed*
  *     `ts_rank(to_tsvector(value::text))` over the scanned set. It is only run
@@ -248,7 +252,7 @@ function createHybridTools(deps) {
             LIMIT $${lIdx}`;
           if (fusion === 'rrf') {
             // Rank-list fusion: same scoped CTEs, but return the two candidate
-            // RANK lists (vector side by composite, FTS side by ts_rank) and
+            // RANK lists (vector side by cosine, FTS side by ts_rank) and
             // fuse in JS. The overfetch bounds each list; the final slice is
             // `limit`.
             const rp = p.slice(0, p.length - 2); // drop alpha + limit; keep qIdx/hlIdx
@@ -269,8 +273,8 @@ function createHybridTools(deps) {
                 FROM scoped
               ),
               vec AS (
-                SELECT 'vec' AS lst, row_number() OVER (ORDER BY (0.6*vec_sim + 0.2*importance + 0.2*recency) DESC, id) AS rnk, *
-                FROM scored ORDER BY (0.6*vec_sim + 0.2*importance + 0.2*recency) DESC, id LIMIT $${nIdx}
+                SELECT 'vec' AS lst, row_number() OVER (ORDER BY vec_sim DESC, id) AS rnk, *
+                FROM scored ORDER BY vec_sim DESC, id LIMIT $${nIdx}
               ),
               fts AS (
                 SELECT 'fts' AS lst, row_number() OVER (ORDER BY kw DESC, id) AS rnk, *
@@ -349,8 +353,13 @@ function createHybridTools(deps) {
           },
         }));
 
-        // Effectiveness re-rank (gate RUVECTOR_FEED_RETRIEVAL); fail-open.
-        results = await applyEffectivenessBonus(results);
+        // Effectiveness re-rank (gate RUVECTOR_FEED_RETRIEVAL); fail-open. Withheld
+        // under rrf: an absolute score bonus must not be mixed into rank-fused scores.
+        if (fusion === 'rrf' && results.length && gates.feedRetrieval()) {
+          for (const r of results) r.components.effectiveness_bonus_withheld = 'rrf-fusion-is-rank-only';
+        } else {
+          results = await applyEffectivenessBonus(results);
+        }
         // Re-sort — the bonus may have reordered rows (no-op when no bonus).
         results.sort((a, b) => b.score - a.score);
         if (results.length > limit) results = results.slice(0, limit);

@@ -369,6 +369,16 @@ test('v2 gate: permits a clean receipt; refuses stale gold over the bound; --max
   assert.match(refused.out.refusals.join(' '), /stale gold 2\/4/);
 });
 
+test('v2 receipts never share the v1 receipt path the gate reads by default', async () => {
+  const { RECEIPT_PATH, RECEIPT_PATH_V2 } = await harness();
+  assert.notEqual(RECEIPT_PATH, RECEIPT_PATH_V2);
+  assert.match(RECEIPT_PATH, /latest-receipt\.json$/);
+  assert.match(RECEIPT_PATH_V2, /latest-receipt\.v2\.json$/);
+  const gate = readFileSync(join(__dirname, '..', 'scripts', 'recall-gate.mjs'), 'utf8');
+  assert.match(gate, /const RECEIPT_PATH = join\([^)]*'latest-receipt\.json'\)/, 'gate default receipt is still the v1 file');
+  assert.doesNotMatch(gate, /join\([^)]*latest-receipt\.v2/, 'gate never defaults to the v2 receipt');
+});
+
 test('v2 gate: refuses when the fixture changed, the floor drifted, or RUVECTOR_HYBRID_FUSION moved', async () => {
   const { report, fx } = await passingReport(0);
   const edited = { ...fx, cases: fx.cases.slice(0, 4) };

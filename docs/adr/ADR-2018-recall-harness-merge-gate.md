@@ -165,7 +165,10 @@ MIT-licensed `kb_search/evalset.py` of FengZhenfei/carrel.
 - **Hash.** `fixture_hash` for v2 binds the cases, band, floor and embedding
   model but not `baseline`, which is the output of measuring the fixture.
   Receipts are `receipt@2` and name their fixture file; the gate accepts both
-  receipt schemas.
+  receipt schemas. A v2 run writes `latest-receipt.v2.json`, never
+  `latest-receipt.json`: the gate's default receipt stays the v1 one, so the
+  band above is never bypassed, and a v2 receipt is judged only when named with
+  `--receipt`.
 - **Gate parity.** `RUVECTOR_HYBRID_FUSION` (`blend` default | `rrf`, see
   `memory-hybrid.js`) is compared between run and now like the other geometry
   gates, so a receipt measured under one fusion is not evidence for the other.
