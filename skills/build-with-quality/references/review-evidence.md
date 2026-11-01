@@ -12,6 +12,12 @@ proved replay. Keep that run as evidence of the response failure, repair or
 isolate the prerequisite, then reach the replay assertion. Retain positive
 controls: rejecting every request can make rejection-only tests pass.
 
+An existing test can preserve the defect: successful creation or file existence
+may conceal unusable permissions. Before changing its expectation, identify the
+contract it should protect. Retain a valid success case and add the rejected
+case, then assert the resulting access or state. Record fixture repairs
+separately from product repairs so a setup failure earns no regression credit.
+
 Distinguish build/setup failure, wrong observation, reproduced defect, and
 inconclusive result. Missing runtime access or a weak fixture is not evidence
 that a finding is false. Reject a finding only with a counterexample or a
@@ -53,6 +59,12 @@ owner and run shared fixtures through the actual consumer adapters. Pin time
 and input bytes in historical signed fixtures. Preserve intentional differences
 as explicit policy cases. A shared test corpus can expose drift before a shared
 implementation is practical; moving code alone does not prove migration.
+
+For discovery-based protocols, follow the link or identifier returned to the
+client in an integration test. Writing to a guessed canonical path can hide a
+broken advertised path. After the write, exercise the consuming read or access
+decision with both permitted and denied callers; a successful write alone does
+not establish that the consumer uses the changed state.
 
 ## Follow effects beyond the return status
 
@@ -109,3 +121,9 @@ A producer fix remains distinct from a released package, a consumer lockfile
 update and a running deployment. For a contract change, check minting helpers,
 examples and downstream callers as well as the verifier; a stale example can
 leave the supported user journey broken after the library tests pass.
+
+Correcting discovery or storage naming does not migrate existing data. Identify
+records written under the old convention and define conflict handling and
+recovery before changing precedence. Report the producer repair separately
+from migration acceptance; for permission data, verify owner access and denied
+access after migration rather than assuming either filename is authoritative.

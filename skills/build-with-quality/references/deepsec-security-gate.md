@@ -77,6 +77,12 @@ through an appropriate review or check; report executed tests separately from
 scanner coverage. A clean Git HEAD is also insufficient to identify reviewed
 uncommitted bytes: retain the diff or content hashes with the receipt.
 
+A reused review workspace can export findings from earlier runs alongside the
+latest analysis. Compare finding run IDs, paths and prior receipts before
+counting new findings or attributing them to the current file set. Retain the
+raw aggregate verdict and give the deduplicated disposition separately; one
+new analysis does not mean every exported finding was newly reviewed.
+
 ## What the gate does not do
 
 - It does not revalidate. For a whole-repo pass, run `deepsec revalidate` from
