@@ -397,9 +397,14 @@ async function agentEventsRoutes(fastify, options) {
       return reply.code(rec.status).send({ success: false, error: rec.error, ...tag });
     }
 
-    // Convert string IDs to numeric hashes if needed. A task token speaks for
-    // its own task only: the posted source_agent_id is ignored (B2).
-    const sourceId = resolveSourceId(auth, body.source_agent_id);
+    // The task id is stamped once, by withTaskId. A task token speaks for its own
+    // task only, so its source agent is derived from that stamp and the posted
+    // source_agent_id is ignored (B2); other credentials keep the caller's value,
+    // hashed when it is a string.
+    const metadata = withTaskId(body.metadata, auth.taskId || body.taskId);
+    const sourceId = auth.taskId
+      ? hashString(metadata.taskId)
+      : (typeof body.source_agent_id === 'string' ? hashString(body.source_agent_id) : body.source_agent_id);
 
     const targetId = typeof body.target_node_id === 'string'
       ? hashString(body.target_node_id)
@@ -415,7 +420,7 @@ async function agentEventsRoutes(fastify, options) {
       target_node_id: targetId,
       action_type: actionType,
       duration_ms: body.duration_ms || 100,
-      metadata: withTaskId(body.metadata, auth.taskId || body.taskId)
+      metadata
     };
     // When authenticated, stamp the verified identity so attribution is
     // provable rather than caller-asserted or env-defaulted.
@@ -513,7 +518,11 @@ async function agentEventsRoutes(fastify, options) {
         return reply.code(rec.status).send({ success: false, error: rec.error, ...tag });
       }
 
-      const sourceId = resolveSourceId(auth, eventData.source_agent_id);
+      // Same rule as emit: the stamp from withTaskId decides a token's source (B2).
+      const metadata = withTaskId(eventData.metadata, auth.taskId || eventData.taskId);
+      const sourceId = auth.taskId
+        ? hashString(metadata.taskId)
+        : (typeof eventData.source_agent_id === 'string' ? hashString(eventData.source_agent_id) : eventData.source_agent_id);
 
       const targetId = typeof eventData.target_node_id === 'string'
         ? hashString(eventData.target_node_id)
@@ -528,7 +537,7 @@ async function agentEventsRoutes(fastify, options) {
         target_node_id: targetId,
         action_type: actionType,
         duration_ms: eventData.duration_ms || 100,
-        metadata: withTaskId(eventData.metadata, auth.taskId || eventData.taskId)
+        metadata
       };
       if (auth.did) {
         emitPayload.source_urn = auth.did;
@@ -886,17 +895,6 @@ function eventMatchesRef(event, ref) {
     return URN_FIELDS.some(k => typeof md[k] === 'string' && md[k] === ref);
   }
   return false;
-}
-
-/**
- * The numeric source agent id for an emitted action. A task token proves one
- * task, so its source is always that task (the same server-side stamping as
- * withTaskId); any source_agent_id the client posted is ignored. Other
- * credentials keep the caller's value, hashed when it is a string.
- */
-function resolveSourceId(auth, posted) {
-  if (auth && auth.taskId) return hashString(String(auth.taskId));
-  return typeof posted === 'string' ? hashString(posted) : posted;
 }
 
 /**
