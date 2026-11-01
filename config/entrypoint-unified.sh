@@ -3838,25 +3838,74 @@ if command -v node >/dev/null 2>&1; then
   PGS_MCP_JSON="$_MCP_JSON" PGS_CODEX="${CODEX_HOME:-/home/devuser/.codex}/config.toml" \
   PGS_CF="${HOME}/.claude-flow/config.json" PGS_FILE="${RUVECTOR_PG_PASSWORD_FILE:-}" \
   PGS_CLAUDE_JSON="${CLAUDE_CONFIG_DIR:-/home/devuser/.claude}/.claude.json:/home/devuser/.claude.json" \
+  PGS_SNAP_DIRS="${CLAUDE_CONFIG_DIR:-/home/devuser/.claude}:${CLAUDE_CONFIG_DIR:-/home/devuser/.claude}/backups:${HOME}:${WORKSPACE:-/home/devuser/workspace}:${WORKSPACE:-/home/devuser/workspace}/.claude:${CODEX_HOME:-/home/devuser/.codex}:${HOME}/.claude-flow" \
+  PGS_ANY_DIRS="${CLAUDE_CONFIG_DIR:-/home/devuser/.claude}:${CLAUDE_CONFIG_DIR:-/home/devuser/.claude}/backups" \
   node <<'PGSCRUBJS' || true
 // PGSCRUB_MARKER
 const fs = require('fs');
+const path = require('path');
 const e = process.env;
+const pwFile = e.PGS_FILE || '/run/secrets/ruvector-pg/password';
 const parts = {
   RUVECTOR_PG_HOST: e.RUVECTOR_PG_HOST || 'ruvector-postgres',
   RUVECTOR_PG_PORT: e.RUVECTOR_PG_PORT || '5432',
   RUVECTOR_PG_DATABASE: e.RUVECTOR_PG_DATABASE || 'ruvector',
   RUVECTOR_PG_USER: e.RUVECTOR_PG_USER || 'ruvector',
-  RUVECTOR_PG_PASSWORD_FILE: e.PGS_FILE || '/run/secrets/ruvector-pg/password',
+  RUVECTOR_PG_PASSWORD_FILE: pwFile,
 };
-const read = (f) => { try { return fs.readFileSync(f, 'utf8'); } catch { return null; } };
+const MAX_BYTES = 32 * 1024 * 1024;
 let scrubbed = 0;
-// 1. .mcp.json and Claude Code's per-user state (which caches the resolved MCP
-//    config, top-level and under projects.<path>): every mcpServers entry whose
-//    env holds a conninfo.
-function scrubServers(node) {
+let failed = 0;
+
+// Atomic rewrite: a sibling temp file (0600, same directory), fsync, rename over the
+// original. A kill before the rename leaves the original untouched; the temp file only
+// ever holds the already-scrubbed text, so it never carries the password.
+function atomicWrite(f, data, mode) {
+  const tmp = path.join(path.dirname(f), `.${path.basename(f)}.pgscrub.${process.pid}`);
+  let fd = null;
+  try {
+    fs.rmSync(tmp, { force: true });
+    fd = fs.openSync(tmp, 'wx', 0o600);
+    fs.writeSync(fd, data);
+    fs.fsyncSync(fd);
+    fs.fchmodSync(fd, mode);
+    fs.closeSync(fd); fd = null;
+    if (e.PGS_TEST_FAIL_BEFORE_RENAME === '1') throw new Error('injected failure before rename');
+    fs.renameSync(tmp, f);
+    try { const dfd = fs.openSync(path.dirname(f), 'r'); try { fs.fsyncSync(dfd); } finally { fs.closeSync(dfd); } } catch { /* best effort */ }
+  } catch (err) {
+    if (fd !== null) { try { fs.closeSync(fd); } catch { /* ignore */ } }
+    try { fs.rmSync(tmp, { force: true }); } catch { /* ignore */ }
+    throw err;
+  }
+}
+// Read a regular (non-symlink) file of sane size; null if it is anything else.
+function readRegular(f) {
+  try {
+    const st = fs.lstatSync(f);
+    if (!st.isFile() || st.size > MAX_BYTES) return null;
+    const text = fs.readFileSync(f, 'utf8');
+    return text.includes('\u0000') ? null : { text, mode: st.mode & 0o777 };
+  } catch { return null; }
+}
+// Text-level removal of the password from one string (hook command, URL, conninfo, raw file text).
+const CONN_ASSIGN = /RUVECTOR_PG_CONNINFO=(?:"[^"]*"|'[^']*'|[^\s"';&|]+)/g;
+const URL_PW = /(postgres(?:ql)?:\/\/[^\s:\/@"']*):[^\s@"']+@/gi;
+const KV_PW = /[ \t]*\bpassword=(?:'[^']*'|"[^"]*"|[^\s"']+)/gi;
+function cleanText(s) {
+  let o = s.replace(CONN_ASSIGN, `RUVECTOR_PG_PASSWORD_FILE=${pwFile}`).replace(URL_PW, '$1@');
+  if (/\b(?:host|dbname)=/.test(o)) o = o.replace(KV_PW, '');
+  return o;
+}
+// 1. A parsed JSON document (.mcp.json, Claude Code's per-user state and its backups, settings
+//    snapshots): every mcpServers entry whose env holds a conninfo, memory.password, and any string
+//    value (hook commands) carrying a conninfo or credentialled URL. Returns the entries changed.
+function scrubDoc(node, top) {
   let n = 0;
   if (!node || typeof node !== 'object') return 0;
+  if (top && node.memory && typeof node.memory === 'object' && Object.prototype.hasOwnProperty.call(node.memory, 'password')) {
+    delete node.memory.password; n++;
+  }
   for (const [k, v] of Object.entries(node)) {
     if (k === 'mcpServers' && v && typeof v === 'object') {
       for (const srv of Object.values(v)) {
@@ -3866,41 +3915,61 @@ function scrubServers(node) {
           n++;
         }
       }
+    }
+    if (typeof v === 'string') {
+      const c = cleanText(v);
+      if (c !== v) { node[k] = c; n++; }
     } else {
-      n += scrubServers(v);
+      n += scrubDoc(v, false);
     }
   }
   return n;
 }
-for (const f of [e.PGS_MCP_JSON, ...String(e.PGS_CLAUDE_JSON || '').split(':')].filter(Boolean)) {
-  const mt = read(f);
-  if (mt === null) continue;
+function scrubFile(f, forceMode) {
+  const r = readRegular(f);
+  if (r === null) return;
+  const mode = forceMode === undefined ? r.mode : forceMode;
+  let out = null;
+  let n = 0;
   try {
-    const j = JSON.parse(mt);
-    const n = scrubServers(j);
-    if (n) { fs.writeFileSync(f, JSON.stringify(j, null, 2), { mode: 0o600 }); fs.chmodSync(f, 0o600); scrubbed += n; }
-  } catch { /* unparsable: leave it */ }
-}
-// 2. Codex config.toml: the conninfo line becomes the parts + the file path
-const ct = read(e.PGS_CODEX);
-if (ct !== null && /^RUVECTOR_PG_CONNINFO\s*=/m.test(ct)) {
-  const lines = Object.entries(parts).map(([k, v]) => `${k} = ${JSON.stringify(v)}`).join('\n');
-  fs.writeFileSync(e.PGS_CODEX, ct.replace(/^RUVECTOR_PG_CONNINFO\s*=.*$/m, lines));
-  scrubbed++;
-}
-// 3. ~/.claude-flow/config.json: drop memory.password
-const ft = read(e.PGS_CF);
-if (ft !== null) {
-  try {
-    const j = JSON.parse(ft);
-    if (j && j.memory && Object.prototype.hasOwnProperty.call(j.memory, 'password')) {
-      delete j.memory.password;
-      fs.writeFileSync(e.PGS_CF, JSON.stringify(j, null, 2));
-      scrubbed++;
+    const j = JSON.parse(r.text);
+    n = scrubDoc(j, true);
+    if (n) out = JSON.stringify(j, null, 2);
+  } catch {
+    // TOML (Codex) or unparsable text: the conninfo line becomes the parts + the file path
+    let t = r.text;
+    if (/^RUVECTOR_PG_CONNINFO\s*=/m.test(t)) {
+      const lines = Object.entries(parts).map(([k, v]) => `${k} = ${JSON.stringify(v)}`).join('\n');
+      t = t.replace(/^RUVECTOR_PG_CONNINFO\s*=.*$/m, lines);
     }
-  } catch { /* unparsable: leave it */ }
+    t = cleanText(t);
+    if (t !== r.text) { out = t; n = 1; }
+  }
+  if (out === null) return;
+  try { atomicWrite(f, out, mode); scrubbed += n; } catch { failed++; }
+}
+// Live targets
+const live = [e.PGS_MCP_JSON, ...String(e.PGS_CLAUDE_JSON || '').split(':'), e.PGS_CODEX, e.PGS_CF].filter(Boolean);
+for (const f of live) scrubFile(f, f === e.PGS_CODEX || f === e.PGS_CF ? undefined : 0o600);
+// 2. Snapshots of the projected config: Claude Code's rolling .claude.json backups, and the
+//    operator/reconcile copies (*.pre-*, *.bak*). Content scrubbed, files kept.
+const SNAP_SUFFIX = /\.(?:pre-[^/]+|bak[^/]*|backup[^/]*)$/;
+const KNOWN_BASE = /^(?:settings(?:\.local)?\.json|\.claude\.json|\.mcp\.json|config\.(?:json|toml)|claude_desktop_config\.json)\./;
+const anyDirs = new Set(String(e.PGS_ANY_DIRS || '').split(':').filter(Boolean));
+const dirs = new Set([...String(e.PGS_SNAP_DIRS || '').split(':').filter(Boolean), ...live.map((f) => path.dirname(f))]);
+const liveSet = new Set(live);
+for (const d of dirs) {
+  let names = [];
+  try { names = fs.readdirSync(d); } catch { continue; }
+  for (const nm of names.sort()) {
+    if (nm.includes('.pgscrub.') || !SNAP_SUFFIX.test(nm)) continue;
+    if (!(anyDirs.has(d) || KNOWN_BASE.test(nm))) continue;
+    const f = path.join(d, nm);
+    if (!liveSet.has(f)) scrubFile(f);
+  }
 }
 console.log(scrubbed ? `  [security] removed a stored Postgres password/conninfo from ${scrubbed} config entr${scrubbed === 1 ? 'y' : 'ies'}` : '  [security] no stored Postgres password/conninfo found in config files');
+if (failed) console.log(`  [security] WARNING: ${failed} file(s) could not be rewritten; rotate the RuVector password`);
 PGSCRUBJS
   chown 1000:1000 "$_MCP_JSON" "${CODEX_HOME:-/home/devuser/.codex}/config.toml" "${HOME}/.claude-flow/config.json" \
     "${CLAUDE_CONFIG_DIR:-/home/devuser/.claude}/.claude.json" /home/devuser/.claude.json 2>/dev/null || true
