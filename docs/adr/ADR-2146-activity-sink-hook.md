@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: e1893e23684b831bae909bfbd5209a548ed87533
+verified_commit: cc949bb79c9ac89858d01c1235dd3bca6e2226a2
 verified_paths: [config/hooks/activity-sink.cjs, config/entrypoint-unified.sh, services/agentbox-manifest/src/stacks.rs, services/agentbox-manifest/src/stacks_env.rs, tests/config/activity-sink.test.js, config/egress-policy.json]
 owner: jjohare
 review_trigger: a second consumer of the sink, a change to the wire body, a new event or tool class, moving the token under role isolation (ADR-2122), or any change to the ADR-2026 redactor
@@ -120,3 +120,11 @@ Re-verified 2026-10-31 at `2f15c531b02b8f8393d68d29ce3491712bdd862c` (W7 and W8 
 ## Re-verification — 2026-11-01 (ADR-2164 amendment)
 
 Governed path `config/entrypoint-unified.sh` changed since `2f15c531b`: two hunks (`git diff 2f15c531b..e1893e236 -- config/entrypoint-unified.sh`), both inside the trajectory-recorder hook registration block (its comment, the removed `TRAJ_CONNINFO` input, the `pfx` prefix and the command join), which stops inlining the database conninfo and the learning gates into the registered command. Nothing else in the file changed in that range. This record's claims do not concern that block (matches for trajectory/TRAJ_/RUVECTOR_PG_CONNINFO in it: 2, none about the registration). Its line about the recorder's emit publisher being gated behind the learning flags still holds in effect: the hook is registered only when those flags are on; the gate is now the registration rather than an inline env prefix. Decision unchanged; `verified_commit` bumped.
+
+## Re-verification — 2026-11-01 (`cc949bb79`)
+
+Governed-path delta since `e1893e236` is the RuVector Postgres credential custody change (ADR-2164 amendment 2), nothing else:
+
+- `config/entrypoint-unified.sh`: adds `_ab_pg_credential_prepare` and the credential-scrub block, replaces every `RUVECTOR_PG_CONNINFO` site (`.mcp.json`, Codex, ingest command line, runtime-env export, routing-label hook command) with the parts and the password-file path, and removes the claude-flow template copy.
+
+Nothing this record decides is changed; its status axes are unchanged. Re-run: `git diff e1893e236..cc949bb79 -- config/entrypoint-unified.sh`.

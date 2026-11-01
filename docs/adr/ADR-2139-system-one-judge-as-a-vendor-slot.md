@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: e1893e23684b831bae909bfbd5209a548ed87533
+verified_commit: cc949bb79c9ac89858d01c1235dd3bca6e2226a2
 verified_paths: [agentbox.toml, schema/agentbox.toml.schema.json, crates/system-one/system-one-proxy/src/config.rs, crates/system-one/system-one-proxy/tests/proxy.rs, tests/config/semantic-rules.test.js, crates/system-one/system-one-proxy/src/server.rs, crates/system-one/system-one-proxy/src/key.rs, services/agentbox-manifest/src/system_one.rs, config/entrypoint-unified.sh, config/hooks/lib/skill-route.cjs, config/seal-bootstrap.sh, lib/system-one-proxy.nix, flake.nix, scripts/agentbox-config-validate.js, agentbox.sh]
 owner: jjohare
 review_trigger: SubQ Snap leaving public preview or changing its price, retention default or the Decisions request shape; a Kev, Clef or pplx-decider release that serves /v1/systemone on a 9B-class checkpoint; a system-one-eval run on the ADR-2089 corpus that moves any backend by more than 5 points; the first compaction replay whose keep-rate is above 5%
@@ -357,3 +357,14 @@ Re-verified 2026-10-31 at `2f15c531b02b8f8393d68d29ce3491712bdd862c` (W7 and W8 
 ## Re-verification — 2026-11-01 (ADR-2164 amendment)
 
 Governed path `config/entrypoint-unified.sh` changed since `2f15c531b`: two hunks (`git diff 2f15c531b..e1893e236 -- config/entrypoint-unified.sh`), both inside the trajectory-recorder hook registration block (its comment, the removed `TRAJ_CONNINFO` input, the `pfx` prefix and the command join), which stops inlining the database conninfo and the learning gates into the registered command. Nothing else in the file changed in that range. This record's claims do not concern that block (matches for trajectory/TRAJ_/RUVECTOR_PG_CONNINFO in it: 0, none about the registration). Decision unchanged; `verified_commit` bumped.
+
+## Re-verification — 2026-11-01 (`cc949bb79`)
+
+Governed-path delta since `e1893e236` is the RuVector Postgres credential custody change (ADR-2164 amendment 2), nothing else:
+
+- `agentbox.sh`: the ruvnet-brain ingest command line no longer passes a conninfo (the in-container client reads the password file), plus one comment.
+- `agentbox.toml`: the two `conninfo` URLs drop the `@@RUVECTOR_PG_PASSWORD@@` placeholder password, with their comments.
+- `config/entrypoint-unified.sh`: adds `_ab_pg_credential_prepare` and the credential-scrub block, replaces every `RUVECTOR_PG_CONNINFO` site (`.mcp.json`, Codex, ingest command line, runtime-env export, routing-label hook command) with the parts and the password-file path, and removes the claude-flow template copy.
+- `flake.nix`: removes the claude-flow config template (`claudeFlowConfigJson` and its `cp`) and the baked `RUVECTOR_PG_CONNINFO` image Env entry, and rewords one dream-engine supervisor comment.
+
+Nothing this record decides is changed; its status axes are unchanged. Re-run: `git diff e1893e236..cc949bb79 -- agentbox.sh agentbox.toml config/entrypoint-unified.sh flake.nix`.

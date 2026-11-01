@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 34f5e425403bde5b1c4f13375406d33fcbb22b22
+verified_commit: cc949bb79c9ac89858d01c1235dd3bca6e2226a2
 verified_paths: [mcp/servers/ruflo-memory-cli.cjs, tests/contract/ruflo-memory-cli.contract.spec.js, tests/config/ruflo-memory-governed.test.sh]
 owner: jjohare
 review_trigger: a ruflo release whose memory subsystem gains a Postgres backend or an external embedding provider, or a ruflo-console release whose memory pane stops shelling out to `ruflo memory stats|list --format json`
@@ -65,3 +65,11 @@ Live, 2026-10-03, against the running sidecar (213,332 rows, 464 namespaces, ruv
 ### Re-verification — 2026-10-03 (runtime-env path escape, 34f5e4254)
 
 `1fc26c786..34f5e4254`: the boot export of `CLAUDE_FLOW_MEMORY_PATH` is escaped in the runtime-env heredoc so it resolves per user (`$HOME/.cache/ruflo/memory`), satisfying RC-X1-01; `tests/config/ruflo-memory-governed.test.sh` accepts the escaped form. The decision (governed `ruflo memory`, repo-safe defaults) is unchanged; the wrapper's own default was already `$HOME`-relative. Live checks unchanged.
+
+## Re-verification — 2026-11-01 (`cc949bb79`)
+
+Governed-path delta since `34f5e4254` is the RuVector Postgres credential custody change (ADR-2164 amendment 2), nothing else:
+
+- `mcp/servers/ruflo-memory-cli.cjs`: the pool config comes from `management-api/lib/pg-config.js`; `parseConninfo` and the `password=ruvector` default are gone.
+
+Nothing this record decides is changed; its status axes are unchanged. Re-run: `git diff 34f5e4254..cc949bb79 -- mcp/servers/ruflo-memory-cli.cjs`.

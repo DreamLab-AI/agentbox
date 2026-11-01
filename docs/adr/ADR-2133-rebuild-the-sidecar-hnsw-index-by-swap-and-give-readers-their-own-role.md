@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 9db3bcc4996ea1caf0a06c1660075568a52b5807
+verified_commit: cc949bb79c9ac89858d01c1235dd3bca6e2226a2
 verified_paths: [scripts/ruvector-sidecar-update.sh, tests/config/ruvector-sidecar-ops.test.sh]
 owner: jjohare
 review_trigger: a ruvector extension or image bump; a new read-only consumer or readable table; any pg_hba change; `ruvector reader-role --yes` and `hba-harden --yes` run on the live sidecar (activation → live)
@@ -42,7 +42,7 @@ Provenance: the image entrypoint writes pg_hba only on first initdb (`docker-ent
   - **Verification:** it logs in as the role over TCP. A wrong password must be refused, and the ANN and exact top-k queries must work. INSERT, UPDATE, DELETE, CREATE and CREATE TEMP must be refused both in the read-only default and after a `READ WRITE` opt-in, and so must SELECT on another table.
   - **When it runs:** one-time, idempotent, re-run after a restore onto a fresh volume. It is not applied at boot (`memory_entries` is created after initdb) and not wired through compose (the reader password stays out of the sidecar's environment).
 - `ruvector hba-harden [--dry-run|--yes]` (flag `hba_scram`, default off) rewrites non-loopback `trust` host lines to `scram-sha-256` and drops duplicate lines.
-  - **Precondition:** the container's `POSTGRES_PASSWORD` and the governed `.mcp.json` conninfo password must both verify against the owner's SCRAM verifier. The check uses node:crypto, and its accept and reject paths are tested on the RFC 7677 vector and the status trust banner.
+  - **Precondition:** the container's `POSTGRES_PASSWORD` and the governed client password (the one 0600 file `RUVECTOR_PG_PASSWORD_FILE` names, read from the container since ADR-2164 amendment 2; `.mcp.json` no longer carries a password) must both verify against the owner's SCRAM verifier. The check uses node:crypto, and its accept and reject paths are tested on the RFC 7677 vector and the status trust banner.
   - **Rollback:** if the owner cannot log in over the network path afterwards, or a wrong password still can, the backup is restored.
 
 ## Consequences
@@ -57,3 +57,11 @@ Provenance: the image entrypoint writes pg_hba only on first initdb (`docker-ent
 - Live, 2026-10-07: `reindex --yes` exited 0. Recall went from self 170/200 and true 100/120 (FAIL) to self 192/200 and true 109/120 (PASS, median-of-3). The build took 468 s and the run 11m23s; the index went from 4209 MB to 1670 MB.
 - The reader SQL and the verification ran against a scratch database and a probe role, both dropped afterwards. All write paths were refused at both layers, and the wrong-password probe correctly failed under the existing trust lines.
 - `reader-role --yes` and `hba-harden --yes` have not been run on the live sidecar.
+
+## Re-verification — 2026-11-01 (`cc949bb79`)
+
+Governed-path delta since `9db3bcc49` is the RuVector Postgres credential custody change (ADR-2164 amendment 2), nothing else:
+
+- `scripts/ruvector-sidecar-update.sh`: `owner_client_passwords` reads the container password file instead of scraping a conninfo out of `.mcp.json`, plus two comments.
+
+Nothing this record decides is changed; its status axes are unchanged. Re-run: `git diff 9db3bcc49..cc949bb79 -- scripts/ruvector-sidecar-update.sh`.

@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 29d9277450dc4ac8b9d33f3afc5b7e3ec1ec7b79
+verified_commit: cc949bb79c9ac89858d01c1235dd3bca6e2226a2
 verified_paths: [config/nip98-proxy/proxy.mjs, flake.nix, docs/INGRESS-identity.md]
 owner: jjohare
 review_trigger: A second operator identity ingress is proposed, or named-route authentication changes
@@ -402,3 +402,12 @@ The proxy identity boundary described here is unchanged; the token never crosses
 ## Re-verification — 2026-11-01 (ADR-2164 amendment)
 
 `docs/INGRESS-identity.md` changed again (0.2.6): Invariant 12's route list gains `POST /v1/agent-events/trajectory` and a sentence that no database credential reaches a task. The change is confined to Invariant 12 and the changelog/ADR index; the :9096 proxy identity boundary is unchanged, and the token still never crosses the :9096 proxy. Re-verified by `git diff fd395620b..29d927745 -- docs/INGRESS-identity.md`.
+
+## Re-verification — 2026-11-01 (`cc949bb79`)
+
+Governed-path delta since `29d927745` is the RuVector Postgres credential custody change (ADR-2164 amendment 2), nothing else:
+
+- `docs/INGRESS-identity.md`: version 0.2.7: invariant 12 gains the one-database-credential-source sentence and the routing-label route.
+- `flake.nix`: removes the claude-flow config template (`claudeFlowConfigJson` and its `cp`) and the baked `RUVECTOR_PG_CONNINFO` image Env entry, and rewords one dream-engine supervisor comment.
+
+Nothing this record decides is changed; its status axes are unchanged. Re-run: `git diff 29d927745..cc949bb79 -- docs/INGRESS-identity.md flake.nix`.

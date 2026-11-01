@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 32434ce83e
+verified_commit: 32434ce8363d3e181608eb5f17ad9530f050de78
 verified_paths: [config/hooks/trajectory-recorder.cjs, config/hooks/routing-label-recorder.cjs, config/entrypoint-unified.sh, management-api/lib/pg-config.js, management-api/lib/routing-label-store.js, management-api/lib/trajectory-store.js, mcp/consultants/shared/consultant-base.js, management-api/lib/task-action-tokens.js, management-api/middleware/auth.js, management-api/lib/agent-event-auth.js, management-api/routes/agent-events.js, management-api/utils/process-manager.js]
 owner: jjohare
 review_trigger: any new reader of the RuVector Postgres password or any new place a connection is assembled, any new route a task needs to call, any change to the Management API auth gate or auth modes, or a hook that gains a way to sign NIP-98

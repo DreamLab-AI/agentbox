@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: e1893e23684b831bae909bfbd5209a548ed87533
+verified_commit: cc949bb79c9ac89858d01c1235dd3bca6e2226a2
 verified_paths: [config/instructions, services/agentbox-manifest/src/instructions.rs, services/agentbox-manifest/src/cred_sync.rs, config/entrypoint-unified.sh, agentbox.sh, flake.nix, docker-compose.yml, docker-compose.override.yml, tests/config/claude-home-migration.test.sh, tests/config/compose-persistence.test.cjs]
 owner: jjohare
 review_trigger: Claude Code starts reading AGENTS.md natively (drop the @AGENTS.md wrappers and the embed); or a Claude Code release changes where credentials live
@@ -321,3 +321,15 @@ Re-verified 2026-10-31 at `2f15c531b02b8f8393d68d29ce3491712bdd862c` (W7 and W8 
 ## Re-verification — 2026-11-01 (ADR-2164 amendment)
 
 Governed path `config/entrypoint-unified.sh` changed since `2f15c531b`: two hunks (`git diff 2f15c531b..e1893e236 -- config/entrypoint-unified.sh`), both inside the trajectory-recorder hook registration block (its comment, the removed `TRAJ_CONNINFO` input, the `pfx` prefix and the command join), which stops inlining the database conninfo and the learning gates into the registered command. Nothing else in the file changed in that range. This record's claims do not concern that block (matches for trajectory/TRAJ_/RUVECTOR_PG_CONNINFO in it: 0, none about the registration). Decision unchanged; `verified_commit` bumped.
+
+## Re-verification — 2026-11-01 (`cc949bb79`)
+
+Governed-path delta since `e1893e236` is the RuVector Postgres credential custody change (ADR-2164 amendment 2), nothing else:
+
+- `agentbox.sh`: the ruvnet-brain ingest command line no longer passes a conninfo (the in-container client reads the password file), plus one comment.
+- `config/entrypoint-unified.sh`: adds `_ab_pg_credential_prepare` and the credential-scrub block, replaces every `RUVECTOR_PG_CONNINFO` site (`.mcp.json`, Codex, ingest command line, runtime-env export, routing-label hook command) with the parts and the password-file path, and removes the claude-flow template copy.
+- `config/instructions/workspace.md`: the RuVector `conn` line names the password file instead of `$RUVECTOR_PG_CONNINFO`.
+- `docker-compose.override.yml`: drops the injected `RUVECTOR_PG_CONNINFO`; `RUVECTOR_PG_PASSWORD` becomes required (`:?`, no default).
+- `flake.nix`: removes the claude-flow config template (`claudeFlowConfigJson` and its `cp`) and the baked `RUVECTOR_PG_CONNINFO` image Env entry, and rewords one dream-engine supervisor comment.
+
+Nothing this record decides is changed; its status axes are unchanged. Re-run: `git diff e1893e236..cc949bb79 -- agentbox.sh config/entrypoint-unified.sh config/instructions/workspace.md docker-compose.override.yml flake.nix`.

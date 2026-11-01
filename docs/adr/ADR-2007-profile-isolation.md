@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 3b498088e5a35e78158a9eb8d6f0266996d31f82
+verified_commit: cc949bb79c9ac89858d01c1235dd3bca6e2226a2
 verified_paths: [config/harness-wrappers/zai.sh, config/harness-wrappers/openrouter.sh, config/harness-wrappers/_provider-url.sh, tests/security/provider-url-validation.test.sh]
 owner: jjohare
 review_trigger: A proposal to reintroduce Linux pseudo-user isolation as the primary model, or a harness wrapper omitting the redirect assertion
@@ -127,3 +127,11 @@ CP-01/04/08. Owner remains jjohare with runtime maintainers. Actual wrapper prob
 ## Re-verification — 2026-10-07 at cca7ea3b151be3ea44907581d40271c714b07dd0
 
 One commit touches the governed paths between `6ea592ee0` and HEAD. `07f8f5366` adds a block at `config/harness-wrappers/zai.sh:130-145`. It unsets Claude Code's own namespace inherited from the caller (`CLAUDE_*` except `CLAUDE_FLOW_*`, `CLAUDECODE`, `ANTHROPIC_*`, `MAX_THINKING_TOKENS`) and maps `ZAI_EFFORT` onto `CLAUDE_EFFORT`. The block runs after the redirect gate and before the profile pin. This tightens isolation, because a caller's `CLAUDE_CONFIG_DIR`, `ANTHROPIC_API_KEY` or `CLAUDE_EFFORT` can no longer leak into the Z.AI session. The isolation mechanism itself is unchanged and has only moved down the file: `_die` at `zai.sh:37`, the redirect and token read from the profile's `settings.local.json` at `:103-104`, the `provider_url_validate` gate at `:120`, `HOME`/`CLAUDE_CONFIG_DIR` pinned to the profile at `:148-149`, and the validated `ANTHROPIC_BASE_URL`/`ANTHROPIC_AUTH_TOKEN` re-exported, with `ANTHROPIC_API_KEY` emptied, at `:150-152`. `openrouter.sh`, `_provider-url.sh` and `tests/security/provider-url-validation.test.sh` are unchanged. `bash tests/security/provider-url-validation.test.sh` gives 52 passed, 0 failed, and `node --test tests/security/zai-launch-env.test.cjs` gives 9 passed, 0 failed. No pseudo-user path returns. The decision holds.
+
+## Re-verification — 2026-11-01 (`cc949bb79`)
+
+Governed-path delta since `3b498088e` is the RuVector Postgres credential custody change (ADR-2164 amendment 2), nothing else:
+
+- `config/harness-wrappers/zai.sh`: one comment names `RUVECTOR_PG_*` instead of `RUVECTOR_PG_CONNINFO`.
+
+Nothing this record decides is changed; its status axes are unchanged. Re-run: `git diff 3b498088e..cc949bb79 -- config/harness-wrappers/zai.sh`.

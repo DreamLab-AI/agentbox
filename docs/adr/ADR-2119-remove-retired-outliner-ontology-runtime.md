@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 75378856483d13f952569018421c4526da0aede2
+verified_commit: cc949bb79c9ac89858d01c1235dd3bca6e2226a2
 verified_paths: [flake.nix, lib/ontology-tools.nix, services/ontology-tools, services/agentbox-mcp/src/web_summary, skills/ontology-core, skills/ontology-enrich, dream.config.json]
 owner: jjohare
 review_trigger: commit and rebuild the image; or introduce a corpus writer or output format
@@ -256,3 +256,11 @@ Re-verified 2026-10-29 at `00039efb1e4a70402df86ad19cf76894fe3b9a8f` for ADR-215
 Today's commits: `2d49681bf` (management API), `b7a1d0955` (ontology-augment), `f4beec643` (skills and docs), `7aa9365d4` (path tiers), `6aaf3bb46` (podcast submitter), `eff6c29c1`, `4a07fbfb3` (ontomark v0.6.1 pin). Owner decision 2026-10-31 (Ontomark DEPRECATION §14): `ontomark` is the one corpus CLI; `vault` keeps only the governance transport, `propose` and `panel publish`, per Ontomark ADR-OM-005 decisions 5-6.
 
 The corpus write path this record's review trigger names now runs `ontomark apply`, not `vault apply` (`2d49681bf`, ADR-2109 re-verification). No outliner-era runtime returns: `scripts/check-no-logseq-paths.sh` additionally rejects `mainKnowledgeGraph`, `knowledge/pages/` and `working/pages/` and scans `.cjs`, `.yaml`, `.yml` and `.nix` (`bbb942058`), and passes. The decision holds.
+
+## Re-verification — 2026-11-01 (`cc949bb79`)
+
+Governed-path delta since `753788564` is the RuVector Postgres credential custody change (ADR-2164 amendment 2), nothing else:
+
+- `flake.nix`: removes the claude-flow config template (`claudeFlowConfigJson` and its `cp`) and the baked `RUVECTOR_PG_CONNINFO` image Env entry, and rewords one dream-engine supervisor comment.
+
+Nothing this record decides is changed; its status axes are unchanged. Re-run: `git diff 753788564..cc949bb79 -- flake.nix`.

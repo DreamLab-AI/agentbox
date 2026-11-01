@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 21769a881315a246afaa6e9d0b39daf4ec39b5bc
+verified_commit: cc949bb79c9ac89858d01c1235dd3bca6e2226a2
 verified_paths: [management-api/routes/exec-record.js, tests/integration/exec-record.test.js, services/dream-engine/src/journal.rs, services/dream-engine/src/engine.rs, services/dream-engine/src/records.rs]
 owner: jjohare
 review_trigger: an approver is wired into the action pipeline, a second process gains an events-adapter write path, or the nightly acquires a new external side effect
@@ -250,3 +250,11 @@ Read `git diff 2305d675e..96a9a925d -- services/dream-engine`. The one `engine.r
 ## Consumer — 2026-10-18: the X-4 flake-update rehearsal
 
 `scripts/activation/flake-update-rehearsal.host.sh` (X-4) boots the weekly `deps/nix-flake-update` image in a throwaway container and, with `--journal`, posts one `tool.completed` entry per gate (`harness: flake-rehearsal`, `key: <session>:<gate>`) to the live box's `POST /v1/exec/record`. It reaches the journal over HTTP for the same chain-safety reason the dream engine does, and treats an unreachable or refusing journal as non-fatal: the receipt records `journal.status`. The receipt is the primary record; the journal entries make a rehearsal visible in the audit chain. Test: `tests/config/flake-update-rehearsal.test.sh`; guide: `docs/developer/flake-update-rehearsal.md`.
+
+## Re-verification — 2026-11-01 (`cc949bb79`)
+
+Governed-path delta since `21769a881` is the RuVector Postgres credential custody change (ADR-2164 amendment 2), nothing else:
+
+- `services/dream-engine/src/engine.rs`: one test literal: `pg_url: String::new()` becomes `pg: Default::default()` (RuVectorConfig now holds the address and a password-file path).
+
+Nothing this record decides is changed; its status axes are unchanged. Re-run: `git diff 21769a881..cc949bb79 -- services/dream-engine/src/engine.rs`.

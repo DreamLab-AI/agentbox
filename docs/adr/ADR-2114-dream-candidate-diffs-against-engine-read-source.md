@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 21769a881315a246afaa6e9d0b39daf4ec39b5bc
+verified_commit: cc949bb79c9ac89858d01c1235dd3bca6e2226a2
 verified_paths: [services/dream-engine/src/engine.rs, services/dream-engine/src/candidate_flow.rs, services/dream-engine/src/prompt.rs, services/dream-engine/src/prompt/nightly.tmpl]
 owner: jjohare
 review_trigger: the dream engine gaining a tool-using (agentic) model call, or a month of nights in which repair.json records more NO-PATCH/absent outcomes than recovered patches; the first live dream night on a rebuilt image (activation → live)
@@ -99,3 +99,11 @@ ADR-2143 extends step 1: paths the previous night listed under **Sources wanted 
 ## Re-verification — 2026-10-23
 
 Read `git diff 2305d675e..96a9a925d -- services/dream-engine`. `dream-core` moves to `=0.3.0`, which formats a candidate's own files (ADR-DE-009 there) before the gate; `candidate_flow.rs` now copies `c.formatting` into the candidate record and `engine.rs` adds a second PR-body note when formatting was applied ("the logic is the model's, the layout the formatter's"). The source section, planner, repair pass, apply order and apply-repair are untouched in this repository. One consequence for a reader of this record: the amendment of 2026-10-13 already warned that the PR diff may not be byte-for-byte the model's; it now may also be reformatted, and the PR body says so. The single-completion contract and the "no acceptance is easier to reach" claim hold as far as this repository shows: the adapter still passes every candidate to the gate, and formatting is stated upstream to run before it. The ordering inside `dream-core` 0.3.0 was not read from source here. `judge.rs` forbids `rustfmt` and `cargo fmt` in the adapter, so formatting stays in `dream-core`. `cargo test --locked --lib` 167 passed; `night_e2e` 11 passed. The decision holds. Verified at 96a9a925dec7b19b8b75ecb891cce7a0a24d09e4.
+
+## Re-verification — 2026-11-01 (`cc949bb79`)
+
+Governed-path delta since `21769a881` is the RuVector Postgres credential custody change (ADR-2164 amendment 2), nothing else:
+
+- `services/dream-engine/src/engine.rs`: one test literal: `pg_url: String::new()` becomes `pg: Default::default()` (RuVectorConfig now holds the address and a password-file path).
+
+Nothing this record decides is changed; its status axes are unchanged. Re-run: `git diff 21769a881..cc949bb79 -- services/dream-engine/src/engine.rs`.
