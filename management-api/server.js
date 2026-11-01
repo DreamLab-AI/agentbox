@@ -13,6 +13,7 @@ const { createAuthMiddleware, registerRawBody } = require('./middleware/auth');
 // payment-gate: registered as preHandler on GPU-metered routes (comfyui, tasks)
 const contractVersions = require('./adapters/contract-versions');
 const { resolveAdapters, SLOTS } = require('./adapters/index');
+const { failureReasons } = require('./adapters/lifecycle');
 const { loadManifest, ManifestNotFound } = require('./adapters/manifest-loader');
 const logger = require('./observability/logger');
 const ProcessManager = require('./utils/process-manager');
@@ -593,6 +594,8 @@ app.get('/health', {
           // fast-json-stringify strips undeclared properties; without
           // additionalProperties the adapter map serializes as {}
           adapters: { type: 'object', additionalProperties: { type: 'string' } },
+          // slot -> why it is down (names the file or setting, never a value)
+          adapter_failures: { type: 'object', additionalProperties: { type: 'string' } },
           degraded_count: { type: 'number' },
           note: { type: 'string' }
         }
@@ -607,6 +610,7 @@ app.get('/health', {
     image_hash: process.env.AGENTBOX_IMAGE_HASH || null,
     manifest_checksum: process.env.AGENTBOX_MANIFEST_CHECKSUM || null,
     adapters: { ...adapterHealth },
+    adapter_failures: failureReasons(app.adapterReadiness),
     degraded_count: degradedCount,
     note: 'This endpoint is for human inspection only. Use /ready for orchestrator readiness probes.'
   };

@@ -14,6 +14,8 @@ const path = require('path');
 const { buildPodNip98 } = require('../lib/pod-signer');
 const { pgPoolConfigFromManifestConninfo } = require('../lib/pg-config');
 const { wrapDispatch } = require('../observability/metrics');
+const { BaseAdapter } = require('./base');
+const CONTRACT_VERSIONS = require('./contract-versions');
 
 const SLOTS = ['beads', 'pods', 'memory', 'events', 'orchestrator'];
 
@@ -170,6 +172,20 @@ function instrumentAdapter(adapter, slot, impl, manifest) {
 }
 
 /**
+ * Stand-in for a slot whose configuration could not be built. Its only job is
+ * to fail connect() with the original message (which names the file or setting
+ * at fault) so the lifecycle records and withdraws the slot.
+ */
+class ConfigFailedAdapter extends BaseAdapter {
+  constructor(slot, impl, cause) {
+    super(slot, impl, CONTRACT_VERSIONS[slot] || '0.0.0');
+    this._configError = cause;
+  }
+
+  async connect() { throw this._configError; }
+}
+
+/**
  * Resolve all five adapter slots from the parsed manifest.
  *
  * @param {object} manifest - Parsed agentbox.toml object
@@ -191,8 +207,19 @@ function resolveAdapters(manifest) {
       mod[Object.keys(mod).find(k => typeof mod[k] === 'function')] ||
       mod;
 
-    const cfg = slotConfig(slot, impl, manifest);
-    resolved[slot] = instrumentAdapter(new AdapterClass(cfg), slot, impl, manifest);
+    let instance;
+    try {
+      const cfg = slotConfig(slot, impl, manifest);
+      instance = new AdapterClass(cfg);
+    } catch (err) {
+      // An unusable slot config (e.g. the ruvector password file is missing)
+      // must fail THAT slot closed, not take the whole API down: build an
+      // adapter whose connect() rejects with the cause, and let the lifecycle
+      // (adapters/lifecycle.js) withdraw it exactly as for any connect failure.
+      // A fail-closed slot (orchestrator) still aborts startup there.
+      instance = new ConfigFailedAdapter(slot, impl, err);
+    }
+    resolved[slot] = instrumentAdapter(instance, slot, impl, manifest);
 
     // Attach meta for health/meta endpoints
     resolved[slot]._implName = impl;

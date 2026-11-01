@@ -329,7 +329,24 @@ function toLegacyHealth(readiness) {
   return out;
 }
 
+/**
+ * Why each non-ready slot is down, for /health: `{ slot: reason }` for every slot
+ * that is neither ready nor off. The reason is the connect error's message,
+ * which names the file or setting at fault and never carries a credential value.
+ *
+ * @param {object} readiness - the map connectAdapters() returned
+ * @returns {Object<string,string>}
+ */
+function failureReasons(readiness) {
+  const out = {};
+  for (const [slot, r] of Object.entries(readiness || {})) {
+    if (r.state !== 'ready' && r.state !== 'off') out[slot] = r.reason || r.state;
+  }
+  return out;
+}
+
 module.exports = {
+  failureReasons,
   connectAdapters,
   connectTimeoutFor,
   quarantineAdapter,
