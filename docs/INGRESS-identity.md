@@ -1,11 +1,12 @@
 ---
 title: Agentbox Ingress & Identity
 doc_id: AB-INGRESS
-version: 0.2.4
+version: 0.2.5
 status: draft-for-ratification
 verified_commit: 
 date: 2026-09-05
 changelog:
+  - "0.2.5 (2026-11-01): ADR-2164 - a running Management API task authenticates its own agent-action posts with a short-lived opaque per-task token (invariant 12) instead of MANAGEMENT_API_KEY. Added; invariants 1-11 unchanged."
   - "0.2.4 (2026-10-29): ADR-2153 is live: session control uses a 0660 ab-sessions unix socket and peer-uid ACL; :9096 has named routes only, and the old :9095 token invariant is retired."
   - "0.2.3 (2026-10-28): ADR-2153 (proposed, none, inactive) - AoE is to be replaced by an owned session plane on a unix socket with no TCP listener; at cut-over the :9095 door row and Invariant 1 retire and :9096 narrows to /mgmt/* and its other named routes. Recorded as a proposed note on Invariant 1; the live compliance surface is unchanged."
   - "0.2.2 (2026-10-02): invariant 11 — pod origination signs as the sovereign identity the boot mints, or fails closed (ADR-2078, owner decision SC3); `sign_requests = true` in both manifests."
@@ -330,6 +331,22 @@ JunkieJarvis signer and the existing authenticated `NostrBridge`.
    when a stack is named explicitly (`AGENTBOX_STACK` or `sign_stack`); a missing sovereign
    identity never falls through to it or to unsigned.
 
+12. **Per-task action token (ADR-2164).** A Management API task never receives
+   `MANAGEMENT_API_KEY`. `spawnTask` mints an opaque 256-bit `crypto.randomBytes` token
+   (`management-api/lib/task-action-tokens.js`; held server-side as SHA-256 → `{taskId,
+   expiresAt}`, never logged, not a URN so not minted via `uris.js`) and exports it to the
+   child as `TASK_ACTION_TOKEN`. It is a third credential type on the one existing gate
+   (`management-api/middleware/auth.js`, hooked at `server.js` `preValidation`): accepted
+   only for `POST /v1/agent-events/emit|batch` (matched on the registered route pattern),
+   `403` on every other route, `401` when unknown, expired, revoked or absent. It proves a
+   task, not a Nostr identity: the route (`lib/agent-event-auth.js` `reconcileTaskScope`)
+   stamps the token's own `taskId`, rejects a different `taskId`, and rejects any asserted
+   `source_urn`/`pubkey`; one bad event rejects a whole batch. Revoked on task exit, error
+   and `stopTask`; TTL backstop 4 h (`TASK_ACTION_TOKEN_TTL_MS`). **Sovereign mode:** the
+   token is accepted under `strict-nip98` too, because it is not the shared API key and a
+   task has no other way to report; it is the one non-NIP-98 credential that mode admits,
+   confined as above.
+
 ## Change process
 
 This is a living document. Amend it in the same PR as any change to the door inventory,
@@ -404,6 +421,9 @@ State, Invariants or divergence list above in the same change.
 - **ADR-2044** — FIX: identity derivation and agent-event attribution fail closed
   outside the dev profile (`did:nostr:local` placeholder and
   `AGENTBOX_AGENT_EVENT_AUTH` default `off`).
+- **ADR-2164** — WIRE: a running task posts its own agent actions with a per-task,
+  short-lived, opaque token scoped to emit/batch for that `taskId`; the Management API
+  key stays out of tasks (Invariant 12).
 - **ADR-2045** — FIX: session-mirror egress redacts before NIP-59 wrapping, per
   ADR-2026.
 - **ADR-2046** — FIX: the seccomp CI gate protects all 46 established denials and
