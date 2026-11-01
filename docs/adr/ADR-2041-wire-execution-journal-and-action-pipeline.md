@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 1e41b64b624af97cf49771d08da82fbf3743acbd
+verified_commit: e1893e23684b831bae909bfbd5209a548ed87533
 verified_paths: [management-api/server.js, management-api/lib/action-plane.js, management-api/lib/execution-coverage.js, tests/contract/system-execution-wiring.contract.spec.js]
 owner: jjohare
 review_trigger: a second route or MCP tool needs to become an AgentAction, or task-spawn's `local` classification is challenged by a real incident
@@ -161,3 +161,7 @@ The one failure, `web-interfaces.contract.spec.js` (cockpit tab markup), fails i
 **Not claimed:** `/v1/system` on the running container is unchanged until management-api restarts with this code (no restart was made). The `local` classification of task-spawn and the narrowing of GOVERNANCE-capabilities divergence #1 are unchanged and stay with the domain owner.
 
 **Scope of `activation_status: live`:** `live` covers only the surfaces that were already live before this close-out: the `POST /v1/tasks` journal and pipeline path (`action-plane.js`) and the `declared` report on `/v1/system`. The new `execution: { snapshot }` wiring in `server.js` is **staged, not live**: it takes effect when management-api next restarts, and until then `/v1/system` keeps reporting `declared`. No restart was made here, so nothing in this close-out may be read as a statement about the running container. The record's `live` axis should be re-read after the owner restarts management-api and `GET /v1/system` shows `journal.status: "live"` for a spawned session.
+
+## Re-verification — 2026-11-01 (ADR-2164 amendment)
+
+Governed path `management-api/server.js` changed since `1e41b64b6`: one line, `agentEvents.trajectory: 'POST /v1/agent-events/trajectory'` added to the route index (`git diff 1e41b64b6..e1893e236 -- management-api/server.js` is that single insertion). This record's decision does not concern the route index. Decision unchanged; `verified_commit` bumped.

@@ -1,11 +1,12 @@
 ---
 title: Agentbox Ingress & Identity
 doc_id: AB-INGRESS
-version: 0.2.5
+version: 0.2.6
 status: draft-for-ratification
 verified_commit: 
 date: 2026-09-05
 changelog:
+  - "0.2.6 (2026-11-01): ADR-2164 amendment - invariant 12 scope grows to POST /v1/agent-events/trajectory, the trajectory recorder's single write path: the API persists to Postgres, so no database credential or recorder gate reaches a task. Invariants 1-11 unchanged."
   - "0.2.5 (2026-11-01): ADR-2164 - a running Management API task authenticates its own agent-action posts with a short-lived opaque per-task token (invariant 12) instead of MANAGEMENT_API_KEY. Added; invariants 1-11 unchanged."
   - "0.2.4 (2026-10-29): ADR-2153 is live: session control uses a 0660 ab-sessions unix socket and peer-uid ACL; :9096 has named routes only, and the old :9095 token invariant is retired."
   - "0.2.3 (2026-10-28): ADR-2153 (proposed, none, inactive) - AoE is to be replaced by an owned session plane on a unix socket with no TCP listener; at cut-over the :9095 door row and Invariant 1 retire and :9096 narrows to /mgmt/* and its other named routes. Recorded as a proposed note on Invariant 1; the live compliance surface is unchanged."
@@ -337,7 +338,7 @@ JunkieJarvis signer and the existing authenticated `NostrBridge`.
    expiresAt}`, never logged, not a URN so not minted via `uris.js`) and exports it to the
    child as `TASK_ACTION_TOKEN`. It is a third credential type on the one existing gate
    (`management-api/middleware/auth.js`, hooked at `server.js` `preValidation`): accepted
-   only for `POST /v1/agent-events/emit|batch` (matched on the registered route pattern),
+   only for `POST /v1/agent-events/emit|batch|trajectory` (matched on the registered route pattern),
    `403` on every other route, `401` when unknown, expired, revoked or absent. It proves a
    task, not a Nostr identity: the route (`lib/agent-event-auth.js` `reconcileTaskScope`)
    stamps the token's own `taskId`, rejects a different `taskId`, and rejects any asserted
@@ -345,7 +346,13 @@ JunkieJarvis signer and the existing authenticated `NostrBridge`.
    and `stopTask`; TTL backstop 4 h (`TASK_ACTION_TOKEN_TTL_MS`). **Sovereign mode:** the
    token is accepted under `strict-nip98` too, because it is not the shared API key and a
    task has no other way to report; it is the one non-NIP-98 credential that mode admits,
-   confined as above.
+   confined as above. **No database credential in a task.** The trajectory recorder does not
+   open Postgres: it posts its rows to `POST /v1/agent-events/trajectory` and
+   `management-api/lib/trajectory-store.js` writes them through the memory adapter's pool. No
+   `PG*` / conninfo or recorder gate variable is in a task's spawned env or in the hook command
+   the entrypoint registers in `~/.claude/settings.json` (a task inherits `HOME` and so runs it);
+   enablement is the hook's registration. Under `strict-nip98` an operator session (Bearer only)
+   cannot post, so operator trajectories wait; task posts are unaffected.
 
 ## Change process
 
@@ -422,8 +429,9 @@ State, Invariants or divergence list above in the same change.
   outside the dev profile (`did:nostr:local` placeholder and
   `AGENTBOX_AGENT_EVENT_AUTH` default `off`).
 - **ADR-2164** — WIRE: a running task posts its own agent actions with a per-task,
-  short-lived, opaque token scoped to emit/batch for that `taskId`; the Management API
-  key stays out of tasks (Invariant 12).
+  short-lived, opaque token scoped to emit/batch for that `taskId`, and its recorded
+  trajectories through `/v1/agent-events/trajectory`; the Management API key and every
+  database credential stay out of tasks (Invariant 12).
 - **ADR-2045** — FIX: session-mirror egress redacts before NIP-59 wrapping, per
   ADR-2026.
 - **ADR-2046** — FIX: the seccomp CI gate protects all 46 established denials and

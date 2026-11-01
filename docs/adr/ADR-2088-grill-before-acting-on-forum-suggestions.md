@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 1e41b64b624af97cf49771d08da82fbf3743acbd
+verified_commit: e1893e23684b831bae909bfbd5209a548ed87533
 verified_paths: [management-api/lib/junkiejarvis-clarify.js, management-api/lib/junkiejarvis-agent.js, management-api/server.js, scripts/dream-forum-suggestions.mjs, scripts/run-junkiejarvis.cjs, tests/sovereign/junkiejarvis-clarify.test.js, tests/sovereign/junkiejarvis-dm-send.test.js, tests/sovereign/dream-forum-suggestions-jj-gate.test.js]
 owner: jjohare
 review_trigger: any change to the clarity signals, MIN_SPECIFICITY, the 7-day expiry, or the forum-suggestions ingest path
@@ -193,3 +193,7 @@ No clarifying DM was triggered for this close-out; the gate logic is covered by 
 ## Re-verification — 2026-10-31 (`1e41b64b624af97cf49771d08da82fbf3743acbd`)
 
 Tripped by the W8 ADR-sprint changes. Governed-path delta since `161392193`: `management-api/server.js` changes only the `routes/system` registration, which now passes a fail-open `execution.snapshot` (ADR-2041). No key, table or code path this record decides is touched, so the decision and status axes are unchanged. Judged from the diff (re-runnable: `git diff 161392193..1e41b64b6 -- management-api/lib/junkiejarvis-clarify.js management-api/lib/junkiejarvis-agent.js management-api/server.js scripts/dream-forum-suggestions.mjs scripts/run-junkiejarvis.cjs tests/sovereign/junkiejarvis-clarify.test.js tests/sovereign/junkiejarvis-dm-send.test.js tests/sovereign/dream-forum-suggestions-jj-gate.test.js`; re-run at integration and the summary above matches it), not by re-running this record's own acceptance checks.
+
+## Re-verification — 2026-11-01 (ADR-2164 amendment)
+
+Governed path `management-api/server.js` changed since `1e41b64b6`: one line, `agentEvents.trajectory: 'POST /v1/agent-events/trajectory'` added to the route index (`git diff 1e41b64b6..e1893e236 -- management-api/server.js` is that single insertion). This record's decision does not concern the route index. Decision unchanged; `verified_commit` bumped.
