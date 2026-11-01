@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 833fccefae96ea24b3d1fa685e5b9baeb22e93e5
+verified_commit: 460b8b8bb61503f27e576a3e9554bfafcc766cbb
 verified_paths: [config/hooks/trajectory-recorder.cjs, config/hooks/lib/trajectory-util.cjs]
 owner: jjohare
 review_trigger: A Claude Code build lands where a successful Bash tool_response carries an exit code, or the redaction pattern set changes
@@ -155,3 +155,9 @@ crash-before-Stop and the QE fleet are still outside any denominator.
 ## Task identity extension — 2026-11-01
 
 One real task shows as one agent body. `spawnTask` (`management-api/utils/process-manager.js`) mints the task's id and exports it to the child as `TASK_ID`; that is the only task id. Every agent action emitted for a task now carries it as `metadata.taskId`: the `/v1/agent-events/hook` emitter (`management-api/hooks/agent-action-hooks.js`) stamps it on every hook, not only `pre-task`/`post-task`, and sources the action from that id so concurrent tasks never share a body; `/emit` and `/batch` accept a top-level `taskId` and stamp it; the trajectory recorder forwards `TASK_ID` from its environment. The consultant audit event is not changed: it returns early without `MANAGEMENT_API_KEY`, which the task environment does not export. An action with no task carries no `taskId` key. The per-name counter behind `getAgentId` was only a stand-in identity and is replaced by the deterministic `lib/agent-id-hash.js` mapping the `/emit` path already used, so one name yields one id on every path. Tests: `tests/sovereign/task-id-on-every-action.test.js`. A hook reporter that sends no `taskId` is still unattributed to a task; it is the reporter's job to send it. Open: `spawnTask`'s child environment exports `TASK_ID` but not `MANAGEMENT_API_KEY`, and the emit route has no loopback exemption, so the recorder's in-task POST is only accepted where `AGENTBOX_AGENT_EVENT_AUTH`/the management-API auth gate allows it; granting a task the key is a separate security decision.
+
+## Re-verification — 2026-11-01 (ADR-2164)
+
+The recorder's CTC emit now falls back to `TASK_ACTION_TOKEN` as its Bearer credential when
+`MANAGEMENT_API_KEY` is absent (a Management API task never receives the key). No change to
+what is recorded. `tests/sovereign/task-action-token-callers.test.js` covers it.
