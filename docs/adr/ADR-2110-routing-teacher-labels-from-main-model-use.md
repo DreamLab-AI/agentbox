@@ -217,3 +217,5 @@ Governed-path delta since `275e12356` is the RuVector Postgres credential custod
 - `tests/config/routing-labels.test.js`: the recorder e2e env uses `MANAGEMENT_API_KEY`/`MANAGEMENT_API_PORT`, and `MIGRATIONS` is read from `management-api/lib/routing-label-store.js`.
 
 Nothing this record decides is changed; its status axes are unchanged. Re-run: `git diff 275e12356..cc949bb79 -- config/hooks/routing-label-recorder.cjs scripts/experiments/exp-b8-label-log.cjs tests/config/routing-labels.test.js`.
+
+**Specific to this record (ADR-2164 amendment 2).** The recorder no longer opens Postgres: it posts the rows it builds to the operator-only `POST /v1/agent-events/routing-label` and `management-api/lib/routing-label-store.js` owns the `routing_labels` DDL and INSERT through the memory adapter's pool. The table name is fixed (the `AGENTBOX_ROUTING_LABELS_TABLE` override went with the direct client). The registered Stop command carries no connection string. The decision and its status axes (`rejected`, `inactive`) are unchanged; the recorder is still gated by `[skills.routing].label_log` (`false`).

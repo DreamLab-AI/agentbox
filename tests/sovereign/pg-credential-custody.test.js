@@ -228,9 +228,23 @@ describe('3. nothing the entrypoint projects carries the password or a conninfo'
     } }));
     fs.writeFileSync(codex, `[mcp_servers.agentbox-memory]\ncommand = "node"\n\n[mcp_servers.agentbox-memory.env]\nRUVECTOR_PG_CONNINFO = "host=h port=5432 dbname=ruvector user=ruvector password=${SECRET}"\nNODE_PATH = "/np"\n`);
     fs.writeFileSync(cf, JSON.stringify({ memory: { backend: 'external-pg', host: 'h', password: SECRET, enableHNSW: true } }));
-    const r = spawnSync('node', ['-e', h.body], { encoding: 'utf8', env: { PATH: process.env.PATH, PGS_MCP_JSON: mcp, PGS_CODEX: codex, PGS_CF: cf, PGS_FILE: '/run/secrets/ruvector-pg/password' } });
+    // Claude Code's per-user state caches the resolved MCP config, top-level and per project.
+    const state = path.join(dir, '.claude.json');
+    fs.writeFileSync(state, JSON.stringify({
+      numStartups: 3,
+      mcpServers: { 'claude-flow': { command: 'node', env: { RUVECTOR_PG_CONNINFO: `host=h password=${SECRET}`, NODE_PATH: '/np' } } },
+      projects: { '/w': { mcpServers: { colloquy: { command: 'c', env: { RUVECTOR_PG_CONNINFO: `host=h password=${SECRET}` } } }, allowedTools: [] } },
+    }), { mode: 0o644 });
+    const r = spawnSync('node', ['-e', h.body], { encoding: 'utf8', env: { PATH: process.env.PATH, PGS_MCP_JSON: mcp, PGS_CODEX: codex, PGS_CF: cf, PGS_CLAUDE_JSON: `${state}:${path.join(dir, 'absent.json')}`, PGS_FILE: '/run/secrets/ruvector-pg/password' } });
     expect(r.status).toBe(0);
-    for (const f of [mcp, codex, cf]) NO_LEAK(fs.readFileSync(f, 'utf8'));
+    for (const f of [mcp, codex, cf, state]) NO_LEAK(fs.readFileSync(f, 'utf8'));
+    const st = JSON.parse(fs.readFileSync(state, 'utf8'));
+    expect(st.numStartups).toBe(3);
+    expect(st.mcpServers['claude-flow'].env.RUVECTOR_PG_PASSWORD_FILE).toBe('/run/secrets/ruvector-pg/password');
+    expect(st.mcpServers['claude-flow'].env.NODE_PATH).toBe('/np');
+    expect(st.projects['/w'].mcpServers.colloquy.env.RUVECTOR_PG_HOST).toBe('ruvector-postgres');
+    expect(st.projects['/w'].allowedTools).toEqual([]);
+    expect(fs.statSync(state).mode & 0o777).toBe(0o600);
     const m = JSON.parse(fs.readFileSync(mcp, 'utf8'));
     expect(m.mcpServers['claude-flow'].env.RUVECTOR_PG_PASSWORD_FILE).toBe('/run/secrets/ruvector-pg/password');
     expect(m.mcpServers['claude-flow'].env.RUVECTOR_PG_HOST).toBe('ruvector-postgres');

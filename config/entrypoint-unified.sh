@@ -3837,6 +3837,7 @@ fi
 if command -v node >/dev/null 2>&1; then
   PGS_MCP_JSON="$_MCP_JSON" PGS_CODEX="${CODEX_HOME:-/home/devuser/.codex}/config.toml" \
   PGS_CF="${HOME}/.claude-flow/config.json" PGS_FILE="${RUVECTOR_PG_PASSWORD_FILE:-}" \
+  PGS_CLAUDE_JSON="${CLAUDE_CONFIG_DIR:-/home/devuser/.claude}/.claude.json:/home/devuser/.claude.json" \
   node <<'PGSCRUBJS' || true
 // PGSCRUB_MARKER
 const fs = require('fs');
@@ -3850,20 +3851,34 @@ const parts = {
 };
 const read = (f) => { try { return fs.readFileSync(f, 'utf8'); } catch { return null; } };
 let scrubbed = 0;
-// 1. .mcp.json: every server env holding a conninfo
-const mt = read(e.PGS_MCP_JSON);
-if (mt !== null) {
+// 1. .mcp.json and Claude Code's per-user state (which caches the resolved MCP
+//    config, top-level and under projects.<path>): every mcpServers entry whose
+//    env holds a conninfo.
+function scrubServers(node) {
+  let n = 0;
+  if (!node || typeof node !== 'object') return 0;
+  for (const [k, v] of Object.entries(node)) {
+    if (k === 'mcpServers' && v && typeof v === 'object') {
+      for (const srv of Object.values(v)) {
+        if (srv && srv.env && Object.prototype.hasOwnProperty.call(srv.env, 'RUVECTOR_PG_CONNINFO')) {
+          delete srv.env.RUVECTOR_PG_CONNINFO;
+          Object.assign(srv.env, parts);
+          n++;
+        }
+      }
+    } else {
+      n += scrubServers(v);
+    }
+  }
+  return n;
+}
+for (const f of [e.PGS_MCP_JSON, ...String(e.PGS_CLAUDE_JSON || '').split(':')].filter(Boolean)) {
+  const mt = read(f);
+  if (mt === null) continue;
   try {
     const j = JSON.parse(mt);
-    let n = 0;
-    for (const srv of Object.values((j && j.mcpServers) || {})) {
-      if (srv && srv.env && Object.prototype.hasOwnProperty.call(srv.env, 'RUVECTOR_PG_CONNINFO')) {
-        delete srv.env.RUVECTOR_PG_CONNINFO;
-        Object.assign(srv.env, parts);
-        n++;
-      }
-    }
-    if (n) { fs.writeFileSync(e.PGS_MCP_JSON, JSON.stringify(j, null, 2), { mode: 0o600 }); fs.chmodSync(e.PGS_MCP_JSON, 0o600); scrubbed += n; }
+    const n = scrubServers(j);
+    if (n) { fs.writeFileSync(f, JSON.stringify(j, null, 2), { mode: 0o600 }); fs.chmodSync(f, 0o600); scrubbed += n; }
   } catch { /* unparsable: leave it */ }
 }
 // 2. Codex config.toml: the conninfo line becomes the parts + the file path
@@ -3887,7 +3902,8 @@ if (ft !== null) {
 }
 console.log(scrubbed ? `  [security] removed a stored Postgres password/conninfo from ${scrubbed} config entr${scrubbed === 1 ? 'y' : 'ies'}` : '  [security] no stored Postgres password/conninfo found in config files');
 PGSCRUBJS
-  chown 1000:1000 "$_MCP_JSON" "${CODEX_HOME:-/home/devuser/.codex}/config.toml" "${HOME}/.claude-flow/config.json" 2>/dev/null || true
+  chown 1000:1000 "$_MCP_JSON" "${CODEX_HOME:-/home/devuser/.codex}/config.toml" "${HOME}/.claude-flow/config.json" \
+    "${CLAUDE_CONFIG_DIR:-/home/devuser/.claude}/.claude.json" /home/devuser/.claude.json 2>/dev/null || true
 fi
 
 # ---------------------------------------------------------------------------
