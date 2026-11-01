@@ -47,6 +47,26 @@ Application-layer security testing for web services, APIs, and codebases.
 - **Dynamic testing**: OWASP ZAP (via Docker), custom request sequences
 - **Browser-based**: `qe-browser` for injection scanner (install with `aqe init`)
 
+## Signed-request and stateful API reviews
+
+Trace each route to the verifier it actually calls, including the consumer's
+pinned dependency. Test valid requests as well as rejected ones; a first-request
+panic is not a replay reproduction. Where the protocol binds a body, test the
+transmitted bytes, missing tags, altered bodies and query/authority changes.
+Distinguish signature verification, authorisation, replay admission and durable
+operation idempotency. State what happens to a token after rejection and after
+a business-operation failure, and whether admission spans processes/restarts.
+
+Inspect durable effects after errors: a charge can succeed before response
+construction fails, and two file writes are not one transaction. Verify scanner
+claims against available upstream source before treating unknown behaviour as a
+vulnerability. Gate PASS means only that the configured threshold was not crossed;
+read separate bug categories and skipped coverage as well.
+
+For findings intake and evidence boundaries, follow
+[review-evidence.md](../build-with-quality/references/review-evidence.md).
+Keep inconclusive findings open rather than labelling them false positives.
+
 ## Quick Start
 
 ### Dependency vulnerability scan

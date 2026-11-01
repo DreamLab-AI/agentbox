@@ -176,3 +176,25 @@ Before reusing a topic you did not write:
 3. Cite the **source file and line** in whatever you are writing, never the
    corpus topic. A corpus sentence is evidence of what its author read.
 4. Do not edit it. A stale or wrong topic is a finding for its owner.
+
+
+## Estate audit coverage receipts
+
+When diagrams support a repository-wide audit, keep citation resolution,
+semantic assessment, remediation and deployed verification separate. Rendering
+and resolving every citation do not establish that every decision or path was
+assessed. Bind assessment claims to the reviewed topic/report bytes and identify
+the individual panels or ADR sections covered; stale claims need reconciliation.
+
+Record the owned repository set, nested checkout identities and explicit
+exclusions before collecting counts. Removing a repository or a duplicate
+consumer copy changes the denominator and earns no review credit. Historical
+reports and references do not re-admit an excluded checkout. A scoped recheck
+must not overwrite or relabel a historical full-corpus receipt as fresh global
+verification; state the scope of each receipt and regenerate indexes accordingly.
+
+For claimed duplicate implementations, trace the consumer's actual call path
+and pinned dependency before describing the canonical path as live. Keep
+proposed migrations and retirement decisions distinct from executed code. The
+[review evidence reference](../../build-with-quality/references/review-evidence.md)
+covers failure causality, persistence effects and gate-policy limits.

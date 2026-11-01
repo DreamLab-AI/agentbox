@@ -17,18 +17,23 @@ sub-phase) execution workflow.
 
 Findings from `sealmap-review` (external Gemini lenses over a diagrams-as-code
 corpus, or the inline code-fidelity check) are hypotheses, never instructions.
-A reviewer may over-assert; this gate is where that is absorbed.
+A reviewer may over-assert; this gate is where that is absorbed. For imported
+audits, ambiguous test failures or stateful operations, use
+[review-evidence.md](./review-evidence.md) to establish the executed version,
+failure cause and effects before choosing a disposition.
 
 - **Reproduce first.** Write the failing test, check or citation that shows
-  the defect before touching code. A finding that cannot be shown is closed
-  `rejected`, with the evidence.
+  the defect before touching code. Verify that the check fails for the claimed
+  reason. A blocked or inconclusive reproduction remains `inconclusive`; reject
+  only when counterevidence contradicts the claim.
 - **Route by kind.**
   - Code defect: fix test-first through Phase 2.
   - Corpus fault: correct the topic and rerun its generator gate.
   - Accepted risk: link the existing register marker (`known`), or add one.
-- **Record the verdict** (`confirmed`, `rejected` or `known`, with evidence) on
-  the run's `findings.json`. The confirmed rate per lens is the measure of
-  whether a lens earns its tokens.
+- **Record the verdict** (`confirmed`, `rejected`, `known` or `inconclusive`,
+  with evidence) in the tool's supported disposition field or an adjacent keyed
+  receipt. Preserve raw findings. Report inconclusive results separately when
+  comparing a lens's confirmed rate; unavailable evidence is not a false positive.
 - A clean review is not evidence of correctness, and is never cited as such
   in an EXP or a gate receipt.
 

@@ -59,6 +59,17 @@ changing flags — the CLI contract moves:
 (`reviewing-changes.md` for PR mode and exit codes, `models.md`,
 `configuration.md`, `writing-matchers.md`).
 
+## Interpret the receipt
+
+A PASS means no exported finding crossed the configured threshold; it does not
+mean zero findings. Inspect `findings_by_severity` and the raw findings, including
+bug categories such as `HIGH_BUG` that may be distinct from security `HIGH`.
+Treat `net_new_reported_by_deepsec` as a hypothesis: compare the claimed path
+against the base revision and the consumed dependency source. Preserve the raw
+output and record material findings and corrections separately. If code changed
+after review, name that boundary instead of presenting the old receipt as a
+review of the final diff. See [review-evidence.md](./review-evidence.md).
+
 ## What the gate does not do
 
 - It does not revalidate. For a whole-repo pass, run `deepsec revalidate` from
