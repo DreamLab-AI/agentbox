@@ -199,7 +199,7 @@ describe('ADR-2015 failure telemetry — one canonical field, no disagreement', 
 });
 
 // ── ADR-2015: the watermark follows durability ──────────────────────────────
-describe('ADR-2015 persistence — a missing pg module must not advance the watermark', () => {
+describe('ADR-2015 persistence — the watermark follows durability (ADR-2164: durability is the API)', () => {
   const RECORDER = path.resolve(__dirname, '../../config/hooks/trajectory-recorder.cjs');
   const { spawnSync } = require('child_process');
   const crypto = require('crypto');
@@ -216,88 +216,40 @@ describe('ADR-2015 persistence — a missing pg module must not advance the wate
     return p;
   }
 
-  // The recorder's pg search paths are absolute, so "module absent" cannot be
-  // produced with NODE_PATH. Rather than add a test-only backdoor to production
-  // code, a preload intercepts require() for the pg module — the genuine
-  // missing-module condition, from outside the recorder.
-  function noPgPreload(dir) {
-    const p = path.join(dir, 'no-pg.cjs');
-    fs.writeFileSync(p, `
-      const Module = require('module');
-      const orig = Module._load;
-      Module._load = function (request, parent, isMain) {
-        if (request === 'pg' || /(^|\\/)pg$/.test(request)) {
-          const e = new Error("Cannot find module '" + request + "'");
-          e.code = 'MODULE_NOT_FOUND';
-          throw e;
-        }
-        return orig.apply(this, arguments);
-      };
-    `);
-    return p;
-  }
-
-  test('with the pg module ABSENT the watermark stays at zero (lines are retried)', () => {
+  function runWith(session, extraEnv) {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'adr2015-'));
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'adr2015-stash-'));
     try {
-      const tpath = transcript(dir);
-      const session = 'sess-watermark-absent-module';
-      const r = spawnSync('node', ['--require', noPgPreload(dir), RECORDER, 'Stop'], {
-        input: JSON.stringify({ session_id: session, transcript_path: tpath }),
+      const r = spawnSync('node', [RECORDER, 'Stop'], {
+        input: JSON.stringify({ session_id: session, transcript_path: transcript(dir) }),
         encoding: 'utf8',
-        env: {
-          ...process.env,
-          TMPDIR: tmp,
-          RUVECTOR_MEMORY_LEARNING_ENABLED: '1',
-          RUVECTOR_RECORD_TRAJECTORIES: '1',
-          AGENTBOX_CTC_EMIT: '0',
-        },
+        env: { PATH: process.env.PATH, TMPDIR: tmp, AGENTBOX_CTC_EMIT: '0', ...extraEnv },
       });
-      expect(r.status).toBe(0); // fail-open: never blocks Claude
-      expect(r.stderr).toMatch(/NOT advancing the watermark/);
       const stashPath = path.join(tmp, `agentbox-traj-${sha12(session)}.json`);
-      // The pre-closeout behaviour wrote an ADVANCED watermark here; now the
-      // stash is either absent or still at zero, so the lines are re-scanned.
-      if (fs.existsSync(stashPath)) {
-        const stash = JSON.parse(fs.readFileSync(stashPath, 'utf8'));
-        expect(Number(stash.processedLines || 0)).toBe(0);
-      }
+      const stash = fs.existsSync(stashPath) ? JSON.parse(fs.readFileSync(stashPath, 'utf8')) : null;
+      return { r, stash };
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
       fs.rmSync(tmp, { recursive: true, force: true });
     }
+  }
+
+  test('with NO API credential the watermark stays at zero (lines are retried)', () => {
+    const { r, stash } = runWith('sess-watermark-no-credential', {});
+    expect(r.status).toBe(0); // fail-open: never blocks Claude
+    expect(r.stderr).toMatch(/NOT advancing the watermark/);
+    // The pre-closeout behaviour wrote an ADVANCED watermark here; now the
+    // stash is either absent or still at zero, so the lines are re-scanned.
+    if (stash) expect(Number(stash.processedLines || 0)).toBe(0);
   });
 
-  test('a CONNECTION failure likewise leaves the watermark for a retry', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'adr2015c-'));
-    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'adr2015c-stash-'));
-    try {
-      const tpath = transcript(dir);
-      const session = 'sess-watermark-conn-fail';
-      const r = spawnSync('node', [RECORDER, 'Stop'], {
-        input: JSON.stringify({ session_id: session, transcript_path: tpath }),
-        encoding: 'utf8',
-        env: {
-          ...process.env,
-          TMPDIR: tmp,
-          RUVECTOR_MEMORY_LEARNING_ENABLED: '1',
-          RUVECTOR_RECORD_TRAJECTORIES: '1',
-          AGENTBOX_CTC_EMIT: '0',
-          // An address that cannot connect — no live database is touched.
-          RUVECTOR_PG_CONNINFO: 'host=127.0.0.1 port=1 dbname=nope user=nope password=nope',
-        },
-      });
-      expect(r.status).toBe(0);
-      expect(r.stderr).toMatch(/persist failed .* watermark left at 0/);
-      const stashPath = path.join(tmp, `agentbox-traj-${sha12(session)}.json`);
-      if (fs.existsSync(stashPath)) {
-        expect(Number(JSON.parse(fs.readFileSync(stashPath, 'utf8')).processedLines || 0)).toBe(0);
-      }
-    } finally {
-      fs.rmSync(dir, { recursive: true, force: true });
-      fs.rmSync(tmp, { recursive: true, force: true });
-    }
+  test('an UNREACHABLE API likewise leaves the watermark for a retry', () => {
+    const { r, stash } = runWith('sess-watermark-api-down', {
+      TASK_ACTION_TOKEN: 'tok', MANAGEMENT_API_PORT: '1', // nothing listens on port 1
+    });
+    expect(r.status).toBe(0);
+    expect(r.stderr).toMatch(/NOT advancing the watermark \(left at 0\)/);
+    if (stash) expect(Number(stash.processedLines || 0)).toBe(0);
   });
 
   test('a transcript with no gradeable steps DOES advance (nothing was lost)', () => {
@@ -310,7 +262,7 @@ describe('ADR-2015 persistence — a missing pg module must not advance the wate
       const r = spawnSync('node', [RECORDER, 'Stop'], {
         input: JSON.stringify({ session_id: session, transcript_path: p }),
         encoding: 'utf8',
-        env: { ...process.env, TMPDIR: tmp, RUVECTOR_MEMORY_LEARNING_ENABLED: '1', RUVECTOR_RECORD_TRAJECTORIES: '1', AGENTBOX_CTC_EMIT: '0' },
+        env: { PATH: process.env.PATH, TMPDIR: tmp, AGENTBOX_CTC_EMIT: '0' },
       });
       expect(r.status).toBe(0);
       const stash = JSON.parse(fs.readFileSync(path.join(tmp, `agentbox-traj-${sha12(session)}.json`), 'utf8'));

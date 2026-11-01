@@ -14,6 +14,7 @@ const { agentEventPublisher, AgentActionType } = require('../utils/agent-event-p
 const { agentEventArchive } = require('../utils/agent-event-archive');
 const { verifyAgentEventRequest, reconcileSourceUrn, reconcileTaskScope } = require('../lib/agent-event-auth');
 const taxonomy = require('../lib/failure-taxonomy');
+const { persistTrajectory, trajectoryPool, TrajectoryInputError } = require('../lib/trajectory-store');
 const { hashString } = require('../lib/agent-id-hash');
 const { processHookEvent, getRegistryStats } = require('../hooks/agent-action-hooks');
 const { initializeAgentEventWsSubscriber, getAgentEventWsSubscriber } = require('../utils/agent-event-ws-subscriber');
@@ -547,6 +548,90 @@ async function agentEventsRoutes(fastify, options) {
       count: emittedIds.length,
       broadcast_count: wsConnections.size
     });
+  });
+
+  /**
+   * POST /v1/agent-events/trajectory - persist a recorded trajectory (ADR-2164)
+   *
+   * The trajectory recorder's ONE write path. It used to INSERT into
+   * `trajectories` / `trajectory_steps` over its own Postgres connection, which
+   * put database credentials in every task's reach; it now posts the rows it
+   * computed and lib/trajectory-store.js writes them through the memory
+   * adapter's pool. Authenticated by the global gate (middleware/auth.js): the
+   * operator credential, or a task action token (TASK_TOKEN_ROUTES). It is not
+   * an attributed agent action, so no per-agent did:nostr is asserted or needed.
+   */
+  fastify.post('/v1/agent-events/trajectory', {
+    bodyLimit: 4 * 1024 * 1024,
+    schema: {
+      description: 'Persist a recorded trajectory (session row, new steps, cumulative rollup)',
+      tags: ['agent-events'],
+      body: {
+        type: 'object',
+        required: ['trajectory', 'steps', 'rollup'],
+        properties: {
+          trajectory: {
+            type: 'object',
+            required: ['id', 'task', 'agent'],
+            properties: {
+              id: { type: 'string', minLength: 1, maxLength: 512 },
+              task: { type: 'string', maxLength: 512 },
+              agent: { type: 'string', maxLength: 256 },
+              metadata: { type: 'object' }
+            }
+          },
+          steps: {
+            type: 'array',
+            maxItems: 2000,
+            items: {
+              type: 'object',
+              required: ['id', 'action', 'result', 'quality', 'step_order'],
+              properties: {
+                id: { type: 'string', minLength: 1, maxLength: 640 },
+                action: { type: 'string', maxLength: 1024 },
+                result: { type: 'object' },
+                quality: { type: 'number' },
+                step_order: { type: 'integer', minimum: 0 },
+                duration_ms: { type: ['integer', 'null'], minimum: 0 }
+              }
+            }
+          },
+          rollup: {
+            type: 'object',
+            required: ['success', 'step_count', 'mean_quality', 'outcome', 'handoff_count',
+              'ctc_emit_queued', 'ctc_emit_carried_in'],
+            properties: {
+              success: { type: 'boolean' },
+              step_count: { type: 'integer', minimum: 0 },
+              mean_quality: { type: 'number' },
+              outcome: { type: 'string', maxLength: 64 },
+              handoff_id: { type: ['string', 'null'] },
+              handoff_count: { type: 'integer', minimum: 0 },
+              ctc_emit_queued: { type: 'integer', minimum: 0 },
+              ctc_emit_carried_in: { type: 'integer', minimum: 0 }
+            }
+          }
+        }
+      }
+    }
+  }, async (request, reply) => {
+    const pool = trajectoryPool(fastify.adapters);
+    if (!pool) {
+      return reply.code(503).send({
+        success: false,
+        error: 'trajectories need the external-pg memory adapter; none is configured'
+      });
+    }
+    try {
+      const out = await persistTrajectory(pool, request.body);
+      return reply.send({ success: true, steps: out.steps });
+    } catch (err) {
+      if (err instanceof TrajectoryInputError) {
+        return reply.code(400).send({ success: false, error: err.message });
+      }
+      logger.error(`trajectory persist failed: ${err && err.message}`);
+      return reply.code(500).send({ success: false, error: 'trajectory persist failed' });
+    }
   });
 
   /**

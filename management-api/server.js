@@ -740,6 +740,7 @@ app.get('/', {
         recent: 'GET /v1/agent-events',
         emit: 'POST /v1/agent-events/emit',
         batch: 'POST /v1/agent-events/batch',
+        trajectory: 'POST /v1/agent-events/trajectory',
         types: 'GET /v1/agent-events/types',
         status: 'GET /v1/agent-events/status'
       },

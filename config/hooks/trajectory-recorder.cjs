@@ -10,7 +10,11 @@
  * path had a caseless post-bash dispatch, a hardcoded feedback(true), and
  * duration=0, THIS hook records real, graded, locally-timed
  * (state, action, outcome, duration) tuples into the purpose-built, empty
- * `trajectories` / `trajectory_steps` sidecar tables.
+ * `trajectories` / `trajectory_steps` sidecar tables. It does not write them
+ * itself: it POSTs the rows to the Management API (POST /v1/agent-events/trajectory,
+ * ADR-2164), which persists them. This hook holds no database client, no
+ * connection string and no gate variable, so a task running it needs only its
+ * scoped TASK_ACTION_TOKEN.
  *
  * Invoked by Claude Code as:  trajectory-recorder.cjs <event>   (hook JSON on stdin)
  *   Stop / SubagentStop → scan the session transcript (payload.transcript_path),
@@ -26,16 +30,19 @@
  * (tool_result.is_error), which is what a learning corpus needs.
  *
  * HARD RULES honoured:
- *   - DEFAULT-OFF: silent exit 0 unless BOTH RUVECTOR_MEMORY_LEARNING_ENABLED
- *     and RUVECTOR_RECORD_TRAJECTORIES are on ('1'|'true'). Byte-identical to
- *     today's behaviour otherwise (PRD-018 metric 1).
+ *   - ENABLEMENT IS REGISTRATION: the entrypoint registers this hook only when
+ *     [memory_learning].enabled and record_trajectories are both true and
+ *     de-registers it otherwise, so a gate-off manifest never runs it (PRD-018
+ *     metric 1). There is no env gate here and none is passed to a task.
  *   - FAIL-OPEN: any error → exit 0, never blocks Claude (mirror nostr-live-mirror.cjs).
  *   - FAIL-CLOSED on privacy redaction (I10): if the command cannot be redacted,
  *     the step is SKIPPED, never persisted unredacted.
  *   - OUTCOME HONESTY (I04/I05): outcome is a real graded signal or NOTHING is
  *     written; duration is measured wall-clock; a zero duration is a bug → skip.
- *   - No raw-SQL writes to memory_entries. Trajectory tables are NOT memory_entries;
- *     parameterised INSERT there is the design.
+ *   - THE WATERMARK FOLLOWS DURABILITY (ADR-2015): it advances only on a 2xx
+ *     from the API; any other answer leaves the lines to be retried.
+ *   - No raw-SQL writes to memory_entries, and no SQL at all here: the API owns
+ *     the trajectory tables (management-api/lib/trajectory-store.js).
  *   - URNs minted via management-api/lib/uris.js; activity kind content-addressed.
  */
 
@@ -51,24 +58,11 @@ function log(msg) {
   try { process.stderr.write(`[trajectory-recorder] ${msg}\n`); } catch { /* ignore */ }
 }
 
-// ── gate ──────────────────────────────────────────────────────────────────────
-function gateOn(name) {
-  const v = String(process.env[name] || '').trim().toLowerCase();
-  return v === '1' || v === 'true';
-}
-
-// ── pg module resolution (mirrors ruvector-mcp.cjs PG_SEARCH_PATHS) ────────────
-const PG_SEARCH_PATHS = [
-  '/home/devuser/workspace/.claude-pg/node_modules/pg',
-  '/opt/agentbox/management-api/node_modules/pg',
-  path.resolve(__dirname, '..', '..', 'management-api', 'node_modules', 'pg'),
-  'pg',
-];
-function loadPg() {
-  for (const p of PG_SEARCH_PATHS) {
-    try { return require(p); } catch { /* next */ }
-  }
-  return null;
+// ── Management API credential ────────────────────────────────────────────────
+// The operator key in an operator session; inside a Management API task the key
+// is withheld and TASK_ACTION_TOKEN (scoped to TASK_ID) is the credential.
+function apiCredential() {
+  return String(process.env.MANAGEMENT_API_KEY || process.env.TASK_ACTION_TOKEN || '').trim();
 }
 
 // ── uris.js (fail-open: fall back to a deterministic non-URN id if unavailable) ─
@@ -270,38 +264,50 @@ function trajectoryIdentity(session) {
   return { id: `agentbox:trajectory:${util.sha12(session)}`, urn: null, ownerDid: null };
 }
 
-// ── pg helpers ─────────────────────────────────────────────────────────────────
-function makeClient(Pg) {
-  const conninfo = process.env.RUVECTOR_PG_CONNINFO ||
-    'host=ruvector-postgres port=5432 dbname=ruvector user=ruvector password=ruvector';
-  const parsed = {};
-  for (const pair of conninfo.split(/\s+/)) {
-    const eq = pair.indexOf('=');
-    if (eq > 0) parsed[pair.slice(0, eq)] = pair.slice(eq + 1);
-  }
-  return new Pg.Client({
-    host: parsed.host || 'ruvector-postgres',
-    port: parseInt(parsed.port || '5432', 10),
-    database: parsed.dbname || parsed.database || 'ruvector',
-    user: parsed.user || parsed.username || 'ruvector',
-    password: parsed.password || 'ruvector',
-    connectionTimeoutMillis: 5000,
-    query_timeout: 5000,
-    statement_timeout: 5000,
+// ── trajectory persistence: ONE write path, the Management API (ADR-2164) ──────
+const TRAJECTORY_POST_TIMEOUT_MS = 5000;
+/**
+ * POST the computed trajectory rows to the API. Resolves true ONLY for a 2xx —
+ * unlike the best-effort CTC emit, the watermark depends on this answer, so a
+ * 401, a 500, a timeout and "no credential" are all `false`. Never rejects.
+ * @param {object} body {trajectory, steps, rollup} — see management-api/lib/trajectory-store.js
+ * @returns {Promise<boolean>}
+ */
+function postTrajectory(body) {
+  return new Promise((resolve) => {
+    let settled = false;
+    const done = (ok) => { if (!settled) { settled = true; resolve(ok); } };
+    try {
+      const cred = apiCredential();
+      if (!cred) { log('no MANAGEMENT_API_KEY or TASK_ACTION_TOKEN — cannot persist'); return done(false); }
+      const port = Number(process.env.MANAGEMENT_API_PORT || '9090');
+      const payload = Buffer.from(JSON.stringify(body), 'utf8');
+      const req = http.request({
+        host: '127.0.0.1',
+        port,
+        path: '/v1/agent-events/trajectory',
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'content-length': payload.length,
+          authorization: `Bearer ${cred}`,
+        },
+        timeout: TRAJECTORY_POST_TIMEOUT_MS,
+      }, (res) => {
+        res.on('data', () => {});
+        res.on('end', () => {
+          const ok = res.statusCode >= 200 && res.statusCode < 300;
+          if (!ok) log(`trajectory post answered ${res.statusCode}`);
+          done(ok);
+        });
+        res.on('error', () => done(false));
+      });
+      req.on('timeout', () => { try { req.destroy(); } catch { /* ignore */ } done(false); });
+      req.on('error', (e) => { log(`trajectory post unreachable: ${e && e.message}`); done(false); });
+      req.write(payload);
+      req.end();
+    } catch (e) { log(`trajectory post failed: ${e && e.message}`); done(false); }
   });
-}
-
-let _durationColCache;
-async function hasDurationColumn(client) {
-  if (_durationColCache !== undefined) return _durationColCache;
-  try {
-    const res = await client.query(
-      `SELECT 1 FROM information_schema.columns
-        WHERE table_name = 'trajectory_steps' AND column_name = 'duration_ms' LIMIT 1`
-    );
-    _durationColCache = res.rowCount > 0;
-  } catch { _durationColCache = false; }
-  return _durationColCache;
 }
 
 // ── event handlers ─────────────────────────────────────────────────────────────
@@ -427,12 +433,6 @@ async function handleClose(payload) {
   const pendingLineCount = lineCount;
   if (!steps.length) { stash.processedLines = pendingLineCount; writeStash(session, stash); return 0; }
 
-  const Pg = loadPg();
-  if (!Pg) {
-    log('pg module unavailable — NOT advancing the watermark, these lines are retried on the next Stop (ADR-2015)');
-    return 0;
-  }
-
   const ident = trajectoryIdentity(session);
   // REC-3 (CTC): the chain-correlation id every step and the rollup carry so a
   // multi-agent DAG can be reconstructed (handoff counts + token burden per step).
@@ -440,122 +440,112 @@ async function handleClose(payload) {
   const taxonomy = loadTaxonomy();
   const jevTags = await jevFailureTags(taxonomy, steps);
   // REC-3 (CTC emitter WIRE): the emit bodies to forward onto the agent-events
-  // envelope after DB persistence — one per step carrying a token_count / handoff_id.
+  // envelope after persistence — one per step carrying a token_count / handoff_id.
   // Drain anything the previous invocation could not deliver BEFORE this run's
   // own steps, so the queue stays FIFO and old cost is not starved by new.
-  const ctcEmits = Array.isArray(stash.ctcPending) ? stash.ctcPending.slice(0, CTC_QUEUE_MAX) : [];
-  const carriedIn = ctcEmits.length;
-  const client = makeClient(Pg);
-  try {
-    await client.connect();
-    const hasDur = await hasDurationColumn(client);
+  const carried = Array.isArray(stash.ctcPending) ? stash.ctcPending.slice(0, CTC_QUEUE_MAX) : [];
+  const carriedIn = carried.length;
+  const ctcEmits = carried.slice();
 
-    // 1. one trajectory row per session (idempotent).
-    const trajMeta = {
-      type: 'trajectory',
-      session,
-      owner_did: ident.ownerDid || undefined,
-      trajectory_urn: ident.urn || undefined,
-      handoff_id: chainId || undefined,
+  // The rows, fully formed. The API only runs the parameterised SQL (ADR-2164),
+  // so every id, step_order and cumulative figure is decided here from the stash.
+  const trajMeta = {
+    type: 'trajectory',
+    session,
+    owner_did: ident.ownerDid || undefined,
+    trajectory_urn: ident.urn || undefined,
+    handoff_id: chainId || undefined,
+  };
+  let order = Number(stash.stepOrder || 0);
+  let qualitySum = Number(stash.qualitySum || 0);
+  let qualityCount = Number(stash.qualityCount || 0);
+  const rows = [];
+  for (const s of steps) {
+    const resultObj = {
+      outcome: s.outcome.success ? 'success' : 'failure',
+      signal: s.outcome.signal,
+      command: s.redacted,
     };
-    await client.query(
-      `INSERT INTO trajectories (id, task, agent, status, started_at, metadata)
-         VALUES ($1, $2, $3, 'recording', CURRENT_TIMESTAMP, $4::jsonb)
-       ON CONFLICT (id) DO NOTHING`,
-      [ident.id, `claude-code-session:${session.slice(0, 12)}`,
-        String(process.env.AGENTBOX_AGENT || 'claude-code'), JSON.stringify(trajMeta)]
-    );
-
-    // 2. one step row per graded Bash call (idempotent by content-addressed id).
-    let order = Number(stash.stepOrder || 0);
-    for (const s of steps) {
-      const stepId = `${ident.id}:step-${util.sha12(s.toolUseId)}`;
-      const resultObj = {
-        outcome: s.outcome.success ? 'success' : 'failure',
-        signal: s.outcome.signal,
-        command: s.redacted,
-      };
-      // REC-5 (AC2): a graded FAILURE carries a MAST failure_mode tag (or the
-      // `unmapped` sentinel); a graded SUCCESS writes no mode.
-      if (!s.outcome.success) {
-        const tag = jevTags.get(s.toolUseId) || { mode: failureModeFor(taxonomy, s) };
-        resultObj.failure_mode = tag.mode; s.failure_mode = tag.mode;
-        // Present only when the Jev option's judge actually answered for this step.
-        if (tag.jev) resultObj.failure_jev = tag.jev;
-      }
-      // REC-3 (AC1): the token burden of the turn that issued this step, parsed
-      // from the transcript usage block. Additive — absent when the turn carried
-      // no usage (byte-compatible with the pre-REC-3 result shape).
-      if (s.tokenCount != null) resultObj.token_count = s.tokenCount;
-      if (!hasDur && s.durationMs != null) resultObj.duration_ms = s.durationMs;
-      if (hasDur) {
-        await client.query(
-          `INSERT INTO trajectory_steps
-             (id, trajectory_id, action, result, quality, step_order, duration_ms)
-           VALUES ($1, $2, $3, $4, $5, $6, $7)
-           ON CONFLICT (id) DO NOTHING`,
-          [stepId, ident.id, s.action, JSON.stringify(resultObj), s.outcome.quality, order, s.durationMs]
-        );
-      } else {
-        await client.query(
-          `INSERT INTO trajectory_steps
-             (id, trajectory_id, action, result, quality, step_order)
-           VALUES ($1, $2, $3, $4, $5, $6)
-           ON CONFLICT (id) DO NOTHING`,
-          [stepId, ident.id, s.action, JSON.stringify(resultObj), s.outcome.quality, order]
-        );
-      }
-      order++;
-      stash.qualitySum = Number(stash.qualitySum || 0) + s.outcome.quality;
-      stash.qualityCount = Number(stash.qualityCount || 0) + 1;
-      // REC-3 (CTC emitter WIRE): build the emit body forwarding this step's
-      // captured token_count + the chain handoff_id onto the agent-events envelope.
-      const ctcBody = util.ctcEmitBodyFromStep(s, { handoffId: chainId, sessionId: session, taskId: process.env.TASK_ID });
-      // Collect up to the QUEUE bound (not the per-invocation emit cap) — the
-      // surplus is deferred to the next Stop rather than discarded here.
-      if (ctcBody && ctcEmits.length < CTC_QUEUE_MAX) ctcEmits.push(ctcBody);
+    // REC-5 (AC2): a graded FAILURE carries a MAST failure_mode tag (or the
+    // `unmapped` sentinel); a graded SUCCESS writes no mode.
+    if (!s.outcome.success) {
+      const tag = jevTags.get(s.toolUseId) || { mode: failureModeFor(taxonomy, s) };
+      resultObj.failure_mode = tag.mode; s.failure_mode = tag.mode;
+      // Present only when the Jev option's judge actually answered for this step.
+      if (tag.jev) resultObj.failure_jev = tag.jev;
     }
-    stash.stepOrder = order;
+    // REC-3 (AC1): the token burden of the turn that issued this step, parsed
+    // from the transcript usage block. Additive — absent when the turn carried
+    // no usage (byte-compatible with the pre-REC-3 result shape).
+    if (s.tokenCount != null) resultObj.token_count = s.tokenCount;
+    rows.push({
+      id: `${ident.id}:step-${util.sha12(s.toolUseId)}`,
+      action: s.action,
+      result: resultObj,
+      quality: s.outcome.quality,
+      step_order: order,
+      // The API puts this in the duration_ms column, or in result.duration_ms
+      // when the table has no such column.
+      duration_ms: s.durationMs,
+    });
+    order++;
+    qualitySum += s.outcome.quality;
+    qualityCount++;
+    // REC-3 (CTC emitter WIRE): build the emit body forwarding this step's
+    // captured token_count + the chain handoff_id onto the agent-events envelope.
+    const ctcBody = util.ctcEmitBodyFromStep(s, { handoffId: chainId, sessionId: session, taskId: process.env.TASK_ID });
+    // Collect up to the QUEUE bound (not the per-invocation emit cap) — the
+    // surplus is deferred to the next Stop rather than discarded here.
+    if (ctcBody && ctcEmits.length < CTC_QUEUE_MAX) ctcEmits.push(ctcBody);
+  }
 
-    // 3. roll the trajectory up to its current cumulative outcome (idempotent update).
-    const count = Number(stash.qualityCount || 0);
-    const meanQuality = count > 0 ? Number(stash.qualitySum || 0) / count : 0;
-    const success = meanQuality >= 0.5;
-    // REC-3 (AC2/AC4): the rollup carries handoff_id (chain correlation) and
-    // handoff_count (subagent Task spawns this session) so the CTC dashboard can
-    // reconstruct a completed DAG — handoff counts + per-step token burden.
-    await client.query(
-      `UPDATE trajectories
-          SET ended_at = CURRENT_TIMESTAMP,
-              status   = 'complete',
-              success  = $2,
-              metadata = COALESCE(metadata, '{}'::jsonb)
-                         || jsonb_build_object(
-                              'ended_at_iso',  to_char(now(), 'YYYY-MM-DD"T"HH24:MI:SSZ'),
-                              'step_count',    $3::int,
-                              'mean_quality',  $4::double precision,
-                              'outcome',       $5::text,
-                              'handoff_id',    $6::text,
-                              'handoff_count', $7::int,
-                              'ctc_emit_queued',   $8::int,
-                              'ctc_emit_carried_in', $9::int)
-        WHERE id = $1`,
-      [ident.id, success, count, meanQuality, success ? 'success' : 'mixed',
-        chainId, Number(handoffCount || 0), ctcEmits.length, carriedIn]
-    );
-    // Durable persistence succeeded — only NOW may the watermark advance.
+  // The trajectory rolls up to its current cumulative outcome. REC-3 (AC2/AC4):
+  // the rollup carries handoff_id (chain correlation) and handoff_count
+  // (subagent Task spawns this session) so the CTC dashboard can reconstruct a
+  // completed DAG — handoff counts + per-step token burden.
+  const meanQuality = qualityCount > 0 ? qualitySum / qualityCount : 0;
+  const success = meanQuality >= 0.5;
+  const persisted = await postTrajectory({
+    trajectory: {
+      id: ident.id,
+      task: `claude-code-session:${session.slice(0, 12)}`,
+      agent: String(process.env.AGENTBOX_AGENT || 'claude-code'),
+      metadata: trajMeta,
+    },
+    steps: rows,
+    rollup: {
+      success,
+      step_count: qualityCount,
+      mean_quality: meanQuality,
+      outcome: success ? 'success' : 'mixed',
+      handoff_id: chainId,
+      handoff_count: Number(handoffCount || 0),
+      ctc_emit_queued: ctcEmits.length,
+      ctc_emit_carried_in: carriedIn,
+    },
+  });
+
+  let toEmit = ctcEmits;
+  if (persisted) {
+    // Durable persistence succeeded — only NOW may the watermark and the
+    // cumulative counters advance.
+    stash.stepOrder = order;
+    stash.qualitySum = qualitySum;
+    stash.qualityCount = qualityCount;
     stash.processedLines = pendingLineCount;
     writeStash(session, stash);
-  } catch (e) {
-    log(`persist failed (non-fatal, fail-open) — watermark left at ${from} so these lines are retried: ${e && e.message}`);
-  } finally {
-    try { await client.end(); } catch { /* ignore */ }
+  } else {
+    log(`trajectory not persisted — NOT advancing the watermark (left at ${from}); these lines are retried on the next Stop (ADR-2015)`);
+    // This run's steps will be rebuilt on the retry, so only the already
+    // queued backlog is drained now; emitting the new bodies as well would
+    // double-count their token burden when the retry succeeds.
+    toEmit = carried;
   }
-  // REC-3 (CTC emitter WIRE): after DB persistence, forward each step's captured
+  // REC-3 (CTC emitter WIRE): after persistence, forward each step's captured
   // token_count + chain handoff_id into a REAL agent-events emit call so they
   // reach the agent-events envelope the publisher emits (CANARY-AB-CTC wire).
   // Best-effort, fail-open — the durable trajectory record is already written.
-  const { attempted, deferred } = await emitCtcStepsBestEffort(ctcEmits);
+  const { attempted, deferred } = await emitCtcStepsBestEffort(toEmit);
   // Persist the undelivered tail so the NEXT Stop drains it. This is the only
   // stash write outside the persistence path, and it only ever touches the
   // queue field — it never advances the watermark.
@@ -579,11 +569,6 @@ async function handleClose(payload) {
 // ── main ────────────────────────────────────────────────────────────────────────
 async function main() {
   const event = process.argv[2] || '';
-
-  // DEFAULT-OFF gate: byte-identical to today unless BOTH gates are on.
-  if (!gateOn('RUVECTOR_MEMORY_LEARNING_ENABLED') || !gateOn('RUVECTOR_RECORD_TRAJECTORIES')) {
-    return 0;
-  }
 
   const raw = await readStdin();
   let payload = {};

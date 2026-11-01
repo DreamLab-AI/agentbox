@@ -139,6 +139,8 @@ function verifyBearerHeader(header, validToken) {
 const TASK_TOKEN_ROUTES = new Set([
   'POST /v1/agent-events/emit',
   'POST /v1/agent-events/batch',
+  // ADR-2164: the trajectory recorder's single write path (the API persists).
+  'POST /v1/agent-events/trajectory',
 ]);
 
 function verifyTaskTokenHeader(header, store) {

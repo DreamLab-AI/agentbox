@@ -1994,27 +1994,24 @@ fi
 # idempotent, fail-open. Registered ONLY when BOTH [memory_learning].enabled and
 # record_trajectories are true — otherwise the block below actively de-registers
 # any prior entry so toggling the manifest off restores byte-identical behaviour
-# on the next boot (PRD-018 metric 1). The two gate vars are embedded inline in
-# the command so the hook's own gate check passes exactly when the operator opted
-# in; the conninfo (and optional pubkey/agent) are passed through so the hook can
-# reach the sidecar regardless of the ambient hook env.
+# on the next boot (PRD-018 metric 1) — registration IS the enable flag. The hook
+# holds no database client: it posts to the Management API (ADR-2164), so the
+# command carries no conninfo, password or gate variable (a task inherits HOME and
+# therefore runs this very command). Only the public pubkey and agent label ride in.
 _TRAJ_HOOK="/opt/agentbox/config/hooks/trajectory-recorder.cjs"
 if [ "$_ML_ENABLED" = "1" ] && [ "$_ML_RECORD_TRAJ" = "1" ] \
    && [ -f "$_TRAJ_HOOK" ] && command -v node >/dev/null 2>&1; then
   mkdir -p "$(dirname "$_CLAUDE_SETTINGS")" 2>/dev/null || true
   TRAJ_HOOK="$_TRAJ_HOOK" SETTINGS="$_CLAUDE_SETTINGS" \
-  TRAJ_CONNINFO="${RUVECTOR_PG_CONNINFO:-host=ruvector-postgres port=5432 dbname=ruvector user=ruvector password=${RUVECTOR_PG_PASSWORD:-ruvector}}" \
   TRAJ_PUBKEY="${AGENTBOX_PUBKEY:-}" TRAJ_AGENT="${AGENTBOX_AGENT:-}" \
   node <<'TRAJJS' || true
 const fs = require('fs');
 const f = process.env.SETTINGS, hook = process.env.TRAJ_HOOK;
-// Inline env prefix so the hook sees its gates + DB reach independent of the
-// parent hook environment. Registration only happens when the operator enabled
-// the loop, so hardcoding the two gates to 1 is consistent with the manifest.
-let pfx = 'RUVECTOR_MEMORY_LEARNING_ENABLED=1 RUVECTOR_RECORD_TRAJECTORIES=1';
-if (process.env.TRAJ_CONNINFO) pfx += ` RUVECTOR_PG_CONNINFO=${JSON.stringify(process.env.TRAJ_CONNINFO)}`;
-if (process.env.TRAJ_PUBKEY)   pfx += ` AGENTBOX_PUBKEY=${process.env.TRAJ_PUBKEY}`;
-if (process.env.TRAJ_AGENT)    pfx += ` AGENTBOX_AGENT=${JSON.stringify(process.env.TRAJ_AGENT)}`;
+// Inline env prefix: public, non-secret identity only. No gate (registration is
+// the gate) and no database reach (the API persists, ADR-2164).
+let pfx = '';
+if (process.env.TRAJ_PUBKEY)   pfx += `AGENTBOX_PUBKEY=${process.env.TRAJ_PUBKEY} `;
+if (process.env.TRAJ_AGENT)    pfx += `AGENTBOX_AGENT=${JSON.stringify(process.env.TRAJ_AGENT)} `;
 let s = {}, origText = ''; try { origText = fs.readFileSync(f, 'utf8'); s = JSON.parse(origText); } catch {}
 s.hooks = s.hooks || {};
 // [event, tool matcher]. The hook reads the event name from argv[2]. Transcript-
@@ -2029,7 +2026,7 @@ for (const evt of ['PreToolUse', 'PostToolUse', 'Stop', 'SubagentStop']) {
 }
 for (const [evt, matcher] of specs) {
   s.hooks[evt] = s.hooks[evt] || [];
-  const grp = { hooks: [{ type: 'command', command: `${pfx} node ${hook} ${evt} || true`, timeout: 10 }] };
+  const grp = { hooks: [{ type: 'command', command: `${pfx}node ${hook} ${evt} || true`, timeout: 10 }] };
   if (matcher) grp.matcher = matcher;
   s.hooks[evt].push(grp);
 }
