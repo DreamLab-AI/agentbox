@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: cc949bb79c9ac89858d01c1235dd3bca6e2226a2
+verified_commit: 3d717c40f48223666a8f2abd1151cd477b5bb9cc
 verified_paths: [config/nip98-proxy/proxy.mjs, docs/INGRESS-identity.md]
 owner: jjohare
 review_trigger: A governance upstream stops re-verifying the operator signature, or a new default proxy route is proposed
@@ -179,3 +179,7 @@ Governed-path delta since `29d927745` is the RuVector Postgres credential custod
 - `docs/INGRESS-identity.md`: version 0.2.7: invariant 12 gains the one-database-credential-source sentence and the routing-label route.
 
 Nothing this record decides is changed; its status axes are unchanged. Re-run: `git diff 29d927745..cc949bb79 -- docs/INGRESS-identity.md`.
+
+## Re-verification — 2026-11-01 (`3d717c40f`)
+
+`docs/INGRESS-identity.md` changed since `cc949bb79` only in ADR-2164 amendment 3: version 0.2.8, one changelog line, and the Invariant 12 sentences on token scope inside the routes and the same-UID limit (`git diff cc949bb79..3d717c40f -- docs/INGRESS-identity.md`). This record's decision does not concern Invariant 12. Decision unchanged; `verified_commit` bumped.

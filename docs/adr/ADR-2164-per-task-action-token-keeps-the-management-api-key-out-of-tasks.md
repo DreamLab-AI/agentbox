@@ -7,8 +7,8 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 09067b095fec7bed192a50b3104668dfa2fb1f86
-verified_paths: [config/hooks/trajectory-recorder.cjs, config/hooks/routing-label-recorder.cjs, config/entrypoint-unified.sh, management-api/lib/pg-config.js, management-api/lib/routing-label-store.js, management-api/lib/trajectory-store.js, mcp/consultants/shared/consultant-base.js, management-api/lib/task-action-tokens.js, management-api/middleware/auth.js, management-api/lib/agent-event-auth.js, management-api/routes/agent-events.js, management-api/utils/process-manager.js]
+verified_commit: 3d717c40f48223666a8f2abd1151cd477b5bb9cc
+verified_paths: [config/hooks/trajectory-recorder.cjs, config/hooks/routing-label-recorder.cjs, config/entrypoint-unified.sh, management-api/lib/pg-config.js, management-api/lib/routing-label-store.js, management-api/lib/trajectory-store.js, mcp/consultants/shared/consultant-base.js, management-api/lib/task-action-tokens.js, management-api/middleware/auth.js, management-api/lib/agent-event-auth.js, management-api/routes/agent-events.js, management-api/utils/process-manager.js, management-api/adapters/index.js, management-api/adapters/lifecycle.js]
 owner: jjohare
 review_trigger: any new reader of the RuVector Postgres password or any new place a connection is assembled, any new route a task needs to call, any change to the Management API auth gate or auth modes, or a hook that gains a way to sign NIP-98
 repo: agentbox
@@ -104,3 +104,7 @@ A security review of the branch found the token's route list was right but its s
 - Existing trajectories created before this change have no `task_id`, so they count as operator-owned and a token cannot extend them; a task resumed across the deploy starts a fresh row.
 
 **Verification.** `tests/sovereign/task-trajectory-scope.test.js` (own task, foreign task, operator-owned, forged metadata, several trajectories, operator unchanged), the B2 cases in `task-action-token.test.js`, `tests/sovereign/memory-slot-missing-password.test.js`; each fails against the previous sources.
+
+## Re-verification — 2026-11-01 (`3d717c40f`)
+
+`management-api/lib/trajectory-store.js` and `management-api/routes/agent-events.js` changed since `09067b095` exactly as amendment 3 above describes (`git diff 09067b095..3d717c40f -- management-api/lib/trajectory-store.js management-api/routes/agent-events.js`); `management-api/adapters/index.js` and `management-api/adapters/lifecycle.js` join the governed paths for the missing-password-file behaviour. Decision otherwise unchanged; `verified_commit` bumped.

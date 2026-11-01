@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: e1893e23684b831bae909bfbd5209a548ed87533
+verified_commit: 3d717c40f48223666a8f2abd1151cd477b5bb9cc
 verified_paths: [management-api/lib/junkiejarvis-clarify.js, management-api/lib/junkiejarvis-agent.js, management-api/server.js, scripts/dream-forum-suggestions.mjs, scripts/run-junkiejarvis.cjs, tests/sovereign/junkiejarvis-clarify.test.js, tests/sovereign/junkiejarvis-dm-send.test.js, tests/sovereign/dream-forum-suggestions-jj-gate.test.js]
 owner: jjohare
 review_trigger: any change to the clarity signals, MIN_SPECIFICITY, the 7-day expiry, or the forum-suggestions ingest path
@@ -197,3 +197,7 @@ Tripped by the W8 ADR-sprint changes. Governed-path delta since `161392193`: `ma
 ## Re-verification — 2026-11-01 (ADR-2164 amendment)
 
 Governed path `management-api/server.js` changed since `1e41b64b6`: one line, `agentEvents.trajectory: 'POST /v1/agent-events/trajectory'` added to the route index (`git diff 1e41b64b6..e1893e236 -- management-api/server.js` is that single insertion). This record's decision does not concern the route index. Decision unchanged; `verified_commit` bumped.
+
+## Re-verification — 2026-11-01 (`3d717c40f`)
+
+Governed path `management-api/server.js` changed since `e1893e236` by four lines only: the `failureReasons` import, and the `adapter_failures` field in the `/health` response schema and payload (ADR-2164 amendment 3, `git diff e1893e236..3d717c40f -- management-api/server.js`). This record's decision does not concern `/health`. Decision unchanged; `verified_commit` bumped.
