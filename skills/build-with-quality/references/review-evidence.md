@@ -39,6 +39,18 @@ raw versus reserialised bodies, optional binding, clock windows, cache scope
 and error mapping. Preserve intentional compatibility boundaries or make the
 policy change explicit and test its consumers.
 
+When repairing routing or wiring, check what authority will reach the newly
+selected data. A broken lookup can mask an insufficient permission check;
+repairing selection alone can activate that defect. Exercise the actual route
+and a correctly wired component control, then distinguish current exposure
+from exposure the proposed repair would introduce.
+
+Hiding an identifier from discovery does not prove that a caller who knows it
+cannot retrieve the object. Check direct access and the effective settings of
+shared transports, including overrides applied after a component configures
+its own policy. A subprocess reproduction establishes that layer's behaviour;
+trace and test the consuming route before claiming end-to-end exposure.
+
 ## Compare contracts before consolidating implementations
 
 Group suspected duplicates by the contract they implement: inputs, outputs,
