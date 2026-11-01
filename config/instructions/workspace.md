@@ -9,7 +9,7 @@ Tool-neutral facts about this container for every coding agent. Behaviour and st
 ## RuVector memory (single home for the environment rules)
 
 ```
-conn       = ruvector-postgres:5432, db ruvector, $RUVECTOR_PG_CONNINFO
+conn       = ruvector-postgres:5432, db ruvector, user ruvector; the password lives only in the 0600 file $RUVECTOR_PG_PASSWORD_FILE (no conninfo string, no password in any env, hook or MCP/Codex config)
 access     = memory MCP tools only (Claude: mcp__claude-flow__memory_*; Codex: agentbox-memory) — CLI and raw SQL INSERT bypass the embedding pipeline
              (bge-small-en-v1.5 via Xinference, 384-dim, client-side) → rows invisible to HNSW search
 search     = plain memory_search (~100ms); namespace "*" = global cross-namespace

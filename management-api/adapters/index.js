@@ -12,6 +12,7 @@
 const path = require('path');
 
 const { buildPodNip98 } = require('../lib/pod-signer');
+const { pgPoolConfigFromManifestConninfo } = require('../lib/pg-config');
 const { wrapDispatch } = require('../observability/metrics');
 
 const SLOTS = ['beads', 'pods', 'memory', 'events', 'orchestrator'];
@@ -39,7 +40,13 @@ function slotConfig(slot, impl, manifest) {
   switch (slot) {
     case 'memory':
       if (impl === 'external-pg') {
-        return { conninfo: (integrations.ruvector_external || {}).conninfo || '' };
+        // Parts from the manifest URL, password from the one file (lib/pg-config).
+        // No conninfo string with a password ever reaches the pool.
+        return {
+          conninfo: pgPoolConfigFromManifestConninfo(
+            (integrations.ruvector_external || {}).conninfo || '',
+          ),
+        };
       }
       return {};
 
@@ -195,4 +202,4 @@ function resolveAdapters(manifest) {
   return resolved;
 }
 
-module.exports = { resolveAdapters, UnknownAdapterImpl, SLOTS };
+module.exports = { resolveAdapters, UnknownAdapterImpl, SLOTS, slotConfig };

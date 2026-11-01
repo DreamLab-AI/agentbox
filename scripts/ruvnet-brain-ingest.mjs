@@ -57,7 +57,6 @@ import {
 // ── Config ───────────────────────────────────────────────────────────────────
 const NAMESPACE   = process.env.RUVNET_BRAIN_NAMESPACE || 'ruvnet-kb';
 const SOURCE_TYPE = 'ruvnet-brain-ingest';
-const CONNINFO    = process.env.RUVECTOR_PG_CONNINFO || '';
 const XINFERENCE  = process.env.XINFERENCE_ENDPOINT || 'http://xinference:9997';
 const EMB_MODEL   = process.env.EMBEDDING_MODEL || 'bge-small-en-v1.5';
 const RELEASE_URL = process.env.RUVNET_BRAIN_RELEASE_URL
@@ -312,9 +311,8 @@ function mintCorpusUrn(version) {
 
 // ── Main ─────────────────────────────────────────────────────────────────────
 async function main() {
-  if (!CONNINFO) die('RUVECTOR_PG_CONNINFO not set');
   const { Pool } = loadPg();
-  const pool = new Pool({ ...poolConfig(CONNINFO), max: 4 });
+  const pool = new Pool({ ...poolConfig(), max: 4 });
 
   const manifestRow = async () => {
     const r = await pool.query(

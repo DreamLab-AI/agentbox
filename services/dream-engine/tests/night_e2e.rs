@@ -351,7 +351,7 @@ impl Rig {
             },
             llm_fallback: None,
             ruvector: RuVectorConfig {
-                pg_url: String::new(),
+                pg: Default::default(),
                 xinference_url: String::new(),
                 namespace: "dream-e2e".into(),
             },

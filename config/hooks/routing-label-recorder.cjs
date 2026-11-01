@@ -6,7 +6,8 @@
  *
  * Registered on Stop by the entrypoint only when [skills.routing].label_log = true.
  * At each Stop it scans the session transcript from a per-session watermark and, for
- * every real user turn, writes ONE row to `routing_labels` in the RuVector sidecar:
+ * every real user turn, posts ONE row for `routing_labels` in the RuVector sidecar to the
+ * Management API, which owns the only database write (ADR-2164 pattern):
  *
  *   the turn's bge-small embedding (never its text), the skills the main model actually
  *   loaded before the next turn (the teacher label), and the router's own pick for that
@@ -30,6 +31,7 @@
  */
 
 const fs = require('fs');
+const http = require('http');
 const os = require('os');
 const path = require('path');
 
@@ -40,32 +42,45 @@ function log(msg) {
   try { process.stderr.write(`[routing-labels] ${msg}\n`); } catch { /* ignore */ }
 }
 
-const PG_SEARCH_PATHS = [
-  '/home/devuser/workspace/.claude-pg/node_modules/pg',
-  '/opt/agentbox/management-api/node_modules/pg',
-  path.resolve(__dirname, '..', '..', 'management-api', 'node_modules', 'pg'),
-  'pg',
-];
-function loadPg() {
-  for (const p of PG_SEARCH_PATHS) {
-    try { return require(p); } catch { /* next */ }
-  }
-  return null;
+// ── Management API: ONE write path (ADR-2164 pattern) ──────────────────────────
+// The recorder holds no database client and no connection string. The operator credential
+// (the same MANAGEMENT_API_KEY other hooks read) posts the rows it built.
+function apiCredential() {
+  return String(process.env.MANAGEMENT_API_KEY || '').trim();
 }
 
-function pgConfig() {
-  const conninfo = process.env.RUVECTOR_PG_CONNINFO ||
-    'host=ruvector-postgres port=5432 dbname=ruvector user=ruvector password=ruvector';
-  const kv = {};
-  for (const pair of conninfo.split(/\s+/)) {
-    const eq = pair.indexOf('=');
-    if (eq > 0) kv[pair.slice(0, eq)] = pair.slice(eq + 1);
-  }
-  return {
-    host: kv.host || 'ruvector-postgres', port: parseInt(kv.port || '5432', 10),
-    database: kv.dbname || 'ruvector', user: kv.user || 'ruvector', password: kv.password || 'ruvector',
-    connectionTimeoutMillis: 5000, query_timeout: 5000, statement_timeout: 5000,
-  };
+const POST_TIMEOUT_MS = 5000;
+/** POST the rows. Resolves true ONLY for a 2xx; never rejects. */
+function postRows(rows) {
+  return new Promise((resolve) => {
+    let settled = false;
+    const done = (ok) => { if (!settled) { settled = true; resolve(ok); } };
+    try {
+      const cred = apiCredential();
+      if (!cred) { log('no MANAGEMENT_API_KEY — cannot persist'); return done(false); }
+      const payload = Buffer.from(JSON.stringify({ rows }), 'utf8');
+      const req = http.request({
+        host: '127.0.0.1',
+        port: Number(process.env.MANAGEMENT_API_PORT || '9090'),
+        path: '/v1/agent-events/routing-label',
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'content-length': payload.length, authorization: `Bearer ${cred}` },
+        timeout: POST_TIMEOUT_MS,
+      }, (res) => {
+        res.on('data', () => {});
+        res.on('end', () => {
+          const ok = res.statusCode >= 200 && res.statusCode < 300;
+          if (!ok) log(`routing-label post answered ${res.statusCode}`);
+          done(ok);
+        });
+        res.on('error', () => done(false));
+      });
+      req.on('timeout', () => { try { req.destroy(); } catch { /* ignore */ } done(false); });
+      req.on('error', (e) => { log(`routing-label post unreachable: ${e && e.message}`); done(false); });
+      req.write(payload);
+      req.end();
+    } catch (e) { log(`routing-label post failed: ${e && e.message}`); done(false); }
+  });
 }
 
 /**
@@ -94,34 +109,6 @@ function isLanUrl(endpoint) {
   if (host.startsWith('fc') || host.startsWith('fd') || host.startsWith('fe80:')) return true;
   return !host.includes('.');
 }
-
-const TABLE = /^[a-z_][a-z0-9_]*$/.test(process.env.AGENTBOX_ROUTING_LABELS_TABLE || '')
-  ? process.env.AGENTBOX_ROUTING_LABELS_TABLE : 'routing_labels';
-
-const DDL = `CREATE TABLE IF NOT EXISTS ${TABLE} (
-  id             text PRIMARY KEY,
-  session_hash   text NOT NULL,
-  turn_ts        timestamptz,
-  embed_model    text NOT NULL,
-  embedding      real[] NOT NULL,
-  loaded         text[] NOT NULL,
-  load_via       text[] NOT NULL,
-  label          text NOT NULL,
-  router_pick    text,
-  router_model   text,
-  router_cascade text,
-  router_margin  double precision,
-  prompt_chars   integer NOT NULL,
-  recorded_at    timestamptz NOT NULL DEFAULT now(),
-  bm25_pick      text,
-  bm25_score     double precision
-)`;
-
-/** EXP-B8: tables created before the shadow arm gain its two nullable columns. */
-const MIGRATIONS = [
-  `ALTER TABLE ${TABLE} ADD COLUMN IF NOT EXISTS bm25_pick text`,
-  `ALTER TABLE ${TABLE} ADD COLUMN IF NOT EXISTS bm25_score double precision`,
-];
 
 async function embed(url, model, text) {
   const ctl = new AbortController();
@@ -187,8 +174,7 @@ async function main() {
   const clean = turns.filter((t) => !t.tainted);
   if (!clean.length) { writeWatermark(session, lineCount); return; }
 
-  const Pg = loadPg();
-  if (!Pg) { log('pg module unavailable — watermark NOT advanced; retried on the next Stop'); return; }
+  if (!apiCredential()) { log('no MANAGEMENT_API_KEY — watermark NOT advanced; retried on the next Stop'); return; }
 
   const cfg = route.config(process.env);
   const candidates = route.loadCandidates(cfg.skillsDir);
@@ -205,29 +191,12 @@ async function main() {
     rows.push(L.rowFor(t, session, vector, embedModel, candidates, L.matchRoute(routeLines, sessionHash, t.ts)));
   }
 
-  const client = new Pg.Client(pgConfig());
-  try {
-    await client.connect();
-    await client.query(DDL);
-    for (const m of MIGRATIONS) await client.query(m);
-    for (const r of rows) {
-      await client.query(
-        `INSERT INTO ${TABLE} (id, session_hash, turn_ts, embed_model, embedding, loaded, load_via, label,
-           router_pick, router_model, router_cascade, router_margin, prompt_chars, bm25_pick, bm25_score)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) ON CONFLICT (id) DO NOTHING`,
-        [r.id, r.session_hash, r.turn_ts, r.embed_model, r.embedding, r.loaded, r.load_via, r.label,
-          r.router_pick, r.router_model, r.router_cascade, r.router_margin, r.prompt_chars, r.bm25_pick, r.bm25_score]);
-    }
-    writeWatermark(session, lineCount);
-  } catch (e) {
-    log(`persist failed — watermark NOT advanced; retried on the next Stop: ${e && e.message}`);
-  } finally {
-    try { await client.end(); } catch { /* ignore */ }
-  }
+  if (await postRows(rows)) writeWatermark(session, lineCount);
+  else log('persist failed — watermark NOT advanced; retried on the next Stop');
 }
 
 if (require.main === module) {
   main().catch((e) => log(`fail-open: ${e && e.message}`)).finally(() => process.exit(0));
 }
 
-module.exports = { isLanUrl, DDL, MIGRATIONS };
+module.exports = { isLanUrl };

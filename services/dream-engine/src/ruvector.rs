@@ -1,6 +1,6 @@
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
-use sqlx::postgres::PgPoolOptions;
+use sqlx::postgres::{PgConnectOptions, PgPoolOptions};
 use std::time::Duration;
 use thiserror::Error;
 use tracing::info;
@@ -17,10 +17,54 @@ pub enum RuVectorError {
     Validation(String),
 }
 
+/// Where the RuVector Postgres sidecar is, without its password.
+///
+/// The password lives in exactly one 0600 file (`password_file`) and is read
+/// only when a connection is made, so it is never held in this struct (whose
+/// `Debug` output reaches logs), in a URL, or in the environment.
+#[derive(Debug, Clone, Default)]
+pub struct PgTarget {
+    pub host: String,
+    pub port: u16,
+    pub database: String,
+    pub user: String,
+    /// Path of the password file (`RUVECTOR_PG_PASSWORD_FILE`).
+    pub password_file: String,
+}
+
+impl PgTarget {
+    /// Connection options with the password read from `password_file`.
+    ///
+    /// Fails closed: an unreadable or empty file is an error naming the path;
+    /// there is no default password.
+    pub fn connect_options(&self) -> Result<PgConnectOptions, RuVectorError> {
+        let raw = std::fs::read_to_string(&self.password_file).map_err(|e| {
+            RuVectorError::Validation(format!(
+                "ruvector-postgres password file {} unreadable: {}",
+                self.password_file,
+                e.kind()
+            ))
+        })?;
+        let password = raw.trim();
+        if password.is_empty() {
+            return Err(RuVectorError::Validation(format!(
+                "ruvector-postgres password file {} is empty",
+                self.password_file
+            )));
+        }
+        Ok(PgConnectOptions::new()
+            .host(&self.host)
+            .port(self.port)
+            .database(&self.database)
+            .username(&self.user)
+            .password(password))
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct RuVectorConfig {
-    /// postgres://user:pass@host:port/db
-    pub pg_url: String,
+    /// The sidecar's address; the password is read from a file at connect time.
+    pub pg: PgTarget,
     pub xinference_url: String,
     /// e.g. "dream-cycle"
     pub namespace: String,
@@ -249,7 +293,7 @@ pub async fn store_finding(cfg: &RuVectorConfig, f: &DreamFinding) -> Result<boo
     let pool = PgPoolOptions::new()
         .max_connections(1)
         .acquire_timeout(Duration::from_secs(10))
-        .connect(&cfg.pg_url)
+        .connect_with(cfg.pg.connect_options()?)
         .await?;
 
     // 4. Ensure the project row.

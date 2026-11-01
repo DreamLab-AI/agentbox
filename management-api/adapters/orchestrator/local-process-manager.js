@@ -596,7 +596,7 @@ class LocalProcessManagerOrchestratorAdapter extends BaseAdapter {
       'PATH', 'HOME', 'USER', 'SHELL', 'LANG', 'TERM',
       'NODE_PATH', 'NODE_ENV',
       'AGENTBOX_PUBKEY', 'AGENTBOX_POD_ROOT',
-      'NOSTR_RELAYS', 'RUVECTOR_PG_CONNINFO',
+      'NOSTR_RELAYS',
       'XINFERENCE_ENDPOINT', 'EMBEDDING_MODEL',
       'HARNESS_TEMPLATE_DIR', 'VISIONFLOW_DOCS_DIR',
     ];

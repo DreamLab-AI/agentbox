@@ -133,7 +133,7 @@ fi
 # lowered GLM's effort and an ANTHROPIC_MODEL or ANTHROPIC_API_KEY pointed the
 # session somewhere it was not configured to go. This is an interactive agent
 # session, so the estate variables its MCP servers and hooks dial
-# (RUVECTOR_PG_CONNINFO, NOSTR_*, CLAUDE_FLOW_*, …) stay; only Claude Code's own
+# (RUVECTOR_PG_*, NOSTR_*, CLAUDE_FLOW_*, …) stay; only Claude Code's own
 # namespace is cleared, and the profile sets what it needs below. ZAI_EFFORT is
 # the explicit effort lever. Test: tests/security/zai-launch-env.test.cjs.
 while IFS= read -r _var; do

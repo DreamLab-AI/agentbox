@@ -174,7 +174,7 @@ echo "[6/6] End-to-end MCP server"
 
 E2E_RESULT=$($EXEC bash -c '
 NODE_PATH=/home/devuser/workspace/.claude-pg/node_modules \
-RUVECTOR_PG_CONNINFO="host=ruvector-postgres port=5432 dbname=ruvector user=ruvector password=ruvector" \
+RUVECTOR_PG_PASSWORD_FILE=/run/secrets/ruvector-pg/password \
 XINFERENCE_ENDPOINT="http://xinference:9997" \
 timeout 15 sh -c '"'"'{
   echo "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{\"protocolVersion\":\"2024-11-05\",\"capabilities\":{},\"clientInfo\":{\"name\":\"test\",\"version\":\"1.0\"}}}"

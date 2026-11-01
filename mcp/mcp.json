@@ -17,7 +17,11 @@
         "ACI_TEST_COMMAND_ALLOWLIST": "${ACI_TEST_COMMAND_ALLOWLIST:-pytest,cargo test,npm test,go test}",
         "AGENTBOX_AGENT_DID": "${AGENTBOX_AGENT_DID:-did:nostr:local}",
         "AGENTBOX_AGENT_PUBKEY": "${AGENTBOX_AGENT_PUBKEY:-local}",
-        "RUVECTOR_PG_CONNINFO": "${RUVECTOR_PG_CONNINFO}"
+        "RUVECTOR_PG_HOST": "${RUVECTOR_PG_HOST:-ruvector-postgres}",
+        "RUVECTOR_PG_PORT": "${RUVECTOR_PG_PORT:-5432}",
+        "RUVECTOR_PG_DATABASE": "${RUVECTOR_PG_DATABASE:-ruvector}",
+        "RUVECTOR_PG_USER": "${RUVECTOR_PG_USER:-ruvector}",
+        "RUVECTOR_PG_PASSWORD_FILE": "${RUVECTOR_PG_PASSWORD_FILE:-/run/secrets/ruvector-pg/password}"
       },
       "description": "SWE-agent-style Agent-Computer Interface MCP. 5 tools (view_file/edit_file/search_repo/run_tests/submit). Phase 2 surface — off by default (manifest gate [skills.aci_shell]). Composes with code-interpreter MCP for verified edits.",
       "protocol": "stdio",
@@ -31,7 +35,11 @@
       ],
       "type": "stdio",
       "env": {
-        "RUVECTOR_PG_CONNINFO": "${RUVECTOR_PG_CONNINFO}",
+        "RUVECTOR_PG_HOST": "${RUVECTOR_PG_HOST:-ruvector-postgres}",
+        "RUVECTOR_PG_PORT": "${RUVECTOR_PG_PORT:-5432}",
+        "RUVECTOR_PG_DATABASE": "${RUVECTOR_PG_DATABASE:-ruvector}",
+        "RUVECTOR_PG_USER": "${RUVECTOR_PG_USER:-ruvector}",
+        "RUVECTOR_PG_PASSWORD_FILE": "${RUVECTOR_PG_PASSWORD_FILE:-/run/secrets/ruvector-pg/password}",
         "KERNEL_IDLE_TIMEOUT_S": "${KERNEL_IDLE_TIMEOUT_S:-1800}",
         "KERNEL_MAX_MEMORY_MB": "${KERNEL_MAX_MEMORY_MB:-512}",
         "KERNEL_ALLOW_PIP_INSTALL": "${KERNEL_ALLOW_PIP_INSTALL:-false}",
@@ -242,7 +250,11 @@
       ],
       "type": "stdio",
       "env": {
-        "RUVECTOR_PG_CONNINFO": "${RUVECTOR_PG_CONNINFO}",
+        "RUVECTOR_PG_HOST": "${RUVECTOR_PG_HOST:-ruvector-postgres}",
+        "RUVECTOR_PG_PORT": "${RUVECTOR_PG_PORT:-5432}",
+        "RUVECTOR_PG_DATABASE": "${RUVECTOR_PG_DATABASE:-ruvector}",
+        "RUVECTOR_PG_USER": "${RUVECTOR_PG_USER:-ruvector}",
+        "RUVECTOR_PG_PASSWORD_FILE": "${RUVECTOR_PG_PASSWORD_FILE:-/run/secrets/ruvector-pg/password}",
         "XINFERENCE_ENDPOINT": "${XINFERENCE_ENDPOINT:-http://xinference:9997}",
         "EMBEDDING_MODEL": "${EMBEDDING_MODEL:-bge-small-en-v1.5}",
         "RUVNET_BRAIN_NAMESPACE": "${RUVNET_BRAIN_NAMESPACE:-ruvnet-kb}",

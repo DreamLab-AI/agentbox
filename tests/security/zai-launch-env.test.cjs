@@ -176,7 +176,7 @@ test('AoE harness wrapper: pins its own config dir and strips the caller Claude 
     JSON.stringify({ env: { ANTHROPIC_BASE_URL: 'https://api.z.ai/api/paas/v4', ANTHROPIC_AUTH_TOKEN: TOKEN } }));
   const r = spawnSync('bash', [HARNESS], {
     encoding: 'utf8',
-    env: caller(s, { WORKSPACE: ws, RUVECTOR_PG_CONNINFO: 'host=ruvector-postgres', CLAUDE_FLOW_HOOKS_ENABLED: 'true' }),
+    env: caller(s, { WORKSPACE: ws, RUVECTOR_PG_HOST: 'ruvector-postgres', CLAUDE_FLOW_HOOKS_ENABLED: 'true' }),
   });
   assert.equal(r.status, 0, r.stderr);
   const env = s.read();
@@ -185,7 +185,7 @@ test('AoE harness wrapper: pins its own config dir and strips the caller Claude 
   assert.equal(env.ANTHROPIC_API_KEY, '');
   assert.equal(env.HOME, path.join(ws, 'profiles', 'zai'));
   // An interactive session still needs the estate services its MCP servers and hooks dial.
-  assert.equal(env.RUVECTOR_PG_CONNINFO, 'host=ruvector-postgres');
+  assert.equal(env.RUVECTOR_PG_HOST, 'ruvector-postgres');
   assert.equal(env.CLAUDE_FLOW_HOOKS_ENABLED, 'true');
 });
 

@@ -20,13 +20,12 @@ services:
     # Additional environment
     environment:
       # RuVector external PG
-      - RUVECTOR_PG_CONNINFO=${RUVECTOR_PG_CONNINFO:-host=ruvector-postgres port=5432 dbname=ruvector user=ruvector password=${RUVECTOR_PG_PASSWORD:-ruvector}}
       - RUVECTOR_USE_EXTERNAL=true
-      # Single source of truth for the postgres password (Q6). The
-      # entrypoint substitutes this into the claude-flow config template
-      # at /opt/agentbox/config/claude-flow-config.template.json so the
-      # in-container plugin config and the DB connection use the same value.
-      - RUVECTOR_PG_PASSWORD=${RUVECTOR_PG_PASSWORD:-ruvector}
+      # The postgres password enters the container here and nowhere else, with
+      # no default (the same required form as docker-compose.yml). The
+      # entrypoint writes it to the one 0600 file RUVECTOR_PG_PASSWORD_FILE
+      # names, then unsets it; no conninfo string is injected any more.
+      - RUVECTOR_PG_PASSWORD=${RUVECTOR_PG_PASSWORD:?set RUVECTOR_PG_PASSWORD}
       # GPU
       - NVIDIA_VISIBLE_DEVICES=all
       - NVIDIA_DRIVER_CAPABILITIES=compute,utility,graphics

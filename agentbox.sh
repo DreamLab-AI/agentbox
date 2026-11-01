@@ -531,9 +531,9 @@ cmd_restore() {
 
     # -- restart stack --------------------------------------------------------
     # COMPOSE_ARGS includes docker-compose.override.yml when present — the
-    # override carries RUVECTOR_PG_CONNINFO/RUVECTOR_PG_PASSWORD into the
-    # agentbox service; a bare -f docker-compose.yml would silently downgrade
-    # the memory sidecar connection to the default password.
+    # override carries the required RUVECTOR_PG_PASSWORD into the agentbox
+    # service; a bare -f docker-compose.yml would leave it unset and the memory
+    # clients would fail closed (no default password exists).
     echo -e "${CYAN}Restarting stack...${NC}"
     docker compose "${COMPOSE_ARGS[@]}" up -d
 
@@ -1052,15 +1052,16 @@ cmd_ruvnet_brain() {
     # RuvNet Brain corpus playbook (see [skills.ruvnet_brain] in agentbox.toml).
     # The corpus lives in the ruvector-postgres sidecar (namespace ruvnet-kb);
     # ingest reconciles it against the latest upstream GitHub release. The
-    # container env carries RUVNET_BRAIN_* config; only the conninfo needs
-    # container-side password resolution (same form the MCP registration uses).
+    # container env carries RUVNET_BRAIN_* config; the database password is read
+    # in-container from the one 0600 file (management-api/lib/pg-config.js), so
+    # nothing about it is passed on this command line.
     local subcmd="${1:-status}"
     shift 2>/dev/null || true
     # RUVNET_BRAIN_STAGING must sit on the workspace volume: the baked image's
     # script defaults to read-only /var/lib, and the repo default ~/.cache is a
     # 256M tmpfs in this deployment — both too small/unwritable for the ~512MB
     # corpus zip + extraction. The staging is transient; the DB is the destination.
-    local ingest_env='RUVECTOR_PG_CONNINFO="host=ruvector-postgres port=5432 dbname=ruvector user=ruvector password=${RUVECTOR_PG_PASSWORD:-ruvector}" RUVNET_BRAIN_STAGING=/home/devuser/workspace/.tmp/ruvnet-brain-staging'
+    local ingest_env='RUVNET_BRAIN_STAGING=/home/devuser/workspace/.tmp/ruvnet-brain-staging'
     case "$subcmd" in
         ingest)
             echo -e "${CYAN}Reconciling RuvNet KB corpus (this embeds via Xinference; new corpus ≈ minutes)...${NC}"

@@ -15,6 +15,7 @@ const { agentEventArchive } = require('../utils/agent-event-archive');
 const { verifyAgentEventRequest, reconcileSourceUrn, reconcileTaskScope } = require('../lib/agent-event-auth');
 const taxonomy = require('../lib/failure-taxonomy');
 const { persistTrajectory, trajectoryPool, TrajectoryInputError } = require('../lib/trajectory-store');
+const { persistRoutingLabels, routingLabelPool, RoutingLabelInputError } = require('../lib/routing-label-store');
 const { hashString } = require('../lib/agent-id-hash');
 const { processHookEvent, getRegistryStats } = require('../hooks/agent-action-hooks');
 const { initializeAgentEventWsSubscriber, getAgentEventWsSubscriber } = require('../utils/agent-event-ws-subscriber');
@@ -632,6 +633,74 @@ async function agentEventsRoutes(fastify, options) {
       }
       logger.error(`trajectory persist failed: ${err && err.message}`);
       return reply.code(500).send({ success: false, error: 'trajectory persist failed' });
+    }
+  });
+
+  /**
+   * POST /v1/agent-events/routing-label - persist skill-routing teacher labels
+   * (ADR-2110, on the ADR-2164 pattern)
+   *
+   * The routing-label recorder's ONE write path. It used to open its own
+   * Postgres connection with a conninfo inlined in its registered Stop-hook
+   * command; it now posts the rows it built (a vector, a label, the router's
+   * pick; never prompt text) and lib/routing-label-store.js writes them through
+   * the memory adapter's pool. Operator credential only: a task has no reason
+   * to record routing labels, so this route is NOT in TASK_TOKEN_ROUTES.
+   */
+  fastify.post('/v1/agent-events/routing-label', {
+    bodyLimit: 4 * 1024 * 1024,
+    schema: {
+      description: 'Persist skill-routing teacher labels (embedding, label, router pick; no prompt text)',
+      tags: ['agent-events'],
+      body: {
+        type: 'object',
+        required: ['rows'],
+        properties: {
+          rows: {
+            type: 'array',
+            minItems: 1,
+            items: {
+              type: 'object',
+              required: ['id', 'session_hash', 'embed_model', 'embedding', 'loaded', 'load_via', 'label', 'prompt_chars'],
+              properties: {
+                id: { type: 'string', minLength: 1, maxLength: 256 },
+                session_hash: { type: 'string', maxLength: 128 },
+                turn_ts: { type: ['string', 'null'] },
+                embed_model: { type: 'string', maxLength: 256 },
+                embedding: { type: 'array', items: { type: 'number' } },
+                loaded: { type: 'array', items: { type: 'string' } },
+                load_via: { type: 'array', items: { type: 'string' } },
+                label: { type: 'string', maxLength: 256 },
+                router_pick: { type: ['string', 'null'] },
+                router_model: { type: ['string', 'null'] },
+                router_cascade: { type: ['string', 'null'] },
+                router_margin: { type: ['number', 'null'] },
+                prompt_chars: { type: 'integer', minimum: 0 },
+                bm25_pick: { type: ['string', 'null'] },
+                bm25_score: { type: ['number', 'null'] }
+              }
+            }
+          }
+        }
+      }
+    }
+  }, async (request, reply) => {
+    const pool = routingLabelPool(fastify.adapters);
+    if (!pool) {
+      return reply.code(503).send({
+        success: false,
+        error: 'routing labels need the external-pg memory adapter; none is configured'
+      });
+    }
+    try {
+      const out = await persistRoutingLabels(pool, request.body.rows);
+      return reply.send({ success: true, rows: out.rows });
+    } catch (err) {
+      if (err instanceof RoutingLabelInputError) {
+        return reply.code(400).send({ success: false, error: err.message });
+      }
+      logger.error(`routing-label persist failed: ${err && err.message}`);
+      return reply.code(500).send({ success: false, error: 'routing-label persist failed' });
     }
   });
 

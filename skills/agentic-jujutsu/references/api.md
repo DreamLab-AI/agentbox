@@ -8,7 +8,7 @@ details, and troubleshooting. See `cookbook.md` for worked examples.
 ReasoningBank patterns are stored in centralized PostgreSQL:
 
 ```bash
-# Connection (auto-configured via RUVECTOR_PG_CONNINFO)
+# Connection (auto-configured via RUVECTOR_PG_HOST/PORT/DATABASE/USER + RUVECTOR_PG_PASSWORD_FILE)
 host=ruvector-postgres port=5432 user=ruvector database=ruvector
 
 # Agentic-jujutsu data tables:
