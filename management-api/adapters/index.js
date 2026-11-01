@@ -12,7 +12,7 @@
 const path = require('path');
 
 const { buildPodNip98 } = require('../lib/pod-signer');
-const { pgPoolConfigFromManifestConninfo } = require('../lib/pg-config');
+const { pgPoolConfigFromManifestConninfo, DEFAULT_PASSWORD_FILE } = require('../lib/pg-config');
 const { wrapDispatch } = require('../observability/metrics');
 const { BaseAdapter } = require('./base');
 const CONTRACT_VERSIONS = require('./contract-versions');
@@ -177,9 +177,11 @@ function instrumentAdapter(adapter, slot, impl, manifest) {
  * at fault) so the lifecycle records and withdraws the slot.
  */
 class ConfigFailedAdapter extends BaseAdapter {
-  constructor(slot, impl, cause) {
+  constructor(slot, impl, cause, file = null) {
     super(slot, impl, CONTRACT_VERSIONS[slot] || '0.0.0');
     this._configError = cause;
+    // The configured file at fault (never a value), published on /health in place of error text.
+    this._configFile = file;
   }
 
   async connect() { throw this._configError; }
@@ -217,7 +219,10 @@ function resolveAdapters(manifest) {
       // adapter whose connect() rejects with the cause, and let the lifecycle
       // (adapters/lifecycle.js) withdraw it exactly as for any connect failure.
       // A fail-closed slot (orchestrator) still aborts startup there.
-      instance = new ConfigFailedAdapter(slot, impl, err);
+      const file = slot === 'memory'
+        ? (String(process.env.RUVECTOR_PG_PASSWORD_FILE || '').trim() || DEFAULT_PASSWORD_FILE)
+        : null;
+      instance = new ConfigFailedAdapter(slot, impl, err, file);
     }
     resolved[slot] = instrumentAdapter(instance, slot, impl, manifest);
 

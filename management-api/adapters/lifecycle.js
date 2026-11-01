@@ -272,7 +272,12 @@ async function connectAdapters(opts) {
 
     const failureMode = outcome.settled === 'timeout' ? 'timeout' : 'rejected';
     const reason = outcome.error ? outcome.error.message : 'connect failed';
-    const record = { slot, impl, state: 'unavailable', reason, timeoutMs, durationMs, failureMode, lateSettle: null };
+    // `reason` is the full error text: it goes to the server log and stays on this internal
+    // record. /health publishes only `failure` (a fixed class) and `file` (a configured path).
+    const failure = adapter._configError !== undefined ? 'config-failed'
+      : (failureMode === 'timeout' ? 'connect-timeout' : 'connect-failed');
+    const file = failure === 'config-failed' && typeof adapter._configFile === 'string' ? adapter._configFile : null;
+    const record = { slot, impl, state: 'unavailable', reason, failure, file, timeoutMs, durationMs, failureMode, lateSettle: null };
     readiness[slot] = record;
 
     // A slot that timed out is still running somewhere. Record what it does
@@ -351,9 +356,11 @@ function toLegacyHealth(readiness) {
 }
 
 /**
- * Why each non-ready slot is down, for /health: `{ slot: reason }` for every slot
- * that is neither ready nor off. The reason is the connect error's message,
- * which names the file or setting at fault and never carries a credential value.
+ * Why each non-ready slot is down, for /health: `{ slot: class }` where class is one of
+ * `config-failed`, `connect-timeout`, `connect-failed`. Deliberately NOT the error text:
+ * /health is unauthenticated, and a driver or URL error can carry hostnames, paths or
+ * tokens. The full reason is in the server log (connectAdapters) and on the readiness
+ * record.
  *
  * @param {object} readiness - the map connectAdapters() returned
  * @returns {Object<string,string>}
@@ -361,13 +368,28 @@ function toLegacyHealth(readiness) {
 function failureReasons(readiness) {
   const out = {};
   for (const [slot, r] of Object.entries(readiness || {})) {
-    if (r.state !== 'ready' && r.state !== 'off') out[slot] = r.reason || r.state;
+    if (r.state !== 'ready' && r.state !== 'off') out[slot] = r.failure || 'connect-failed';
+  }
+  return out;
+}
+
+/**
+ * The configured file at fault for each `config-failed` slot (a path, never a value).
+ *
+ * @param {object} readiness
+ * @returns {Object<string,string>}
+ */
+function failureFiles(readiness) {
+  const out = {};
+  for (const [slot, r] of Object.entries(readiness || {})) {
+    if (r.state !== 'ready' && r.state !== 'off' && typeof r.file === 'string' && r.file) out[slot] = r.file;
   }
   return out;
 }
 
 module.exports = {
   failureReasons,
+  failureFiles,
   connectAdapters,
   connectTimeoutFor,
   quarantineAdapter,

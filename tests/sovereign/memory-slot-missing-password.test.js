@@ -18,7 +18,7 @@ const os = require('os');
 const path = require('path');
 
 const { resolveAdapters, SLOTS } = require('../../management-api/adapters/index');
-const { connectAdapters, toLegacyHealth, failureReasons } = require('../../management-api/adapters/lifecycle');
+const { connectAdapters, toLegacyHealth, failureReasons, failureFiles } = require('../../management-api/adapters/lifecycle');
 
 const MISSING = path.join(os.tmpdir(), `sb-no-such-dir-${process.pid}`, 'password');
 const manifest = () => ({
@@ -50,12 +50,24 @@ test('the memory slot is withdrawn, the others are untouched, and the reason nam
   await expect(adapters.memory.retrieve('k')).rejects.toThrow(/disabled/i); // fail closed
 });
 
-test('failureReasons (what /health publishes) carries the slot and the path, and no value', async () => {
+test('failureReasons (what /health publishes) is a fixed class, never error text; the file is a separate field', async () => {
   const adapters = resolveAdapters(manifest());
   const { readiness } = await connectAdapters({ slots: SLOTS, adapters, manifest: manifest(), resolveOff });
-  const reasons = failureReasons(readiness);
-  expect(Object.keys(reasons)).toEqual(['memory']);
-  expect(reasons.memory).toContain(MISSING);
+  expect(failureReasons(readiness)).toEqual({ memory: 'config-failed' });
+  expect(failureFiles(readiness)).toEqual({ memory: MISSING });
+  expect(JSON.stringify(failureReasons(readiness))).not.toContain('password unavailable');
+  // the full reason stays on the internal record (and in the server log), not on /health
+  expect(readiness.memory.reason).toContain(MISSING);
+});
+
+test('connect failures publish a fixed class only: no error text reaches /health', async () => {
+  const leaky = 'getaddrinfo ENOTFOUND db.internal.example password authentication failed for "u" token=abc123';
+  const adapters = { memory: { _implName: 'x', async connect() { throw new Error(leaky); } }, beads: { _implName: 'x', connect: () => new Promise(() => {}) } };
+  const { readiness } = await connectAdapters({ slots: ['memory', 'beads'], adapters, manifest: { adapters: { connect_timeout_ms: 20 } }, resolveOff });
+  const pub = failureReasons(readiness);
+  expect(pub).toEqual({ memory: 'connect-failed', beads: 'connect-timeout' });
+  expect(JSON.stringify(pub)).not.toMatch(/abc123|internal\.example|authentication/);
+  expect(failureFiles(readiness)).toEqual({});
 });
 
 test('a readable password file still builds a normal external-pg slot', () => {
@@ -74,4 +86,5 @@ test('server.js publishes failureReasons on /health (schema keeps the field)', (
   const src = fs.readFileSync(path.resolve(__dirname, '../../management-api/server.js'), 'utf8');
   expect(src).toMatch(/failureReasons\(app\.adapterReadiness/);
   expect(src).toMatch(/adapter_failures:\s*\{\s*type:\s*'object'/);
+  expect(src).toMatch(/adapter_failure_files:\s*failureFiles\(app\.adapterReadiness/);
 });
