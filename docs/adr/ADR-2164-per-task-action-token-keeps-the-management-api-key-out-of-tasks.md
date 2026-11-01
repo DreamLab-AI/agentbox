@@ -7,8 +7,8 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 460b8b8bb61503f27e576a3e9554bfafcc766cbb
-verified_paths: [management-api/lib/task-action-tokens.js, management-api/middleware/auth.js, management-api/lib/agent-event-auth.js, management-api/routes/agent-events.js, management-api/utils/process-manager.js]
+verified_commit: 9709cd3fe512135c1dec7245c252817ef97ec617
+verified_paths: [config/hooks/trajectory-recorder.cjs, mcp/consultants/shared/consultant-base.js, management-api/lib/task-action-tokens.js, management-api/middleware/auth.js, management-api/lib/agent-event-auth.js, management-api/routes/agent-events.js, management-api/utils/process-manager.js]
 owner: jjohare
 review_trigger: any new route a task needs to call, or any change to the Management API auth gate or auth modes
 repo: agentbox
