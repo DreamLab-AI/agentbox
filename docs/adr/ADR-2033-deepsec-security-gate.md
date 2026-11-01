@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: cc949bb79c9ac89858d01c1235dd3bca6e2226a2
+verified_commit: 5a010d084b0544c0173757fa54fdec5c4766ec90
 verified_paths: [flake.nix, agentbox.toml, schema/agentbox.toml.schema.json, scripts/agentbox-config-validate.js, management-api/lib/system-manifest.js, skills/build-with-quality/scripts, skills/build-with-quality/references/deepsec-security-gate.md, .github/workflows/deepsec.yml]
 owner: jjohare
 review_trigger: a deepsec major version, a change to its CLI exit-code contract or model-route schema, any new model route, or the first paid full-repo run
@@ -472,3 +472,7 @@ Governed-path delta since `2f15c531b` is the RuVector Postgres credential custod
 - `flake.nix`: removes the claude-flow config template (`claudeFlowConfigJson` and its `cp`) and the baked `RUVECTOR_PG_CONNINFO` image Env entry, and rewords one dream-engine supervisor comment.
 
 Nothing this record decides is changed; its status axes are unchanged. Re-run: `git diff 2f15c531b..cc949bb79 -- agentbox.toml flake.nix`.
+
+## Re-verification — 2026-10-31 (`5a010d084`)
+
+Governed-path delta since `cc949bb79` is three documentation commits to `skills/build-with-quality/references/deepsec-security-gate.md` (042d5cfc4, 9dfbf7cec, 686db14b1: review-evidence and boundary-check guidance, +24 lines). Nothing this record decides is changed. Re-run: `git diff cc949bb79..5a010d084 -- skills/build-with-quality/references/deepsec-security-gate.md`.
