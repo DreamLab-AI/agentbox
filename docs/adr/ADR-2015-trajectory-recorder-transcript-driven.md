@@ -151,3 +151,7 @@ shown to deduplicate on `usage_id` — the dashboard is not in this repo. The
 failure-source census stays open: skipped and ungradeable results, non-Bash work,
 crash-before-Stop and the QE fleet are still outside any denominator.
 `implementation_status` remains `partial`.
+
+## Task identity extension — 2026-11-01
+
+One real task shows as one agent body. `spawnTask` (`management-api/utils/process-manager.js`) mints the task's id and exports it to the child as `TASK_ID`; that is the only task id. Every agent action emitted for a task now carries it as `metadata.taskId`: the `/v1/agent-events/hook` emitter (`management-api/hooks/agent-action-hooks.js`) stamps it on every hook, not only `pre-task`/`post-task`, and sources the action from that id so concurrent tasks never share a body; `/emit` and `/batch` accept a top-level `taskId` and stamp it; the trajectory recorder and the consultant audit event forward `TASK_ID` from their environment. An action with no task carries no `taskId` key. The per-name counter behind `getAgentId` was only a stand-in identity and is replaced by the deterministic `lib/agent-id-hash.js` mapping the `/emit` path already used, so one name yields one id on every path. Tests: `tests/sovereign/task-id-on-every-action.test.js`. A hook reporter that sends no `taskId` is still unattributed to a task; it is the reporter's job to send it.

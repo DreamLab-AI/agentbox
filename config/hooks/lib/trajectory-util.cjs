@@ -387,6 +387,9 @@ function handoffIdFrom(env, fallbackId) {
  * @param {object} opts
  * @param {string} [opts.handoffId]  the chain-correlation id (from handoffIdFrom)
  * @param {string} [opts.sessionId]  the session id (source-agent label)
+ * @param {string} [opts.taskId]     the Management API task this session runs
+ *                                   for (TASK_ID in the spawned env); stamped
+ *                                   into metadata.taskId, omitted when absent
  * @returns {object|null} an emit body carrying token_count / handoff_id, or null
  */
 function ctcEmitBodyFromStep(step, opts = {}) {
@@ -431,6 +434,9 @@ function ctcEmitBodyFromStep(step, opts = {}) {
     }
   }
   if (handoffId != null) body.handoff_id = handoffId;
+  if (opts.taskId != null && String(opts.taskId).trim() !== '') {
+    body.metadata.taskId = String(opts.taskId).trim();
+  }
   // A graded FAILURE carries its MAST tag. ADR-2015: the TOP-LEVEL field is the
   // canonical one the publisher and every downstream consumer read; the
   // metadata copy is kept as a mirror for producers that already read it.

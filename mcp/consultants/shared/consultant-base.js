@@ -13,6 +13,9 @@ function _emitConsultEvent(consultant, envelope) {
     target_node_id:  envelope.consultation_urn || `consultant-${consultant}-result`,
     action_type:     'query',
     duration_ms:     envelope.latency_ms || 0,
+    // A consultation made inside a Management API task belongs to that task
+    // (TASK_ID in the spawned env); outside one it carries no task id.
+    ...(process.env.TASK_ID ? { taskId: process.env.TASK_ID } : {}),
     metadata: {
       consultant,
       consultation_urn: envelope.consultation_urn,

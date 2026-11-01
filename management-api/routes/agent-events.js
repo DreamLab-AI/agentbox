@@ -14,6 +14,7 @@ const { agentEventPublisher, AgentActionType } = require('../utils/agent-event-p
 const { agentEventArchive } = require('../utils/agent-event-archive');
 const { verifyAgentEventRequest, reconcileSourceUrn } = require('../lib/agent-event-auth');
 const taxonomy = require('../lib/failure-taxonomy');
+const { hashString } = require('../lib/agent-id-hash');
 const { processHookEvent, getRegistryStats } = require('../hooks/agent-action-hooks');
 const { initializeAgentEventWsSubscriber, getAgentEventWsSubscriber } = require('../utils/agent-event-ws-subscriber');
 
@@ -344,6 +345,11 @@ async function agentEventsRoutes(fastify, options) {
           token_count: { type: 'integer', minimum: 0 },
           handoff_id: { type: 'string' },
           verification: { type: 'string' },
+          // The Management API task this action belongs to (the id spawnTask
+          // minted, exported to the child as TASK_ID). Stamped into
+          // metadata.taskId so VisionClaw joins every action of a task onto one
+          // agent body. Absent for an action that belongs to no task.
+          taskId: { type: 'string' },
           // ADR-2015 closeout: the CANONICAL failure field on the wire. A
           // producer that classified a failure sends it here; the publisher
           // still promotes `metadata.failure_mode` when this is absent, so an
@@ -403,7 +409,7 @@ async function agentEventsRoutes(fastify, options) {
       target_node_id: targetId,
       action_type: actionType,
       duration_ms: body.duration_ms || 100,
-      metadata: body.metadata || {}
+      metadata: withTaskId(body.metadata, body.taskId)
     };
     // When authenticated, stamp the verified identity so attribution is
     // provable rather than caller-asserted or env-defaulted.
@@ -453,7 +459,8 @@ async function agentEventsRoutes(fastify, options) {
                 target_node_id: { anyOf: [{ type: 'integer' }, { type: 'string' }] },
                 action_type: { anyOf: [{ type: 'integer' }, { type: 'string' }] },
                 duration_ms: { type: 'integer' },
-                metadata: { type: 'object' }
+                metadata: { type: 'object' },
+                taskId: { type: 'string' }
               }
             }
           }
@@ -507,7 +514,7 @@ async function agentEventsRoutes(fastify, options) {
         target_node_id: targetId,
         action_type: actionType,
         duration_ms: eventData.duration_ms || 100,
-        metadata: eventData.metadata || {}
+        metadata: withTaskId(eventData.metadata, eventData.taskId)
       };
       if (auth.did) {
         emitPayload.source_urn = auth.did;
@@ -710,16 +717,14 @@ function eventMatchesRef(event, ref) {
 }
 
 /**
- * Simple string hash to convert string IDs to u32
+ * Metadata for an emitted action with the owning task's id stamped in. An
+ * explicit top-level `taskId` wins; a `metadata.taskId` already set by the
+ * producer is kept; no task means no key.
  */
-function hashString(str) {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    const char = str.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash; // Convert to 32bit integer
-  }
-  return Math.abs(hash);
+function withTaskId(metadata, taskId) {
+  const md = metadata && typeof metadata === 'object' ? metadata : {};
+  if (taskId === undefined || taskId === null || taskId === '') return md;
+  return { ...md, taskId: String(taskId) };
 }
 
 module.exports = agentEventsRoutes;

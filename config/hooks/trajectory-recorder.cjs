@@ -507,7 +507,7 @@ async function handleClose(payload) {
       stash.qualityCount = Number(stash.qualityCount || 0) + 1;
       // REC-3 (CTC emitter WIRE): build the emit body forwarding this step's
       // captured token_count + the chain handoff_id onto the agent-events envelope.
-      const ctcBody = util.ctcEmitBodyFromStep(s, { handoffId: chainId, sessionId: session });
+      const ctcBody = util.ctcEmitBodyFromStep(s, { handoffId: chainId, sessionId: session, taskId: process.env.TASK_ID });
       // Collect up to the QUEUE bound (not the per-invocation emit cap) — the
       // surplus is deferred to the next Stop rather than discarded here.
       if (ctcBody && ctcEmits.length < CTC_QUEUE_MAX) ctcEmits.push(ctcBody);

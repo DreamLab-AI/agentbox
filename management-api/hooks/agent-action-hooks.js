@@ -12,10 +12,12 @@
 
 const { agentEventPublisher, AgentActionType } = require('../utils/agent-event-publisher');
 const uris = require('../lib/uris');
+const { hashString } = require('../lib/agent-id-hash');
 
-// Agent ID registry - maps agent names to numeric IDs for binary protocol
+// Agent names seen so far -> their numeric id (diagnostics for /registry only).
+// The id itself is hashString(name), not a counter, so it is the same on every
+// path and independent of the order events arrive in.
 const agentRegistry = new Map();
-let nextAgentId = 1;
 
 // Node ID registry - maps target identifiers to numeric IDs
 const nodeRegistry = new Map();
@@ -27,10 +29,38 @@ let nextNodeId = 1;
 function getAgentId(agentName) {
   if (typeof agentName === 'number') return agentName;
 
-  if (!agentRegistry.has(agentName)) {
-    agentRegistry.set(agentName, nextAgentId++);
+  const key = String(agentName);
+  if (!agentRegistry.has(key)) {
+    agentRegistry.set(key, hashString(key));
   }
-  return agentRegistry.get(agentName);
+  return agentRegistry.get(key);
+}
+
+/**
+ * The Management API task id this event belongs to, or null. Taken from the
+ * top-level `taskId` (what spawnTask minted and exported to the child as
+ * TASK_ID) or from `metadata.taskId`. Never minted here.
+ */
+function taskIdOf(data) {
+  const id = data.taskId != null ? data.taskId : (data.metadata && data.metadata.taskId);
+  return id != null && String(id) !== '' ? String(id) : null;
+}
+
+/**
+ * Source body for an action. A task is one agent body: every action carrying a
+ * taskId is sourced from that id, whatever the reporter called the agent, so two
+ * concurrent tasks never share a body and one task never splits across two.
+ * Actions with no task fall back to the named agent.
+ */
+function actorId(data, fallbackName) {
+  const taskId = taskIdOf(data);
+  return taskId ? getAgentId(taskId) : getAgentId(fallbackName);
+}
+
+/** Stamp the task id onto an action's metadata; no task, no key. */
+function withTask(data, metadata) {
+  const taskId = taskIdOf(data);
+  return taskId ? { ...metadata, taskId } : metadata;
 }
 
 /**
@@ -85,16 +115,15 @@ const hookHandlers = {
   'pre-task': (data) => {
     const { taskId, description, agent } = data;
     return agentEventPublisher.emitAgentAction({
-      source_agent_id: getAgentId(agent || 'coordinator'),
+      source_agent_id: actorId(data, agent || 'coordinator'),
       target_node_id: getNodeId(taskId || 'task-queue'),
       action_type: AgentActionType.CREATE,
       duration_ms: 50,
       source_urn: data.source_urn,
-      metadata: {
+      metadata: withTask(data, {
         hook: 'pre-task',
-        taskId,
         description: description?.substring(0, 100)
-      }
+      })
     });
   },
 
@@ -104,17 +133,16 @@ const hookHandlers = {
   'post-task': (data) => {
     const { taskId, success, agent, quality } = data;
     return agentEventPublisher.emitAgentAction({
-      source_agent_id: getAgentId(agent || 'coordinator'),
+      source_agent_id: actorId(data, agent || 'coordinator'),
       target_node_id: getNodeId(taskId || 'task-queue'),
       action_type: success ? AgentActionType.UPDATE : AgentActionType.DELETE,
       duration_ms: 100,
       source_urn: data.source_urn,
-      metadata: {
+      metadata: withTask(data, {
         hook: 'post-task',
-        taskId,
         success,
         quality
-      }
+      })
     });
   },
 
@@ -128,16 +156,16 @@ const hookHandlers = {
         : AgentActionType.UPDATE;
 
     return agentEventPublisher.emitAgentAction({
-      source_agent_id: getAgentId(agent || 'coder'),
+      source_agent_id: actorId(data, agent || 'coder'),
       target_node_id: getNodeId(filePath),
       action_type: actionType,
       duration_ms: 150,
       source_urn: data.source_urn,
-      metadata: {
+      metadata: withTask(data, {
         hook: 'pre-edit',
         filePath,
         operation
-      }
+      })
     });
   },
 
@@ -147,16 +175,16 @@ const hookHandlers = {
   'post-edit': (data) => {
     const { filePath, success, agent } = data;
     return agentEventPublisher.emitAgentAction({
-      source_agent_id: getAgentId(agent || 'coder'),
+      source_agent_id: actorId(data, agent || 'coder'),
       target_node_id: getNodeId(filePath),
       action_type: success ? AgentActionType.UPDATE : AgentActionType.QUERY,
       duration_ms: 200,
       source_urn: data.source_urn,
-      metadata: {
+      metadata: withTask(data, {
         hook: 'post-edit',
         filePath,
         success
-      }
+      })
     });
   },
 
@@ -166,15 +194,15 @@ const hookHandlers = {
   'pre-command': (data) => {
     const { command, agent } = data;
     return agentEventPublisher.emitAgentAction({
-      source_agent_id: getAgentId(agent || 'executor'),
+      source_agent_id: actorId(data, agent || 'executor'),
       target_node_id: getNodeId('shell'),
       action_type: AgentActionType.TRANSFORM,
       duration_ms: 50,
       source_urn: data.source_urn,
-      metadata: {
+      metadata: withTask(data, {
         hook: 'pre-command',
         command: command?.substring(0, 50)
-      }
+      })
     });
   },
 
@@ -184,16 +212,16 @@ const hookHandlers = {
   'post-command': (data) => {
     const { command, exitCode, agent } = data;
     return agentEventPublisher.emitAgentAction({
-      source_agent_id: getAgentId(agent || 'executor'),
+      source_agent_id: actorId(data, agent || 'executor'),
       target_node_id: getNodeId('shell'),
       action_type: exitCode === 0 ? AgentActionType.UPDATE : AgentActionType.DELETE,
       duration_ms: 100,
       source_urn: data.source_urn,
-      metadata: {
+      metadata: withTask(data, {
         hook: 'post-command',
         command: command?.substring(0, 50),
         exitCode
-      }
+      })
     });
   },
 
@@ -203,16 +231,16 @@ const hookHandlers = {
   'route': (data) => {
     const { task, agent, context } = data;
     return agentEventPublisher.emitAgentAction({
-      source_agent_id: getAgentId('router'),
+      source_agent_id: actorId(data, 'router'),
       target_node_id: getAgentId(agent || 'worker'),
       action_type: AgentActionType.LINK,
       duration_ms: 75,
       source_urn: data.source_urn,
-      metadata: {
+      metadata: withTask(data, {
         hook: 'route',
         task: task?.substring(0, 100),
         targetAgent: agent
-      }
+      })
     });
   },
 
@@ -222,16 +250,16 @@ const hookHandlers = {
   'agent-spawn': (data) => {
     const { agentId, agentType, parent } = data;
     return agentEventPublisher.emitAgentAction({
-      source_agent_id: getAgentId(parent || 'coordinator'),
+      source_agent_id: actorId(data, parent || 'coordinator'),
       target_node_id: getAgentId(agentId || agentType),
       action_type: AgentActionType.CREATE,
       duration_ms: 200,
       source_urn: data.source_urn,
-      metadata: {
+      metadata: withTask(data, {
         hook: 'agent-spawn',
         agentId,
         agentType
-      }
+      })
     });
   },
 
@@ -241,16 +269,16 @@ const hookHandlers = {
   'agent-terminate': (data) => {
     const { agentId, agentType, parent } = data;
     return agentEventPublisher.emitAgentAction({
-      source_agent_id: getAgentId(agentId || agentType),
+      source_agent_id: actorId(data, agentId || agentType),
       target_node_id: getAgentId(parent || 'coordinator'),
       action_type: AgentActionType.DELETE,
       duration_ms: 100,
       source_urn: data.source_urn,
-      metadata: {
+      metadata: withTask(data, {
         hook: 'agent-terminate',
         agentId,
         agentType
-      }
+      })
     });
   },
 
@@ -264,16 +292,16 @@ const hookHandlers = {
         : AgentActionType.QUERY;
 
     return agentEventPublisher.emitAgentAction({
-      source_agent_id: getAgentId(agent || 'memory-manager'),
+      source_agent_id: actorId(data, agent || 'memory-manager'),
       target_node_id: getNodeId(`memory:${key}`),
       action_type: actionType,
       duration_ms: 50,
       source_urn: data.source_urn,
-      metadata: {
+      metadata: withTask(data, {
         hook: 'memory-access',
         key,
         operation
-      }
+      })
     });
   },
 
@@ -283,15 +311,15 @@ const hookHandlers = {
   'action': (data) => {
     const { source, target, action, duration, metadata } = data;
     return agentEventPublisher.emitAgentAction({
-      source_agent_id: getAgentId(source || 'unknown'),
+      source_agent_id: actorId(data, source || 'unknown'),
       target_node_id: getNodeId(target || 'unknown'),
       action_type: mapActionType(action || 'query'),
       duration_ms: duration || 100,
       source_urn: data.source_urn,
-      metadata: {
+      metadata: withTask(data, {
         hook: 'action',
         ...metadata
-      }
+      })
     });
   }
 };
