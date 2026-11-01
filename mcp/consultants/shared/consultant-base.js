@@ -470,4 +470,4 @@ class BaseConsultant {
   }
 }
 
-module.exports = { BaseConsultant, };
+module.exports = { BaseConsultant, _emitConsultEvent };
