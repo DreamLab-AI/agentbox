@@ -1,11 +1,12 @@
 ---
 title: Agentbox Ingress & Identity
 doc_id: AB-INGRESS
-version: 0.2.7
+version: 0.2.8
 status: draft-for-ratification
 verified_commit: 
 date: 2026-09-05
 changelog:
+  - "0.2.8 (2026-11-01): ADR-2164 amendment 3 - invariant 12: a task token writes only trajectories its own task owns (metadata.task_id stamped at creation, 403 otherwise) and always speaks as its own task (posted source_agent_id ignored); the same-UID limit is stated (the token narrows the network surface, it is not process isolation). Invariants 1-11 unchanged."
   - "0.2.7 (2026-11-01): ADR-2164 amendment 2 - invariant 12 gains the single database credential source: the RuVector Postgres password lives in one 0600 file (RUVECTOR_PG_PASSWORD_FILE) read through management-api/lib/pg-config.js; no password or conninfo string in any hook command, MCP/Codex config or exported env; POST /v1/agent-events/routing-label added (operator-only). Invariants 1-11 unchanged."
   - "0.2.6 (2026-11-01): ADR-2164 amendment - invariant 12 scope grows to POST /v1/agent-events/trajectory, the trajectory recorder's single write path: the API persists to Postgres, so no database credential or recorder gate reaches a task. Invariants 1-11 unchanged."
   - "0.2.5 (2026-11-01): ADR-2164 - a running Management API task authenticates its own agent-action posts with a short-lived opaque per-task token (invariant 12) instead of MANAGEMENT_API_KEY. Added; invariants 1-11 unchanged."
@@ -361,6 +362,16 @@ JunkieJarvis signer and the existing authenticated `NostrBridge`.
    string; every client reads the file through `management-api/lib/pg-config.js` and a missing
    file fails closed naming its path. The routing-label recorder posts to the operator-only
    `POST /v1/agent-events/routing-label`; a task token is refused there.
+   **Token scope inside the routes (amendment 3).** A token write to a trajectory is stamped
+   with the owning task id in `metadata.task_id` when the trajectory is created, and a token
+   write to a trajectory owned by another task, or by the operator (no `task_id`), is `403`
+   before any step or rollup is written; operator credentials are unchanged. For emit and
+   batch the server uses the token's own task as the source agent and ignores any posted
+   `source_agent_id`. **Same-UID limit.** The management-api runs as devuser in every current
+   configuration, including with `role_isolation` on, so a hostile task can still reach the
+   operator key and the database credential file; the token narrows only the network surface
+   and keeps both out of the task's environment, hook commands and model context. It is not
+   process isolation.
 
 ## Change process
 

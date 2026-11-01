@@ -89,3 +89,18 @@ Owner decision: "Fix the same-class conninfo leaks too." The Postgres connection
 - `.env.example` still shows a `RUVECTOR_PG_PASSWORD=ruvector` example line and an empty `RUVECTOR_PG_CONNINFO=`: a harness deny rule prevented this implementer from editing `.env*`; the owner should change them to a required placeholder.
 
 **Verification.** `tests/sovereign/pg-credential-custody.test.js` (the entrypoint's custody function, runtime-env export, MCP/Codex heredocs and registered hook commands run for real with a sentinel password; the scrub run over pre-existing files holding the old conninfo; the helper through a recording fake pool; fail-closed on a missing file; grep-pins), `tests/sovereign/routing-label-ingest.test.js`, `tests/config/routing-labels.test.js`, `cargo test` in `services/dream-engine`, and `scripts/ci/check-db-password.sh`. Not shown: a live boot, a live Postgres connection, or the running memory MCP server restarting against the new file.
+
+## Amendment 3 — 2026-11-01 (security review): token scope inside the routes, and the same-UID limit
+
+A security review of the branch found the token's route list was right but its scope inside two routes was not.
+
+**Decision.**
+- **Trajectory ownership (B1).** `management-api/lib/trajectory-store.js` stamps `metadata.task_id` with the token's task id when a token post creates a trajectory (over anything the body sent), then re-reads the owner under `SELECT … FOR UPDATE` in the same transaction. A token write to a trajectory owned by another task, or by the operator (no `task_id`), rolls back and answers `403` before any step or rollup is written. One task may own several trajectories (ids derive from the session, which the server never learns, so ownership cannot be bound to a session). Operator credentials run no ownership statement and behave as before. The key is a jsonb member of `metadata`, not a column.
+- **Source attribution (B2).** For a token post, emit and batch use `hashString(<token task id>)` as the source agent and ignore the posted `source_agent_id` (`routes/agent-events.js` `resolveSourceId`, next to `withTaskId`). Side effect: the consultant emitter's beam inside a task now starts at the task body, not at `consultant-<name>`.
+- **Missing password file (G2).** The password file being unusable no longer exits the API: `resolveAdapters` builds that slot as a failed-config adapter, the lifecycle withdraws it (`degraded`, `off` replacement, writes refused), and `/health` publishes `adapter_failures.memory` with the reason naming the file path. Fail-closed slots (`orchestrator`) still abort startup. ADR-015, as amended, requires the ruvector MCP server to fail closed with no `sql.js` fallback; it does not require the management-api to exit.
+
+**Consequences.**
+- **Same-UID limit.** The management-api runs as devuser in every current configuration, including with `role_isolation` on (it is in no role of `config/role-accounts.json`), so a hostile task can still reach the operator key and the database credential file. The token narrows only the network surface and keeps the key and credential out of the task's environment, hook commands and model context; it is not process isolation.
+- Existing trajectories created before this change have no `task_id`, so they count as operator-owned and a token cannot extend them; a task resumed across the deploy starts a fresh row.
+
+**Verification.** `tests/sovereign/task-trajectory-scope.test.js` (own task, foreign task, operator-owned, forged metadata, several trajectories, operator unchanged), the B2 cases in `task-action-token.test.js`, `tests/sovereign/memory-slot-missing-password.test.js`; each fails against the previous sources.
