@@ -1,11 +1,12 @@
 ---
 title: Agentbox Ingress & Identity
 doc_id: AB-INGRESS
-version: 0.2.6
+version: 0.2.7
 status: draft-for-ratification
 verified_commit: 
 date: 2026-09-05
 changelog:
+  - "0.2.7 (2026-11-01): ADR-2164 amendment 2 - invariant 12 gains the single database credential source: the RuVector Postgres password lives in one 0600 file (RUVECTOR_PG_PASSWORD_FILE) read through management-api/lib/pg-config.js; no password or conninfo string in any hook command, MCP/Codex config or exported env; POST /v1/agent-events/routing-label added (operator-only). Invariants 1-11 unchanged."
   - "0.2.6 (2026-11-01): ADR-2164 amendment - invariant 12 scope grows to POST /v1/agent-events/trajectory, the trajectory recorder's single write path: the API persists to Postgres, so no database credential or recorder gate reaches a task. Invariants 1-11 unchanged."
   - "0.2.5 (2026-11-01): ADR-2164 - a running Management API task authenticates its own agent-action posts with a short-lived opaque per-task token (invariant 12) instead of MANAGEMENT_API_KEY. Added; invariants 1-11 unchanged."
   - "0.2.4 (2026-10-29): ADR-2153 is live: session control uses a 0660 ab-sessions unix socket and peer-uid ACL; :9096 has named routes only, and the old :9095 token invariant is retired."
@@ -353,6 +354,13 @@ JunkieJarvis signer and the existing authenticated `NostrBridge`.
    the entrypoint registers in `~/.claude/settings.json` (a task inherits `HOME` and so runs it);
    enablement is the hook's registration. Under `strict-nip98` an operator session (Bearer only)
    cannot post, so operator trajectories wait; task posts are unaffected.
+   **One database credential source (ADR-2164 amendment 2).** The RuVector Postgres password
+   is in exactly one 0600 devuser file (`RUVECTOR_PG_PASSWORD_FILE`, written by the entrypoint
+   from the compose-required `RUVECTOR_PG_PASSWORD`, which it then unsets). No hook command,
+   `.mcp.json`, Codex config or exported environment carries the password or a conninfo
+   string; every client reads the file through `management-api/lib/pg-config.js` and a missing
+   file fails closed naming its path. The routing-label recorder posts to the operator-only
+   `POST /v1/agent-events/routing-label`; a task token is refused there.
 
 ## Change process
 

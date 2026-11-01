@@ -1,10 +1,11 @@
 ---
 title: "Agentbox Memory & Learning — Ground Truth"
 doc_id: AB-LEARNING
-version: 0.1.6
+version: 0.1.7
 status: draft-for-ratification
 verified_commit: 
 changelog:
+  - "0.1.7 (2026-11-01): ADR-2164 amendment 2 - every memory/learning client (ruvector-mcp, ruflo CLI, the aggregate/distil/sona/recall/ingest scripts, the dream-engine, the management-api memory slot) builds its Postgres connection from RUVECTOR_PG_HOST/PORT/DATABASE/USER plus the password read from the one 0600 file RUVECTOR_PG_PASSWORD_FILE (management-api/lib/pg-config.js); there is no conninfo string and no default password. The routing-label recorder (ADR-2110) writes through POST /v1/agent-events/routing-label. Retrieval geometry unchanged."
   - "0.1.6 (2026-11-01): ADR-2164 amendment - the trajectory recorder persists through POST /v1/agent-events/trajectory (management-api/lib/trajectory-store.js), not its own Postgres connection; the env gates are gone and enablement is the hook's registration. What is recorded is unchanged."
   - "0.1.5 (2026-10-29): ADR-2153 session-plane cutover retains management-owned identity and scoped memory namespaces. No retrieval geometry or durable adapter policy changes."
   - "0.1.4 (2026-10-07): ADR-2133 — `ruvector reindex` (serial rebuild beside the live index, one-transaction swap, recall before/after); `ruvector reader-role` (ruvector_reader, SELECT on memory_entries only) and `ruvector hba-harden` (non-loopback pg_hba trust → scram); invariants 8 and 13"

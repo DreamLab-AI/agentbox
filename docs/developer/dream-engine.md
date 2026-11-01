@@ -229,7 +229,8 @@ The binary reads the `[dream_machine]` table (window, the connected node host, a
 | `DREAM_LLM_PROVIDER` | `zai` (default) or `loom`. Overrides `[dream_machine].llm_provider`. | Supervisor block / shell. |
 | `ZAI_URL`, `ZAI_MODEL` | Z.AI endpoint + model override. | Supervisor block / shell. |
 | `LOOM_URL`, `LOOM_MODEL` | Loom façade endpoint + model override. | Supervisor block / shell. |
-| `RUVECTOR_PG_URL` / `RUVECTOR_PG_CONNINFO` | Memory Postgres DSN (URL form, or libpq conninfo which is converted). **Secret-bearing.** | Container env. |
+| `RUVECTOR_PG_HOST` / `_PORT` / `_DATABASE` / `_USER` | Memory Postgres address (defaults: the compose service). No password and no DSN: the engine reads the password from the 0600 file below. | Container env. |
+| `RUVECTOR_PG_PASSWORD_FILE` | Path of the one password file (default `/run/secrets/ruvector-pg/password`). A missing file fails the store closed, naming the path. | Container env. |
 | `XINFERENCE_URL` | Embedding endpoint (default `http://${EMBEDDINGS_HOST}`). | Container env. |
 | `RUST_LOG` | Log filter (default `info`). | Supervisor block / shell. |
 | `DREAM_SOURCE_*` | Tree-read knobs — see [Tree-read](#tree-read-and-the-single-completion-contract-adr-2114-2026-09-25). | Supervisor block / shell. |
