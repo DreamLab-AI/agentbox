@@ -741,19 +741,17 @@ class RelayConsumer {
   }
 
   _verifySig(event) {
-    if (this._verifyEvent) return this._verifyEvent(event);
     try {
-      // Defer to nostr-tools when available — matches NostrBridge.verifyNip98.
-      const nostrTools = require('nostr-tools');
-      return nostrTools.verifyEvent(event);
+      // Tests may inject a verifier; every path requires an explicit success.
+      // A dependency/load/verification error cannot establish authenticity.
+      const verifyEvent = this._verifyEvent || require('nostr-tools').verifyEvent;
+      return verifyEvent(event) === true;
     } catch (err) {
-      // nostr-tools may not be installed in test runs — log once and accept
-      // structural form so tests can exercise the routing path.
-      if (!this._warnedMissingTools) {
-        this._logger.warn({ err: err.message }, 'nostr-tools missing — signature acceptance is structural only');
-        this._warnedMissingTools = true;
+      if (!this._warnedVerificationFailure) {
+        this._logger.warn({ err: String(err?.message || err) }, 'nostr-event-verification-failed');
+        this._warnedVerificationFailure = true;
       }
-      return typeof event.id === 'string' && typeof event.sig === 'string';
+      return false;
     }
   }
 

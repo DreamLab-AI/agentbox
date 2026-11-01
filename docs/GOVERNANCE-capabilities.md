@@ -57,6 +57,16 @@ partial controls and the resulting top risk.
 
 ## Current state
 
+### Relay signature rejection — 2026-11-01
+
+`RelayConsumer._verifySig` requires an explicit `true` from the verifier. A missing
+`nostr-tools` dependency, a verifier exception or a non-boolean result rejects the
+event before governance notification, persistence or orchestration. Tests inject
+their verifier explicitly; there is no structural-signature fallback. The regression
+gate is `npm run test:relay-signatures`. This closes the fail-open branch identified
+as ABI-05; consolidating the separate relay and authority consumers remains open.
+Running containers need the updated source deployed before this behaviour applies.
+
 ### Capability surface (what an agent can do)
 
 Agentbox grants an agent a broad, live action surface. Every one of these is enabled in
