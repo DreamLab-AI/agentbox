@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 3d717c40f48223666a8f2abd1151cd477b5bb9cc
+verified_commit: a8186a8e366bb51281043c8bb14801819025c2e8
 verified_paths: [config/hooks/trajectory-recorder.cjs, config/hooks/routing-label-recorder.cjs, config/entrypoint-unified.sh, management-api/lib/pg-config.js, management-api/lib/routing-label-store.js, management-api/lib/trajectory-store.js, mcp/consultants/shared/consultant-base.js, management-api/lib/task-action-tokens.js, management-api/middleware/auth.js, management-api/lib/agent-event-auth.js, management-api/routes/agent-events.js, management-api/utils/process-manager.js, management-api/adapters/index.js, management-api/adapters/lifecycle.js]
 owner: jjohare
 review_trigger: any new reader of the RuVector Postgres password or any new place a connection is assembled, any new route a task needs to call, any change to the Management API auth gate or auth modes, or a hook that gains a way to sign NIP-98
@@ -108,3 +108,7 @@ A security review of the branch found the token's route list was right but its s
 ## Re-verification — 2026-11-01 (`3d717c40f`)
 
 `management-api/lib/trajectory-store.js` and `management-api/routes/agent-events.js` changed since `09067b095` exactly as amendment 3 above describes (`git diff 09067b095..3d717c40f -- management-api/lib/trajectory-store.js management-api/routes/agent-events.js`); `management-api/adapters/index.js` and `management-api/adapters/lifecycle.js` join the governed paths for the missing-password-file behaviour. Decision otherwise unchanged; `verified_commit` bumped.
+
+## Re-verification — 2026-11-01 (`a8186a8e3`)
+
+`management-api/routes/agent-events.js` changed since `3d717c40f` only in the B2 source-agent derivation (`resolveSourceId` removed; the source comes from the `withTaskId` stamp), `git diff 3d717c40f..a8186a8e3 -- management-api/routes/agent-events.js`. Decision unchanged; `verified_commit` bumped.
