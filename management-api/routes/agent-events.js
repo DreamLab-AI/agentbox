@@ -582,7 +582,8 @@ async function agentEventsRoutes(fastify, options) {
           },
           steps: {
             type: 'array',
-            maxItems: 2000,
+            // No maxItems: the route bodyLimit already bounds the request, and a
+            // count cap would wedge a session whose held-back backlog outgrew it.
             items: {
               type: 'object',
               required: ['id', 'action', 'result', 'quality', 'step_order'],
