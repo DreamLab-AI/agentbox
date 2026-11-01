@@ -88,6 +88,16 @@ node scripts/ci/check-manifest-catalogue.js               # PASS, 118 gate paths
 
 Re-verified 2026-10-31 at `2f15c531b02b8f8393d68d29ce3491712bdd862c` (W7 and W8 integration, `adr-sprint/w78`). Governed-path delta since `1e41b64b6`: `routing.rs`: `host_provider("loom")` now returns the unconstructible `loom` label instead of `openai`, so the agentic-qe projection skips loom routes as it skips zai (the correction recorded in this record's close-out), with tests; `agentbox.toml` and `schema/agentbox.toml.schema.json`: since the W8 stamp, only the W7 additive keys (`state_budget_tokens`, `bypass_projects = []`) and the bracket and wording fixes (ADR-2090, ADR-2139); the four diagram routes and host patterns this record decides are unchanged. Read from the diff and checked against the merged tree's gates (cargo, jest, validator); the changes to this record's own surface are the ones its close-out above already records (and the status axes there stand), and nothing else it changes touches what it decides. Re-run: `git diff 1e41b64b6..2f15c531b -- agentbox.toml schema/agentbox.toml.schema.json services/agentbox-manifest/src/routing.rs`.
 
+**Tag and pin, 2026-10-31 (owner: tag and pin, no rebuild).** Item 1's refusal half is now in sealmap 0.3.0, tagged `v0.3.0` at `b767769815934a9d53ac38023575f853893e010d` and pushed 2026-11-01. `seal sign` refuses a reviewer that shares a model family with any author rung, refuses an unknown family (so the check fails closed), and takes exactly one reviewing model. `.tiers.json` is read strictly: a duplicate key or an unknown activity is an error. Workspace tests: 254 passed, 0 failed.
+
+On branch `adr-sprint/sealmap-030`, `lib/sealmap.nix` pins `v0.3.0` and the tag's lockfile replaces `sealmap-0.2.1.Cargo.lock`. The `hash` was computed locally as the NAR hash of `git archive v0.3.0`, which is what GitHub serves for the tag. The method was checked first: it reproduces the pinned v0.2.1 hash exactly. The pin is only fetchable once the tag is pushed.
+
+**Still partial:**
+- The image has not been rebuilt (owner-run).
+- sealmap does not yet read the manifest routes (item 1's first clause).
+- The tiers reader is library-only, so nothing reachable from the image uses it yet.
+- Items 2 and 3 above are unchanged.
+
 ## Re-verification — 2026-11-01 (`cc949bb79`)
 
 Governed-path delta since `2f15c531b` is the RuVector Postgres credential custody change (ADR-2164 amendment 2), nothing else:
