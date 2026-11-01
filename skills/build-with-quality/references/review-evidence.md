@@ -33,6 +33,27 @@ raw versus reserialised bodies, optional binding, clock windows, cache scope
 and error mapping. Preserve intentional compatibility boundaries or make the
 policy change explicit and test its consumers.
 
+## Compare contracts before consolidating implementations
+
+Group suspected duplicates by the contract they implement: inputs, outputs,
+trust boundary, side effects and callers. Similar names or shared cryptography
+do not establish the same protocol. A reusable repository credential and a
+single-request token can intentionally have different replay policies; a login
+challenge need not be another HTTP-signature verifier.
+
+For each group, record which paths are live, partially connected, retired or
+already corrected at the reviewed revision. Keep rejected duplicate candidates
+with their reasons so later reviewers do not rediscover them. Trace both writes
+and reads: a settings reader with no writer, an index without populated vectors,
+or a deletion that leaves a secondary identity index is a broken journey even
+when each component passes its own tests.
+
+Where implementations really share a contract, reuse the estate's existing
+owner and run shared fixtures through the actual consumer adapters. Pin time
+and input bytes in historical signed fixtures. Preserve intentional differences
+as explicit policy cases. A shared test corpus can expose drift before a shared
+implementation is practical; moving code alone does not prove migration.
+
 ## Follow effects beyond the return status
 
 For stateful operations, trace authentication, admission, mutation, durable
@@ -57,6 +78,12 @@ category the threshold does not count. Triage every material finding, separating
 pre-existing defects, regressions, accepted risks and unverified hypotheses;
 do not silently change the gate threshold to obtain a green result.
 
+Separate a severity category from demonstrated exposure. Record whether the
+path is reachable in the selected build, which authority reaches it, and what
+the observed failure permits. A cryptography label or unsafe helper alone does
+not prove an exploitable route; a fail-closed refusal still merits a functional
+finding when it blocks a supported journey.
+
 When a build fails, inspect the actual target and feature set. A narrow test
 command may still build a binary; disabling defaults can remove required
 features. Supply only the needed pinned build inputs in an isolated checkout,
@@ -77,3 +104,8 @@ For a bounded checkpoint, retain the trigger, exact version, command and raw
 result, observed state change, disposition and remaining acceptance conditions.
 These are evidence fields, not a requirement to create another tracking system.
 Use the estate's existing findings register and shared memory.
+
+A producer fix remains distinct from a released package, a consumer lockfile
+update and a running deployment. For a contract change, check minting helpers,
+examples and downstream callers as well as the verifier; a stale example can
+leave the supported user journey broken after the library tests pass.

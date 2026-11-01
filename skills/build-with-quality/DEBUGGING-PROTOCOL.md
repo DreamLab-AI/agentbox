@@ -164,6 +164,10 @@ Spawn N Sonnet agents, one per concern. Each agent renders its slice of the syst
 
 Each agent maps **all** code paths into its diagram and explicitly flags any parallel or duplicate implementation it finds.
 
+Before treating similar paths as duplicates, compare their contracts and live
+callers using [review-evidence.md](references/review-evidence.md#compare-contracts-before-consolidating-implementations).
+Keep intentional policy differences and rejected candidates in the register.
+
 ### Phase 2 — Queen Synthesis
 
 One Opus coordinator collates the diagrams into a single ranked anomaly register (e.g. `00-anomaly-register.md`) containing:
@@ -175,9 +179,16 @@ One Opus coordinator collates the diagrams into a single ranked anomaly register
 
 Brief QE agents to write **failing repro tests** that depend only on the model/pure layer (no GPU, no network) to prove each anomaly objectively before any fix is attempted. This converts "I suspect X" into a red test.
 
+A pure-layer test proves that layer's behaviour. If the finding concerns route
+admission, persistence or delivery, also exercise that boundary with a valid
+positive control and inspect the resulting state before claiming the journey.
+
 ### Phase 4 — Fix with Live Diagrams
 
-Implement fixes (deleting or deprecating parallel paths where they are not integrated), updating each Mermaid diagram as you go so resolutions visibly click into place. The red repro tests flip green as proof.
+Implement fixes, updating each Mermaid diagram as you go. Delete a parallel
+path only after checking its callers, build features and compatibility role;
+otherwise reconcile the actual consumer with the shared owner. Run the red
+repro tests and shared contract fixtures through the affected consumers.
 
 **Why it works:** forcing every parallel implementation into one visible artefact makes divergent authorities obvious — for example, one layer reads `metadata.type` while another reads a top-level `type` field, or two modularity functions that disagree on the same input. Failing repro tests prevent symptom-chasing and premature hacks.
 

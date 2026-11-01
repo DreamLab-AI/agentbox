@@ -70,6 +70,13 @@ output and record material findings and corrections separately. If code changed
 after review, name that boundary instead of presenting the old receipt as a
 review of the final diff. See [review-evidence.md](./review-evidence.md).
 
+Compare the planned and actually reviewed file set with the final changes,
+including new tests and untracked files. A working-diff invocation does not by
+itself prove every file reached the reviewer. Name omissions and cover them
+through an appropriate review or check; report executed tests separately from
+scanner coverage. A clean Git HEAD is also insufficient to identify reviewed
+uncommitted bytes: retain the diff or content hashes with the receipt.
+
 ## What the gate does not do
 
 - It does not revalidate. For a whole-repo pass, run `deepsec revalidate` from

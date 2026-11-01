@@ -67,6 +67,21 @@ For findings intake and evidence boundaries, follow
 [review-evidence.md](../build-with-quality/references/review-evidence.md).
 Keep inconclusive findings open rather than labelling them false positives.
 
+For optional binding, distinguish an absent input from a present empty value.
+Exercise valid non-empty and empty requests, missing binding tags, changed
+content and removal of signed content. Verify both the producer's signing
+helper and the real route's stored result; helper-only acceptance is not proof
+of an authorisation bypass. Check that a rejected substitution leaves the
+original credential usable when that is the intended admission policy.
+
+For replay retention, compare eviction time with the entire remaining token
+acceptance window, including clock skew and inclusive timestamp boundaries.
+Test just before, at and after expiry with controlled clocks where available;
+check direct constructors as well as environment validation. A short-TTL probe
+does not prove a default-TTL defect. For URL scope policies, compare parsed
+authority and path boundaries; test sibling names and host-prefix collisions
+against the intended policy, then trace the caller before claiming exposure.
+
 ## Quick Start
 
 ### Dependency vulnerability scan
