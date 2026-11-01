@@ -67,6 +67,8 @@
  * ---------------------------------------------------------------------------
  */
 
+const { AdapterDisabled } = require('./errors');
+
 const DEFAULT_CONNECT_TIMEOUT_MS = 10000;
 
 // Slots whose failure to connect must abort startup rather than degrade.
@@ -164,6 +166,21 @@ function quarantineAdapter(adapter, slot, reason) {
   adapter._quarantined = true;
   adapter._quarantineReason = reason;
   return adapter;
+}
+
+
+/**
+ * Make a degraded stand-in refuse dispatch(). The `off` adapters for beads, pods and
+ * memory already throw on every method; the events `off` adapter deliberately no-ops
+ * dispatch for a slot the operator configured off, which for a slot that FAILED would
+ * accept the write and drop it while the authority journal reports it persisted.
+ */
+function refuseDispatch(adapter, slot) {
+  if (!adapter || typeof adapter.dispatch !== 'function') return;
+  Object.defineProperty(adapter, 'dispatch', {
+    value: async function degradedDispatch() { throw new AdapterDisabled(slot); },
+    writable: true, configurable: true, enumerable: false,
+  });
 }
 
 /**
@@ -284,6 +301,10 @@ async function connectAdapters(opts) {
     try {
       const offSlot = resolveOff(slot);
       if (!offSlot) throw new Error('resolveOff returned nothing');
+      // A DEGRADED slot must never accept a write and discard it. A slot configured
+      // `off` may no-op dispatch (ADR-005), but this stand-in replaces a slot that was
+      // meant to work, so its dispatch refuses (the events off adapter returns null).
+      refuseDispatch(offSlot, slot);
       offSlot._implName = 'off';
       offSlot._slot = slot;
       adapters[slot] = offSlot;

@@ -55,7 +55,7 @@ function slotConfig(slot, impl, manifest) {
     case 'beads':
     case 'events':
       if (impl === 'external') {
-        return { externalUrl: fed.external_url || '' };
+        return { baseUrl: fed.external_url || '' };
       }
       return {};
 
@@ -88,7 +88,7 @@ function slotConfig(slot, impl, manifest) {
       };
 
       if (impl === 'external') {
-        return withSigner({ externalUrl: fed.external_url || '' });
+        return withSigner({ baseUrl: fed.external_url || '' });
       }
       if (impl === 'local-solid-rs') {
         const sp = integrations.solid_pod_rs || {};
@@ -103,12 +103,12 @@ function slotConfig(slot, impl, manifest) {
       if (impl === 'stdio-bridge') {
         const ext = integrations.external_orchestrator || {};
         return {
-          externalUrl: fed.external_url || '',
+          baseUrl: fed.external_url || '',
           protocol: ext.protocol || 'stdio',
         };
       }
       if (impl === 'external') {
-        return { externalUrl: fed.external_url || '' };
+        return { baseUrl: fed.external_url || '' };
       }
       return {};
 
