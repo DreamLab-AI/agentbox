@@ -82,6 +82,13 @@ does not prove a default-TTL defect. For URL scope policies, compare parsed
 authority and path boundaries; test sibling names and host-prefix collisions
 against the intended policy, then trace the caller before claiming exposure.
 
+For approval, moderation or mirror pipelines, test publication separately from
+discovery. Name a rejected object's identifier directly through every reader of
+the backing store, including raw, rendered, API and archive paths, and probe the
+window between ingest and verdict. An integrity check or hidden reference is
+not a publication boundary when local readers share the object store. Include a
+pre-repair stored fixture so a future-ingest fix cannot conceal migration debt.
+
 ## Quick Start
 
 ### Dependency vulnerability scan

@@ -198,3 +198,9 @@ and pinned dependency before describing the canonical path as live. Keep
 proposed migrations and retirement decisions distinct from executed code. The
 [review evidence reference](../../build-with-quality/references/review-evidence.md)
 covers failure causality, persistence effects and gate-policy limits.
+
+For approval or withholding diagrams, draw where candidate bytes first enter
+storage and every route that can read that store. A branch, reference or index
+remaining unchanged does not show that the underlying object is unpublished.
+Check known-identifier reads during the verdict window and show existing-data
+migration separately from the future-ingest repair.

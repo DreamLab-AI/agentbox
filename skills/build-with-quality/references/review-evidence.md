@@ -51,6 +51,21 @@ shared transports, including overrides applied after a component configures
 its own policy. A subprocess reproduction establishes that layer's behaviour;
 trace and test the consuming route before claiming end-to-end exposure.
 
+When a verdict is made after bytes enter storage, enumerate every reader of
+that storage: protocol adapters, local object readers, raw and rendered views,
+APIs, archives, indexers and backups. A denial in one transport does not govern
+the others. Integrity validation is also distinct from publication control;
+confirm whether rejected input is quarantined, removed, or left addressable at
+rest. Exercise a valid published object as a control, a rejected object by its
+known identifier, and reads while validation is still in progress.
+
+For a repair, keep candidate data outside every served store and publish only
+the approved closure or record set. Then address existing data separately:
+removing hidden references or index rows does not erase objects already held in
+the old served store. Test migration from a pre-repair fixture, preserve the
+approved roots, retain recoverable old data outside the served namespace, and
+repeat the known-identifier denial after migration.
+
 ## Compare contracts before consolidating implementations
 
 Group suspected duplicates by the contract they implement: inputs, outputs,
