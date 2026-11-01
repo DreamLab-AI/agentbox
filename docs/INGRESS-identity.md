@@ -1,11 +1,12 @@
 ---
 title: Agentbox Ingress & Identity
 doc_id: AB-INGRESS
-version: 0.2.8
+version: 0.2.9
 status: draft-for-ratification
 verified_commit: 
 date: 2026-09-05
 changelog:
+  - "0.2.9 (2026-11-01): ADR-2164 amendment 4 - invariant 12 credential wording made true: the password is in one 0600 file and the boot scrub removes it from live config AND from Claude Code backups and *.pre-*/*.bak* snapshots (atomic rewrites); copies outside what the scrub reaches are not claimed gone, so the password is rotated after the deploy (not automated). Invariants 1-11 unchanged."
   - "0.2.8 (2026-11-01): ADR-2164 amendment 3 - invariant 12: a task token writes only trajectories its own task owns (metadata.task_id stamped at creation, 403 otherwise) and always speaks as its own task (posted source_agent_id ignored); the same-UID limit is stated (the token narrows the network surface, it is not process isolation). Invariants 1-11 unchanged."
   - "0.2.7 (2026-11-01): ADR-2164 amendment 2 - invariant 12 gains the single database credential source: the RuVector Postgres password lives in one 0600 file (RUVECTOR_PG_PASSWORD_FILE) read through management-api/lib/pg-config.js; no password or conninfo string in any hook command, MCP/Codex config or exported env; POST /v1/agent-events/routing-label added (operator-only). Invariants 1-11 unchanged."
   - "0.2.6 (2026-11-01): ADR-2164 amendment - invariant 12 scope grows to POST /v1/agent-events/trajectory, the trajectory recorder's single write path: the API persists to Postgres, so no database credential or recorder gate reaches a task. Invariants 1-11 unchanged."
@@ -355,13 +356,26 @@ JunkieJarvis signer and the existing authenticated `NostrBridge`.
    the entrypoint registers in `~/.claude/settings.json` (a task inherits `HOME` and so runs it);
    enablement is the hook's registration. Under `strict-nip98` an operator session (Bearer only)
    cannot post, so operator trajectories wait; task posts are unaffected.
-   **One database credential source (ADR-2164 amendment 2).** The RuVector Postgres password
-   is in exactly one 0600 devuser file (`RUVECTOR_PG_PASSWORD_FILE`, written by the entrypoint
-   from the compose-required `RUVECTOR_PG_PASSWORD`, which it then unsets). No hook command,
-   `.mcp.json`, Codex config or exported environment carries the password or a conninfo
-   string; every client reads the file through `management-api/lib/pg-config.js` and a missing
-   file fails closed naming its path. The routing-label recorder posts to the operator-only
-   `POST /v1/agent-events/routing-label`; a task token is refused there.
+   **One database credential source (ADR-2164 amendments 2 and 4).** The RuVector Postgres
+   password is written by the entrypoint to exactly one 0600 devuser file
+   (`RUVECTOR_PG_PASSWORD_FILE`, from the compose-required `RUVECTOR_PG_PASSWORD`, which it then
+   unsets). No projected config, hook command, `.mcp.json`, Codex config or exported
+   environment carries the password or a conninfo string; every client reads the file through
+   `management-api/lib/pg-config.js` and a missing file fails closed naming its path. Every boot
+   the one scrub routine (`PGSCRUB_MARKER` in `config/entrypoint-unified.sh`) also removes the
+   password and conninfo values from copies that outlive the image: the live config files,
+   Claude Code's `~/.claude/backups/.claude.json.backup.*`, and the `*.pre-*`, `*.bak*` and
+   `*.backup*` snapshots of the projected config (`~/.claude`, the workspace `.mcp.json` and
+   `.claude/settings.json`, `~/.codex`, `~/.claude-flow`). It rewrites each file atomically
+   (0600 sibling temp file, fsync, rename), keeps its mode, deletes nothing and is idempotent.
+   It does not and cannot reach copies elsewhere (volume backups taken before the deploy,
+   transcripts, archives of `~/.claude`), so the claim above is about the config the system
+   writes or keeps, not about every byte on every volume: **the password must be rotated after
+   the deploy that introduces this scrub.** Rotation is a manual owner step (new value in the
+   host `.env`, `ALTER ROLE` on the sidecar, restart); no script automates it
+   (`scripts/ruvector-sidecar-update.sh` rotates only the reader role's password). The
+   routing-label recorder posts to the operator-only `POST /v1/agent-events/routing-label`; a
+   task token is refused there.
    **Token scope inside the routes (amendment 3).** A token write to a trajectory is stamped
    with the owning task id in `metadata.task_id` when the trajectory is created, and a token
    write to a trajectory owned by another task, or by the operator (no `task_id`), is `403`
