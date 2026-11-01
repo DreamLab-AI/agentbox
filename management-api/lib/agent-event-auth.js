@@ -136,6 +136,14 @@ function verifyAgentEventRequest(request, deps = {}) {
   const env = deps.env || process.env;
   const policy = deps.policy || resolvePolicy(env);
 
+  // A per-task action token was already verified by the global gate
+  // (middleware/auth.js, confined to emit/batch). It proves a task, not a
+  // Nostr identity, so there is no `did`; reconcileTaskScope() pins the task
+  // and refuses any asserted identity. Honoured under every policy.
+  if (request && request.auth && request.auth.mode === 'task-token') {
+    return { ok: true, did: null, pubkey: null, taskId: request.auth.taskId };
+  }
+
   if (policy === 'off') return { ok: true, did: null, pubkey: null };
   if (policy !== 'nip98') {
     return { ok: false, status: 500, error: `unknown AGENTBOX_AGENT_EVENT_AUTH policy '${policy}'` };
@@ -205,4 +213,26 @@ function reconcileSourceUrn(claimed, verifiedDid) {
   return { ok: true };
 }
 
-module.exports = { verifyAgentEventRequest, reconcileSourceUrn, resolvePolicy, proxyVerifiedPubkey, peerIsProxy };
+/**
+ * Enforce a task-token's scope on one posted action: it may name no other
+ * task and may assert no identity (`source_urn`/`pubkey`), since the token
+ * proves only its own taskId.
+ * @param {string|null} scopeTaskId - `auth.taskId`, null for other credentials.
+ * @param {object} evt - the posted body / batch element.
+ * @returns {{ ok:boolean, status?:number, error?:string }}
+ */
+function reconcileTaskScope(scopeTaskId, evt) {
+  if (!scopeTaskId) return { ok: true };
+  const md = (evt && evt.metadata && typeof evt.metadata === 'object') ? evt.metadata : {};
+  for (const named of [evt && evt.taskId, md.taskId, md.task_id]) {
+    if (named !== undefined && named !== null && named !== scopeTaskId) {
+      return { ok: false, status: 403, error: 'taskId does not match the task action token' };
+    }
+  }
+  if ((evt && (evt.source_urn || evt.pubkey)) || md.source_urn || md.pubkey) {
+    return { ok: false, status: 403, error: 'a task action token cannot assert source_urn or pubkey' };
+  }
+  return { ok: true };
+}
+
+module.exports = { verifyAgentEventRequest, reconcileSourceUrn, reconcileTaskScope, resolvePolicy, proxyVerifiedPubkey, peerIsProxy };

@@ -12,7 +12,7 @@
 const { agentEventPublisher, AgentActionType } = require('../utils/agent-event-publisher');
 // ADR-2026: the durable provenance record the resolver falls back to.
 const { agentEventArchive } = require('../utils/agent-event-archive');
-const { verifyAgentEventRequest, reconcileSourceUrn } = require('../lib/agent-event-auth');
+const { verifyAgentEventRequest, reconcileSourceUrn, reconcileTaskScope } = require('../lib/agent-event-auth');
 const taxonomy = require('../lib/failure-taxonomy');
 const { hashString } = require('../lib/agent-id-hash');
 const { processHookEvent, getRegistryStats } = require('../hooks/agent-action-hooks');
@@ -380,6 +380,11 @@ async function agentEventsRoutes(fastify, options) {
       const tag = taxonomy.tagFailure({ error: auth.error });
       return reply.code(auth.status).send({ success: false, error: auth.error, ...tag });
     }
+    const scope = reconcileTaskScope(auth.taskId || null, body);
+    if (!scope.ok) {
+      const tag = taxonomy.tagFailure({ reason: taxonomy.REASON.IDENTITY_MISMATCH, error: scope.error });
+      return reply.code(scope.status).send({ success: false, error: scope.error, ...tag });
+    }
     const claimed = body.source_urn || (body.metadata && body.metadata.source_urn) || null;
     const rec = reconcileSourceUrn(claimed, auth.did);
     if (!rec.ok) {
@@ -409,7 +414,7 @@ async function agentEventsRoutes(fastify, options) {
       target_node_id: targetId,
       action_type: actionType,
       duration_ms: body.duration_ms || 100,
-      metadata: withTaskId(body.metadata, body.taskId)
+      metadata: withTaskId(body.metadata, auth.taskId || body.taskId)
     };
     // When authenticated, stamp the verified identity so attribution is
     // provable rather than caller-asserted or env-defaulted.
@@ -482,6 +487,16 @@ async function agentEventsRoutes(fastify, options) {
       return reply.code(auth.status).send({ success: false, error: auth.error, ...tag });
     }
 
+    // Task-token scope is checked for the WHOLE batch before anything is
+    // emitted: one foreign taskId or asserted identity rejects every event.
+    for (const eventData of events) {
+      const scope = reconcileTaskScope(auth.taskId || null, eventData);
+      if (!scope.ok) {
+        const tag = taxonomy.tagFailure({ reason: taxonomy.REASON.IDENTITY_MISMATCH, error: scope.error });
+        return reply.code(scope.status).send({ success: false, error: scope.error, ...tag });
+      }
+    }
+
     for (const eventData of events) {
       const claimed = eventData.source_urn
         || (eventData.metadata && eventData.metadata.source_urn) || null;
@@ -514,7 +529,7 @@ async function agentEventsRoutes(fastify, options) {
         target_node_id: targetId,
         action_type: actionType,
         duration_ms: eventData.duration_ms || 100,
-        metadata: withTaskId(eventData.metadata, eventData.taskId)
+        metadata: withTaskId(eventData.metadata, auth.taskId || eventData.taskId)
       };
       if (auth.did) {
         emitPayload.source_urn = auth.did;

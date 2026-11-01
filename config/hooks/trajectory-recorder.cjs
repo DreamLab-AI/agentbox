@@ -143,7 +143,10 @@ function emitCtcStep(body) {
     try {
       const port = Number(process.env.MANAGEMENT_API_PORT || '9090');
       const payload = Buffer.from(JSON.stringify(body), 'utf8');
-      const apiKey = String(process.env.MANAGEMENT_API_KEY || '').trim();
+      // Operator key when present; inside a Management API task the key is
+      // withheld and TASK_ACTION_TOKEN (scoped to TASK_ID, emit/batch only) is
+      // the credential instead.
+      const apiKey = String(process.env.MANAGEMENT_API_KEY || process.env.TASK_ACTION_TOKEN || '').trim();
       const req = http.request({
         host: '127.0.0.1',
         port,

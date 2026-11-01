@@ -3,15 +3,20 @@
 // Emit consultation events to the management API for audit trail.
 // Best-effort: never throws. Uses Bearer token auth with MANAGEMENT_API_KEY.
 const _MGMT_KEY  = process.env.MANAGEMENT_API_KEY  || '';
+// Inside a Management API task the key is withheld; TASK_ACTION_TOKEN (scoped to
+// TASK_ID, emit/batch only) is used instead.
+const _MGMT_TOKEN = process.env.TASK_ACTION_TOKEN || '';
 const _MGMT_PORT = process.env.MANAGEMENT_API_PORT || '9090';
 const _MGMT_BASE = `http://127.0.0.1:${_MGMT_PORT}`;
 
 function _emitConsultEvent(consultant, envelope) {
-  if (!_MGMT_KEY) return;
+  const cred = _MGMT_KEY || _MGMT_TOKEN;
+  if (!cred) return;
   const payload = {
     source_agent_id: envelope.source_urn || `consultant-${consultant}`,
     target_node_id:  envelope.consultation_urn || `consultant-${consultant}-result`,
     action_type:     'query',
+    ...(process.env.TASK_ID ? { taskId: process.env.TASK_ID } : {}),
     duration_ms:     envelope.latency_ms || 0,
     metadata: {
       consultant,
@@ -40,7 +45,7 @@ function _emitConsultEvent(consultant, envelope) {
   }
   fetch(`${_MGMT_BASE}/v1/agent-events/emit`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${_MGMT_KEY}` },
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${cred}` },
     body: JSON.stringify(payload),
   }).catch(() => { /* fire-and-forget */ });
 }
@@ -465,4 +470,4 @@ class BaseConsultant {
   }
 }
 
-module.exports = { BaseConsultant };
+module.exports = { BaseConsultant, };
