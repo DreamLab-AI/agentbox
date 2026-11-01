@@ -84,8 +84,10 @@ describe('hook emitter: taskId on every action of a task', () => {
       hooks.processHookEvent('pre-edit', { agent: 'coder', filePath: '/w/a.js', operation: 'edit' });
       hooks.processHookEvent('action', { source: 'coder', target: 't', action: 'read' });
       hooks.processHookEvent('mystery', { agent: 'coder' });
+      hooks.processHookEvent('pre-task', { agent: 'coder', description: 'd' });
+      hooks.processHookEvent('post-task', { agent: 'coder', success: true });
     });
-    expect(events).toHaveLength(3);
+    expect(events).toHaveLength(5);
     for (const e of events) expect(Object.prototype.hasOwnProperty.call(e.metadata, 'taskId')).toBe(false);
   });
 

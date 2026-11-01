@@ -54,7 +54,9 @@ function taskIdOf(data) {
  */
 function actorId(data, fallbackName) {
   const taskId = taskIdOf(data);
-  return taskId ? getAgentId(taskId) : getAgentId(fallbackName);
+  // hashString directly: a task id is not a named agent, so it never enters the
+  // name registry (which would grow by one entry per task).
+  return taskId ? hashString(taskId) : getAgentId(fallbackName);
 }
 
 /** Stamp the task id onto an action's metadata; no task, no key. */
