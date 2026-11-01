@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: fd395620b90db3bab0d48b3f3265174983ea2cfd
+verified_commit: 29d9277450dc4ac8b9d33f3afc5b7e3ec1ec7b79
 verified_paths: [config/nip98-proxy/proxy.mjs, docs/INGRESS-identity.md]
 owner: jjohare
 review_trigger: A governance upstream stops re-verifying the operator signature, or a new default proxy route is proposed
@@ -167,3 +167,7 @@ The identity addition accepts signed epoch tickets against an explicit group bin
 `INGRESS-identity.md` gained Invariant 12: a per-task action token, a narrow third credential
 on the same gate, accepted only for `POST /v1/agent-events/emit|batch`. The operator Bearer key
 rules here are unchanged (still rejected under `strict-nip98`); the token is not that key.
+
+## Re-verification — 2026-11-01 (ADR-2164 amendment)
+
+`docs/INGRESS-identity.md` changed again (0.2.6): Invariant 12's route list gains `POST /v1/agent-events/trajectory` and a sentence that no database credential reaches a task. The change is confined to Invariant 12 and the changelog/ADR index; the Bearer-behind-NIP-98 rule is unchanged, and the token still never crosses the :9096 proxy. Re-verified by `git diff fd395620b..29d927745 -- docs/INGRESS-identity.md`.

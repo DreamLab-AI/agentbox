@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: fd395620b90db3bab0d48b3f3265174983ea2cfd
+verified_commit: 29d9277450dc4ac8b9d33f3afc5b7e3ec1ec7b79
 verified_paths: [config/nip98-proxy/proxy.mjs, flake.nix, docs/INGRESS-identity.md]
 owner: jjohare
 review_trigger: A second operator identity ingress is proposed, or named-route authentication changes
@@ -398,3 +398,7 @@ Re-verified 2026-10-31 at `b65c3d4ed`. Governed paths changed: `flake.nix`: the 
 
 `INGRESS-identity.md` gained Invariant 12 (per-task action token, management-api gate only).
 The proxy identity boundary described here is unchanged; the token never crosses the :9096 proxy.
+
+## Re-verification — 2026-11-01 (ADR-2164 amendment)
+
+`docs/INGRESS-identity.md` changed again (0.2.6): Invariant 12's route list gains `POST /v1/agent-events/trajectory` and a sentence that no database credential reaches a task. The change is confined to Invariant 12 and the changelog/ADR index; the :9096 proxy identity boundary is unchanged, and the token still never crosses the :9096 proxy. Re-verified by `git diff fd395620b..29d927745 -- docs/INGRESS-identity.md`.
