@@ -45,6 +45,10 @@ case "${1:-}" in
   exec) ;;
   *) exit 0 ;;
 esac
+# the 0600 password file exists only inside the agentbox container, never the postgres one
+case " $* " in
+  *" cat "*) case " $* " in *" agentbox cat "*) printf '%s' "${STUB_PWFILE_PW:-}"; exit 0 ;; *) exit 1 ;; esac ;;
+esac
 stdin=""
 for a in "$@"; do [ "$a" = "-i" ] && stdin=$(cat); done
 [ -n "$stdin" ] && printf 'STDIN:%s\n' "$stdin" >> "$STUB_LOG"
@@ -218,6 +222,12 @@ STUB_VERIFIER="$RFC7677" STUB_OWNER_PW="pencils" run h-vec-bad hba-harden --yes
 _has "$T/h-vec-bad.out" "does NOT verify" && [ "$(rc h-vec-bad)" != 0 ] && _has "$T/h-vec-bad.out" "refusing to remove trust" \
   && ! grep -q 'ARGV: exec -u postgres' "$T/h-vec-bad.log" \
   && _ok "a wrong client password is rejected and pg_hba is never touched" || _bad "RFC 7677 reject" "$(tail -4 "$T/h-vec-bad.out")"
+# S5: the password FILE is read in the agentbox container (where it lives), not the postgres one
+STUB_VERIFIER="$RFC7677" STUB_OWNER_PW="" STUB_PWFILE_PW="pencil" run h-file hba-harden --dry-run
+_has "$T/h-file.out" "agentbox RUVECTOR_PG_PASSWORD_FILE verifies" && ! _has "$T/h-file.out" "pencil" \
+  && grep -q 'ARGV: exec --user 1000 agentbox cat /run/secrets/ruvector-pg/password' "$T/h-file.log" \
+  && ! grep -q 'ruvector-postgres cat' "$T/h-file.log" \
+  && _ok "the client password file is read in the agentbox container and checked (value not printed)" || _bad "password file read side" "$(tail -4 "$T/h-file.out"; grep ' cat ' "$T/h-file.log")"
 STUB_VERIFIER="md5abc" STUB_OWNER_PW="pencil" run h-md5 hba-harden --yes
 [ "$(rc h-md5)" != 0 ] && _has "$T/h-md5.out" "no SCRAM verifier" \
   && _ok "a non-SCRAM owner verifier refuses" || _bad "non-SCRAM refusal" "$(tail -3 "$T/h-md5.out")"

@@ -110,6 +110,9 @@ OVERRIDE_FILE="${REPO_DIR}/docker-compose.override.yml"
 
 SERVICE="ruvector-postgres"
 CONTAINER="ruvector-postgres"
+# The client password file (0600, /run/secrets/ruvector-pg/password) lives in THIS container,
+# not the postgres one: it is where the entrypoint writes it for the clients.
+CLIENT_CONTAINER="${RUVECTOR_CLIENT_CONTAINER:-agentbox}"
 CANDIDATE="ruvector-postgres-candidate"
 HUB_REPO="ruvnet/ruvector-postgres"
 PG_USER="ruvector"
@@ -1655,11 +1658,11 @@ owner_client_passwords() {
     pw=$(docker inspect "$CONTAINER" --format '{{range .Config.Env}}{{println .}}{{end}}' 2>/dev/null \
             | awk -F= '$1=="POSTGRES_PASSWORD"{sub(/^[^=]*=/,""); print; exit}')
     [[ -n "$pw" ]] && printf 'container POSTGRES_PASSWORD\t%s\n' "$pw"
-    # The clients read ONE 0600 file in the container (management-api/lib/pg-config.js);
+    # The clients read ONE 0600 file in the agentbox container (management-api/lib/pg-config.js);
     # .mcp.json carries only its path, never a password.
     pwfile=$(mcp_env_pairs 2>/dev/null | awk -F= '$1=="RUVECTOR_PG_PASSWORD_FILE"{sub(/^[^=]*=/,""); print; exit}' || true)
-    pw=$(docker exec --user 1000 "$CONTAINER" cat "${pwfile:-/run/secrets/ruvector-pg/password}" 2>/dev/null || true)
-    [[ -n "$pw" ]] && printf 'container RUVECTOR_PG_PASSWORD_FILE\t%s\n' "$pw"
+    pw=$(docker exec --user 1000 "$CLIENT_CONTAINER" cat "${pwfile:-/run/secrets/ruvector-pg/password}" 2>/dev/null || true)
+    [[ -n "$pw" ]] && printf '%s RUVECTOR_PG_PASSWORD_FILE\t%s\n' "$CLIENT_CONTAINER" "$pw"
     return 0
 }
 
