@@ -3860,7 +3860,7 @@ let failed = 0;
 // Atomic rewrite: a sibling temp file (0600, same directory), fsync, rename over the
 // original. A kill before the rename leaves the original untouched; the temp file only
 // ever holds the already-scrubbed text, so it never carries the password.
-function atomicWrite(f, data, mode) {
+function atomicWrite(f, data, mode, uid, gid) {
   const tmp = path.join(path.dirname(f), `.${path.basename(f)}.pgscrub.${process.pid}`);
   let fd = null;
   try {
@@ -3868,6 +3868,8 @@ function atomicWrite(f, data, mode) {
     fd = fs.openSync(tmp, 'wx', 0o600);
     fs.writeSync(fd, data);
     fs.fsyncSync(fd);
+    // The rename replaces the inode, so carry the original owner across (this runs as root at boot).
+    if (uid !== undefined) { try { fs.fchownSync(fd, uid, gid); } catch { /* not permitted: keep the writer's owner */ } }
     fs.fchmodSync(fd, mode);
     fs.closeSync(fd); fd = null;
     if (e.PGS_TEST_FAIL_BEFORE_RENAME === '1') throw new Error('injected failure before rename');
@@ -3885,25 +3887,34 @@ function readRegular(f) {
     const st = fs.lstatSync(f);
     if (!st.isFile() || st.size > MAX_BYTES) return null;
     const text = fs.readFileSync(f, 'utf8');
-    return text.includes('\u0000') ? null : { text, mode: st.mode & 0o777 };
+    return text.includes('\u0000') ? null : { text, mode: st.mode & 0o777, uid: st.uid, gid: st.gid };
   } catch { return null; }
 }
-// Text-level removal of the password from one string (hook command, URL, conninfo, raw file text).
+// Text-level removal of the RuVector password from one string (hook command, URL, conninfo, raw
+// file text). Scoped to RuVector's own parts so another database's credentials in the same file
+// (an operator's unrelated MCP server) are left alone.
+const esc = (v) => String(v).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const CONN_ASSIGN = /RUVECTOR_PG_CONNINFO=(?:"[^"]*"|'[^']*'|[^\s"';&|]+)/g;
-const URL_PW = /(postgres(?:ql)?:\/\/[^\s:\/@"']*):[^\s@"']+@/gi;
+const URL_PW = /(postgres(?:ql)?:\/\/)([^\s:\/@"']*):([^\s@"']+)@([^\s\/:?"']+)(:\d+)?(\/[^\s?"']*)?/gi;
 const KV_PW = /[ \t]*\bpassword=(?:'[^']*'|"[^"]*"|[^\s"']+)/gi;
+const RV_KV = new RegExp(`\\b(?:host=${esc(parts.RUVECTOR_PG_HOST)}|user=${esc(parts.RUVECTOR_PG_USER)}|dbname=${esc(parts.RUVECTOR_PG_DATABASE)})(?![\\w.-])`);
 function cleanText(s) {
-  let o = s.replace(CONN_ASSIGN, `RUVECTOR_PG_PASSWORD_FILE=${pwFile}`).replace(URL_PW, '$1@');
-  if (/\b(?:host|dbname)=/.test(o)) o = o.replace(KV_PW, '');
+  let o = s.replace(CONN_ASSIGN, `RUVECTOR_PG_PASSWORD_FILE=${pwFile}`);
+  o = o.replace(URL_PW, (m, pre, user, _pw, host, port, db) => {
+    const dbn = String(db || '').replace(/^\//, '');
+    const ours = host === parts.RUVECTOR_PG_HOST || user === parts.RUVECTOR_PG_USER || dbn === parts.RUVECTOR_PG_DATABASE;
+    return ours ? `${pre}${user}@${host}${port || ''}${db || ''}` : m;
+  });
+  if (RV_KV.test(o)) o = o.replace(KV_PW, '');
   return o;
 }
 // 1. A parsed JSON document (.mcp.json, Claude Code's per-user state and its backups, settings
 //    snapshots): every mcpServers entry whose env holds a conninfo, memory.password, and any string
 //    value (hook commands) carrying a conninfo or credentialled URL. Returns the entries changed.
-function scrubDoc(node, top) {
+function scrubDoc(node, top, isCf) {
   let n = 0;
   if (!node || typeof node !== 'object') return 0;
-  if (top && node.memory && typeof node.memory === 'object' && Object.prototype.hasOwnProperty.call(node.memory, 'password')) {
+  if (top && isCf && node.memory && typeof node.memory === 'object' && Object.prototype.hasOwnProperty.call(node.memory, 'password')) {
     delete node.memory.password; n++;
   }
   for (const [k, v] of Object.entries(node)) {
@@ -3920,7 +3931,7 @@ function scrubDoc(node, top) {
       const c = cleanText(v);
       if (c !== v) { node[k] = c; n++; }
     } else {
-      n += scrubDoc(v, false);
+      n += scrubDoc(v, false, false);
     }
   }
   return n;
@@ -3933,7 +3944,7 @@ function scrubFile(f, forceMode) {
   let n = 0;
   try {
     const j = JSON.parse(r.text);
-    n = scrubDoc(j, true);
+    n = scrubDoc(j, true, f === e.PGS_CF || path.basename(path.dirname(f)) === '.claude-flow');
     if (n) out = JSON.stringify(j, null, 2);
   } catch {
     // TOML (Codex) or unparsable text: the conninfo line becomes the parts + the file path
@@ -3946,7 +3957,7 @@ function scrubFile(f, forceMode) {
     if (t !== r.text) { out = t; n = 1; }
   }
   if (out === null) return;
-  try { atomicWrite(f, out, mode); scrubbed += n; } catch { failed++; }
+  try { atomicWrite(f, out, mode, r.uid, r.gid); scrubbed += n; } catch { failed++; }
 }
 // Live targets
 const live = [e.PGS_MCP_JSON, ...String(e.PGS_CLAUDE_JSON || '').split(':'), e.PGS_CODEX, e.PGS_CF].filter(Boolean);

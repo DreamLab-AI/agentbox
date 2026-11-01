@@ -88,6 +88,37 @@ function run(fx, extra = {}) {
 const snapshot = (dir) => Object.fromEntries(walk(dir).map((f) => [f, [fs.readFileSync(f, 'utf8'), fs.statSync(f).mode & 0o777, fs.statSync(f).mtimeMs]]));
 
 describe('credential scrub: snapshots and atomic writes', () => {
+  test("another database's credentials in the same files are left byte-identical", () => {
+    const fx = fixture();
+    const other = {
+      mcpServers: { pgtool: { command: 'x', env: { DATABASE_URL: 'postgres://app:other-pw-77@db.example.com:5432/app', PG: 'host=db.example.com user=app dbname=app password=other-pw-77' } } },
+      history: ['psql "postgresql://admin:other-pw-77@warehouse.internal/wh"'],
+    };
+    const live = path.join(fx.claude, '.claude.json');
+    const snap = path.join(fx.claude, 'settings.json.pre-other');
+    fs.writeFileSync(live, JSON.stringify({ ...JSON.parse(fs.readFileSync(live, 'utf8')), ...other }, null, 2));
+    fs.writeFileSync(snap, JSON.stringify({ note: other.history, env: other.mcpServers.pgtool.env }, null, 2));
+    run(fx);
+    const j = JSON.parse(fs.readFileSync(live, 'utf8'));
+    expect(j.mcpServers.pgtool).toEqual(other.mcpServers.pgtool);
+    expect(j.history).toEqual(other.history);
+    const s2 = JSON.parse(fs.readFileSync(snap, 'utf8'));
+    expect(s2.note).toEqual(other.history);
+    expect(s2.env).toEqual(other.mcpServers.pgtool.env);
+    // while RuVector's own copies in the same run are scrubbed
+    expect(fs.readFileSync(live, 'utf8')).not.toContain(SECRET);
+    fs.rmSync(fx.home, { recursive: true, force: true });
+  });
+
+  test('the rewrite carries the original owner across the rename (source assertion; the test runs unprivileged)', () => {
+    const body = scrubBody();
+    expect(body).toMatch(/uid: st\.uid, gid: st\.gid/);
+    expect(body).toMatch(/fs\.fchownSync\(fd, uid, gid\)/);
+    expect(body).toMatch(/atomicWrite\(f, out, mode, r\.uid, r\.gid\)/);
+    // fchown must come before the rename so the file is never visible with the wrong owner
+    expect(body.indexOf('fchownSync')).toBeLessThan(body.indexOf('renameSync'));
+  });
+
   test('backups and *.pre-*/*.bak* snapshots are scrubbed, valid, mode-preserving, with no temp left', () => {
     const fx = fixture();
     const r = run(fx);

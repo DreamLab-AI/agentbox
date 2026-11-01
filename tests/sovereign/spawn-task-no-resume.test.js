@@ -75,8 +75,13 @@ describe('spawnTask argv', () => {
     expect(args.filter((a) => RESUME.test(a))).toEqual([]);
   });
 
-  test('agent and provider must be plain identifiers', () => {
-    for (const bad of ['a b', 'a;b', '', 'x\ny']) {
+  test('free-text role labels (the briefing route passes them as agent) stay valid', () => {
+    pm.spawnTask('Product Manager', 'do it', 'gemini');
+    expect(mockCalls[0].args.slice(0, 2)).toEqual(['--agent', 'Product Manager']);
+  });
+
+  test('empty values and control characters are refused', () => {
+    for (const bad of ['', '   ', 'x\ny', 'a\u0000b']) {
       expect(() => pm.spawnTask(bad, 'do it', 'gemini')).toThrow(/Invalid/);
       expect(() => pm.spawnTask('coder', 'do it', bad)).toThrow(/Invalid/);
     }
