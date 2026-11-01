@@ -480,11 +480,7 @@ function loadPg() {
 
 async function fetchRows(since, until) {
   const Pg = loadPg();
-  const kv = {};
-  for (const pair of String(process.env.RUVECTOR_PG_CONNINFO || 'host=ruvector-postgres port=5432 dbname=ruvector user=ruvector password=ruvector').split(/\s+/)) {
-    const i = pair.indexOf('='); if (i > 0) kv[pair.slice(0, i)] = pair.slice(i + 1);
-  }
-  const client = new Pg.Client({ host: kv.host, port: Number(kv.port || 5432), database: kv.dbname, user: kv.user, password: kv.password,
+  const client = new Pg.Client({ ...require(path.join(CHECKOUT, 'management-api/lib/pg-config.js')).pgPoolConfig(),
     connectionTimeoutMillis: 5000, query_timeout: 15000 });
   await client.connect();
   try {

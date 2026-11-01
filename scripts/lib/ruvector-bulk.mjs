@@ -41,23 +41,13 @@ export function loadPg(fail, extraCandidates = []) {
 }
 
 /**
- * Conninfo arrives in either libpq key=value form or postgresql:// URL form.
- * Mirrors ruvector-mcp.cjs.
+ * Pool config for the RuVector sidecar: the RUVECTOR_PG_* parts plus the
+ * password read from $RUVECTOR_PG_PASSWORD_FILE (management-api/lib/pg-config.js
+ * is the only place a connection is assembled; there is no conninfo string).
+ * Throws, naming the file path, when the password file is unusable.
  */
-export function poolConfig(conninfo) {
-  if (/^postgres(ql)?:\/\//.test(conninfo)) return { connectionString: conninfo };
-  const parsed = {};
-  for (const pair of conninfo.split(/\s+/)) {
-    const eq = pair.indexOf('=');
-    if (eq > 0) parsed[pair.slice(0, eq)] = pair.slice(eq + 1);
-  }
-  return {
-    host: parsed.host || 'ruvector-postgres',
-    port: parseInt(parsed.port || '5432', 10),
-    database: parsed.dbname || parsed.database || 'ruvector',
-    user: parsed.user || parsed.username || 'ruvector',
-    password: parsed.password || 'ruvector',
-  };
+export function poolConfig() {
+  return createRequire(import.meta.url)('../../management-api/lib/pg-config.js').pgPoolConfig();
 }
 
 /** Minimal JSON-over-HTTP(S) client. */

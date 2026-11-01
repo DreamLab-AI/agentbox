@@ -88,9 +88,9 @@ Restore automatically:
 **Compose file selection matters here.** `cmd_restore` always builds its
 compose invocation from `COMPOSE_ARGS`, which includes
 `docker-compose.override.yml` whenever that file is present — the override is
-where `RUVECTOR_PG_CONNINFO` / `RUVECTOR_PG_PASSWORD` normally live. A bare
-`docker compose -f docker-compose.yml up` (skipping the override) would
-silently downgrade the memory sidecar connection to the default password.
+where the required `RUVECTOR_PG_PASSWORD` is passed to the agentbox service. A bare
+`docker compose -f docker-compose.yml up` (skipping the override) would leave it
+unset, and the memory clients would fail closed (there is no default password).
 Operational rule: always bring the stack up with the override file in play —
 `./agentbox.sh up` / `restore` already do this for you; don't hand-roll a
 `docker compose` invocation that drops it.

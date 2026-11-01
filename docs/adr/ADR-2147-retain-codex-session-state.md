@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 75378856483d13f952569018421c4526da0aede2
+verified_commit: cc949bb79c9ac89858d01c1235dd3bca6e2226a2
 verified_paths: [flake.nix, docker-compose.yml, docker-compose.override.yml, scripts/migrate-codex-home.sh, tests/config/compose-persistence.test.cjs]
 owner: jjohare
 review_trigger: changes to Codex home mounts, session retention, or the migration procedure
@@ -108,3 +108,12 @@ Re-verified 2026-10-29 at `00039efb1e4a70402df86ad19cf76894fe3b9a8f` for ADR-215
 Implementation axis and `verified_commit` are unchanged.
 
 Re-verified 2026-10-31 at `b65c3d4ed`. Governed paths changed: `flake.nix`: the ontomark comment now names the verbs it owns (`4a07fbfb3`). No section this record governs changed; the decision holds. Re-verified by `git diff 358e5d32c..b65c3d4ed -- <verified_paths>`; no re-implementation was needed. The image carries it at the next rebuild.
+
+## Re-verification — 2026-11-01 (`cc949bb79`)
+
+Governed-path delta since `753788564` is the RuVector Postgres credential custody change (ADR-2164 amendment 2), nothing else:
+
+- `docker-compose.override.yml`: drops the injected `RUVECTOR_PG_CONNINFO`; `RUVECTOR_PG_PASSWORD` becomes required (`:?`, no default).
+- `flake.nix`: removes the claude-flow config template (`claudeFlowConfigJson` and its `cp`) and the baked `RUVECTOR_PG_CONNINFO` image Env entry, and rewords one dream-engine supervisor comment.
+
+Nothing this record decides is changed; its status axes are unchanged. Re-run: `git diff 753788564..cc949bb79 -- docker-compose.override.yml flake.nix`.

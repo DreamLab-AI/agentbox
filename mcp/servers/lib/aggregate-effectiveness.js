@@ -360,19 +360,8 @@ function printTable(rows, minSamples, halfLife) {
 // ── pg pool (shared by run + status) ────────────────────────────────────────────
 function makePool() {
   const Pg = loadPg();
-  const conninfo = process.env.RUVECTOR_PG_CONNINFO ||
-    'host=ruvector-postgres port=5432 dbname=ruvector user=ruvector password=ruvector';
-  const parsed = {};
-  for (const pair of conninfo.split(/\s+/)) {
-    const eq = pair.indexOf('=');
-    if (eq > 0) parsed[pair.slice(0, eq)] = pair.slice(eq + 1);
-  }
   return new Pg.Pool({
-    host: parsed.host || 'ruvector-postgres',
-    port: parseInt(parsed.port || '5432', 10),
-    database: parsed.dbname || parsed.database || 'ruvector',
-    user: parsed.user || parsed.username || 'ruvector',
-    password: parsed.password || 'ruvector',
+    ...require('../../../management-api/lib/pg-config').pgPoolConfig(),
     max: 4,
     idleTimeoutMillis: 10000,
     connectionTimeoutMillis: 5000,

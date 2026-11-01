@@ -96,6 +96,7 @@ import { dirname, resolve, join } from 'node:path';
 import { readFileSync, existsSync } from 'node:fs';
 import http from 'node:http';
 import crypto from 'node:crypto';
+const { pgPoolConfig } = createRequire(import.meta.url)('../management-api/lib/pg-config.js');
 
 const require = createRequire(import.meta.url);
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -180,19 +181,8 @@ function loadPg() {
 }
 function makePool() {
   const Pg = loadPg();
-  const conninfo = process.env.RUVECTOR_PG_CONNINFO ||
-    'host=ruvector-postgres port=5432 dbname=ruvector user=ruvector password=ruvector';
-  const parsed = {};
-  for (const pair of conninfo.split(/\s+/)) {
-    const eq = pair.indexOf('=');
-    if (eq > 0) parsed[pair.slice(0, eq)] = pair.slice(eq + 1);
-  }
   return new Pg.Pool({
-    host: parsed.host || 'ruvector-postgres',
-    port: parseInt(parsed.port || '5432', 10),
-    database: parsed.dbname || parsed.database || 'ruvector',
-    user: parsed.user || parsed.username || 'ruvector',
-    password: parsed.password || 'ruvector',
+    ...pgPoolConfig(),
     max: 3,
     idleTimeoutMillis: 10000,
     connectionTimeoutMillis: 5000,

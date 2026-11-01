@@ -16,6 +16,7 @@
 jest.mock('../../management-api/lib/agent-event-auth', () => ({
   verifyAgentEventRequest: jest.fn(),
   reconcileSourceUrn: jest.fn(),
+  reconcileTaskScope: jest.fn(() => ({ ok: true })), // task-token scope (ADR-2164); not exercised here
 }));
 
 const auth = require('../../management-api/lib/agent-event-auth');

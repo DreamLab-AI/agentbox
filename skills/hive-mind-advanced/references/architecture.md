@@ -33,7 +33,7 @@ coordination model in Claude Flow.
 
 **RuVector PostgreSQL Backend**:
 ```bash
-# Connection (auto-configured via RUVECTOR_PG_CONNINFO)
+# Connection (auto-configured via RUVECTOR_PG_HOST/PORT/DATABASE/USER + RUVECTOR_PG_PASSWORD_FILE)
 host=ruvector-postgres port=5432 user=ruvector database=ruvector
 
 # Hive memory tables: memory_entries (1.17M+), consensus, session_state

@@ -14,7 +14,7 @@ use dream_core::source::{Denylist, SourceConfig};
 
 use crate::config::{self, RuntimeConfig};
 use crate::llm::{LlmConfig, Provider};
-use crate::ruvector::RuVectorConfig;
+use crate::ruvector::{PgTarget, RuVectorConfig};
 
 /// The global `/dream off` kill-switch file. `DREAM_PAUSE_FLAG` overrides it
 /// (hermetic runs).
@@ -155,16 +155,36 @@ pub fn fallback_llm_config(rt: &RuntimeConfig, primary: &LlmConfig) -> Option<Ll
     }
 }
 
-/// Build the RuVector config from environment (conninfo or URL form).
+/// The first non-empty value of `key` in `env`, else `default`.
+fn env_or(env: &dyn Fn(&str) -> Option<String>, key: &str, default: &str) -> String {
+    env(key)
+        .map(|v| v.trim().to_string())
+        .filter(|v| !v.is_empty())
+        .unwrap_or_else(|| default.to_string())
+}
+
+/// The RuVector sidecar address from `RUVECTOR_PG_HOST/PORT/DATABASE/USER` and
+/// the path in `RUVECTOR_PG_PASSWORD_FILE`. No password and no conninfo or URL
+/// string is read from the environment; the same file the Node clients read
+/// (`management-api/lib/pg-config.js`) is the only credential source.
+pub fn pg_target_from(env: &dyn Fn(&str) -> Option<String>) -> PgTarget {
+    PgTarget {
+        host: env_or(env, "RUVECTOR_PG_HOST", "ruvector-postgres"),
+        port: env_or(env, "RUVECTOR_PG_PORT", "5432").parse().unwrap_or(5432),
+        database: env_or(env, "RUVECTOR_PG_DATABASE", "ruvector"),
+        user: env_or(env, "RUVECTOR_PG_USER", "ruvector"),
+        password_file: env_or(
+            env,
+            "RUVECTOR_PG_PASSWORD_FILE",
+            "/run/secrets/ruvector-pg/password",
+        ),
+    }
+}
+
+/// Build the RuVector config from the environment (public parts + password file).
 pub fn ruvector_config(rt: &RuntimeConfig) -> RuVectorConfig {
-    let pg_url = std::env::var("RUVECTOR_PG_URL").unwrap_or_else(|_| {
-        match std::env::var("RUVECTOR_PG_CONNINFO") {
-            Ok(ci) => conninfo_to_url(&ci),
-            Err(_) => "postgres://ruvector:ruvector@ruvector-postgres:5432/ruvector".into(),
-        }
-    });
     RuVectorConfig {
-        pg_url,
+        pg: pg_target_from(&|k| std::env::var(k).ok()),
         xinference_url: xinference_url_from_env(),
         namespace: rt.memory_namespace.clone(),
     }
@@ -181,28 +201,6 @@ fn xinference_url_from_env() -> String {
         .map(|v| v.trim().to_string())
         .find(|v| !v.is_empty())
         .unwrap_or_else(|| "http://xinference:9997".into())
-}
-
-/// Convert libpq-style "host=h port=p dbname=d user=u password=w" into a URL.
-fn conninfo_to_url(conninfo: &str) -> String {
-    let mut host = "ruvector-postgres";
-    let mut port = "5432";
-    let mut db = "ruvector";
-    let mut user = "ruvector";
-    let mut pass = "ruvector";
-    for part in conninfo.split_whitespace() {
-        if let Some((k, v)) = part.split_once('=') {
-            match k {
-                "host" => host = v,
-                "port" => port = v,
-                "dbname" => db = v,
-                "user" => user = v,
-                "password" => pass = v,
-                _ => {}
-            }
-        }
-    }
-    format!("postgres://{}:{}@{}:{}/{}", user, pass, host, port, db)
 }
 
 #[cfg(test)]
@@ -229,18 +227,42 @@ mod tests {
     }
 
     #[test]
-    fn conninfo_conversion() {
-        let url = conninfo_to_url("host=db port=5433 dbname=mydb user=me password=secret");
-        assert_eq!(url, "postgres://me:secret@db:5433/mydb");
+    fn pg_target_reads_the_parts_and_the_password_file_path() {
+        let env = |k: &str| match k {
+            "RUVECTOR_PG_HOST" => Some("db".to_string()),
+            "RUVECTOR_PG_PORT" => Some("5433".to_string()),
+            "RUVECTOR_PG_DATABASE" => Some("mydb".to_string()),
+            "RUVECTOR_PG_USER" => Some("me".to_string()),
+            "RUVECTOR_PG_PASSWORD_FILE" => Some("/x/pw".to_string()),
+            // Retired inputs are never consulted.
+            "RUVECTOR_PG_CONNINFO" | "RUVECTOR_PG_URL" | "RUVECTOR_PG_PASSWORD" => {
+                Some("host=evil password=nope".to_string())
+            }
+            _ => None,
+        };
+        let t = pg_target_from(&env);
+        assert_eq!(
+            (t.host.as_str(), t.port, t.database.as_str(), t.user.as_str(), t.password_file.as_str()),
+            ("db", 5433, "mydb", "me", "/x/pw")
+        );
     }
 
     #[test]
-    fn conninfo_defaults() {
-        let url = conninfo_to_url("");
-        assert_eq!(
-            url,
-            "postgres://ruvector:ruvector@ruvector-postgres:5432/ruvector"
-        );
+    fn pg_target_defaults_name_the_service_and_the_one_file_never_a_password() {
+        let t = pg_target_from(&|_| None);
+        assert_eq!(t.host, "ruvector-postgres");
+        assert_eq!(t.port, 5432);
+        assert_eq!(t.password_file, "/run/secrets/ruvector-pg/password");
+    }
+
+    #[test]
+    fn a_missing_password_file_fails_closed_naming_the_path() {
+        let t = PgTarget {
+            password_file: "/nonexistent/ruvector-pg/password".into(),
+            ..pg_target_from(&|_| None)
+        };
+        let err = t.connect_options().unwrap_err().to_string();
+        assert!(err.contains("/nonexistent/ruvector-pg/password"), "{err}");
     }
 
     #[test]

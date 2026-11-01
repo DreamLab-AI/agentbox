@@ -182,13 +182,9 @@
         "exception": "Q8 (queen 2026-10-03, pending owner): provider and devuser credentials stay in devuser's environment this step",
         "reason": "Postgres credential; RuVector clients run as devuser."
       },
-      "RUVECTOR_PG_CONNINFO": {
-        "exception": "Q8 (queen 2026-10-03, pending owner): provider and devuser credentials stay in devuser's environment this step",
-        "reason": "RuVector Postgres connection string (carries the password); dream-engine and memory tools."
-      },
       "RUVECTOR_PG_PASSWORD": {
         "exception": "Q8 (queen 2026-10-03, pending owner): provider and devuser credentials stay in devuser's environment this step",
-        "reason": "RuVector Postgres password; memory tools run as devuser."
+        "reason": "RuVector Postgres password. It enters PID 1 once (compose, required, no default); the entrypoint writes it to the 0600 file named by RUVECTOR_PG_PASSWORD_FILE and unsets it before any child starts, so no task or tool inherits it. Every client reads the file (management-api/lib/pg-config.js)."
       },
       "SOLID_ADMIN_KEY": {
         "exception": "Q8 (queen 2026-10-03, pending owner): provider and devuser credentials stay in devuser's environment this step",
@@ -237,10 +233,6 @@
       "_CS_PASSWORD": {
         "exception": "Q8 (queen 2026-10-03, pending owner): provider and devuser credentials stay in devuser's environment this step",
         "reason": "Entrypoint-local copy of the code-server password; written to its 0600 devuser config, never exported."
-      },
-      "_PG_PW_ESC": {
-        "exception": "Q8 (queen 2026-10-03, pending owner): provider and devuser credentials stay in devuser's environment this step",
-        "reason": "Entrypoint-local escaped copy of RUVECTOR_PG_PASSWORD for a template; never exported."
       }
     },
     "NON_SECRET": {
@@ -641,6 +633,11 @@
         "RUVECTOR_ADMIN_WRITE",
         "RUVECTOR_DATA_DIR",
         "RUVECTOR_HYBRID_FUSION",
+        "RUVECTOR_PG_DATABASE",
+        "RUVECTOR_PG_HOST",
+        "RUVECTOR_PG_PASSWORD_FILE",
+        "RUVECTOR_PG_PORT",
+        "RUVECTOR_PG_USER",
         "RUVECTOR_PORT",
         "RUVECTOR_USE_EXTERNAL",
         "RUVNET_BRAIN_AUTO_INGEST",
@@ -683,6 +680,7 @@
         "STAGE_B_MODE",
         "SYSTEMONE_GPU",
         "TAILSCALE_AUTHKEY_FILE",
+        "TASK_ACTION_TOKEN_TTL_MS",
         "TERM",
         "TMPDIR",
         "TREAT_AS_SECURE",
@@ -899,6 +897,8 @@
         "_SO_JSON",
         "_SO_ON",
         "_SO_PROJECTION",
+        "_SR_BYPASS",
+        "_SR_BYPASS_EXPORT",
         "_SR_CASCADE",
         "_SR_CASCADE_CUTOFF",
         "_SR_CASCADE_EXPORTS",

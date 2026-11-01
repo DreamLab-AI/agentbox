@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: 2f15c531b02b8f8393d68d29ce3491712bdd862c
+verified_commit: 4f3bd5325eb56b582d1220bc9b0a0b79e918fdae
 verified_paths: [config/hooks/activity-sink.cjs, config/entrypoint-unified.sh, services/agentbox-manifest/src/stacks.rs, services/agentbox-manifest/src/stacks_env.rs, tests/config/activity-sink.test.js, config/egress-policy.json]
 owner: jjohare
 review_trigger: a second consumer of the sink, a change to the wire body, a new event or tool class, moving the token under role isolation (ADR-2122), or any change to the ADR-2026 redactor
@@ -116,3 +116,21 @@ Re-verified 2026-10-31 at `b65c3d4ed`. Governed paths changed: `config/entrypoin
 Re-verified 2026-10-31 at `97f298db5`: the only delta on this record's governed paths since the previous verification is the sprint-W7 additive work (ADR-2139 Decision 5 `state_budget_tokens`; ADR-2090 `bypass_projects`): new optional keys that default to today's behaviour, in config/egress-policy.json, config/entrypoint-unified.sh. None of it touches this record's decision. Re-verified by `git diff b65c3d4ed..97f298db5 -- <governed paths>`; status axes unchanged.
 
 Re-verified 2026-10-31 at `2f15c531b02b8f8393d68d29ce3491712bdd862c` (W7 and W8 integration, `adr-sprint/w78`). Governed-path delta since `97f298db5`: `config/egress-policy.json`: the `skill-router` row's `notes` only, now saying the bypass stops the skill router and not factrail or jev-checkpoints (ADR-2090); `config/entrypoint-unified.sh`: one line, the `system-one-project --format json` call no longer discards stderr, so a refused slot's reason reaches the boot log (zero bytes on the shipped manifest, checked; the call is still `|| true`, so boot behaviour is unchanged). Read from the diff and checked against the merged tree's gates (cargo, jest, validator); nothing it changes is a key, table or code path this record decides, so the decision and status axes are unchanged. Re-run: `git diff 97f298db5..2f15c531b -- config/egress-policy.json config/entrypoint-unified.sh`.
+
+## Re-verification — 2026-11-01 (ADR-2164 amendment)
+
+Governed path `config/entrypoint-unified.sh` changed since `2f15c531b`: two hunks (`git diff 2f15c531b..e1893e236 -- config/entrypoint-unified.sh`), both inside the trajectory-recorder hook registration block (its comment, the removed `TRAJ_CONNINFO` input, the `pfx` prefix and the command join), which stops inlining the database conninfo and the learning gates into the registered command. Nothing else in the file changed in that range. This record's claims do not concern that block (matches for trajectory/TRAJ_/RUVECTOR_PG_CONNINFO in it: 2, none about the registration). Its line about the recorder's emit publisher being gated behind the learning flags still holds in effect: the hook is registered only when those flags are on; the gate is now the registration rather than an inline env prefix. Decision unchanged; `verified_commit` bumped.
+
+## Re-verification — 2026-11-01 (`cc949bb79`)
+
+Governed-path delta since `e1893e236` is the RuVector Postgres credential custody change (ADR-2164 amendment 2), nothing else:
+
+- `config/entrypoint-unified.sh`: adds `_ab_pg_credential_prepare` and the credential-scrub block, replaces every `RUVECTOR_PG_CONNINFO` site (`.mcp.json`, Codex, ingest command line, runtime-env export, routing-label hook command) with the parts and the password-file path, and removes the claude-flow template copy.
+
+Nothing this record decides is changed; its status axes are unchanged. Re-run: `git diff e1893e236..cc949bb79 -- config/entrypoint-unified.sh`.
+
+Re-stamped again at `09067b095`: the one further change to `config/entrypoint-unified.sh` since `cc949bb79` extends the credential-scrub block so it also walks every `mcpServers` object in Claude Code's per-user state (`~/.claude/.claude.json`, `~/.claude.json`), where the resolved MCP config is cached. Nothing this record decides is changed. Re-run: `git diff cc949bb79..09067b095 -- config/entrypoint-unified.sh`.
+
+## Re-verification — 2026-11-01 (`4f3bd5325`)
+
+Governed-path delta since `09067b095`: `config/entrypoint-unified.sh`: the credential-scrub block (`PGSCRUB_MARKER`) now also rewrites Claude Code's backups and the `*.pre-*`/`*.bak*` snapshots of the projected config, writes atomically (sibling temp file, fsync, rename) keeping owner and mode, and scopes its text rules to RuVector's own values (ADR-2164 amendment 4). This record's decision does not concern these changes. Decision unchanged; `verified_commit` bumped. Re-run: `git diff 09067b095..4f3bd5325 -- config/entrypoint-unified.sh`.

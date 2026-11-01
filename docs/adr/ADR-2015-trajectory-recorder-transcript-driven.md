@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 21769a881315a246afaa6e9d0b39daf4ec39b5bc
+verified_commit: e1893e23684b831bae909bfbd5209a548ed87533
 verified_paths: [config/hooks/trajectory-recorder.cjs, config/hooks/lib/trajectory-util.cjs]
 owner: jjohare
 review_trigger: A Claude Code build lands where a successful Bash tool_response carries an exit code, or the redaction pattern set changes
@@ -151,3 +151,24 @@ shown to deduplicate on `usage_id` — the dashboard is not in this repo. The
 failure-source census stays open: skipped and ungradeable results, non-Bash work,
 crash-before-Stop and the QE fleet are still outside any denominator.
 `implementation_status` remains `partial`.
+
+## Task identity extension — 2026-11-01
+
+One real task shows as one agent body. `spawnTask` (`management-api/utils/process-manager.js`) mints the task's id and exports it to the child as `TASK_ID`; that is the only task id. Every agent action emitted for a task now carries it as `metadata.taskId`: the `/v1/agent-events/hook` emitter (`management-api/hooks/agent-action-hooks.js`) stamps it on every hook, not only `pre-task`/`post-task`, and sources the action from that id so concurrent tasks never share a body; `/emit` and `/batch` accept a top-level `taskId` and stamp it; the trajectory recorder forwards `TASK_ID` from its environment. The consultant audit event is not changed: it returns early without `MANAGEMENT_API_KEY`, which the task environment does not export. An action with no task carries no `taskId` key. The per-name counter behind `getAgentId` was only a stand-in identity and is replaced by the deterministic `lib/agent-id-hash.js` mapping the `/emit` path already used, so one name yields one id on every path. Tests: `tests/sovereign/task-id-on-every-action.test.js`. A hook reporter that sends no `taskId` is still unattributed to a task; it is the reporter's job to send it. Open: `spawnTask`'s child environment exports `TASK_ID` but not `MANAGEMENT_API_KEY`, and the emit route has no loopback exemption, so the recorder's in-task POST is only accepted where `AGENTBOX_AGENT_EVENT_AUTH`/the management-API auth gate allows it; granting a task the key is a separate security decision.
+
+## Re-verification — 2026-11-01 (ADR-2164)
+
+The recorder's CTC emit now falls back to `TASK_ACTION_TOKEN` as its Bearer credential when
+`MANAGEMENT_API_KEY` is absent (a Management API task never receives the key). No change to
+what is recorded. `tests/sovereign/task-action-token-callers.test.js` covers it.
+
+## Persistence extension — 2026-11-01 (ADR-2164 amendment)
+
+The recorder no longer writes Postgres. It computes the same rows (ids, `step_order`, result JSON, cumulative rollup from the stash) and POSTs them to `POST /v1/agent-events/trajectory`; `management-api/lib/trajectory-store.js` runs the same parameterised statements in one transaction through the memory adapter's pool. What is recorded is unchanged; where the SQL runs is not.
+
+Three statements above are superseded:
+- **"Default-off: silent `exit 0` unless BOTH `RUVECTOR_MEMORY_LEARNING_ENABLED` and `RUVECTOR_RECORD_TRAJECTORIES`…"** The env gate is gone. Enablement is registration: the entrypoint registers the hook only when `[memory_learning]` `enabled` and `record_trajectories` are both true and de-registers it otherwise, so a gate-off manifest still never runs it.
+- **The watermark invariant** now reads: the watermark and the quality counters advance only on a 2xx from the API. A missing credential, an unreachable API, a 401 or a 500 leave them where they were and the lines are retried (the missing-`pg`-module and connection-failure cases of the closeout became "no credential" and "API unreachable", with the same assertions). When the persist fails only the already-queued CTC backlog is drained; this run's CTC bodies are rebuilt on the retry, so they are not emitted twice.
+- **"parameterised INSERTs, `trajectory-recorder.cjs:386-424`" and the `duration_ms` column probe at `:251-261`** moved to `management-api/lib/trajectory-store.js` (`persistTrajectory`, `hasDurationColumn`). The recorder sends `duration_ms` per step; the API puts it in the column, or in `result.duration_ms` when the table has none, exactly as before.
+
+`implementation_status` stays `partial` for the same reasons as the closeout. Evidence: `tests/sovereign/task-trajectory-ingest.test.js`, `tests/sovereign/task-trajectory-env.test.js`, the watermark cases in `tests/sovereign/learning-evidence-closeout.test.js`.

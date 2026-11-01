@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 75378856483d13f952569018421c4526da0aede2
+verified_commit: 4f3bd5325eb56b582d1220bc9b0a0b79e918fdae
 verified_paths: [config/nip98-proxy/proxy.mjs, flake.nix, docs/INGRESS-identity.md]
 owner: jjohare
 review_trigger: A second operator identity ingress is proposed, or named-route authentication changes
@@ -393,3 +393,29 @@ Claims re-read at HEAD: `flake.nix:2914` ("only IDENTITY ingress") and `:2921` (
 Re-verified 2026-10-29 at `00039efb1e4a70402df86ad19cf76894fe3b9a8f` for ADR-2155. Reviewed the typed-decision activation diff against this record: the changed manifest, bootstrap, catalogue or source-pin hunks do not alter its governing boundary. Existing status axes and runtime evidence limits are retained. No image or service activation is claimed.
 
 Re-verified 2026-10-31 at `b65c3d4ed`. Governed paths changed: `flake.nix`: the ontomark comment now names the verbs it owns (`4a07fbfb3`). No section this record governs changed; the decision holds. Re-verified by `git diff 358e5d32c..b65c3d4ed -- <verified_paths>`; no re-implementation was needed. The image carries it at the next rebuild.
+
+## Re-verification — 2026-11-01 (ADR-2164)
+
+`INGRESS-identity.md` gained Invariant 12 (per-task action token, management-api gate only).
+The proxy identity boundary described here is unchanged; the token never crosses the :9096 proxy.
+
+## Re-verification — 2026-11-01 (ADR-2164 amendment)
+
+`docs/INGRESS-identity.md` changed again (0.2.6): Invariant 12's route list gains `POST /v1/agent-events/trajectory` and a sentence that no database credential reaches a task. The change is confined to Invariant 12 and the changelog/ADR index; the :9096 proxy identity boundary is unchanged, and the token still never crosses the :9096 proxy. Re-verified by `git diff fd395620b..29d927745 -- docs/INGRESS-identity.md`.
+
+## Re-verification — 2026-11-01 (`cc949bb79`)
+
+Governed-path delta since `29d927745` is the RuVector Postgres credential custody change (ADR-2164 amendment 2), nothing else:
+
+- `docs/INGRESS-identity.md`: version 0.2.7: invariant 12 gains the one-database-credential-source sentence and the routing-label route.
+- `flake.nix`: removes the claude-flow config template (`claudeFlowConfigJson` and its `cp`) and the baked `RUVECTOR_PG_CONNINFO` image Env entry, and rewords one dream-engine supervisor comment.
+
+Nothing this record decides is changed; its status axes are unchanged. Re-run: `git diff 29d927745..cc949bb79 -- docs/INGRESS-identity.md flake.nix`.
+
+## Re-verification — 2026-11-01 (`3d717c40f`)
+
+`docs/INGRESS-identity.md` changed since `cc949bb79` only in ADR-2164 amendment 3: version 0.2.8, one changelog line, and the Invariant 12 sentences on token scope inside the routes and the same-UID limit (`git diff cc949bb79..3d717c40f -- docs/INGRESS-identity.md`). This record's decision does not concern Invariant 12. Decision unchanged; `verified_commit` bumped.
+
+## Re-verification — 2026-11-01 (`4f3bd5325`)
+
+Governed-path delta since `3d717c40f`: `docs/INGRESS-identity.md`: version 0.2.9, one changelog line, and the Invariant 12 credential sentences (what the scrub removes, and the post-deploy password rotation) (ADR-2164 amendment 4). This record's decision does not concern these changes. Decision unchanged; `verified_commit` bumped. Re-run: `git diff 3d717c40f..4f3bd5325 -- docs/INGRESS-identity.md`.

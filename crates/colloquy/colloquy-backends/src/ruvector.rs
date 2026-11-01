@@ -33,7 +33,7 @@ impl RuvectorBackend {
     /// Spawn the governed memory server.
     ///
     /// `env` should carry the same `RUVECTOR_*` variables the manifest projects
-    /// into `.mcp.json` — `RUVECTOR_PG_CONNINFO`, `XINFERENCE_ENDPOINT`,
+    /// into `.mcp.json` — `RUVECTOR_PG_HOST`/`PORT`/`DATABASE`/`USER`/`PASSWORD_FILE`, `XINFERENCE_ENDPOINT`,
     /// `EMBEDDING_MODEL`, `NODE_PATH`. They are applied over the inherited
     /// environment, so a supervised process that already has them can pass an
     /// empty slice.

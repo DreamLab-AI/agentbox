@@ -67,6 +67,8 @@
  * ---------------------------------------------------------------------------
  */
 
+const { AdapterDisabled } = require('./errors');
+
 const DEFAULT_CONNECT_TIMEOUT_MS = 10000;
 
 // Slots whose failure to connect must abort startup rather than degrade.
@@ -166,6 +168,21 @@ function quarantineAdapter(adapter, slot, reason) {
   return adapter;
 }
 
+
+/**
+ * Make a degraded stand-in refuse dispatch(). The `off` adapters for beads, pods and
+ * memory already throw on every method; the events `off` adapter deliberately no-ops
+ * dispatch for a slot the operator configured off, which for a slot that FAILED would
+ * accept the write and drop it while the authority journal reports it persisted.
+ */
+function refuseDispatch(adapter, slot) {
+  if (!adapter || typeof adapter.dispatch !== 'function') return;
+  Object.defineProperty(adapter, 'dispatch', {
+    value: async function degradedDispatch() { throw new AdapterDisabled(slot); },
+    writable: true, configurable: true, enumerable: false,
+  });
+}
+
 /**
  * Connect one slot under its own deadline.
  *
@@ -255,7 +272,12 @@ async function connectAdapters(opts) {
 
     const failureMode = outcome.settled === 'timeout' ? 'timeout' : 'rejected';
     const reason = outcome.error ? outcome.error.message : 'connect failed';
-    const record = { slot, impl, state: 'unavailable', reason, timeoutMs, durationMs, failureMode, lateSettle: null };
+    // `reason` is the full error text: it goes to the server log and stays on this internal
+    // record. /health publishes only `failure` (a fixed class) and `file` (a configured path).
+    const failure = adapter._configError !== undefined ? 'config-failed'
+      : (failureMode === 'timeout' ? 'connect-timeout' : 'connect-failed');
+    const file = failure === 'config-failed' && typeof adapter._configFile === 'string' ? adapter._configFile : null;
+    const record = { slot, impl, state: 'unavailable', reason, failure, file, timeoutMs, durationMs, failureMode, lateSettle: null };
     readiness[slot] = record;
 
     // A slot that timed out is still running somewhere. Record what it does
@@ -284,6 +306,10 @@ async function connectAdapters(opts) {
     try {
       const offSlot = resolveOff(slot);
       if (!offSlot) throw new Error('resolveOff returned nothing');
+      // A DEGRADED slot must never accept a write and discard it. A slot configured
+      // `off` may no-op dispatch (ADR-005), but this stand-in replaces a slot that was
+      // meant to work, so its dispatch refuses (the events off adapter returns null).
+      refuseDispatch(offSlot, slot);
       offSlot._implName = 'off';
       offSlot._slot = slot;
       adapters[slot] = offSlot;
@@ -329,7 +355,41 @@ function toLegacyHealth(readiness) {
   return out;
 }
 
+/**
+ * Why each non-ready slot is down, for /health: `{ slot: class }` where class is one of
+ * `config-failed`, `connect-timeout`, `connect-failed`. Deliberately NOT the error text:
+ * /health is unauthenticated, and a driver or URL error can carry hostnames, paths or
+ * tokens. The full reason is in the server log (connectAdapters) and on the readiness
+ * record.
+ *
+ * @param {object} readiness - the map connectAdapters() returned
+ * @returns {Object<string,string>}
+ */
+function failureReasons(readiness) {
+  const out = {};
+  for (const [slot, r] of Object.entries(readiness || {})) {
+    if (r.state !== 'ready' && r.state !== 'off') out[slot] = r.failure || 'connect-failed';
+  }
+  return out;
+}
+
+/**
+ * The configured file at fault for each `config-failed` slot (a path, never a value).
+ *
+ * @param {object} readiness
+ * @returns {Object<string,string>}
+ */
+function failureFiles(readiness) {
+  const out = {};
+  for (const [slot, r] of Object.entries(readiness || {})) {
+    if (r.state !== 'ready' && r.state !== 'off' && typeof r.file === 'string' && r.file) out[slot] = r.file;
+  }
+  return out;
+}
+
 module.exports = {
+  failureReasons,
+  failureFiles,
   connectAdapters,
   connectTimeoutFor,
   quarantineAdapter,

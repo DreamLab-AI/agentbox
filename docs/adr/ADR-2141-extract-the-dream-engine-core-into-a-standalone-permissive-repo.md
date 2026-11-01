@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 21769a881315a246afaa6e9d0b39daf4ec39b5bc
+verified_commit: cc949bb79c9ac89858d01c1235dd3bca6e2226a2
 verified_paths: [services/dream-engine/Cargo.toml, services/dream-engine/Cargo.lock, lib/dream-engine.nix, services/dream-engine/src/engine.rs, services/dream-engine/tests/night_e2e.rs]
 owner: jjohare
 review_trigger: the image rebuild activates the registry-pinned crates, a new release of dream-core or dream-gate is adopted, or any new module is added under services/dream-engine/src that is not estate-specific
@@ -53,3 +53,12 @@ Both review triggers fired. **Release:** the pin moved to `dream-core = "=0.2.0"
 ## Re-verification — 2026-10-23 (0.3.0 adopted; the Pinning bullet is superseded in fact)
 
 The review trigger "a new release of dream-core or dream-gate is adopted" fired again. `services/dream-engine/Cargo.toml` now pins `dream-core = "=0.3.0"` and `dream-gate = "=0.3.0"` (registry checksums in `Cargo.lock`; two transitive `thiserror` edges move to 1.0.69). The **Pinning** bullet in the Decision names `=0.2.0` and is therefore out of date as a statement of the current pin; it is left as written because it records what was decided on 2026-10-16/17, and the live pin is read from `Cargo.toml`. The rule it states, that the two crates move together so only one copy of `dream-gate` links, still holds and the lock shows one version of each. 0.3.0 adds candidate formatting before the gate (ADR-DE-009 in the dream-engine repository): the adapter only carries the new `formatting` field through `candidate_flow.rs` and mentions it in the PR body in `engine.rs`, and `judge.rs` asserts the adapter contains no `rustfmt` / `cargo fmt`, so the mechanism stays upstream and nothing is duplicated back. `lib/dream-engine.nix` has no diff, so no `outputHashes` are needed. `dispatch.rs` (fish-safe stdin transport for annexe scripts) is estate wiring and belongs in the adapter by the division this record draws. Evidence: `cargo test --locked --lib` 167 passed and `cargo test --locked --test night_e2e` 11 passed against the registry crates. The extraction itself holds. Verified at 96a9a925dec7b19b8b75ecb891cce7a0a24d09e4.
+
+## Re-verification — 2026-11-01 (`cc949bb79`)
+
+Governed-path delta since `21769a881` is the RuVector Postgres credential custody change (ADR-2164 amendment 2), nothing else:
+
+- `services/dream-engine/src/engine.rs`: one test literal: `pg_url: String::new()` becomes `pg: Default::default()` (RuVectorConfig now holds the address and a password-file path).
+- `services/dream-engine/tests/night_e2e.rs`: one test literal: `pg_url: String::new()` becomes `pg: Default::default()`.
+
+Nothing this record decides is changed; its status axes are unchanged. Re-run: `git diff 21769a881..cc949bb79 -- services/dream-engine/src/engine.rs services/dream-engine/tests/night_e2e.rs`.

@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 21769a881315a246afaa6e9d0b39daf4ec39b5bc
+verified_commit: cc949bb79c9ac89858d01c1235dd3bca6e2226a2
 verified_paths: [services/dream-engine/src/governance.rs, services/dream-engine/src/digest.rs, services/dream-engine/src/relay.rs, services/dream-engine/src/inbox.rs, services/dream-engine/src/engine.rs, config/hooks/dream-inbox-surface.cjs]
 owner: jjohare
 review_trigger: JunkieJarvis registered in the relay agent_registry and the first night that publishes cases (activation_status → live), or any change to the forum's 31402/31403 wire format
@@ -125,3 +125,11 @@ ADR-2143 changes only what a case says, not how it is published or answered: a q
 ## Re-verification — 2026-10-23
 
 Read `git diff 2305d675e..96a9a925d -- services/dream-engine`. The single `engine.rs` hunk (`:1709-1732`) only extends the draft-PR body with a formatting note; it does not touch `governance::publish` or `ingest`, the digest, the inbox or the relay path. `governance.rs`, `digest.rs`, `relay.rs` and `inbox.rs` have no diff. The pin move to `dream-core`/`dream-gate` `=0.3.0` does not change forum event kinds, tags or `ActionRequest` shape (those come from `nostr-bbs-core`, unchanged). `cargo test --locked --lib` 167 passed. The decision holds. Verified at 96a9a925dec7b19b8b75ecb891cce7a0a24d09e4.
+
+## Re-verification — 2026-11-01 (`cc949bb79`)
+
+Governed-path delta since `21769a881` is the RuVector Postgres credential custody change (ADR-2164 amendment 2), nothing else:
+
+- `services/dream-engine/src/engine.rs`: one test literal: `pg_url: String::new()` becomes `pg: Default::default()` (RuVectorConfig now holds the address and a password-file path).
+
+Nothing this record decides is changed; its status axes are unchanged. Re-run: `git diff 21769a881..cc949bb79 -- services/dream-engine/src/engine.rs`.

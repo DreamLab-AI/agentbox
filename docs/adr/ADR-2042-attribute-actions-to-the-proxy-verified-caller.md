@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 044f1d689569572417a98f91afcf744fc2ca2385
+verified_commit: 460b8b8bb61503f27e576a3e9554bfafcc766cbb
 verified_paths: [management-api/lib/agent-event-auth.js]
 owner: jjohare
 review_trigger: management-api stops binding 0.0.0.0, a second carrier of caller identity is added, or any caller other than the NIP-98 proxy needs to send X-Agentbox-Pubkey
@@ -116,3 +116,9 @@ Commands run: `git diff 3f05ae9e7..de7fa461e -- management-api/lib/agent-event-a
 Not checked, and notes: The original Consequences bullet '(b) is not true today ... a holder of that key can forge the header' is superseded by the dated 2026-10-12 Update in the same record (header now honoured only from loopback peers); the record is internally consistent as a dated history but a reader of the Consequences section alone would over-state the residual. Optional editorial tidy: add '(superseded by the 2026-10-12 update below for cross-container callers)' to that bullet; not required for truth. The residual in the update (same-container process can connect over loopback) is accurate. NIP98_PROXY_MGMT_UPSTREAM 'default http://127.0.0.1:9090' is true only of .env.example/the supervisor stanza (config/nip98-proxy/README.md:174 documents the code default as unset); the claim as worded is loosely true for the shipped deployment. I did not run the live proxy-to-management-api hop, so the claim that the proxy's connections arrive from loopback rests on the supervisor stanza + proxy.mjs, not a runtime capture.
 
 Checked at `218dc12c3` by reading each claim against the code, not by the staleness diff alone. Stamped at `044f1d689`, which adds only the gate fixes in `config/custody/env-classes.json`, the `check-manifest-catalogue` baseline, `services/agentbox-vex`'s README and licence notice, a stale `agentbox.toml` comment, a stale `paths` example in the ontology-augment docs, and the grounding test's stub.
+
+## Re-verification — 2026-11-01 (ADR-2164)
+
+`lib/agent-event-auth.js` gained a task-token branch and `reconcileTaskScope`. The
+proxy-pubkey and NIP-98 paths are untouched; a task token yields no `did` and cannot assert
+`source_urn`/`pubkey`. `tests/sovereign/agent-event-auth.test.js` still passes unchanged.

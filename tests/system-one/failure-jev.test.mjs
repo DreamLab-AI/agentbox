@@ -179,8 +179,8 @@ test('the pre-pass has ONE overall deadline of at most 4 s, shared by every call
   assert.match(src, /Math\.min\(4000, /)
 })
 
-test('the recorder runs the pre-pass before the database connection and persists failure_jev only when answered', () => {
+test('the recorder runs the pre-pass before it posts the trajectory and persists failure_jev only when answered', () => {
   const src = require('fs').readFileSync(new URL('../../config/hooks/trajectory-recorder.cjs', import.meta.url), 'utf8')
-  assert.ok(src.indexOf('await jevFailureTags(taxonomy, steps)') < src.indexOf('await client.connect()'))
+  assert.ok(src.indexOf('await jevFailureTags(taxonomy, steps)') < src.indexOf('await postTrajectory('))
   assert.match(src, /jevTags\.get\(s\.toolUseId\) \|\| \{ mode: failureModeFor\(taxonomy, s\) \}/)
 })

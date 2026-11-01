@@ -12,7 +12,10 @@
 const path = require('path');
 
 const { buildPodNip98 } = require('../lib/pod-signer');
+const { pgPoolConfigFromManifestConninfo, DEFAULT_PASSWORD_FILE } = require('../lib/pg-config');
 const { wrapDispatch } = require('../observability/metrics');
+const { BaseAdapter } = require('./base');
+const CONTRACT_VERSIONS = require('./contract-versions');
 
 const SLOTS = ['beads', 'pods', 'memory', 'events', 'orchestrator'];
 
@@ -39,14 +42,20 @@ function slotConfig(slot, impl, manifest) {
   switch (slot) {
     case 'memory':
       if (impl === 'external-pg') {
-        return { conninfo: (integrations.ruvector_external || {}).conninfo || '' };
+        // Parts from the manifest URL, password from the one file (lib/pg-config).
+        // No conninfo string with a password ever reaches the pool.
+        return {
+          conninfo: pgPoolConfigFromManifestConninfo(
+            (integrations.ruvector_external || {}).conninfo || '',
+          ),
+        };
       }
       return {};
 
     case 'beads':
     case 'events':
       if (impl === 'external') {
-        return { externalUrl: fed.external_url || '' };
+        return { baseUrl: fed.external_url || '' };
       }
       return {};
 
@@ -79,7 +88,7 @@ function slotConfig(slot, impl, manifest) {
       };
 
       if (impl === 'external') {
-        return withSigner({ externalUrl: fed.external_url || '' });
+        return withSigner({ baseUrl: fed.external_url || '' });
       }
       if (impl === 'local-solid-rs') {
         const sp = integrations.solid_pod_rs || {};
@@ -94,12 +103,12 @@ function slotConfig(slot, impl, manifest) {
       if (impl === 'stdio-bridge') {
         const ext = integrations.external_orchestrator || {};
         return {
-          externalUrl: fed.external_url || '',
+          baseUrl: fed.external_url || '',
           protocol: ext.protocol || 'stdio',
         };
       }
       if (impl === 'external') {
-        return { externalUrl: fed.external_url || '' };
+        return { baseUrl: fed.external_url || '' };
       }
       return {};
 
@@ -163,6 +172,22 @@ function instrumentAdapter(adapter, slot, impl, manifest) {
 }
 
 /**
+ * Stand-in for a slot whose configuration could not be built. Its only job is
+ * to fail connect() with the original message (which names the file or setting
+ * at fault) so the lifecycle records and withdraws the slot.
+ */
+class ConfigFailedAdapter extends BaseAdapter {
+  constructor(slot, impl, cause, file = null) {
+    super(slot, impl, CONTRACT_VERSIONS[slot] || '0.0.0');
+    this._configError = cause;
+    // The configured file at fault (never a value), published on /health in place of error text.
+    this._configFile = file;
+  }
+
+  async connect() { throw this._configError; }
+}
+
+/**
  * Resolve all five adapter slots from the parsed manifest.
  *
  * @param {object} manifest - Parsed agentbox.toml object
@@ -184,8 +209,22 @@ function resolveAdapters(manifest) {
       mod[Object.keys(mod).find(k => typeof mod[k] === 'function')] ||
       mod;
 
-    const cfg = slotConfig(slot, impl, manifest);
-    resolved[slot] = instrumentAdapter(new AdapterClass(cfg), slot, impl, manifest);
+    let instance;
+    try {
+      const cfg = slotConfig(slot, impl, manifest);
+      instance = new AdapterClass(cfg);
+    } catch (err) {
+      // An unusable slot config (e.g. the ruvector password file is missing)
+      // must fail THAT slot closed, not take the whole API down: build an
+      // adapter whose connect() rejects with the cause, and let the lifecycle
+      // (adapters/lifecycle.js) withdraw it exactly as for any connect failure.
+      // A fail-closed slot (orchestrator) still aborts startup there.
+      const file = slot === 'memory'
+        ? (String(process.env.RUVECTOR_PG_PASSWORD_FILE || '').trim() || DEFAULT_PASSWORD_FILE)
+        : null;
+      instance = new ConfigFailedAdapter(slot, impl, err, file);
+    }
+    resolved[slot] = instrumentAdapter(instance, slot, impl, manifest);
 
     // Attach meta for health/meta endpoints
     resolved[slot]._implName = impl;
@@ -195,4 +234,4 @@ function resolveAdapters(manifest) {
   return resolved;
 }
 
-module.exports = { resolveAdapters, UnknownAdapterImpl, SLOTS };
+module.exports = { resolveAdapters, UnknownAdapterImpl, SLOTS, slotConfig };

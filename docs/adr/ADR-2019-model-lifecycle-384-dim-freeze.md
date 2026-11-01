@@ -7,7 +7,7 @@ implementation_status: none
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: 2f15c531b02b8f8393d68d29ce3491712bdd862c
+verified_commit: cc949bb79c9ac89858d01c1235dd3bca6e2226a2
 verified_paths: [mcp/servers/lib/aggregate-effectiveness.js, scripts/ruvector-sona-feeder.mjs, agentbox.toml]
 owner: jjohare
 review_trigger: A SONA binary with configurable embedding_dim (384-capable) ships, or a dimension migration is planned
@@ -328,3 +328,13 @@ Re-verified 2026-10-31 at `97f298db5`: the only delta on this record's governed 
 Tripped by the W8 ADR-sprint changes. Governed-path delta since `753788564`: `agentbox.toml` gains only four `[model_routing.routes]` entries (`diagram-polish`, `diagram-narrative`, `diagram-synthesis`, `seal-review`) and a comment block (ADR-2130). No key, table or code path this record decides is touched, so the decision and status axes are unchanged. Judged from the diff (re-runnable: `git diff 753788564..1e41b64b6 -- mcp/servers/lib/aggregate-effectiveness.js scripts/ruvector-sona-feeder.mjs agentbox.toml`; re-run at integration and the summary above matches it), not by re-running this record's own acceptance checks.
 
 Re-verified 2026-10-31 at `2f15c531b02b8f8393d68d29ce3491712bdd862c` (W7 and W8 integration, `adr-sprint/w78`). Governed-path delta since `97f298db5`: `agentbox.toml`: the four `[model_routing.routes]` diagram routes with their comment block (ADR-2130), and a wording fix on the `bypass_projects` comment (brackets forbidden, scoped to skill routing; ADR-2090). Read from the diff and checked against the merged tree's gates (cargo, jest, validator); nothing it changes is a key, table or code path this record decides, so the decision and status axes are unchanged. Re-run: `git diff 97f298db5..2f15c531b -- agentbox.toml`.
+
+## Re-verification — 2026-11-01 (`cc949bb79`)
+
+Governed-path delta since `2f15c531b` is the RuVector Postgres credential custody change (ADR-2164 amendment 2), nothing else:
+
+- `agentbox.toml`: the two `conninfo` URLs drop the `@@RUVECTOR_PG_PASSWORD@@` placeholder password, with their comments.
+- `mcp/servers/lib/aggregate-effectiveness.js`: the pool config comes from `management-api/lib/pg-config.js`; the conninfo parser and `password=ruvector` default are gone.
+- `scripts/ruvector-sona-feeder.mjs`: the pool config comes from `management-api/lib/pg-config.js`; the conninfo parser and `password=ruvector` default are gone.
+
+Nothing this record decides is changed; its status axes are unchanged. Re-run: `git diff 2f15c531b..cc949bb79 -- agentbox.toml mcp/servers/lib/aggregate-effectiveness.js scripts/ruvector-sona-feeder.mjs`.

@@ -2131,7 +2131,7 @@ mod tests {
             },
             llm_fallback: None,
             ruvector: RuVectorConfig {
-                pg_url: String::new(),
+                pg: Default::default(),
                 xinference_url: String::new(),
                 namespace: "dream-cycle".into(),
             },

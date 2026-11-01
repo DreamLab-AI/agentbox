@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 3d27cc11e5dcbeeab9584358ab5a614f921d6dba
+verified_commit: cc949bb79c9ac89858d01c1235dd3bca6e2226a2
 verified_paths: [agentbox.sh, scripts/runtime-delivery.*, scripts/refresh-compose.sh, config/build-registry.json, lib/image-layers.nix, flake.nix, tests/config/runtime-delivery*, .github/workflows/invariants.yml, docs/developer/incremental-builds.md]
 owner: jjohare
 review_trigger: layer grouping, delivery transport, candidate validation or cache retention changes
@@ -203,3 +203,12 @@ Re-verified 2026-10-31 at `b65c3d4ed`. Governed paths changed: `.github/workflow
 ## Re-verification — 2026-10-31
 
 Re-verified 2026-10-31 at `3d27cc11e5dcbeeab9584358ab5a614f921d6dba` (evidence-gate port from VisionFlow ADR-2007, branch `adr-sprint/w10`). Governed path changed: `.github/workflows/invariants.yml`: one new step, "adr-ratchet evidence gate self-test", running `tests/config/adr-ratchet-evidence.test.sh` beside the existing adr-ratchet self-test. It touches neither this record's decision nor the steps it relies on, so the decision and status axes stand. Re-run: `git diff 75378856483d13f952569018421c4526da0aede2..3d27cc11e5dcbeeab9584358ab5a614f921d6dba -- .github/workflows/invariants.yml`.
+
+## Re-verification — 2026-11-01 (`cc949bb79`)
+
+Governed-path delta since `3d27cc11e` is the RuVector Postgres credential custody change (ADR-2164 amendment 2), nothing else:
+
+- `agentbox.sh`: the ruvnet-brain ingest command line no longer passes a conninfo (the in-container client reads the password file), plus one comment.
+- `flake.nix`: removes the claude-flow config template (`claudeFlowConfigJson` and its `cp`) and the baked `RUVECTOR_PG_CONNINFO` image Env entry, and rewords one dream-engine supervisor comment.
+
+Nothing this record decides is changed; its status axes are unchanged. Re-run: `git diff 3d27cc11e..cc949bb79 -- agentbox.sh flake.nix`.

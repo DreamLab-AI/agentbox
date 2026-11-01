@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 2f15c531b02b8f8393d68d29ce3491712bdd862c
+verified_commit: 4f3bd5325eb56b582d1220bc9b0a0b79e918fdae
 verified_paths: [lib/factrail.nix, lib/lockfiles/factrail-57ac25b5.Cargo.lock, lib/claude-code-binary.nix, config/entrypoint-unified.sh, config/claude-plugins/.claude-plugin/marketplace.json, scripts/factrail-store-migrate.mjs, tests/config/factrail-store-migrate.test.mjs, tests/config/factrail-projection.test.sh, schema/agentbox.toml.schema.json, scripts/bake-ruflo-console.sh, scripts/ruflo-console-project.mjs, tests/config/ruflo-console.test.mjs]
 owner: jjohare
 review_trigger: a factrail rev bump in lib/factrail.nix, the end of the post-rebuild residency soak, a Claude Code function-hook API change, or a decision to train a local judge on recorded Jev decisions
@@ -327,3 +327,21 @@ Re-verified 2026-10-31 at `97f298db5`: the only delta on this record's governed 
 Tripped by the W8 ADR-sprint changes. Governed-path delta since `753788564`: `schema/agentbox.toml.schema.json` widens the `model_routing.routes` host pattern to `claude|codex|loom|zai` and adds those four keys (ADR-2130). No key, table or code path this record decides is touched, so the decision and status axes are unchanged. Judged from the diff (re-runnable: `git diff 753788564..1e41b64b6 -- lib/factrail.nix lib/lockfiles/factrail-57ac25b5.Cargo.lock lib/claude-code-binary.nix config/entrypoint-unified.sh config/claude-plugins/.claude-plugin/marketplace.json scripts/factrail-store-migrate.mjs tests/config/factrail-store-migrate.test.mjs tests/config/factrail-projection.test.sh schema/agentbox.toml.schema.json scripts/bake-ruflo-console.sh scripts/ruflo-console-project.mjs tests/config/ruflo-console.test.mjs`; re-run at integration and the summary above matches it), not by re-running this record's own acceptance checks.
 
 Re-verified 2026-10-31 at `2f15c531b02b8f8393d68d29ce3491712bdd862c` (W7 and W8 integration, `adr-sprint/w78`). Governed-path delta since `97f298db5`: `config/entrypoint-unified.sh`: one line, the `system-one-project --format json` call no longer discards stderr, so a refused slot's reason reaches the boot log (zero bytes on the shipped manifest, checked; the call is still `|| true`, so boot behaviour is unchanged); `schema/agentbox.toml.schema.json`: the `model_routing.routes` host pattern widened to `claude|codex|loom|zai` with four route keys (ADR-2130), and the `bypass_projects` item pattern forbidding `[` and `]` with its description scoped to skill routing (ADR-2090). Read from the diff and checked against the merged tree's gates (cargo, jest, validator); nothing it changes is a key, table or code path this record decides, so the decision and status axes are unchanged. Re-run: `git diff 97f298db5..2f15c531b -- config/entrypoint-unified.sh schema/agentbox.toml.schema.json`.
+
+## Re-verification — 2026-11-01 (ADR-2164 amendment)
+
+Governed path `config/entrypoint-unified.sh` changed since `2f15c531b`: two hunks (`git diff 2f15c531b..e1893e236 -- config/entrypoint-unified.sh`), both inside the trajectory-recorder hook registration block (its comment, the removed `TRAJ_CONNINFO` input, the `pfx` prefix and the command join), which stops inlining the database conninfo and the learning gates into the registered command. Nothing else in the file changed in that range. This record's claims do not concern that block (matches for trajectory/TRAJ_/RUVECTOR_PG_CONNINFO in it: 0, none about the registration). Decision unchanged; `verified_commit` bumped.
+
+## Re-verification — 2026-11-01 (`cc949bb79`)
+
+Governed-path delta since `e1893e236` is the RuVector Postgres credential custody change (ADR-2164 amendment 2), nothing else:
+
+- `config/entrypoint-unified.sh`: adds `_ab_pg_credential_prepare` and the credential-scrub block, replaces every `RUVECTOR_PG_CONNINFO` site (`.mcp.json`, Codex, ingest command line, runtime-env export, routing-label hook command) with the parts and the password-file path, and removes the claude-flow template copy.
+
+Nothing this record decides is changed; its status axes are unchanged. Re-run: `git diff e1893e236..cc949bb79 -- config/entrypoint-unified.sh`.
+
+Re-stamped again at `09067b095`: the one further change to `config/entrypoint-unified.sh` since `cc949bb79` extends the credential-scrub block so it also walks every `mcpServers` object in Claude Code's per-user state (`~/.claude/.claude.json`, `~/.claude.json`), where the resolved MCP config is cached. Nothing this record decides is changed. Re-run: `git diff cc949bb79..09067b095 -- config/entrypoint-unified.sh`.
+
+## Re-verification — 2026-11-01 (`4f3bd5325`)
+
+Governed-path delta since `09067b095`: `config/entrypoint-unified.sh`: the credential-scrub block (`PGSCRUB_MARKER`) now also rewrites Claude Code's backups and the `*.pre-*`/`*.bak*` snapshots of the projected config, writes atomically (sibling temp file, fsync, rename) keeping owner and mode, and scopes its text rules to RuVector's own values (ADR-2164 amendment 4). This record's decision does not concern these changes. Decision unchanged; `verified_commit` bumped. Re-run: `git diff 09067b095..4f3bd5325 -- config/entrypoint-unified.sh`.

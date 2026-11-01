@@ -1,11 +1,16 @@
 ---
 title: Agentbox Ingress & Identity
 doc_id: AB-INGRESS
-version: 0.2.4
+version: 0.2.9
 status: draft-for-ratification
 verified_commit: 
 date: 2026-09-05
 changelog:
+  - "0.2.9 (2026-11-01): ADR-2164 amendment 4 - invariant 12 credential wording made true: the password is in one 0600 file and the boot scrub removes it from live config AND from Claude Code backups and *.pre-*/*.bak* snapshots (atomic rewrites); copies outside what the scrub reaches are not claimed gone, so the password is rotated after the deploy (not automated). Invariants 1-11 unchanged."
+  - "0.2.8 (2026-11-01): ADR-2164 amendment 3 - invariant 12: a task token writes only trajectories its own task owns (metadata.task_id stamped at creation, 403 otherwise) and always speaks as its own task (posted source_agent_id ignored); the same-UID limit is stated (the token narrows the network surface, it is not process isolation). Invariants 1-11 unchanged."
+  - "0.2.7 (2026-11-01): ADR-2164 amendment 2 - invariant 12 gains the single database credential source: the RuVector Postgres password lives in one 0600 file (RUVECTOR_PG_PASSWORD_FILE) read through management-api/lib/pg-config.js; no password or conninfo string in any hook command, MCP/Codex config or exported env; POST /v1/agent-events/routing-label added (operator-only). Invariants 1-11 unchanged."
+  - "0.2.6 (2026-11-01): ADR-2164 amendment - invariant 12 scope grows to POST /v1/agent-events/trajectory, the trajectory recorder's single write path: the API persists to Postgres, so no database credential or recorder gate reaches a task. Invariants 1-11 unchanged."
+  - "0.2.5 (2026-11-01): ADR-2164 - a running Management API task authenticates its own agent-action posts with a short-lived opaque per-task token (invariant 12) instead of MANAGEMENT_API_KEY. Added; invariants 1-11 unchanged."
   - "0.2.4 (2026-10-29): ADR-2153 is live: session control uses a 0660 ab-sessions unix socket and peer-uid ACL; :9096 has named routes only, and the old :9095 token invariant is retired."
   - "0.2.3 (2026-10-28): ADR-2153 (proposed, none, inactive) - AoE is to be replaced by an owned session plane on a unix socket with no TCP listener; at cut-over the :9095 door row and Invariant 1 retire and :9096 narrows to /mgmt/* and its other named routes. Recorded as a proposed note on Invariant 1; the live compliance surface is unchanged."
   - "0.2.2 (2026-10-02): invariant 11 — pod origination signs as the sovereign identity the boot mints, or fails closed (ADR-2078, owner decision SC3); `sign_requests = true` in both manifests."
@@ -330,6 +335,58 @@ JunkieJarvis signer and the existing authenticated `NostrBridge`.
    when a stack is named explicitly (`AGENTBOX_STACK` or `sign_stack`); a missing sovereign
    identity never falls through to it or to unsigned.
 
+12. **Per-task action token (ADR-2164).** A Management API task never receives
+   `MANAGEMENT_API_KEY`. `spawnTask` mints an opaque 256-bit `crypto.randomBytes` token
+   (`management-api/lib/task-action-tokens.js`; held server-side as SHA-256 → `{taskId,
+   expiresAt}`, never logged, not a URN so not minted via `uris.js`) and exports it to the
+   child as `TASK_ACTION_TOKEN`. It is a third credential type on the one existing gate
+   (`management-api/middleware/auth.js`, hooked at `server.js` `preValidation`): accepted
+   only for `POST /v1/agent-events/emit|batch|trajectory` (matched on the registered route pattern),
+   `403` on every other route, `401` when unknown, expired, revoked or absent. It proves a
+   task, not a Nostr identity: the route (`lib/agent-event-auth.js` `reconcileTaskScope`)
+   stamps the token's own `taskId`, rejects a different `taskId`, and rejects any asserted
+   `source_urn`/`pubkey`; one bad event rejects a whole batch. Revoked on task exit, error
+   and `stopTask`; TTL backstop 4 h (`TASK_ACTION_TOKEN_TTL_MS`). **Sovereign mode:** the
+   token is accepted under `strict-nip98` too, because it is not the shared API key and a
+   task has no other way to report; it is the one non-NIP-98 credential that mode admits,
+   confined as above. **No database credential in a task.** The trajectory recorder does not
+   open Postgres: it posts its rows to `POST /v1/agent-events/trajectory` and
+   `management-api/lib/trajectory-store.js` writes them through the memory adapter's pool. No
+   `PG*` / conninfo or recorder gate variable is in a task's spawned env or in the hook command
+   the entrypoint registers in `~/.claude/settings.json` (a task inherits `HOME` and so runs it);
+   enablement is the hook's registration. Under `strict-nip98` an operator session (Bearer only)
+   cannot post, so operator trajectories wait; task posts are unaffected.
+   **One database credential source (ADR-2164 amendments 2 and 4).** The RuVector Postgres
+   password is written by the entrypoint to exactly one 0600 devuser file
+   (`RUVECTOR_PG_PASSWORD_FILE`, from the compose-required `RUVECTOR_PG_PASSWORD`, which it then
+   unsets). No projected config, hook command, `.mcp.json`, Codex config or exported
+   environment carries the password or a conninfo string; every client reads the file through
+   `management-api/lib/pg-config.js` and a missing file fails closed naming its path. Every boot
+   the one scrub routine (`PGSCRUB_MARKER` in `config/entrypoint-unified.sh`) also removes the
+   password and conninfo values from copies that outlive the image: the live config files,
+   Claude Code's `~/.claude/backups/.claude.json.backup.*`, and the `*.pre-*`, `*.bak*` and
+   `*.backup*` snapshots of the projected config (`~/.claude`, the workspace `.mcp.json` and
+   `.claude/settings.json`, `~/.codex`, `~/.claude-flow`). It rewrites each file atomically
+   (0600 sibling temp file, fsync, rename), keeps its mode, deletes nothing and is idempotent.
+   It does not and cannot reach copies elsewhere (volume backups taken before the deploy,
+   transcripts, archives of `~/.claude`), so the claim above is about the config the system
+   writes or keeps, not about every byte on every volume: **the password must be rotated after
+   the deploy that introduces this scrub.** Rotation is a manual owner step (new value in the
+   host `.env`, `ALTER ROLE` on the sidecar, restart); no script automates it
+   (`scripts/ruvector-sidecar-update.sh` rotates only the reader role's password). The
+   routing-label recorder posts to the operator-only `POST /v1/agent-events/routing-label`; a
+   task token is refused there.
+   **Token scope inside the routes (amendment 3).** A token write to a trajectory is stamped
+   with the owning task id in `metadata.task_id` when the trajectory is created, and a token
+   write to a trajectory owned by another task, or by the operator (no `task_id`), is `403`
+   before any step or rollup is written; operator credentials are unchanged. For emit and
+   batch the server uses the token's own task as the source agent and ignores any posted
+   `source_agent_id`. **Same-UID limit.** The management-api runs as devuser in every current
+   configuration, including with `role_isolation` on, so a hostile task can still reach the
+   operator key and the database credential file; the token narrows only the network surface
+   and keeps both out of the task's environment, hook commands and model context. It is not
+   process isolation.
+
 ## Change process
 
 This is a living document. Amend it in the same PR as any change to the door inventory,
@@ -404,6 +461,10 @@ State, Invariants or divergence list above in the same change.
 - **ADR-2044** — FIX: identity derivation and agent-event attribution fail closed
   outside the dev profile (`did:nostr:local` placeholder and
   `AGENTBOX_AGENT_EVENT_AUTH` default `off`).
+- **ADR-2164** — WIRE: a running task posts its own agent actions with a per-task,
+  short-lived, opaque token scoped to emit/batch for that `taskId`, and its recorded
+  trajectories through `/v1/agent-events/trajectory`; the Management API key and every
+  database credential stay out of tasks (Invariant 12).
 - **ADR-2045** — FIX: session-mirror egress redacts before NIP-59 wrapping, per
   ADR-2026.
 - **ADR-2046** — FIX: the seccomp CI gate protects all 46 established denials and

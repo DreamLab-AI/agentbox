@@ -118,7 +118,7 @@ describe('library rules', () => {
   });
 
   test('EXP-B8: the recorder DDL migrates an existing table to carry the shadow columns', () => {
-    const { MIGRATIONS } = require(path.resolve(__dirname, '../../config/hooks/routing-label-recorder.cjs'));
+    const { MIGRATIONS } = require(path.resolve(__dirname, '../../management-api/lib/routing-label-store.js'));
     const sql = MIGRATIONS.join('\n');
     expect(sql).toMatch(/ADD COLUMN IF NOT EXISTS bm25_pick text/);
     expect(sql).toMatch(/ADD COLUMN IF NOT EXISTS bm25_score double precision/);
@@ -171,7 +171,7 @@ describe('hook subprocess', () => {
     AGENTBOX_SKILL_ROUTE_SKILLS_DIR: path.join(tmp, 'skills'),
     AGENTBOX_SKILL_ROUTE_LOG: path.join(tmp, 'route.jsonl'),
     // Port 1 refuses: the write fails, which is what the watermark tests need.
-    RUVECTOR_PG_CONNINFO: 'host=127.0.0.1 port=1 dbname=x user=x password=x',
+    MANAGEMENT_API_KEY: 'operator-key-for-test', MANAGEMENT_API_PORT: '1',
     ...extra,
   });
   const stash = (session) => path.join(tmp, `agentbox-routing-labels-${L.sha(session, 12)}.json`);

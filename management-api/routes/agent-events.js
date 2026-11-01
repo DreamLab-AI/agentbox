@@ -12,8 +12,11 @@
 const { agentEventPublisher, AgentActionType } = require('../utils/agent-event-publisher');
 // ADR-2026: the durable provenance record the resolver falls back to.
 const { agentEventArchive } = require('../utils/agent-event-archive');
-const { verifyAgentEventRequest, reconcileSourceUrn } = require('../lib/agent-event-auth');
+const { verifyAgentEventRequest, reconcileSourceUrn, reconcileTaskScope } = require('../lib/agent-event-auth');
 const taxonomy = require('../lib/failure-taxonomy');
+const { persistTrajectory, trajectoryPool, TrajectoryInputError, TrajectoryForbiddenError } = require('../lib/trajectory-store');
+const { persistRoutingLabels, routingLabelPool, RoutingLabelInputError } = require('../lib/routing-label-store');
+const { hashString } = require('../lib/agent-id-hash');
 const { processHookEvent, getRegistryStats } = require('../hooks/agent-action-hooks');
 const { initializeAgentEventWsSubscriber, getAgentEventWsSubscriber } = require('../utils/agent-event-ws-subscriber');
 
@@ -344,6 +347,11 @@ async function agentEventsRoutes(fastify, options) {
           token_count: { type: 'integer', minimum: 0 },
           handoff_id: { type: 'string' },
           verification: { type: 'string' },
+          // The Management API task this action belongs to (the id spawnTask
+          // minted, exported to the child as TASK_ID). Stamped into
+          // metadata.taskId so VisionClaw joins every action of a task onto one
+          // agent body. Absent for an action that belongs to no task.
+          taskId: { type: 'string' },
           // ADR-2015 closeout: the CANONICAL failure field on the wire. A
           // producer that classified a failure sends it here; the publisher
           // still promotes `metadata.failure_mode` when this is absent, so an
@@ -374,6 +382,11 @@ async function agentEventsRoutes(fastify, options) {
       const tag = taxonomy.tagFailure({ error: auth.error });
       return reply.code(auth.status).send({ success: false, error: auth.error, ...tag });
     }
+    const scope = reconcileTaskScope(auth.taskId || null, body);
+    if (!scope.ok) {
+      const tag = taxonomy.tagFailure({ reason: taxonomy.REASON.IDENTITY_MISMATCH, error: scope.error });
+      return reply.code(scope.status).send({ success: false, error: scope.error, ...tag });
+    }
     const claimed = body.source_urn || (body.metadata && body.metadata.source_urn) || null;
     const rec = reconcileSourceUrn(claimed, auth.did);
     if (!rec.ok) {
@@ -384,10 +397,14 @@ async function agentEventsRoutes(fastify, options) {
       return reply.code(rec.status).send({ success: false, error: rec.error, ...tag });
     }
 
-    // Convert string IDs to numeric hashes if needed
-    const sourceId = typeof body.source_agent_id === 'string'
-      ? hashString(body.source_agent_id)
-      : body.source_agent_id;
+    // The task id is stamped once, by withTaskId. A task token speaks for its own
+    // task only, so its source agent is derived from that stamp and the posted
+    // source_agent_id is ignored (B2); other credentials keep the caller's value,
+    // hashed when it is a string.
+    const metadata = withTaskId(body.metadata, auth.taskId || body.taskId);
+    const sourceId = auth.taskId
+      ? hashString(metadata.taskId)
+      : (typeof body.source_agent_id === 'string' ? hashString(body.source_agent_id) : body.source_agent_id);
 
     const targetId = typeof body.target_node_id === 'string'
       ? hashString(body.target_node_id)
@@ -403,7 +420,7 @@ async function agentEventsRoutes(fastify, options) {
       target_node_id: targetId,
       action_type: actionType,
       duration_ms: body.duration_ms || 100,
-      metadata: body.metadata || {}
+      metadata
     };
     // When authenticated, stamp the verified identity so attribution is
     // provable rather than caller-asserted or env-defaulted.
@@ -453,7 +470,8 @@ async function agentEventsRoutes(fastify, options) {
                 target_node_id: { anyOf: [{ type: 'integer' }, { type: 'string' }] },
                 action_type: { anyOf: [{ type: 'integer' }, { type: 'string' }] },
                 duration_ms: { type: 'integer' },
-                metadata: { type: 'object' }
+                metadata: { type: 'object' },
+                taskId: { type: 'string' }
               }
             }
           }
@@ -475,6 +493,16 @@ async function agentEventsRoutes(fastify, options) {
       return reply.code(auth.status).send({ success: false, error: auth.error, ...tag });
     }
 
+    // Task-token scope is checked for the WHOLE batch before anything is
+    // emitted: one foreign taskId or asserted identity rejects every event.
+    for (const eventData of events) {
+      const scope = reconcileTaskScope(auth.taskId || null, eventData);
+      if (!scope.ok) {
+        const tag = taxonomy.tagFailure({ reason: taxonomy.REASON.IDENTITY_MISMATCH, error: scope.error });
+        return reply.code(scope.status).send({ success: false, error: scope.error, ...tag });
+      }
+    }
+
     for (const eventData of events) {
       const claimed = eventData.source_urn
         || (eventData.metadata && eventData.metadata.source_urn) || null;
@@ -490,9 +518,11 @@ async function agentEventsRoutes(fastify, options) {
         return reply.code(rec.status).send({ success: false, error: rec.error, ...tag });
       }
 
-      const sourceId = typeof eventData.source_agent_id === 'string'
-        ? hashString(eventData.source_agent_id)
-        : eventData.source_agent_id;
+      // Same rule as emit: the stamp from withTaskId decides a token's source (B2).
+      const metadata = withTaskId(eventData.metadata, auth.taskId || eventData.taskId);
+      const sourceId = auth.taskId
+        ? hashString(metadata.taskId)
+        : (typeof eventData.source_agent_id === 'string' ? hashString(eventData.source_agent_id) : eventData.source_agent_id);
 
       const targetId = typeof eventData.target_node_id === 'string'
         ? hashString(eventData.target_node_id)
@@ -507,7 +537,7 @@ async function agentEventsRoutes(fastify, options) {
         target_node_id: targetId,
         action_type: actionType,
         duration_ms: eventData.duration_ms || 100,
-        metadata: eventData.metadata || {}
+        metadata
       };
       if (auth.did) {
         emitPayload.source_urn = auth.did;
@@ -525,6 +555,164 @@ async function agentEventsRoutes(fastify, options) {
       count: emittedIds.length,
       broadcast_count: wsConnections.size
     });
+  });
+
+  /**
+   * POST /v1/agent-events/trajectory - persist a recorded trajectory (ADR-2164)
+   *
+   * The trajectory recorder's ONE write path. It used to INSERT into
+   * `trajectories` / `trajectory_steps` over its own Postgres connection, which
+   * put database credentials in every task's reach; it now posts the rows it
+   * computed and lib/trajectory-store.js writes them through the memory
+   * adapter's pool. Authenticated by the global gate (middleware/auth.js): the
+   * operator credential, or a task action token (TASK_TOKEN_ROUTES). It is not
+   * an attributed agent action, so no per-agent did:nostr is asserted or needed.
+   */
+  fastify.post('/v1/agent-events/trajectory', {
+    bodyLimit: 4 * 1024 * 1024,
+    schema: {
+      description: 'Persist a recorded trajectory (session row, new steps, cumulative rollup)',
+      tags: ['agent-events'],
+      body: {
+        type: 'object',
+        required: ['trajectory', 'steps', 'rollup'],
+        properties: {
+          trajectory: {
+            type: 'object',
+            required: ['id', 'task', 'agent'],
+            properties: {
+              id: { type: 'string', minLength: 1, maxLength: 512 },
+              task: { type: 'string', maxLength: 512 },
+              agent: { type: 'string', maxLength: 256 },
+              metadata: { type: 'object' }
+            }
+          },
+          steps: {
+            type: 'array',
+            // No maxItems: the route bodyLimit already bounds the request, and a
+            // count cap would wedge a session whose held-back backlog outgrew it.
+            items: {
+              type: 'object',
+              required: ['id', 'action', 'result', 'quality', 'step_order'],
+              properties: {
+                id: { type: 'string', minLength: 1, maxLength: 640 },
+                action: { type: 'string', maxLength: 1024 },
+                result: { type: 'object' },
+                quality: { type: 'number' },
+                step_order: { type: 'integer', minimum: 0 },
+                duration_ms: { type: ['integer', 'null'], minimum: 0 }
+              }
+            }
+          },
+          rollup: {
+            type: 'object',
+            required: ['success', 'step_count', 'mean_quality', 'outcome', 'handoff_count',
+              'ctc_emit_queued', 'ctc_emit_carried_in'],
+            properties: {
+              success: { type: 'boolean' },
+              step_count: { type: 'integer', minimum: 0 },
+              mean_quality: { type: 'number' },
+              outcome: { type: 'string', maxLength: 64 },
+              handoff_id: { type: ['string', 'null'] },
+              handoff_count: { type: 'integer', minimum: 0 },
+              ctc_emit_queued: { type: 'integer', minimum: 0 },
+              ctc_emit_carried_in: { type: 'integer', minimum: 0 }
+            }
+          }
+        }
+      }
+    }
+  }, async (request, reply) => {
+    const pool = trajectoryPool(fastify.adapters);
+    if (!pool) {
+      return reply.code(503).send({
+        success: false,
+        error: 'trajectories need the external-pg memory adapter; none is configured'
+      });
+    }
+    try {
+      // B1: a task token may write only trajectories its own task owns.
+      const taskId = request.auth && request.auth.mode === 'task-token' ? request.auth.taskId : null;
+      const out = await persistTrajectory(pool, request.body, taskId);
+      return reply.send({ success: true, steps: out.steps });
+    } catch (err) {
+      if (err instanceof TrajectoryForbiddenError) {
+        return reply.code(403).send({ success: false, error: err.message });
+      }
+      if (err instanceof TrajectoryInputError) {
+        return reply.code(400).send({ success: false, error: err.message });
+      }
+      logger.error(`trajectory persist failed: ${err && err.message}`);
+      return reply.code(500).send({ success: false, error: 'trajectory persist failed' });
+    }
+  });
+
+  /**
+   * POST /v1/agent-events/routing-label - persist skill-routing teacher labels
+   * (ADR-2110, on the ADR-2164 pattern)
+   *
+   * The routing-label recorder's ONE write path. It used to open its own
+   * Postgres connection with a conninfo inlined in its registered Stop-hook
+   * command; it now posts the rows it built (a vector, a label, the router's
+   * pick; never prompt text) and lib/routing-label-store.js writes them through
+   * the memory adapter's pool. Operator credential only: a task has no reason
+   * to record routing labels, so this route is NOT in TASK_TOKEN_ROUTES.
+   */
+  fastify.post('/v1/agent-events/routing-label', {
+    bodyLimit: 4 * 1024 * 1024,
+    schema: {
+      description: 'Persist skill-routing teacher labels (embedding, label, router pick; no prompt text)',
+      tags: ['agent-events'],
+      body: {
+        type: 'object',
+        required: ['rows'],
+        properties: {
+          rows: {
+            type: 'array',
+            minItems: 1,
+            items: {
+              type: 'object',
+              required: ['id', 'session_hash', 'embed_model', 'embedding', 'loaded', 'load_via', 'label', 'prompt_chars'],
+              properties: {
+                id: { type: 'string', minLength: 1, maxLength: 256 },
+                session_hash: { type: 'string', maxLength: 128 },
+                turn_ts: { type: ['string', 'null'] },
+                embed_model: { type: 'string', maxLength: 256 },
+                embedding: { type: 'array', items: { type: 'number' } },
+                loaded: { type: 'array', items: { type: 'string' } },
+                load_via: { type: 'array', items: { type: 'string' } },
+                label: { type: 'string', maxLength: 256 },
+                router_pick: { type: ['string', 'null'] },
+                router_model: { type: ['string', 'null'] },
+                router_cascade: { type: ['string', 'null'] },
+                router_margin: { type: ['number', 'null'] },
+                prompt_chars: { type: 'integer', minimum: 0 },
+                bm25_pick: { type: ['string', 'null'] },
+                bm25_score: { type: ['number', 'null'] }
+              }
+            }
+          }
+        }
+      }
+    }
+  }, async (request, reply) => {
+    const pool = routingLabelPool(fastify.adapters);
+    if (!pool) {
+      return reply.code(503).send({
+        success: false,
+        error: 'routing labels need the external-pg memory adapter; none is configured'
+      });
+    }
+    try {
+      const out = await persistRoutingLabels(pool, request.body.rows);
+      return reply.send({ success: true, rows: out.rows });
+    } catch (err) {
+      if (err instanceof RoutingLabelInputError) {
+        return reply.code(400).send({ success: false, error: err.message });
+      }
+      logger.error(`routing-label persist failed: ${err && err.message}`);
+      return reply.code(500).send({ success: false, error: 'routing-label persist failed' });
+    }
   });
 
   /**
@@ -710,16 +898,14 @@ function eventMatchesRef(event, ref) {
 }
 
 /**
- * Simple string hash to convert string IDs to u32
+ * Metadata for an emitted action with the owning task's id stamped in. An
+ * explicit top-level `taskId` wins; a `metadata.taskId` already set by the
+ * producer is kept; no task means no key.
  */
-function hashString(str) {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    const char = str.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash; // Convert to 32bit integer
-  }
-  return Math.abs(hash);
+function withTaskId(metadata, taskId) {
+  const md = metadata && typeof metadata === 'object' ? metadata : {};
+  if (taskId === undefined || taskId === null || taskId === '') return md;
+  return { ...md, taskId: String(taskId) };
 }
 
 module.exports = agentEventsRoutes;

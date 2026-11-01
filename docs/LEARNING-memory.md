@@ -1,10 +1,12 @@
 ---
 title: "Agentbox Memory & Learning — Ground Truth"
 doc_id: AB-LEARNING
-version: 0.1.5
+version: 0.1.7
 status: draft-for-ratification
 verified_commit: 
 changelog:
+  - "0.1.7 (2026-11-01): ADR-2164 amendment 2 - every memory/learning client (ruvector-mcp, ruflo CLI, the aggregate/distil/sona/recall/ingest scripts, the dream-engine, the management-api memory slot) builds its Postgres connection from RUVECTOR_PG_HOST/PORT/DATABASE/USER plus the password read from the one 0600 file RUVECTOR_PG_PASSWORD_FILE (management-api/lib/pg-config.js); there is no conninfo string and no default password. The routing-label recorder (ADR-2110) writes through POST /v1/agent-events/routing-label. Retrieval geometry unchanged."
+  - "0.1.6 (2026-11-01): ADR-2164 amendment - the trajectory recorder persists through POST /v1/agent-events/trajectory (management-api/lib/trajectory-store.js), not its own Postgres connection; the env gates are gone and enablement is the hook's registration. What is recorded is unchanged."
   - "0.1.5 (2026-10-29): ADR-2153 session-plane cutover retains management-owned identity and scoped memory namespaces. No retrieval geometry or durable adapter policy changes."
   - "0.1.4 (2026-10-07): ADR-2133 — `ruvector reindex` (serial rebuild beside the live index, one-transaction swap, recall before/after); `ruvector reader-role` (ruvector_reader, SELECT on memory_entries only) and `ruvector hba-harden` (non-loopback pg_hba trust → scram); invariants 8 and 13"
   - "0.1.3 (2026-09-07): ADR-2082 — the governed server forwards swarm/agent/task/coordination tools to one filtered ruflo child per session; memory_* is denied on the proxy side, so the access invariant is unchanged (invariant 9)"
@@ -13,6 +15,7 @@ changelog:
 sources:
   - agentbox/agentbox.toml
   - agentbox/config/hooks/trajectory-recorder.cjs
+  - agentbox/management-api/lib/trajectory-store.js
   - agentbox/config/hooks/lib/trajectory-util.cjs
   - agentbox/mcp/servers/lib/aggregate-effectiveness.js
   - agentbox/mcp/servers/lib/memory-hybrid.js
@@ -113,8 +116,9 @@ Bash call, and inserts one `trajectory_steps` row per graded step plus a
 per-session `trajectories` rollup. Deterministic step ids make re-fires idempotent.
 
 Hard rules enforced in code:
-- **Default-off:** silent `exit 0` unless BOTH `RUVECTOR_MEMORY_LEARNING_ENABLED`
-  and `RUVECTOR_RECORD_TRAJECTORIES` are on (`trajectory-recorder.cjs:29-31`).
+- **Default-off:** enablement is registration. The entrypoint registers the hook only
+  when `[memory_learning]` `enabled` and `record_trajectories` are both true and
+  de-registers it otherwise; the hook reads no gate variable (ADR-2164).
 - **Fail-open:** any error exits 0, never blocks Claude.
 - **Fail-closed on privacy (I10):** if a command cannot be redacted, the step is
   skipped, never persisted unredacted (`trajectory-util.cjs:116-127`, conservative
@@ -131,11 +135,17 @@ Hard rules enforced in code:
   the same millisecond) is a valid `0`, not a skip — the step is pushed regardless
   of `durationMs` (`:331`), so `duration_ms` may legitimately be `0` or `null`.
 
-**Trajectory schema** (parameterised INSERTs, `trajectory-recorder.cjs:386-424`):
+**Persistence.** The hook holds no database client. It POSTs the computed rows to
+`POST /v1/agent-events/trajectory` (operator key, or a task's `TASK_ACTION_TOKEN`), and
+`management-api/lib/trajectory-store.js` writes them in one transaction through the memory
+adapter's pool. The per-session watermark advances only on a 2xx.
+
+**Trajectory schema** (parameterised INSERTs, `management-api/lib/trajectory-store.js`
+`persistTrajectory`):
 - `trajectories(id, task, agent, status, started_at, metadata)`
 - `trajectory_steps(id, trajectory_id, action, result, quality, step_order,
   duration_ms)` — `duration_ms` written only when the column exists (probed and
-  cached, `:251-261`).
+  cached per pool in `trajectory-store.js`; otherwise it rides in `result.duration_ms`).
 
 The durable `action` value is a **low-cardinality command pattern**
 (`commandPattern`, `trajectory-util.cjs:38-83`): `<verb>[ <subcommand>] [args:N

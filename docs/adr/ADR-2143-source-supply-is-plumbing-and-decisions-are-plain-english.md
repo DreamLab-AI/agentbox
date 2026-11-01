@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 21769a881315a246afaa6e9d0b39daf4ec39b5bc
+verified_commit: cc949bb79c9ac89858d01c1235dd3bca6e2226a2
 verified_paths: [services/dream-engine/src/wanted.rs, services/dream-engine/src/engine.rs, services/dream-engine/src/inbox.rs, services/dream-engine/src/governance.rs, services/dream-engine/src/prompt/nightly.tmpl, services/dream-engine/Cargo.toml]
 owner: jjohare
 review_trigger: a change to the nightly prompt's Human-action shape, to the wanted store's expiry, to dream-core's requested-source contract (ADR-DE-008), or a governance case that again asks the operator for a file
@@ -37,3 +37,11 @@ The image built from `96e835958` is active with a clean source receipt. Nix pass
 ## Re-verification — 2026-10-23
 
 Read `git diff 96e835958..96a9a925d -- services/dream-engine`. Decision point 3 names `=0.2.0` as the pin at the time; `Cargo.toml` now reads `=0.3.0` for both crates (ADR-2141 records the move). That sentence is left as a record of 2026-10-17, and the requested-source contract of point 1 (ADR-DE-008) is a 0.2.0 feature that 0.3.0 keeps: `wanted.rs`, `inbox.rs`, `governance.rs` and `nightly.tmpl` have no diff, and the prompt golden test passes. The only `engine.rs` change is the formatting note in the draft-PR body, which is outside the source-supply and four-field paths. `cargo test --locked --lib` 167 passed, `night_e2e` 11 passed. The decision holds. Verified at 96a9a925dec7b19b8b75ecb891cce7a0a24d09e4.
+
+## Re-verification — 2026-11-01 (`cc949bb79`)
+
+Governed-path delta since `21769a881` is the RuVector Postgres credential custody change (ADR-2164 amendment 2), nothing else:
+
+- `services/dream-engine/src/engine.rs`: one test literal: `pg_url: String::new()` becomes `pg: Default::default()` (RuVectorConfig now holds the address and a password-file path).
+
+Nothing this record decides is changed; its status axes are unchanged. Re-run: `git diff 21769a881..cc949bb79 -- services/dream-engine/src/engine.rs`.

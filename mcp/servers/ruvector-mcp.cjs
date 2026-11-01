@@ -8,7 +8,8 @@
  *
  * Backed by: pg module (searched in workspace, management-api, or global)
  * Embeddings: xinference /v1/embeddings (bge-small-en-v1.5, 384-dim)
- * Connection: $RUVECTOR_PG_CONNINFO or defaults to docker service name
+ * Connection: RUVECTOR_PG_HOST/PORT/DATABASE/USER plus the password read from
+ * $RUVECTOR_PG_PASSWORD_FILE (management-api/lib/pg-config.js); no conninfo string
  *
  * PRD-020 (v2) note: the aggregation sweep (W-A) and the recall-regression harness
  * (W-B) run OUT-OF-PROCESS — a gated self-loop / future supervisord program and
@@ -29,6 +30,7 @@ const { gates, boolGate, intGate } = require('./lib/ruvector-gates');
 const { createHybridTools } = require('./lib/memory-hybrid');
 const { createHealthTools } = require('./lib/memory-health');
 const { createOrchestrationProxy } = require('./lib/orchestration-proxy');
+const { pgPoolConfig } = require('../../management-api/lib/pg-config');
 
 // ── PostgreSQL pool ───────────────────────────────────────────────────────────
 
@@ -47,26 +49,17 @@ try {
   }
   if (!PgModule) throw new Error('pg not found in any search path');
   const { Pool } = PgModule;
-  const conninfo = process.env.RUVECTOR_PG_CONNINFO ||
-    'host=ruvector-postgres port=5432 dbname=ruvector user=ruvector password=ruvector';
-  const parsed = {};
-  for (const pair of conninfo.split(/\s+/)) {
-    const eq = pair.indexOf('=');
-    if (eq > 0) parsed[pair.slice(0, eq)] = pair.slice(eq + 1);
-  }
+  // Parts from RUVECTOR_PG_HOST/PORT/DATABASE/USER, password only from the one
+  // 0600 file ($RUVECTOR_PG_PASSWORD_FILE). A missing file throws, naming its path.
   pool = new Pool({
-    host:     parsed.host     || 'ruvector-postgres',
-    port:     parseInt(parsed.port || '5432', 10),
-    database: parsed.dbname   || parsed.database || 'ruvector',
-    user:     parsed.user     || parsed.username || 'ruvector',
-    password: parsed.password || 'ruvector',
+    ...pgPoolConfig(),
     max: 5,
     idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 5000,
   });
   pgOk = true;
 } catch (e) {
-  process.stderr.write(`[FATAL] [cf-mcp-ruvector] pg module unavailable — cannot start.\n`);
+  process.stderr.write(`[FATAL] [cf-mcp-ruvector] postgres client could not be configured — cannot start.\n`);
   process.stderr.write(`  Searched: ${PG_SEARCH_PATHS.join(', ')}\n`);
   process.stderr.write(`  NODE_PATH: ${process.env.NODE_PATH || '(unset)'}\n`);
   process.stderr.write(`  Error: ${e.message}\n`);

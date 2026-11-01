@@ -110,6 +110,9 @@ OVERRIDE_FILE="${REPO_DIR}/docker-compose.override.yml"
 
 SERVICE="ruvector-postgres"
 CONTAINER="ruvector-postgres"
+# The client password file (0600, /run/secrets/ruvector-pg/password) lives in THIS container,
+# not the postgres one: it is where the entrypoint writes it for the clients.
+CLIENT_CONTAINER="${RUVECTOR_CLIENT_CONTAINER:-agentbox}"
 CANDIDATE="ruvector-postgres-candidate"
 HUB_REPO="ruvnet/ruvector-postgres"
 PG_USER="ruvector"
@@ -272,7 +275,7 @@ learning_apply_gate() {
     return 0
 }
 
-# Resolve the governed MCP env (RUVECTOR_PG_CONNINFO, NODE_PATH,
+# Resolve the governed MCP env (RUVECTOR_PG_HOST/PORT/DATABASE/USER/PASSWORD_FILE, NODE_PATH,
 # XINFERENCE_ENDPOINT, EMBEDDING_MODEL, injected gate vars) the same way the
 # runtime does — from the generated .mcp.json claude-flow env block. Emits
 # `KEY=VALUE` lines for the first .mcp.json that carries a claude-flow env.
@@ -1194,7 +1197,7 @@ cmd_build_metadata_gin() {
 #    median-of-3 scores + PASS/FAIL against the no-regression band; per-run
 #    evidence lands under backups/ruvector-sidecar/recall-runs/. No gate — a
 #    pure read is always safe to run. Env resolved from .mcp.json exactly like
-#    aggregate-effectiveness (RUVECTOR_PG_CONNINFO, XINFERENCE_ENDPOINT, …).
+#    aggregate-effectiveness (RUVECTOR_PG_HOST/…/PASSWORD_FILE, XINFERENCE_ENDPOINT, …).
 RECALL_HARNESS="${RUVECTOR_RECALL_HARNESS:-${REPO_DIR}/scripts/ruvector-recall-harness.mjs}"
 
 # run_recall_harness <args…> — the harness under the governed MCP env. Its
@@ -1651,13 +1654,15 @@ scram_verifies() {
 
 # Every password a known owner-role client sends, labelled (values never printed).
 owner_client_passwords() {
-    local pw conn
+    local pw pwfile
     pw=$(docker inspect "$CONTAINER" --format '{{range .Config.Env}}{{println .}}{{end}}' 2>/dev/null \
             | awk -F= '$1=="POSTGRES_PASSWORD"{sub(/^[^=]*=/,""); print; exit}')
     [[ -n "$pw" ]] && printf 'container POSTGRES_PASSWORD\t%s\n' "$pw"
-    conn=$(mcp_env_pairs 2>/dev/null | awk -F= '$1=="RUVECTOR_PG_CONNINFO"{sub(/^[^=]*=/,""); print; exit}' || true)
-    pw=$(grep -oE 'password=[^ ]+' <<<"$conn" | head -1 | cut -d= -f2- || true)
-    [[ -n "$pw" ]] && printf '.mcp.json RUVECTOR_PG_CONNINFO\t%s\n' "$pw"
+    # The clients read ONE 0600 file in the agentbox container (management-api/lib/pg-config.js);
+    # .mcp.json carries only its path, never a password.
+    pwfile=$(mcp_env_pairs 2>/dev/null | awk -F= '$1=="RUVECTOR_PG_PASSWORD_FILE"{sub(/^[^=]*=/,""); print; exit}' || true)
+    pw=$(docker exec --user 1000 "$CLIENT_CONTAINER" cat "${pwfile:-/run/secrets/ruvector-pg/password}" 2>/dev/null || true)
+    [[ -n "$pw" ]] && printf '%s RUVECTOR_PG_PASSWORD_FILE\t%s\n' "$CLIENT_CONTAINER" "$pw"
     return 0
 }
 

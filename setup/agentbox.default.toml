@@ -373,14 +373,13 @@ admin_access_mode = "scoped"
 # Used when adapters.memory = "external-pg". Shared with the host container mesh
 # via visionclaw_network network. The ruvector-postgres container runs pgvector.
 #
-# The password is sourced from the RUVECTOR_PG_PASSWORD env var at runtime
-# (Q6: single source of truth). The conninfo template here uses the
-# manifest-time placeholder so static analysis can read the connection
-# string structure; the entrypoint substitutes the live password before
-# the management-api consumes it.
+# The conninfo carries NO password. The password has one source: the 0600
+# file the entrypoint writes from RUVECTOR_PG_PASSWORD (named by
+# RUVECTOR_PG_PASSWORD_FILE) and every client reads through
+# management-api/lib/pg-config.js. A password in this URL is refused.
 [integrations.ruvector_external]
 enabled  = true
-conninfo = "postgresql://ruvector:@@RUVECTOR_PG_PASSWORD@@@ruvector-postgres:5432/ruvector"
+conninfo = "postgresql://ruvector@ruvector-postgres:5432/ruvector"
 # When true, the generated compose owns the ruvector-postgres sidecar:
 # service block + healthcheck + depends_on, so `agentbox.sh up`/`rebuild`
 # always brings the memory backend up with the stack. When false, an
@@ -1559,11 +1558,10 @@ install_dir = "/home/devuser/.claude-flow/plugins"
 
 # Memory backend for plugins that need persistence.
 # Points to the same external ruvector-postgres used by integrations.ruvector_external.
-# Password sourced from RUVECTOR_PG_PASSWORD env var (Q6) and substituted
-# by the entrypoint when it materialises the claude-flow config.
+# No password here: the one 0600 password file is the only credential source.
 [plugins.memory]
 backend = "postgres"
-conninfo = "postgresql://ruvector:@@RUVECTOR_PG_PASSWORD@@@ruvector-postgres:5432/ruvector"
+conninfo = "postgresql://ruvector@ruvector-postgres:5432/ruvector"
 fallback = "sqlite"
 enable_hnsw = true
 

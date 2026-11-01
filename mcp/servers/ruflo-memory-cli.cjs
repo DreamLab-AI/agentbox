@@ -142,29 +142,17 @@ function loadPg() {
   return null;
 }
 
-function parseConninfo(conninfo) {
-  const parsed = {};
-  for (const pair of String(conninfo).split(/\s+/)) {
-    const eq = pair.indexOf('=');
-    if (eq > 0) parsed[pair.slice(0, eq)] = pair.slice(eq + 1);
-  }
-  return {
-    host: parsed.host || 'ruvector-postgres',
-    port: parseInt(parsed.port || '5432', 10),
-    database: parsed.dbname || parsed.database || 'ruvector',
-    user: parsed.user || parsed.username || 'ruvector',
-    password: parsed.password || 'ruvector',
-  };
-}
-
 function makePool(log) {
   const PgModule = loadPg();
   if (!PgModule) {
     log('ERROR', `pg module unavailable; searched ${PG_SEARCH_PATHS.join(', ')} and NODE_PATH=${process.env.NODE_PATH || '(unset)'}`);
     return null;
   }
-  const conn = parseConninfo(process.env.RUVECTOR_PG_CONNINFO ||
-    'host=ruvector-postgres port=5432 dbname=ruvector user=ruvector password=ruvector');
+  let conn;
+  try { conn = require('../../management-api/lib/pg-config').pgPoolConfig(); } catch (e) {
+    log('ERROR', e.message);
+    return null;
+  }
   return {
     pool: new PgModule.Pool({ ...conn, max: 2, idleTimeoutMillis: 2000, connectionTimeoutMillis: 5000 }),
     location: `${conn.host}:${conn.port}/${conn.database}`,

@@ -14,6 +14,7 @@
 // Soft-require: if nostr-tools is not installed, nostrBridge is null and the
 // structural fallback below is used instead.
 const crypto = require('crypto');
+const { taskActionTokens } = require('../lib/task-action-tokens');
 
 // The relative path only resolves when this file runs from the repo/app-root
 // tree. The baked image packages management-api as its OWN nix derivation
@@ -130,6 +131,25 @@ function verifyBearerHeader(header, validToken) {
 }
 
 /**
+ * Per-task action credential (lib/task-action-tokens.js): the ONLY routes it
+ * may reach. Matched on Fastify's registered route pattern, not the raw URL,
+ * so query strings, trailing slashes and encoded-path tricks cannot widen it;
+ * an unmatched request (404) has no pattern and is refused.
+ */
+const TASK_TOKEN_ROUTES = new Set([
+  'POST /v1/agent-events/emit',
+  'POST /v1/agent-events/batch',
+  // ADR-2164: the trajectory recorder's single write path (the API persists).
+  'POST /v1/agent-events/trajectory',
+]);
+
+function verifyTaskTokenHeader(header, store) {
+  if (!header.startsWith('Bearer ')) return null;
+  const hit = store.verify(header.slice('Bearer '.length).trim());
+  return hit ? { mode: 'task-token', taskId: hit.taskId } : null;
+}
+
+/**
  * Resolve the effective auth mode.
  *
  * Modes:
@@ -163,6 +183,7 @@ function _resolveAuthMode(requestedMode) {
 
 function createAuthMiddleware(validToken, options = {}) {
   const authMode = _resolveAuthMode(options.authMode);
+  const taskTokens = options.taskTokens || taskActionTokens;
 
   return async function authMiddleware(request, reply) {
     const authHeader = request.headers.authorization || '';
@@ -176,6 +197,27 @@ function createAuthMiddleware(validToken, options = {}) {
     const authResult =
       (allowNip98 && nip98Result)
       || (allowBearer && bearerResult);
+
+    // Task-scoped credential: a narrow third type on this same gate. It is
+    // consulted only when the request is not already authenticated as the
+    // operator, is accepted in every auth mode (it is not the shared API key,
+    // and sovereign mode has no other way for a task to report), and is
+    // confined to TASK_TOKEN_ROUTES. A valid token anywhere else is 403; an
+    // unknown, expired or revoked one falls through to the 401 below.
+    if (!authResult) {
+      const taskResult = verifyTaskTokenHeader(authHeader, taskTokens);
+      if (taskResult) {
+        const route = `${request.method} ${(request.routeOptions && request.routeOptions.url) || ''}`;
+        if (!TASK_TOKEN_ROUTES.has(route)) {
+          return reply.code(403).send({
+            error: 'Forbidden',
+            message: 'Task action tokens may only post agent actions'
+          });
+        }
+        request.auth = taskResult;
+        return;
+      }
+    }
 
     if (!authResult) {
       // Distinguish rejection reason for operators debugging auth issues.

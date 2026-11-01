@@ -51,7 +51,7 @@
 //                                                    (--force overwrites an existing one)
 //
 // The engine subcommand `agentbox.sh ruvector recall` resolves the governed MCP
-// env (RUVECTOR_PG_CONNINFO, XINFERENCE_ENDPOINT, EMBEDDING_MODEL, the gate vars)
+// env (RUVECTOR_PG_HOST/PORT/DATABASE/USER/PASSWORD_FILE, XINFERENCE_ENDPOINT, EMBEDDING_MODEL, the gate vars)
 // from .mcp.json and invokes this file; see scripts/ruvector-sidecar-update.sh.
 
 import { createRequire } from 'node:module';
@@ -60,6 +60,7 @@ import { mkdirSync, writeFileSync, readFileSync, existsSync, realpathSync } from
 import { dirname, join, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import http from 'node:http';
+const { pgPoolConfig } = createRequire(import.meta.url)('../management-api/lib/pg-config.js');
 
 const require = createRequire(import.meta.url);
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -120,19 +121,8 @@ function loadPg() {
 
 function makePool() {
   const Pg = loadPg();
-  const conninfo = process.env.RUVECTOR_PG_CONNINFO ||
-    'host=ruvector-postgres port=5432 dbname=ruvector user=ruvector password=ruvector';
-  const parsed = {};
-  for (const pair of conninfo.split(/\s+/)) {
-    const eq = pair.indexOf('=');
-    if (eq > 0) parsed[pair.slice(0, eq)] = pair.slice(eq + 1);
-  }
   return new Pg.Pool({
-    host: parsed.host || 'ruvector-postgres',
-    port: parseInt(parsed.port || '5432', 10),
-    database: parsed.dbname || parsed.database || 'ruvector',
-    user: parsed.user || parsed.username || 'ruvector',
-    password: parsed.password || 'ruvector',
+    ...pgPoolConfig(),
     max: 4,
     idleTimeoutMillis: 10000,
     connectionTimeoutMillis: 5000,

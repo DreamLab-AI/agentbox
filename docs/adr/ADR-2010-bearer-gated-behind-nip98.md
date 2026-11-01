@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 3b498088e5a35e78158a9eb8d6f0266996d31f82
+verified_commit: 4f3bd5325eb56b582d1220bc9b0a0b79e918fdae
 verified_paths: [config/nip98-proxy/proxy.mjs, docs/INGRESS-identity.md]
 owner: jjohare
 review_trigger: A governance upstream stops re-verifying the operator signature, or a new default proxy route is proposed
@@ -161,3 +161,29 @@ Re-verified by `git diff a48ea407a..275e12356 -- <verified_paths>`. No re-implem
 ## Re-verification — 2026-10-21
 
 The identity addition accepts signed epoch tickets against an explicit group binding and store owner, subscribes to the optional inbox recipient, and authenticates the seal before routing. Key material never reaches the model; all 47 zone-key tests pass. Proxy authentication and clarification matching are unchanged. Manifest validation, the 95 catalogue gates, 45 agent-reconciliation checks and 25 role-supervisor checks pass. This is source verification; image activation and live checks remain separate deployment evidence.
+
+## Re-verification — 2026-11-01 (ADR-2164)
+
+`INGRESS-identity.md` gained Invariant 12: a per-task action token, a narrow third credential
+on the same gate, accepted only for `POST /v1/agent-events/emit|batch`. The operator Bearer key
+rules here are unchanged (still rejected under `strict-nip98`); the token is not that key.
+
+## Re-verification — 2026-11-01 (ADR-2164 amendment)
+
+`docs/INGRESS-identity.md` changed again (0.2.6): Invariant 12's route list gains `POST /v1/agent-events/trajectory` and a sentence that no database credential reaches a task. The change is confined to Invariant 12 and the changelog/ADR index; the Bearer-behind-NIP-98 rule is unchanged, and the token still never crosses the :9096 proxy. Re-verified by `git diff fd395620b..29d927745 -- docs/INGRESS-identity.md`.
+
+## Re-verification — 2026-11-01 (`cc949bb79`)
+
+Governed-path delta since `29d927745` is the RuVector Postgres credential custody change (ADR-2164 amendment 2), nothing else:
+
+- `docs/INGRESS-identity.md`: version 0.2.7: invariant 12 gains the one-database-credential-source sentence and the routing-label route.
+
+Nothing this record decides is changed; its status axes are unchanged. Re-run: `git diff 29d927745..cc949bb79 -- docs/INGRESS-identity.md`.
+
+## Re-verification — 2026-11-01 (`3d717c40f`)
+
+`docs/INGRESS-identity.md` changed since `cc949bb79` only in ADR-2164 amendment 3: version 0.2.8, one changelog line, and the Invariant 12 sentences on token scope inside the routes and the same-UID limit (`git diff cc949bb79..3d717c40f -- docs/INGRESS-identity.md`). This record's decision does not concern Invariant 12. Decision unchanged; `verified_commit` bumped.
+
+## Re-verification — 2026-11-01 (`4f3bd5325`)
+
+Governed-path delta since `3d717c40f`: `docs/INGRESS-identity.md`: version 0.2.9, one changelog line, and the Invariant 12 credential sentences (what the scrub removes, and the post-deploy password rotation) (ADR-2164 amendment 4). This record's decision does not concern these changes. Decision unchanged; `verified_commit` bumped. Re-run: `git diff 3d717c40f..4f3bd5325 -- docs/INGRESS-identity.md`.

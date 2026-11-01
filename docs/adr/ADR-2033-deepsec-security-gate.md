@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 2f15c531b02b8f8393d68d29ce3491712bdd862c
+verified_commit: cc949bb79c9ac89858d01c1235dd3bca6e2226a2
 verified_paths: [flake.nix, agentbox.toml, schema/agentbox.toml.schema.json, scripts/agentbox-config-validate.js, management-api/lib/system-manifest.js, skills/build-with-quality/scripts, skills/build-with-quality/references/deepsec-security-gate.md, .github/workflows/deepsec.yml]
 owner: jjohare
 review_trigger: a deepsec major version, a change to its CLI exit-code contract or model-route schema, any new model route, or the first paid full-repo run
@@ -463,3 +463,12 @@ Re-verified 2026-10-31 at `97f298db5`: the only delta on this record's governed 
 Tripped by the W8 ADR-sprint changes. Governed-path delta since `753788564`: `agentbox.toml` gains only four `[model_routing.routes]` entries (`diagram-polish`, `diagram-narrative`, `diagram-synthesis`, `seal-review`) and a comment block (ADR-2130); `schema/agentbox.toml.schema.json` widens the `model_routing.routes` host pattern to `claude|codex|loom|zai` and adds those four keys (ADR-2130); `scripts/agentbox-config-validate.js` changes only the E010 profiles root, from the retired `/workspace/profiles` to `$WORKSPACE/profiles` (ADR-2066). No key, table or code path this record decides is touched, so the decision and status axes are unchanged. Judged from the diff (re-runnable: `git diff 753788564..1e41b64b6 -- flake.nix agentbox.toml schema/agentbox.toml.schema.json scripts/agentbox-config-validate.js management-api/lib/system-manifest.js skills/build-with-quality/scripts skills/build-with-quality/references/deepsec-security-gate.md .github/workflows/deepsec.yml`; re-run at integration and the summary above matches it), not by re-running this record's own acceptance checks.
 
 Re-verified 2026-10-31 at `2f15c531b02b8f8393d68d29ce3491712bdd862c` (W7 and W8 integration, `adr-sprint/w78`). Governed-path delta since `97f298db5`: `agentbox.toml`: the four `[model_routing.routes]` diagram routes with their comment block (ADR-2130), and a wording fix on the `bypass_projects` comment (brackets forbidden, scoped to skill routing; ADR-2090); `management-api/lib/system-manifest.js`: one summary string, the `bypass_projects` wording scoped to skill routing (ADR-2090); `schema/agentbox.toml.schema.json`: the `model_routing.routes` host pattern widened to `claude|codex|loom|zai` with four route keys (ADR-2130), and the `bypass_projects` item pattern forbidding `[` and `]` with its description scoped to skill routing (ADR-2090); `scripts/agentbox-config-validate.js`: the E010 profiles root follows `$WORKSPACE` (ADR-2066), E083 forbids brackets and E082 rejects a TOML float (ADR-2090, ADR-2139). Read from the diff and checked against the merged tree's gates (cargo, jest, validator); nothing it changes is a key, table or code path this record decides, so the decision and status axes are unchanged. Re-run: `git diff 97f298db5..2f15c531b -- agentbox.toml management-api/lib/system-manifest.js schema/agentbox.toml.schema.json scripts/agentbox-config-validate.js`.
+
+## Re-verification — 2026-11-01 (`cc949bb79`)
+
+Governed-path delta since `2f15c531b` is the RuVector Postgres credential custody change (ADR-2164 amendment 2), nothing else:
+
+- `agentbox.toml`: the two `conninfo` URLs drop the `@@RUVECTOR_PG_PASSWORD@@` placeholder password, with their comments.
+- `flake.nix`: removes the claude-flow config template (`claudeFlowConfigJson` and its `cp`) and the baked `RUVECTOR_PG_CONNINFO` image Env entry, and rewords one dream-engine supervisor comment.
+
+Nothing this record decides is changed; its status axes are unchanged. Re-run: `git diff 2f15c531b..cc949bb79 -- agentbox.toml flake.nix`.

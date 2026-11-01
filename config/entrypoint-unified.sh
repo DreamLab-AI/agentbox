@@ -459,6 +459,53 @@ _ab_role_key_file_own() { # _ab_role_key_file_own <role_isolation 0|1> <file> <r
 
 _ab_role_env_capture "$AGENTBOX_ROLE_ISOLATION" /run/secrets
 
+# RuVector Postgres credential custody. The password enters the container once,
+# as RUVECTOR_PG_PASSWORD (compose requires it; there is no default). It is
+# written to ONE devuser-owned 0600 file, and the variable is unset before
+# anything below can copy it into a config, a hook command or an exported env.
+# Everything downstream gets the public parts (host/port/database/user) and the
+# FILE PATH, nothing else; every database client assembles its connection in
+# management-api/lib/pg-config.js. Independent of role isolation: with the flag
+# on /run/secrets is root 0711, so this keeps its own devuser-owned subdirectory.
+# A password that is neither in the environment nor already on disk fails closed:
+# the error names the file path, no default is invented, and the memory clients
+# then refuse to start (they read the same file).
+_ab_pg_credential_prepare() { # _ab_pg_credential_prepare <secrets-root> <uid:gid of the reader>
+  local root="${1:-/run/secrets}" owner="${2:-1000:1000}" dir file tmp
+  dir="${root}/ruvector-pg"; file="${dir}/password"
+  # Exported first, so the projections below never expand an unset name under
+  # `set -u` even when the password itself is unavailable (clients then fail
+  # closed on the named path).
+  export RUVECTOR_PG_PASSWORD_FILE="$file"
+  export RUVECTOR_PG_HOST="${RUVECTOR_PG_HOST:-ruvector-postgres}"
+  export RUVECTOR_PG_PORT="${RUVECTOR_PG_PORT:-5432}"
+  export RUVECTOR_PG_DATABASE="${RUVECTOR_PG_DATABASE:-ruvector}"
+  export RUVECTOR_PG_USER="${RUVECTOR_PG_USER:-ruvector}"
+  if [ -n "${RUVECTOR_PG_PASSWORD:-}" ]; then
+    if [ -L "$dir" ] || { [ -e "$dir" ] && [ ! -d "$dir" ]; }; then rm -f -- "$dir"; fi
+    mkdir -p -- "$root"; [ -d "$dir" ] || mkdir -m 0700 -- "$dir"
+    chown "$owner" "$dir" 2>/dev/null || true
+    chmod 0700 "$dir"
+    tmp="${file}.tmp.$$"
+    rm -f -- "$tmp"
+    if ! ( umask 077; set -o noclobber; printf '%s' "$RUVECTOR_PG_PASSWORD" >"$tmp" ); then
+      echo "[security] ruvector-postgres password could not be written to ${file}" >&2
+      unset RUVECTOR_PG_PASSWORD RUVECTOR_PG_CONNINFO
+      return 1
+    fi
+    chown "$owner" "$tmp" 2>/dev/null || true
+    chmod 0600 "$tmp"
+    mv -f -- "$tmp" "$file"
+  elif [ ! -f "$file" ] || [ -L "$file" ] || [ ! -s "$file" ]; then
+    echo "[security] ruvector-postgres password unavailable: RUVECTOR_PG_PASSWORD is unset and ${file} is missing or empty" >&2
+    unset RUVECTOR_PG_PASSWORD RUVECTOR_PG_CONNINFO
+    return 1
+  fi
+  unset RUVECTOR_PG_PASSWORD RUVECTOR_PG_CONNINFO
+  return 0
+}
+_ab_pg_credential_prepare /run/secrets 1000:1000 || true
+
 # R-012: Boot assertion — WORKSPACE must be a mounted volume, not tmpfs.
 # If the compose mount is missing, $WORKSPACE silently lands on the container
 # overlay/tmpfs and every "durable" write evaporates on restart. Warn loudly
@@ -1419,21 +1466,10 @@ _RUFLO_PLUGINS_REPO="https://github.com/ruvnet/ruflo.git"
 mkdir -p "$_PLUGIN_DIR" "$_RUFLO_PLUGINS_CACHE" 2>/dev/null || true
 chown -R 1000:1000 "$_PLUGIN_DIR" 2>/dev/null || true
 
-# Q26 / Q6: claude-flow plugin config is generated at image-build time from
-# agentbox.toml [plugins.memory] (see flake.nix `claudeFlowConfigJson`). The
-# template lives at /opt/agentbox/config/claude-flow-config.template.json
-# with a literal @@RUVECTOR_PG_PASSWORD@@ placeholder that we expand here
-# from the env, so the password lives in exactly one place (the env var).
-_CF_CONFIG_DIR="${HOME}/.claude-flow"
-_CF_TEMPLATE="/opt/agentbox/config/claude-flow-config.template.json"
-mkdir -p "$_CF_CONFIG_DIR" 2>/dev/null || true
-if [ -f "$_CF_TEMPLATE" ] && { [ ! -f "$_CF_CONFIG_DIR/config.json" ] || ! grep -q "ruvector-postgres" "$_CF_CONFIG_DIR/config.json" 2>/dev/null; }; then
-  : "${RUVECTOR_PG_PASSWORD:=ruvector}"
-  # sed escape the password to handle any '/' or '&' (paranoid; ruvector ships safe defaults)
-  _PG_PW_ESC=$(printf '%s\n' "$RUVECTOR_PG_PASSWORD" | sed -e 's/[\/&]/\\&/g')
-  sed "s/@@RUVECTOR_PG_PASSWORD@@/$_PG_PW_ESC/g" "$_CF_TEMPLATE" > "$_CF_CONFIG_DIR/config.json"
-  chown 1000:1000 "$_CF_CONFIG_DIR/config.json" 2>/dev/null || true
-fi
+# The claude-flow plugin config template (Q26/Q6) carried the Postgres password;
+# nothing reads ~/.claude-flow/config.json's memory block (the governed
+# ruvector-mcp.cjs replaced `claude-flow mcp start`), so the template is gone and
+# the credential scrub below removes any password a previous boot wrote there.
 
 # ── PRD-018 / ADR-036 D6: read the RuVector memory gate flags from the manifest ─
 # Anchored-awk section parse, same style as scripts/ruvector-sidecar-update.sh
@@ -1490,7 +1526,6 @@ _IP_PROXY_PORT=$(_ab_toml_int interaction_plane proxy_port 9096)
 _MCP_JSON="${WORKSPACE}/.mcp.json"
 _RUVECTOR_MCP="/opt/agentbox/mcp/servers/ruvector-mcp.cjs"
 _PG_PREFIX="${WORKSPACE}/.claude-pg"
-: "${RUVECTOR_PG_PASSWORD:=ruvector}"
 if [ -f "$_RUVECTOR_MCP" ]; then
   # R-002: pg module resolution for the ruvector-mcp .mcp.json.
   # Preferred path: the Nix build bakes a `pg` closure and exports its path as
@@ -1524,7 +1559,11 @@ if [ -f "$_RUVECTOR_MCP" ]; then
       "args": ["$_RUVECTOR_MCP"],
       "type": "stdio",
       "env": {
-        "RUVECTOR_PG_CONNINFO": "host=ruvector-postgres port=5432 dbname=ruvector user=ruvector password=$RUVECTOR_PG_PASSWORD",
+        "RUVECTOR_PG_HOST": "$RUVECTOR_PG_HOST",
+        "RUVECTOR_PG_PORT": "$RUVECTOR_PG_PORT",
+        "RUVECTOR_PG_DATABASE": "$RUVECTOR_PG_DATABASE",
+        "RUVECTOR_PG_USER": "$RUVECTOR_PG_USER",
+        "RUVECTOR_PG_PASSWORD_FILE": "$RUVECTOR_PG_PASSWORD_FILE",
         "NODE_PATH": "$_PG_NODE_PATH",
         "XINFERENCE_ENDPOINT": "$XINFERENCE_ENDPOINT",
         "EMBEDDING_MODEL": "$EMBEDDING_MODEL"
@@ -1569,7 +1608,6 @@ if [ -f "$_MCP_JSON" ] && command -v node >/dev/null 2>&1; then
   ML_SONA_APPLY="$_ML_SONA_APPLY" ML_PARAM_TUNING="$_ML_PARAM_TUNING" \
   ML_PATTERN_DISTILL="$_ML_PATTERN_DISTILL" \
   ML_RETAINED_CORPUS="$_ML_RETAINED_CORPUS" ML_RETAINED_MAX_AGE="$_ML_RETAINED_MAX_AGE" \
-  RV_CONN="host=ruvector-postgres port=5432 dbname=ruvector user=ruvector password=${RUVECTOR_PG_PASSWORD:-ruvector}" \
   RV_NODE_PATH="$_PG_NODE_PATH" RV_XINF="$XINFERENCE_ENDPOINT" RV_EMB="$EMBEDDING_MODEL" \
   node <<'MCPGATEJS' || true
 const fs = require('fs');
@@ -1611,12 +1649,11 @@ for (const [k, v] of Object.entries(gates)) {
   if (srv.env[k] !== val) { srv.env[k] = val; changed = true; }
 }
 // C-1 (rebuild-readiness audit): .mcp.json persists on the workspace volume, so
-// the four connection fields written at first boot went stale on password /
+// the connection fields written at first boot went stale on password /
 // endpoint changes (the governed server would then fail closed with old creds).
 // Reconcile them every boot exactly like the gates — but only with non-empty
 // values, so an unset var never clobbers a working config.
 const conn = {
-  RUVECTOR_PG_CONNINFO: process.env.RV_CONN,
   NODE_PATH:            process.env.RV_NODE_PATH,
   XINFERENCE_ENDPOINT:  process.env.RV_XINF,
   EMBEDDING_MODEL:      process.env.RV_EMB,
@@ -1994,27 +2031,24 @@ fi
 # idempotent, fail-open. Registered ONLY when BOTH [memory_learning].enabled and
 # record_trajectories are true — otherwise the block below actively de-registers
 # any prior entry so toggling the manifest off restores byte-identical behaviour
-# on the next boot (PRD-018 metric 1). The two gate vars are embedded inline in
-# the command so the hook's own gate check passes exactly when the operator opted
-# in; the conninfo (and optional pubkey/agent) are passed through so the hook can
-# reach the sidecar regardless of the ambient hook env.
+# on the next boot (PRD-018 metric 1) — registration IS the enable flag. The hook
+# holds no database client: it posts to the Management API (ADR-2164), so the
+# command carries no conninfo, password or gate variable (a task inherits HOME and
+# therefore runs this very command). Only the public pubkey and agent label ride in.
 _TRAJ_HOOK="/opt/agentbox/config/hooks/trajectory-recorder.cjs"
 if [ "$_ML_ENABLED" = "1" ] && [ "$_ML_RECORD_TRAJ" = "1" ] \
    && [ -f "$_TRAJ_HOOK" ] && command -v node >/dev/null 2>&1; then
   mkdir -p "$(dirname "$_CLAUDE_SETTINGS")" 2>/dev/null || true
   TRAJ_HOOK="$_TRAJ_HOOK" SETTINGS="$_CLAUDE_SETTINGS" \
-  TRAJ_CONNINFO="${RUVECTOR_PG_CONNINFO:-host=ruvector-postgres port=5432 dbname=ruvector user=ruvector password=${RUVECTOR_PG_PASSWORD:-ruvector}}" \
   TRAJ_PUBKEY="${AGENTBOX_PUBKEY:-}" TRAJ_AGENT="${AGENTBOX_AGENT:-}" \
   node <<'TRAJJS' || true
 const fs = require('fs');
 const f = process.env.SETTINGS, hook = process.env.TRAJ_HOOK;
-// Inline env prefix so the hook sees its gates + DB reach independent of the
-// parent hook environment. Registration only happens when the operator enabled
-// the loop, so hardcoding the two gates to 1 is consistent with the manifest.
-let pfx = 'RUVECTOR_MEMORY_LEARNING_ENABLED=1 RUVECTOR_RECORD_TRAJECTORIES=1';
-if (process.env.TRAJ_CONNINFO) pfx += ` RUVECTOR_PG_CONNINFO=${JSON.stringify(process.env.TRAJ_CONNINFO)}`;
-if (process.env.TRAJ_PUBKEY)   pfx += ` AGENTBOX_PUBKEY=${process.env.TRAJ_PUBKEY}`;
-if (process.env.TRAJ_AGENT)    pfx += ` AGENTBOX_AGENT=${JSON.stringify(process.env.TRAJ_AGENT)}`;
+// Inline env prefix: public, non-secret identity only. No gate (registration is
+// the gate) and no database reach (the API persists, ADR-2164).
+let pfx = '';
+if (process.env.TRAJ_PUBKEY)   pfx += `AGENTBOX_PUBKEY=${process.env.TRAJ_PUBKEY} `;
+if (process.env.TRAJ_AGENT)    pfx += `AGENTBOX_AGENT=${JSON.stringify(process.env.TRAJ_AGENT)} `;
 let s = {}, origText = ''; try { origText = fs.readFileSync(f, 'utf8'); s = JSON.parse(origText); } catch {}
 s.hooks = s.hooks || {};
 // [event, tool matcher]. The hook reads the event name from argv[2]. Transcript-
@@ -2029,7 +2063,7 @@ for (const evt of ['PreToolUse', 'PostToolUse', 'Stop', 'SubagentStop']) {
 }
 for (const [evt, matcher] of specs) {
   s.hooks[evt] = s.hooks[evt] || [];
-  const grp = { hooks: [{ type: 'command', command: `${pfx} node ${hook} ${evt} || true`, timeout: 10 }] };
+  const grp = { hooks: [{ type: 'command', command: `${pfx}node ${hook} ${evt} || true`, timeout: 10 }] };
   if (matcher) grp.matcher = matcher;
   s.hooks[evt].push(grp);
 }
@@ -2403,7 +2437,11 @@ if { [ "$_COLLOQUY_ON" = "1" ] || [ "$_COLLOQUY_ON" = "true" ]; } \
     "COLLOQUY_NAMESPACE": "$_COLLOQUY_NS",
     "COLLOQUY_STORE_PATH": "$_COLLOQUY_STORE",
     "COLLOQUY_RUVECTOR_SERVER": "/opt/agentbox/mcp/servers/ruvector-mcp.cjs",
-    "RUVECTOR_PG_CONNINFO": "${RUVECTOR_PG_CONNINFO:-host=ruvector-postgres port=5432 dbname=ruvector user=ruvector password=ruvector}",
+    "RUVECTOR_PG_HOST": "$RUVECTOR_PG_HOST",
+    "RUVECTOR_PG_PORT": "$RUVECTOR_PG_PORT",
+    "RUVECTOR_PG_DATABASE": "$RUVECTOR_PG_DATABASE",
+    "RUVECTOR_PG_USER": "$RUVECTOR_PG_USER",
+    "RUVECTOR_PG_PASSWORD_FILE": "$RUVECTOR_PG_PASSWORD_FILE",
     "XINFERENCE_ENDPOINT": "${XINFERENCE_ENDPOINT:-http://xinference:9997}",
     "EMBEDDING_MODEL": "${EMBEDDING_MODEL:-bge-small-en-v1.5}",
     "NODE_PATH": "$_MCP_SERVERS_NODE_PATH"
@@ -2549,8 +2587,8 @@ _RB_MCP_DIR="/opt/agentbox/mcp/ruvnet-brain"
 _RB_NS="${RUVNET_BRAIN_NAMESPACE:-ruvnet-kb}"
 if [ "${ENABLE_RUVNET_BRAIN:-false}" = "true" ] && [ -d "$_RB_MCP_DIR" ]; then
 
-  # Phase 1: Register the thin MCP wrapper. Conninfo mirrors the claude-flow
-  # entry (libpq key=value form, password resolved at write time).
+  # Phase 1: Register the thin MCP wrapper. Connection parts and the
+  # password-file path mirror the claude-flow entry; no password is written.
   if [ -f "$_MCP_JSON" ] && ! grep -q "ruvnet-brain" "$_MCP_JSON" 2>/dev/null; then
     agentbox-manifest mcp-set-server --file "$_MCP_JSON" --name ruvnet-brain <<JSON 2>/dev/null && echo "  [mcp] Added ruvnet-brain → $_RB_MCP_DIR/server.js (namespace: $_RB_NS)" || true
 {
@@ -2558,7 +2596,11 @@ if [ "${ENABLE_RUVNET_BRAIN:-false}" = "true" ] && [ -d "$_RB_MCP_DIR" ]; then
   "args": ["$_RB_MCP_DIR/server.js"],
   "type": "stdio",
   "env": {
-    "RUVECTOR_PG_CONNINFO": "host=ruvector-postgres port=5432 dbname=ruvector user=ruvector password=\${RUVECTOR_PG_PASSWORD}",
+    "RUVECTOR_PG_HOST": "$RUVECTOR_PG_HOST",
+    "RUVECTOR_PG_PORT": "$RUVECTOR_PG_PORT",
+    "RUVECTOR_PG_DATABASE": "$RUVECTOR_PG_DATABASE",
+    "RUVECTOR_PG_USER": "$RUVECTOR_PG_USER",
+    "RUVECTOR_PG_PASSWORD_FILE": "$RUVECTOR_PG_PASSWORD_FILE",
     "XINFERENCE_ENDPOINT": "${XINFERENCE_ENDPOINT:-http://xinference:9997}",
     "EMBEDDING_MODEL": "${EMBEDDING_MODEL:-bge-small-en-v1.5}",
     "RUVNET_BRAIN_NAMESPACE": "$_RB_NS",
@@ -2798,12 +2840,11 @@ _RL_HOOK="/opt/agentbox/config/hooks/routing-label-recorder.cjs"
 if [ "$_SR_LABEL_LOG" = "1" ] && [ -f "$_RL_HOOK" ] && command -v node >/dev/null 2>&1; then
   mkdir -p "$(dirname "$_CLAUDE_SETTINGS")" 2>/dev/null || true
   RL_HOOK="$_RL_HOOK" SETTINGS="$_CLAUDE_SETTINGS" RL_EMBED_URL="$_SR_LABEL_EMBED_URL" \
-  RL_CONNINFO="${RUVECTOR_PG_CONNINFO:-host=ruvector-postgres port=5432 dbname=ruvector user=ruvector password=${RUVECTOR_PG_PASSWORD:-ruvector}}" \
   RL_MIN_CHARS="$_SR_MIN_CHARS" node <<'RLJS' || true
 const fs = require('fs');
 const f = process.env.SETTINGS, hook = process.env.RL_HOOK;
 const pfx = `AGENTBOX_ROUTING_LABELS=1 AGENTBOX_ROUTING_LABELS_EMBED_URL=${JSON.stringify(process.env.RL_EMBED_URL)} ` +
-  `RUVECTOR_PG_CONNINFO=${JSON.stringify(process.env.RL_CONNINFO)} AGENTBOX_SKILL_ROUTE_MIN_CHARS=${process.env.RL_MIN_CHARS}`;
+  `AGENTBOX_SKILL_ROUTE_MIN_CHARS=${process.env.RL_MIN_CHARS}`;
 let s = {}, origText = ''; try { origText = fs.readFileSync(f, 'utf8'); s = JSON.parse(origText); } catch {}
 s.hooks = s.hooks || {};
 s.hooks.Stop = (s.hooks.Stop || []).filter((g) =>
@@ -3471,7 +3512,9 @@ if [ "${ENABLE_RUVNET_BRAIN:-false}" = "true" ] \
   (
     run_as_devuser env \
       RUVNET_BRAIN_STAGING="$_RB_STAGING" \
-      RUVECTOR_PG_CONNINFO="host=ruvector-postgres port=5432 dbname=ruvector user=ruvector password=${RUVECTOR_PG_PASSWORD:-ruvector}" \
+      RUVECTOR_PG_HOST="$RUVECTOR_PG_HOST" RUVECTOR_PG_PORT="$RUVECTOR_PG_PORT" \
+      RUVECTOR_PG_DATABASE="$RUVECTOR_PG_DATABASE" RUVECTOR_PG_USER="$RUVECTOR_PG_USER" \
+      RUVECTOR_PG_PASSWORD_FILE="$RUVECTOR_PG_PASSWORD_FILE" \
       node "$_RB_INGEST"
   ) >> /var/log/ruvnet-brain-ingest.log 2>&1 &
   echo "  [ruvnet-brain] corpus reconciliation launched (log: /var/log/ruvnet-brain-ingest.log)"
@@ -3506,7 +3549,11 @@ startup_timeout_sec = 15
 required = true
 
 [mcp_servers.agentbox-memory.env]
-RUVECTOR_PG_CONNINFO = "host=ruvector-postgres port=5432 dbname=ruvector user=ruvector password=$RUVECTOR_PG_PASSWORD"
+RUVECTOR_PG_HOST = "$RUVECTOR_PG_HOST"
+RUVECTOR_PG_PORT = "$RUVECTOR_PG_PORT"
+RUVECTOR_PG_DATABASE = "$RUVECTOR_PG_DATABASE"
+RUVECTOR_PG_USER = "$RUVECTOR_PG_USER"
+RUVECTOR_PG_PASSWORD_FILE = "$RUVECTOR_PG_PASSWORD_FILE"
 NODE_PATH = "$_PG_NODE_PATH"
 XINFERENCE_ENDPOINT = "$XINFERENCE_ENDPOINT"
 EMBEDDING_MODEL = "$EMBEDDING_MODEL"
@@ -3779,6 +3826,166 @@ if [ -f "$_RECONCILE_COMMANDS" ]; then
   chown 1000:1000 /home/devuser/.claude/commands/* 2>/dev/null || true
 fi
 
+# ── RuVector Postgres credential scrub (every boot, idempotent, fail-open) ──────
+# Files that outlive the image (the workspace .mcp.json, ~/.codex/config.toml,
+# ~/.claude-flow/config.json) were written by earlier boots with a conninfo that
+# carried the password, and the first-write guards above never rewrite them. This
+# pass removes every RUVECTOR_PG_CONNINFO / memory.password it finds and projects
+# the public parts plus the password FILE PATH in its place, for each MCP server
+# that held a conninfo. Same single credential source as everything else: the
+# 0600 file written by _ab_pg_credential_prepare.
+if command -v node >/dev/null 2>&1; then
+  PGS_MCP_JSON="$_MCP_JSON" PGS_CODEX="${CODEX_HOME:-/home/devuser/.codex}/config.toml" \
+  PGS_CF="${HOME}/.claude-flow/config.json" PGS_FILE="${RUVECTOR_PG_PASSWORD_FILE:-}" \
+  PGS_CLAUDE_JSON="${CLAUDE_CONFIG_DIR:-/home/devuser/.claude}/.claude.json:/home/devuser/.claude.json" \
+  PGS_SNAP_DIRS="${CLAUDE_CONFIG_DIR:-/home/devuser/.claude}:${CLAUDE_CONFIG_DIR:-/home/devuser/.claude}/backups:${HOME}:${WORKSPACE:-/home/devuser/workspace}:${WORKSPACE:-/home/devuser/workspace}/.claude:${CODEX_HOME:-/home/devuser/.codex}:${HOME}/.claude-flow" \
+  PGS_ANY_DIRS="${CLAUDE_CONFIG_DIR:-/home/devuser/.claude}:${CLAUDE_CONFIG_DIR:-/home/devuser/.claude}/backups" \
+  node <<'PGSCRUBJS' || true
+// PGSCRUB_MARKER
+const fs = require('fs');
+const path = require('path');
+const e = process.env;
+const pwFile = e.PGS_FILE || '/run/secrets/ruvector-pg/password';
+const parts = {
+  RUVECTOR_PG_HOST: e.RUVECTOR_PG_HOST || 'ruvector-postgres',
+  RUVECTOR_PG_PORT: e.RUVECTOR_PG_PORT || '5432',
+  RUVECTOR_PG_DATABASE: e.RUVECTOR_PG_DATABASE || 'ruvector',
+  RUVECTOR_PG_USER: e.RUVECTOR_PG_USER || 'ruvector',
+  RUVECTOR_PG_PASSWORD_FILE: pwFile,
+};
+const MAX_BYTES = 32 * 1024 * 1024;
+let scrubbed = 0;
+let failed = 0;
+
+// Atomic rewrite: a sibling temp file (0600, same directory), fsync, rename over the
+// original. A kill before the rename leaves the original untouched; the temp file only
+// ever holds the already-scrubbed text, so it never carries the password.
+function atomicWrite(f, data, mode, uid, gid) {
+  const tmp = path.join(path.dirname(f), `.${path.basename(f)}.pgscrub.${process.pid}`);
+  let fd = null;
+  try {
+    fs.rmSync(tmp, { force: true });
+    fd = fs.openSync(tmp, 'wx', 0o600);
+    fs.writeSync(fd, data);
+    fs.fsyncSync(fd);
+    // The rename replaces the inode, so carry the original owner across (this runs as root at boot).
+    if (uid !== undefined) { try { fs.fchownSync(fd, uid, gid); } catch { /* not permitted: keep the writer's owner */ } }
+    fs.fchmodSync(fd, mode);
+    fs.closeSync(fd); fd = null;
+    if (e.PGS_TEST_FAIL_BEFORE_RENAME === '1') throw new Error('injected failure before rename');
+    fs.renameSync(tmp, f);
+    try { const dfd = fs.openSync(path.dirname(f), 'r'); try { fs.fsyncSync(dfd); } finally { fs.closeSync(dfd); } } catch { /* best effort */ }
+  } catch (err) {
+    if (fd !== null) { try { fs.closeSync(fd); } catch { /* ignore */ } }
+    try { fs.rmSync(tmp, { force: true }); } catch { /* ignore */ }
+    throw err;
+  }
+}
+// Read a regular (non-symlink) file of sane size; null if it is anything else.
+function readRegular(f) {
+  try {
+    const st = fs.lstatSync(f);
+    if (!st.isFile() || st.size > MAX_BYTES) return null;
+    const text = fs.readFileSync(f, 'utf8');
+    return text.includes('\u0000') ? null : { text, mode: st.mode & 0o777, uid: st.uid, gid: st.gid };
+  } catch { return null; }
+}
+// Text-level removal of the RuVector password from one string (hook command, URL, conninfo, raw
+// file text). Scoped to RuVector's own parts so another database's credentials in the same file
+// (an operator's unrelated MCP server) are left alone.
+const esc = (v) => String(v).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const CONN_ASSIGN = /RUVECTOR_PG_CONNINFO=(?:"[^"]*"|'[^']*'|[^\s"';&|]+)/g;
+const URL_PW = /(postgres(?:ql)?:\/\/)([^\s:\/@"']*):([^\s@"']+)@([^\s\/:?"']+)(:\d+)?(\/[^\s?"']*)?/gi;
+const KV_PW = /[ \t]*\bpassword=(?:'[^']*'|"[^"]*"|[^\s"']+)/gi;
+const RV_KV = new RegExp(`\\b(?:host=${esc(parts.RUVECTOR_PG_HOST)}|user=${esc(parts.RUVECTOR_PG_USER)}|dbname=${esc(parts.RUVECTOR_PG_DATABASE)})(?![\\w.-])`);
+function cleanText(s) {
+  let o = s.replace(CONN_ASSIGN, `RUVECTOR_PG_PASSWORD_FILE=${pwFile}`);
+  o = o.replace(URL_PW, (m, pre, user, _pw, host, port, db) => {
+    const dbn = String(db || '').replace(/^\//, '');
+    const ours = host === parts.RUVECTOR_PG_HOST || user === parts.RUVECTOR_PG_USER || dbn === parts.RUVECTOR_PG_DATABASE;
+    return ours ? `${pre}${user}@${host}${port || ''}${db || ''}` : m;
+  });
+  if (RV_KV.test(o)) o = o.replace(KV_PW, '');
+  return o;
+}
+// 1. A parsed JSON document (.mcp.json, Claude Code's per-user state and its backups, settings
+//    snapshots): every mcpServers entry whose env holds a conninfo, memory.password, and any string
+//    value (hook commands) carrying a conninfo or credentialled URL. Returns the entries changed.
+function scrubDoc(node, top, isCf) {
+  let n = 0;
+  if (!node || typeof node !== 'object') return 0;
+  if (top && isCf && node.memory && typeof node.memory === 'object' && Object.prototype.hasOwnProperty.call(node.memory, 'password')) {
+    delete node.memory.password; n++;
+  }
+  for (const [k, v] of Object.entries(node)) {
+    if (k === 'mcpServers' && v && typeof v === 'object') {
+      for (const srv of Object.values(v)) {
+        if (srv && srv.env && Object.prototype.hasOwnProperty.call(srv.env, 'RUVECTOR_PG_CONNINFO')) {
+          delete srv.env.RUVECTOR_PG_CONNINFO;
+          Object.assign(srv.env, parts);
+          n++;
+        }
+      }
+    }
+    if (typeof v === 'string') {
+      const c = cleanText(v);
+      if (c !== v) { node[k] = c; n++; }
+    } else {
+      n += scrubDoc(v, false, false);
+    }
+  }
+  return n;
+}
+function scrubFile(f, forceMode) {
+  const r = readRegular(f);
+  if (r === null) return;
+  const mode = forceMode === undefined ? r.mode : forceMode;
+  let out = null;
+  let n = 0;
+  try {
+    const j = JSON.parse(r.text);
+    n = scrubDoc(j, true, f === e.PGS_CF || path.basename(path.dirname(f)) === '.claude-flow');
+    if (n) out = JSON.stringify(j, null, 2);
+  } catch {
+    // TOML (Codex) or unparsable text: the conninfo line becomes the parts + the file path
+    let t = r.text;
+    if (/^RUVECTOR_PG_CONNINFO\s*=/m.test(t)) {
+      const lines = Object.entries(parts).map(([k, v]) => `${k} = ${JSON.stringify(v)}`).join('\n');
+      t = t.replace(/^RUVECTOR_PG_CONNINFO\s*=.*$/m, lines);
+    }
+    t = cleanText(t);
+    if (t !== r.text) { out = t; n = 1; }
+  }
+  if (out === null) return;
+  try { atomicWrite(f, out, mode, r.uid, r.gid); scrubbed += n; } catch { failed++; }
+}
+// Live targets
+const live = [e.PGS_MCP_JSON, ...String(e.PGS_CLAUDE_JSON || '').split(':'), e.PGS_CODEX, e.PGS_CF].filter(Boolean);
+for (const f of live) scrubFile(f, f === e.PGS_CODEX || f === e.PGS_CF ? undefined : 0o600);
+// 2. Snapshots of the projected config: Claude Code's rolling .claude.json backups, and the
+//    operator/reconcile copies (*.pre-*, *.bak*). Content scrubbed, files kept.
+const SNAP_SUFFIX = /\.(?:pre-[^/]+|bak[^/]*|backup[^/]*)$/;
+const KNOWN_BASE = /^(?:settings(?:\.local)?\.json|\.claude\.json|\.mcp\.json|config\.(?:json|toml)|claude_desktop_config\.json)\./;
+const anyDirs = new Set(String(e.PGS_ANY_DIRS || '').split(':').filter(Boolean));
+const dirs = new Set([...String(e.PGS_SNAP_DIRS || '').split(':').filter(Boolean), ...live.map((f) => path.dirname(f))]);
+const liveSet = new Set(live);
+for (const d of dirs) {
+  let names = [];
+  try { names = fs.readdirSync(d); } catch { continue; }
+  for (const nm of names.sort()) {
+    if (nm.includes('.pgscrub.') || !SNAP_SUFFIX.test(nm)) continue;
+    if (!(anyDirs.has(d) || KNOWN_BASE.test(nm))) continue;
+    const f = path.join(d, nm);
+    if (!liveSet.has(f)) scrubFile(f);
+  }
+}
+console.log(scrubbed ? `  [security] removed a stored Postgres password/conninfo from ${scrubbed} config entr${scrubbed === 1 ? 'y' : 'ies'}` : '  [security] no stored Postgres password/conninfo found in config files');
+if (failed) console.log(`  [security] WARNING: ${failed} file(s) could not be rewritten; rotate the RuVector password`);
+PGSCRUBJS
+  chown 1000:1000 "$_MCP_JSON" "${CODEX_HOME:-/home/devuser/.codex}/config.toml" "${HOME}/.claude-flow/config.json" \
+    "${CLAUDE_CONFIG_DIR:-/home/devuser/.claude}/.claude.json" /home/devuser/.claude.json 2>/dev/null || true
+fi
+
 # ---------------------------------------------------------------------------
 # Phase 8 — Publish environment hints to profile.d
 # ---------------------------------------------------------------------------
@@ -3800,10 +4007,11 @@ export WORKSPACE="$WORKSPACE"
 $_ROLE_ISO_EXPORTS
 export RUVECTOR_DATA_DIR="$RUVECTOR_DATA_DIR"
 export RUVECTOR_PORT="$RUVECTOR_PORT"
-: "${RUVECTOR_PG_PASSWORD:=ruvector}"
-RUVECTOR_PG_CONNINFO="${RUVECTOR_PG_CONNINFO:-postgresql://ruvector:ruvector@ruvector-postgres:5432/ruvector}"
-RUVECTOR_PG_CONNINFO="${RUVECTOR_PG_CONNINFO//@@RUVECTOR_PG_PASSWORD@@/$RUVECTOR_PG_PASSWORD}"
-export RUVECTOR_PG_CONNINFO
+export RUVECTOR_PG_HOST="$RUVECTOR_PG_HOST"
+export RUVECTOR_PG_PORT="$RUVECTOR_PG_PORT"
+export RUVECTOR_PG_DATABASE="$RUVECTOR_PG_DATABASE"
+export RUVECTOR_PG_USER="$RUVECTOR_PG_USER"
+export RUVECTOR_PG_PASSWORD_FILE="$RUVECTOR_PG_PASSWORD_FILE"
 export SOLID_POD_ROOT="${SOLID_POD_ROOT:-/var/lib/solid}"
 export AGENTBOX_CONFIG="${AGENTBOX_CONFIG:-/etc/agentbox.toml}"
 export SKILLS_TREE="${SKILLS_TREE:-/opt/agentbox/skills}"

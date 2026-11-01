@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 21769a881315a246afaa6e9d0b39daf4ec39b5bc
+verified_commit: cc949bb79c9ac89858d01c1235dd3bca6e2226a2
 verified_paths: [services/dream-engine/src/engine.rs, services/dream-engine/src/runner.rs, services/dream-engine/src/dispatch.rs, services/dream-engine/src/candidate_flow.rs]
 owner: jjohare
 review_trigger: first nightly dream-engine run on the rebuilt image (live supervised binary carries 'bash -o pipefail -c', checked 2026-10-30) whose receipts show the annexe depth layout and a pipefail-graded evaluator — that receipt moves this to live; or any change to annexe layout or receipt classification
@@ -119,3 +119,11 @@ Re-verified 2026-10-19 at `52183d76fde866ab1f05aea524aeea33d8573c3f`: Annexe scr
 ## Re-verification — 2026-10-23
 
 Read `git diff 52183d76f..96a9a925d -- services/dream-engine`: `Cargo.toml`/`Cargo.lock` move `dream-core` and `dream-gate` to `=0.3.0`, `candidate_flow.rs` and `engine.rs` carry the new `formatting` field into the candidate record and the PR-body note, and `judge.rs` adds `rustfmt` / `cargo fmt` to the tokens the adapter must not contain. `runner.rs` and `dispatch.rs` have no diff since the stamp, so the `bash -o pipefail -c` wrapper and the depth law are untouched. Receipt grading and the no-patch `unproven` veto live in `dream-gate`; 0.3.0 was not read from source here, but the pinned-crate behaviour this record names is exercised by `night_e2e` (11 passed) and `cargo test --locked --lib` (167 passed). The formatting step concerns a candidate's own files, so a no-patch ACCEPT has nothing to format; that reading is inferred from the adapter's use of the field and was not confirmed in `dream-core` source. The decision holds; `activation_status` is unchanged. Verified at 96a9a925dec7b19b8b75ecb891cce7a0a24d09e4.
+
+## Re-verification — 2026-11-01 (`cc949bb79`)
+
+Governed-path delta since `21769a881` is the RuVector Postgres credential custody change (ADR-2164 amendment 2), nothing else:
+
+- `services/dream-engine/src/engine.rs`: one test literal: `pg_url: String::new()` becomes `pg: Default::default()` (RuVectorConfig now holds the address and a password-file path).
+
+Nothing this record decides is changed; its status axes are unchanged. Re-run: `git diff 21769a881..cc949bb79 -- services/dream-engine/src/engine.rs`.

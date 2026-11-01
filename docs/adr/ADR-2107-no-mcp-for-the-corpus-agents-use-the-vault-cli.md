@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 2f15c531b02b8f8393d68d29ce3491712bdd862c
+verified_commit: cc949bb79c9ac89858d01c1235dd3bca6e2226a2
 verified_paths: [skills/ontology-augment, skills/podcast-knowledge-ingest, agents/ontology-curator.md, mcp/mcp.json, agentbox.toml, AGENTS.md]
 owner: jjohare
 review_trigger: a request to register any MCP server that reads or writes visionGraph, the ADR-140 /mcp plane reaching the deployed Loom, or the first `vault` subcommand an agent cannot express
@@ -152,3 +152,12 @@ Not re-verified: the live-image behaviour (needs the owner's rebuild) and the `/
 Left as is on purpose: the `flake.nix` ontomark note (it omits `apply` from its verb list) and `skills/ontology-augment/references/REFERENCE.md:263` ("`vault` reads the working tree"). Both are governed paths of other ADRs; editing `flake.nix` stales 23 records at once and editing `REFERENCE.md` stales ADR-2028, ADR-2129 and ADR-2140, so they wait for a batch that re-verifies those records. `REFERENCE.md` lines 265–268 are equally stale and are deferred with line 263. Neither teaches an unavailable verb.
 
 Re-verified 2026-10-31 at `2f15c531b02b8f8393d68d29ce3491712bdd862c` (W7 and W8 integration, `adr-sprint/w78`). Governed-path delta since `3e3e09b1d`: `agentbox.toml`: additive only: `state_budget_tokens` on the system_one backend (ADR-2139), `bypass_projects = []` (ADR-2090), the four diagram routes (ADR-2130) and their comments; no `[vault]` or corpus key is touched. Read from the diff and checked against the merged tree's gates (cargo, jest, validator); nothing it changes is a key, table or code path this record decides, so the decision and status axes are unchanged. Re-run: `git diff 3e3e09b1d..2f15c531b -- agentbox.toml`.
+
+## Re-verification — 2026-11-01 (`cc949bb79`)
+
+Governed-path delta since `2f15c531b` is the RuVector Postgres credential custody change (ADR-2164 amendment 2), nothing else:
+
+- `agentbox.toml`: the two `conninfo` URLs drop the `@@RUVECTOR_PG_PASSWORD@@` placeholder password, with their comments.
+- `mcp/mcp.json`: `${RUVECTOR_PG_CONNINFO}` env entries become the parts plus the password-file path.
+
+Nothing this record decides is changed; its status axes are unchanged. Re-run: `git diff 2f15c531b..cc949bb79 -- agentbox.toml mcp/mcp.json`.

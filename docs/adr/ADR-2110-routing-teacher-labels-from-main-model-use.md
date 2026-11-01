@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: 275e12356319a9630846656580d497d53de3d38c
+verified_commit: cc949bb79c9ac89858d01c1235dd3bca6e2226a2
 verified_paths: [config/hooks/routing-label-recorder.cjs, config/hooks/lib/routing-labels.cjs, tests/config/routing-labels.test.js, scripts/experiments/exp-b8-label-log.cjs, tests/config/exp-b8-label-log.test.js]
 owner: jjohare
 review_trigger: the EXP-B8 stopping rule firing (510 analysable rows or 2026-10-20) and its verdict PR; the first 30 days of recorded labels; a learned router measured against the frozen corpus; any change to what the label row stores
@@ -207,3 +207,15 @@ Re-verified by `git diff c7b5d5f55..275e12356 -- <verified_paths>`. No re-implem
 - **Verdict:** WITHDRAW. Judge 433/513 (84.4%) against the BM25 copy ceiling 500/513 (97.5%); discordant b = 4, c = 71; exact McNemar p = 6.81e-17.
 - **Stop:** the sample of 510 was reached; written by `scripts/experiments/exp-b8-label-log.cjs` under the pre-registered protocol `docs/experiments/EXP-B8-label-log.md` (owner decision 2026-10-02 R5b). Report: `docs/experiments/EXP-B8-report.md`.
 - **Action:** `label_log = false`; decision_status `rejected`, activation_status `inactive`. ADR-2110 is withdrawn (rejected): the judge did not beat its copy ceiling on live turns, so the routing premise of the façade programme is falsified at this effect size.
+
+## Re-verification — 2026-11-01 (`cc949bb79`)
+
+Governed-path delta since `275e12356` is the RuVector Postgres credential custody change (ADR-2164 amendment 2), nothing else:
+
+- `config/hooks/routing-label-recorder.cjs`: the recorder posts its rows to `POST /v1/agent-events/routing-label` instead of opening its own Postgres connection (pg client, conninfo parser and DDL removed).
+- `scripts/experiments/exp-b8-label-log.cjs`: `fetchRows` builds its client config through `management-api/lib/pg-config.js`.
+- `tests/config/routing-labels.test.js`: the recorder e2e env uses `MANAGEMENT_API_KEY`/`MANAGEMENT_API_PORT`, and `MIGRATIONS` is read from `management-api/lib/routing-label-store.js`.
+
+Nothing this record decides is changed; its status axes are unchanged. Re-run: `git diff 275e12356..cc949bb79 -- config/hooks/routing-label-recorder.cjs scripts/experiments/exp-b8-label-log.cjs tests/config/routing-labels.test.js`.
+
+**Specific to this record (ADR-2164 amendment 2).** The recorder no longer opens Postgres: it posts the rows it builds to the operator-only `POST /v1/agent-events/routing-label` and `management-api/lib/routing-label-store.js` owns the `routing_labels` DDL and INSERT through the memory adapter's pool. The table name is fixed (the `AGENTBOX_ROUTING_LABELS_TABLE` override went with the direct client). The registered Stop command carries no connection string. The decision and its status axes (`rejected`, `inactive`) are unchanged; the recorder is still gated by `[skills.routing].label_log` (`false`).

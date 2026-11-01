@@ -15,14 +15,14 @@ const uris = require('../../lib/uris');
 class ExternalEventsAdapter extends BaseAdapter {
   /**
    * @param {object} opts
-   * @param {string} opts.url          - HTTP POST endpoint
+   * @param {string} opts.baseUrl      - HTTP POST endpoint (the one key slotConfig passes)
    * @param {string} [opts.authToken]
    * @param {Function} [opts.fetchFn]
    */
   constructor(opts = {}) {
     super('events', 'external', CONTRACT_VERSIONS.events);
-    if (!opts.url) throw new Error('ExternalEventsAdapter: url is required');
-    this._url = opts.url;
+    if (!opts.baseUrl) throw new Error('ExternalEventsAdapter: baseUrl is required');
+    this._url = opts.baseUrl;
     this._token = opts.authToken || null;
     this._fetch = opts.fetchFn || ((...a) => fetch(...a));
     this._subscribers = new Map();

@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 3e3e09b1d7a00620d5704b8e48299ea90466ae19
+verified_commit: cc949bb79c9ac89858d01c1235dd3bca6e2226a2
 verified_paths: [management-api/lib/ontology-apply.js, management-api/lib/ontology-propose.js, management-api/lib/kg-proposal-extractor.js, management-api/lib/elevation-publisher.js, management-api/routes/kg-elevation.js, management-api/adapters/orchestrator/local-process-manager.js, management-api/tests/ontology-apply.test.js, management-api/tests/ontology-propose-vault.test.js]
 owner: jjohare
 review_trigger: the `vault` binary landing on PATH (VisionClaw WS-C), or Loom deploying `/loom/attest` (WS-H)
@@ -133,3 +133,11 @@ Status moves to `accepted / complete / staged`; the remaining gap named on 2026-
 - **Real-binary end to end** (forum `scripts/e2e-ontology-promotion.sh`, nostr-rust-forum ADR-2013 close-out, forum commit `64589c7`): `E2E_REAL_VAULT=1 E2E_LEDGER=stub` → 100 passed, 0 failed against `vault 0.1.0` and `ontomark 0.7.0` on a scratch corpus; stub mode 30/30. The earlier 33 failures were not rejected verbs: the harness lacked the signer roster and stored-request lookup this handler now requires, still used the `knowledge/pages/` layout, and its `events` shim lacked `d_tag`.
 - **Behaviour the record had not stated.** A Promote of a diff-bearing amend applies once: a replayed Promote is refused `STALE` by `ontomark apply` (nothing written, no second attestation, no ledger entry). The diff-less re-attestation path is covered by `ontology-apply.test.js`.
 - **Scope of the evidence.** The ledger in the real-binary run was a local recording stub (no `loom-facade` build here), and relay publication is dry-run only. A forum-signed decision applied in the running image remains unproven until the owner rebuilds; activation stays `staged`.
+
+## Re-verification — 2026-11-01 (`cc949bb79`)
+
+Governed-path delta since `3e3e09b1d` is the RuVector Postgres credential custody change (ADR-2164 amendment 2), nothing else:
+
+- `management-api/adapters/orchestrator/local-process-manager.js`: `RUVECTOR_PG_CONNINFO` is removed from the child env allowlist.
+
+Nothing this record decides is changed; its status axes are unchanged. Re-run: `git diff 3e3e09b1d..cc949bb79 -- management-api/adapters/orchestrator/local-process-manager.js`.

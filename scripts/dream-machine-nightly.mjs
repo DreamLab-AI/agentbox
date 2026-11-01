@@ -502,12 +502,8 @@ async function storeToRuVector(persisted, result, nightId) {
   for (const p of PG_PATHS) { try { Pool = require_(p).Pool; break; } catch { /* next */ } }
   if (!Pool) { log('WARN', 'RuVector: pg module not found — skipping'); return; }
 
-  const conninfo = process.env.RUVECTOR_PG_CONNINFO ||
-    'host=ruvector-postgres port=5432 dbname=ruvector user=ruvector password=ruvector';
-  const parsed = Object.fromEntries(conninfo.split(/\s+/).map(p => p.split('=')));
   const pool = new Pool({
-    host: parsed.host || 'ruvector-postgres', port: parseInt(parsed.port || '5432'),
-    database: parsed.dbname || 'ruvector', user: parsed.user || 'ruvector', password: parsed.password || 'ruvector',
+    ...require_('../management-api/lib/pg-config.js').pgPoolConfig(),
     max: 1, idleTimeoutMillis: 5000,
   });
 

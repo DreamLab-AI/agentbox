@@ -2891,9 +2891,10 @@ ${lib.optionalString dreamEngineEnabled ''
 # settings — that path is the image-materialised manifest, see the etc/ closure
 # above); the environment= line below carries only the Nix-known LLM selection
 # so the provider/model are visible in the supervisor block. SECRETS are NOT
-# written here: ZAI_ANTHROPIC_API_KEY (Z.AI credential) and RUVECTOR_PG_CONNINFO
-# (memory DB) are exported into the process environment by the entrypoint
-# launcher and inherited — same discipline as the nostr-relay agent secret.
+# written here: ZAI_ANTHROPIC_API_KEY (Z.AI credential) is exported into the
+# process environment by the entrypoint launcher and inherited; the memory DB
+# password is never in an environment: dream-engine reads the 0600 file named by
+# RUVECTOR_PG_PASSWORD_FILE (public parts RUVECTOR_PG_HOST/PORT/DATABASE/USER) — same discipline as the nostr-relay agent secret.
 [program:dream-engine]
 command=${bgNice}${dreamEnginePkg}/bin/dream-engine --loop --agentbox-toml /etc/agentbox.toml
 directory=/home/devuser/workspace
@@ -3407,26 +3408,6 @@ stderr_logfile_maxbytes=5MB
           then "http://host.docker.internal:11434"
           else "http://ollama:11434";
 
-        # Q26 / Q6: build a claude-flow config template at image-build time.
-        # The literal `@@RUVECTOR_PG_PASSWORD@@` placeholder is expanded by
-        # the entrypoint when it copies the template into $HOME/.claude-flow/
-        # config.json, sourcing the live password from the env. This
-        # collapses the previous three-way password disagreement (heredoc
-        # in entrypoint, override env default, agentbox.toml) into one
-        # source of truth (the env var).
-        _pluginsMemoryCfg = (agentboxConfig.plugins or {}).memory or {};
-        claudeFlowConfigJson = builtins.toJSON {
-          memory = {
-            backend = "external-pg";
-            host = "ruvector-postgres";
-            port = 5432;
-            database = "ruvector";
-            user = "ruvector";
-            password = "@@RUVECTOR_PG_PASSWORD@@";
-            enableHNSW = _pluginsMemoryCfg.enable_hnsw or true;
-            embeddingDimension = _pluginsMemoryCfg.embedding_dimension or 384;
-          };
-        };
         integrationsCfg = agentboxConfig.integrations or {};
         ragflowCfg      = integrationsCfg.ragflow           or {};
         ruvectorExtCfg  = integrationsCfg.ruvector_external or {};
@@ -4122,13 +4103,7 @@ ${ragflowNetworkDecl}
           sed -i 's/^[[:space:]]*//' $out/etc/fish/config.fish
           chmod 644 $out/etc/fish/config.fish
 
-          # Q26: claude-flow plugin config, generated from agentbox.toml.
-          # Replaces the runtime heredoc in entrypoint-unified.sh. Values
-          # track the manifest, not magic constants. Password is sourced
-          # from RUVECTOR_PG_PASSWORD env (with fallback) so the three-way
-          # password disagreement (Q6) collapses into one source of truth.
           mkdir -p $out/opt/agentbox/config
-          cp ${pkgs.writeText "claude-flow-config.json" claudeFlowConfigJson} $out/opt/agentbox/config/claude-flow-config.template.json
 
           # Fontconfig: Chrome's Skia font manager requires /etc/fonts/fonts.conf.
           # Without it, the GPU process crashes with SkFontMgr_FontConfigInterface
@@ -4483,7 +4458,6 @@ ${ragflowNetworkDecl}
           "CODEX_HOME=/home/devuser/.codex"
           "GIT_CONFIG_GLOBAL=/home/devuser/.config/git/config"
           "CLAUDE_FLOW_PLUGIN_DIR=/home/devuser/.claude-flow/plugins"
-          "RUVECTOR_PG_CONNINFO=${(agentboxConfig.integrations.ruvector_external.conninfo or "")}"
           # R-002/BLD-001: the management-api package already depends on `pg`
           # (baked into its node_modules at image build via npmDepsHash). Point
           # the entrypoint at that resolved tree so it can set NODE_PATH for the

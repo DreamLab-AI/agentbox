@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: 2f15c531b02b8f8393d68d29ce3491712bdd862c
+verified_commit: cc949bb79c9ac89858d01c1235dd3bca6e2226a2
 verified_paths: [services/agentbox-manifest/src/routing.rs, agentbox.toml, schema/agentbox.toml.schema.json]
 owner: jjohare
 review_trigger: the sealmap skill landing (DESIGN §10 step 5) with the four routes and two hosts; a Loom model swap; a change of the GLM model behind [consultants.zai]; a seal review whose author and reviewer share a family; ADR-2079's router consolidating [model_routing.routes]
@@ -87,3 +87,11 @@ node scripts/ci/check-manifest-catalogue.js               # PASS, 118 gate paths
 **Correction (F3, 2026-10-31): loom fails closed.** The first W8 cut mapped `loom` to `openai`, a latent egress fault. agentic-qe's `openai` provider targets api.openai.com and nothing here sets `OPENAI_BASE_URL` to the Loom, so a QE activity routed to `loom:*` would have sent its prompt, with the Loom model name, to OpenAI. The shipped manifest was not affected (no `AGENT_ACTIVITY_MAP` activity routes to `loom`). `host_provider("loom")` now returns the unconstructible `loom` label, the override loop skips it exactly as it skips `zai`, and `routing.rs` tests assert no `openai` agent override and no Loom model in any fallback-chain entry (`cargo test routing` in `services/agentbox-manifest`: 11 passed). Reinstating a Loom-backed QE provider needs a constructible base-URL provider first, as a new decision.
 
 Re-verified 2026-10-31 at `2f15c531b02b8f8393d68d29ce3491712bdd862c` (W7 and W8 integration, `adr-sprint/w78`). Governed-path delta since `1e41b64b6`: `routing.rs`: `host_provider("loom")` now returns the unconstructible `loom` label instead of `openai`, so the agentic-qe projection skips loom routes as it skips zai (the correction recorded in this record's close-out), with tests; `agentbox.toml` and `schema/agentbox.toml.schema.json`: since the W8 stamp, only the W7 additive keys (`state_budget_tokens`, `bypass_projects = []`) and the bracket and wording fixes (ADR-2090, ADR-2139); the four diagram routes and host patterns this record decides are unchanged. Read from the diff and checked against the merged tree's gates (cargo, jest, validator); the changes to this record's own surface are the ones its close-out above already records (and the status axes there stand), and nothing else it changes touches what it decides. Re-run: `git diff 1e41b64b6..2f15c531b -- agentbox.toml schema/agentbox.toml.schema.json services/agentbox-manifest/src/routing.rs`.
+
+## Re-verification — 2026-11-01 (`cc949bb79`)
+
+Governed-path delta since `2f15c531b` is the RuVector Postgres credential custody change (ADR-2164 amendment 2), nothing else:
+
+- `agentbox.toml`: the two `conninfo` URLs drop the `@@RUVECTOR_PG_PASSWORD@@` placeholder password, with their comments.
+
+Nothing this record decides is changed; its status axes are unchanged. Re-run: `git diff 2f15c531b..cc949bb79 -- agentbox.toml`.

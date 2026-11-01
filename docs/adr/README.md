@@ -59,7 +59,7 @@ detect changes to files it already lists — it is structurally blind to **addit
 is exactly how a new crate landed unlicensed under ADR-2030 while the record still read as
 verified and its `review_trigger` ("any new crate under `services/`") sat unactioned.
 
-_145 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
+_146 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
 
 | ID | Title | Domain | Date | Decision | Impl | Activation | Supersedes | Superseded by | Owner | Repo |
 |----|-------|--------|------|----------|------|------------|------------|---------------|-------|------|
@@ -208,3 +208,4 @@ _145 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
 | [ADR-2155](ADR-2155-system-one-consumer-activation.md) | Activate typed-decision consumers with a separate private route | — | 2026-10-29 | accepted | complete | staged | — | — | operator | agentbox |
 | [ADR-2162](ADR-2162-the-mesh-block-gets-one-reader-pinned-peers-a-node-key-and-the-dataspace-crossing.md) | The mesh block gets one reader — pinned peers, a node federation key and the dataspace crossing | — | 2026-10-30 | proposed | none | inactive | — | — | jjohare | agentbox |
 | [ADR-2163](ADR-2163-video-production-seam-window-identity-tooling.md) | Video production gains measured seam, window, stitch, lint and identity tooling, with every borrowed threshold provisional | GOVERNANCE-capabilities | 2026-10-30 | proposed | partial | staged | — | — | jjohare | agentbox |
+| [ADR-2164](ADR-2164-per-task-action-token-keeps-the-management-api-key-out-of-tasks.md) | A per-task action token keeps the Management API key out of tasks | — | 2026-11-01 | accepted | complete | staged | — | — | jjohare | agentbox |

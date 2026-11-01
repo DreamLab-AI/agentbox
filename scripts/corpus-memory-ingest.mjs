@@ -366,11 +366,9 @@ async function main() {
   try { opts = parseArgs(process.argv.slice(2)); } catch (e) { die(e.message); }
   if (!opts.pagesDir || !opts.repo) die('no vault: set [vault] in agentbox.toml (VAULT_PAGES, VAULT_REPO) or pass --pages-dir and --repo (ADR-2028)');
   if (opts.includeWorking && !opts.workingDir) die('--include-working needs VAULT_WORKING_PAGES or --working-dir');
-  const conninfo = process.env.RUVECTOR_PG_CONNINFO || '';
-  if (!conninfo) die('RUVECTOR_PG_CONNINFO not set');
   const { Pool } = loadPg(die);
   // A dry-run must not be able to write even by mistake: read-only session.
-  const pool = new Pool({ ...poolConfig(conninfo), max: 4, ...(opts.write ? {} : { options: '-c default_transaction_read_only=on' }) });
+  const pool = new Pool({ ...poolConfig(), max: 4, ...(opts.write ? {} : { options: '-c default_transaction_read_only=on' }) });
   const embedder = createEmbedder({
     endpoint: process.env.XINFERENCE_ENDPOINT || 'http://xinference:9997',
     model: process.env.EMBEDDING_MODEL || 'bge-small-en-v1.5',

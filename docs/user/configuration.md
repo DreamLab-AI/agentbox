@@ -458,7 +458,7 @@ Optional external endpoints for federated deployments.
 ```toml
 [integrations.ruvector_external]
 enabled  = true
-conninfo = "postgresql://ruvector:@@RUVECTOR_PG_PASSWORD@@@ruvector-postgres:5432/ruvector"
+conninfo = "postgresql://ruvector@ruvector-postgres:5432/ruvector"   # no password: it lives only in the 0600 file RUVECTOR_PG_PASSWORD_FILE
 
 # PRD-018 / ADR-036 D6 — retrieval upgrades. All six are TRUE in the shipped
 # manifest (rolled out 2026-07-05). A manifest with all six false is

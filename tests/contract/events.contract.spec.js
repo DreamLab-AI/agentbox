@@ -43,7 +43,7 @@ const IMPLS = [
   },
   {
     label: 'external',
-    makeAdapter: () => new ExternalEventsAdapter({ url: 'http://fake-sink/events', fetchFn: makeOkFetch() }),
+    makeAdapter: () => new ExternalEventsAdapter({ baseUrl: 'http://fake-sink/events', fetchFn: makeOkFetch() }),
     isReal: true, // real dispatch path (fetch-stubbed)
   },
   {

@@ -23,37 +23,18 @@ const {
 } = require('@modelcontextprotocol/sdk/types.js');
 const { Pool } = require('pg');
 const http = require('http');
+const { pgPoolConfig } = require('../../management-api/lib/pg-config');
 
 const NAMESPACE = process.env.RUVNET_BRAIN_NAMESPACE || 'ruvnet-kb';
 const XINFERENCE_URL = process.env.XINFERENCE_ENDPOINT || 'http://xinference:9997';
 const EMBEDDING_MODEL = process.env.EMBEDDING_MODEL || 'bge-small-en-v1.5';
 const EMBEDDING_DIM = 384;
-const CONNINFO = process.env.RUVECTOR_PG_CONNINFO || '';
 
 function log(level, msg) {
   process.stderr.write(`[${new Date().toISOString()}] ${level} [ruvnet-brain-mcp] ${msg}\n`);
 }
 
-// Conninfo arrives in either libpq key=value form (the .mcp.json claude-flow
-// convention) or postgresql:// URL form (the agentbox.toml convention) —
-// accept both, mirroring ruvector-mcp.cjs.
-function poolConfig(conninfo) {
-  if (/^postgres(ql)?:\/\//.test(conninfo)) return { connectionString: conninfo };
-  const parsed = {};
-  for (const pair of conninfo.split(/\s+/)) {
-    const eq = pair.indexOf('=');
-    if (eq > 0) parsed[pair.slice(0, eq)] = pair.slice(eq + 1);
-  }
-  return {
-    host: parsed.host || 'ruvector-postgres',
-    port: parseInt(parsed.port || '5432', 10),
-    database: parsed.dbname || parsed.database || 'ruvector',
-    user: parsed.user || parsed.username || 'ruvector',
-    password: parsed.password || 'ruvector',
-  };
-}
-
-const pool = new Pool({ ...poolConfig(CONNINFO), max: 2, idleTimeoutMillis: 30000, connectionTimeoutMillis: 5000 });
+const pool = new Pool({ ...pgPoolConfig(), max: 2, idleTimeoutMillis: 30000, connectionTimeoutMillis: 5000 });
 pool.on('error', (e) => log('WARN', `pg pool error: ${e.message}`));
 
 function getEmbedding(text) {
@@ -257,7 +238,6 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
 });
 
 async function main() {
-  if (!CONNINFO) log('WARN', 'RUVECTOR_PG_CONNINFO not set — queries will fail until configured');
   const transport = new StdioServerTransport();
   await server.connect(transport);
   log('INFO', `ready (namespace=${NAMESPACE}, xinference=${XINFERENCE_URL})`);
