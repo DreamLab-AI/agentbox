@@ -96,6 +96,39 @@ describe('2. other tasks and asserted identities are rejected', () => {
   });
 });
 
+describe('2b. B2: a token cannot act as another task through source_agent_id', () => {
+  const { hashString } = require('../../management-api/lib/agent-id-hash');
+  test('emit: a forged source_agent_id is replaced by the token task id', async () => {
+    const token = store.mint(TASK_A);
+    const seen = [];
+    const off = agentEventPublisher.subscribe((e) => seen.push(e));
+    const r = await emit(token, body({ source_agent_id: TASK_B }));
+    off();
+    expect(r.statusCode).toBe(200);
+    expect(seen).toHaveLength(1);
+    expect(seen[0].source_agent_id).toBe(hashString(TASK_A));
+    expect(seen[0].source_agent_id).not.toBe(hashString(TASK_B));
+  });
+  test('emit: a numeric forged source_agent_id is replaced too', async () => {
+    const token = store.mint(TASK_A);
+    const seen = [];
+    const off = agentEventPublisher.subscribe((e) => seen.push(e));
+    await emit(token, body({ source_agent_id: hashString(TASK_B) }));
+    off();
+    expect(seen[0].source_agent_id).toBe(hashString(TASK_A));
+  });
+  test('batch: every event carries the token task as its source', async () => {
+    const token = store.mint(TASK_A);
+    const seen = [];
+    const off = agentEventPublisher.subscribe((e) => seen.push(e));
+    const r = await app.inject({ method: 'POST', url: '/v1/agent-events/batch', headers: bearer(token),
+      payload: { events: [body({ source_agent_id: TASK_B }), body({ source_agent_id: 'consultant-x' })] } });
+    off();
+    expect(r.statusCode).toBe(200);
+    expect(seen.map((e) => e.source_agent_id)).toEqual([hashString(TASK_A), hashString(TASK_A)]);
+  });
+});
+
 describe('3. the token is rejected on any non-action endpoint', () => {
   test.each([
     ['GET', '/v1/tasks'],

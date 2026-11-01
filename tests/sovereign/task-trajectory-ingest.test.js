@@ -31,11 +31,18 @@ const squash = (s) => String(s).replace(/\s+/g, ' ').trim();
 /** A pg pool double that records every statement and its parameters. */
 function fakePool({ hasDuration = true, failOn } = {}) {
   const calls = [];
+  const owners = new Map(); // trajectories.id -> metadata (first writer wins, as ON CONFLICT DO NOTHING)
   const run = async (sql, params) => {
     const text = squash(sql);
     calls.push({ sql: text, params });
     if (failOn && failOn.test(text)) throw new Error('db down');
     if (/information_schema/.test(text)) return { rowCount: hasDuration ? 1 : 0, rows: [] };
+    if (/^INSERT INTO trajectories /.test(text) && !owners.has(params[0])) owners.set(params[0], JSON.parse(params[3]));
+    // B1 ownership read: the task that created the row.
+    if (/^SELECT .*FROM trajectories .*FOR UPDATE/.test(text)) {
+      const md = owners.get(params[0]);
+      return { rowCount: md ? 1 : 0, rows: md ? [{ task_id: md.task_id === undefined ? null : md.task_id }] : [] };
+    }
     return { rowCount: 1, rows: [] };
   };
   const client = { query: run, release() {} };
@@ -108,7 +115,8 @@ describe('1. the API persists a posted trajectory in the same row shape the reco
     expect(traj.sql).toBe(squash(`INSERT INTO trajectories (id, task, agent, status, started_at, metadata)
       VALUES ($1, $2, $3, 'recording', CURRENT_TIMESTAMP, $4::jsonb) ON CONFLICT (id) DO NOTHING`));
     expect(traj.params).toEqual([TRAJ_ID, 'claude-code-session:sess-1', 'claude-code',
-      JSON.stringify({ type: 'trajectory', session: 'sess-1', handoff_id: TRAJ_ID })]);
+      // a token post is stamped with its owner (B1); the operator's is not.
+      JSON.stringify({ type: 'trajectory', session: 'sess-1', handoff_id: TRAJ_ID, task_id: TASK })]);
 
     expect(step.sql).toBe(squash(`INSERT INTO trajectory_steps (id, trajectory_id, action, result, quality, step_order, duration_ms)
       VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT (id) DO NOTHING`));
@@ -228,7 +236,7 @@ describe('3. the recorder in a task persists through the token (no database clie
     const [traj, step, roll] = pool.writes();
     expect(traj.params[0]).toBe(id);
     expect(traj.params[1]).toBe('claude-code-session:sess-task-in');
-    expect(JSON.parse(traj.params[3])).toEqual({ type: 'trajectory', session, handoff_id: id });
+    expect(JSON.parse(traj.params[3])).toEqual({ type: 'trajectory', session, handoff_id: id, task_id: TASK });
     expect(step.params[0]).toBe(`${id}:step-${sha12('tu-1')}`);
     expect(step.params[1]).toBe(id);
     expect(step.params[2]).toBe('git status [args:1 flags:0]');

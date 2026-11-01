@@ -27,6 +27,15 @@ class TrajectoryInputError extends Error {
   }
 }
 
+/** A task token wrote to a trajectory another task, or the operator, owns. */
+class TrajectoryForbiddenError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = 'TrajectoryForbiddenError';
+    this.statusCode = 403;
+  }
+}
+
 /**
  * The pool of the external-pg memory adapter, or null when the memory slot is
  * anything else (there is then nowhere to persist a trajectory).
@@ -80,6 +89,13 @@ function validate(p) {
  * cumulative rollup, in a single transaction (a failure writes nothing, so the
  * recorder's watermark can safely stay put).
  *
+ * Ownership (B1): a trajectory id derives from the session, which the server
+ * never learns, so ownership is recorded at creation as `metadata.task_id`.
+ * With a `taskId` (a task-token post) the row is stamped with it, the owner is
+ * re-read under a row lock, and a trajectory owned by another task, or by the
+ * operator (no task_id), is refused before any step or rollup is written.
+ * Without a `taskId` (operator credentials) behaviour is unchanged.
+ *
  * @param {object} pool - a pg Pool (or anything with connect()/query())
  * @param {object} p
  * @param {{id:string, task:string, agent:string, metadata:object}} p.trajectory
@@ -88,23 +104,41 @@ function validate(p) {
  * @param {{success:boolean, step_count:number, mean_quality:number,
  *   outcome:string, handoff_id:(string|null), handoff_count:number,
  *   ctc_emit_queued:number, ctc_emit_carried_in:number}} p.rollup
+ * @param {string|null} [taskId] - the token's task id; null/absent for the operator.
  * @returns {Promise<{steps:number}>}
- * @throws {TrajectoryInputError} on a malformed post; any database error as-is.
+ * @throws {TrajectoryInputError} on a malformed post.
+ * @throws {TrajectoryForbiddenError} when a token writes a trajectory it does not own.
+ * Any database error is rethrown as-is.
  */
-async function persistTrajectory(pool, p) {
+async function persistTrajectory(pool, p, taskId = null) {
   validate(p);
   const hasDur = await hasDurationColumn(pool);
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
 
-    // 1. one trajectory row per session (idempotent).
+    // 1. one trajectory row per session (idempotent). A token post stamps the
+    //    owner over whatever metadata it sent: the caller never chooses it.
+    const metadata = taskId ? { ...(p.trajectory.metadata || {}), task_id: taskId } : (p.trajectory.metadata || {});
     await client.query(
       `INSERT INTO trajectories (id, task, agent, status, started_at, metadata)
          VALUES ($1, $2, $3, 'recording', CURRENT_TIMESTAMP, $4::jsonb)
        ON CONFLICT (id) DO NOTHING`,
-      [p.trajectory.id, p.trajectory.task, p.trajectory.agent, JSON.stringify(p.trajectory.metadata || {})]
+      [p.trajectory.id, p.trajectory.task, p.trajectory.agent, JSON.stringify(metadata)]
     );
+
+    if (taskId) {
+      // The INSERT above is a no-op on an existing row, so the owner on file is
+      // the creator's. Lock the row so a concurrent post cannot slip past.
+      const own = await client.query(
+        'SELECT metadata->>\'task_id\' AS task_id FROM trajectories WHERE id = $1 FOR UPDATE',
+        [p.trajectory.id]
+      );
+      const owner = own.rows && own.rows[0] ? own.rows[0].task_id : null;
+      if (owner !== taskId) {
+        throw new TrajectoryForbiddenError('trajectory is owned by another task or by the operator');
+      }
+    }
 
     // 2. one step row per graded Bash call (idempotent by content-addressed id).
     for (const s of p.steps) {
@@ -162,4 +196,4 @@ async function persistTrajectory(pool, p) {
   }
 }
 
-module.exports = { persistTrajectory, trajectoryPool, TrajectoryInputError };
+module.exports = { persistTrajectory, trajectoryPool, TrajectoryInputError, TrajectoryForbiddenError };

@@ -14,7 +14,7 @@ const { agentEventPublisher, AgentActionType } = require('../utils/agent-event-p
 const { agentEventArchive } = require('../utils/agent-event-archive');
 const { verifyAgentEventRequest, reconcileSourceUrn, reconcileTaskScope } = require('../lib/agent-event-auth');
 const taxonomy = require('../lib/failure-taxonomy');
-const { persistTrajectory, trajectoryPool, TrajectoryInputError } = require('../lib/trajectory-store');
+const { persistTrajectory, trajectoryPool, TrajectoryInputError, TrajectoryForbiddenError } = require('../lib/trajectory-store');
 const { persistRoutingLabels, routingLabelPool, RoutingLabelInputError } = require('../lib/routing-label-store');
 const { hashString } = require('../lib/agent-id-hash');
 const { processHookEvent, getRegistryStats } = require('../hooks/agent-action-hooks');
@@ -397,10 +397,9 @@ async function agentEventsRoutes(fastify, options) {
       return reply.code(rec.status).send({ success: false, error: rec.error, ...tag });
     }
 
-    // Convert string IDs to numeric hashes if needed
-    const sourceId = typeof body.source_agent_id === 'string'
-      ? hashString(body.source_agent_id)
-      : body.source_agent_id;
+    // Convert string IDs to numeric hashes if needed. A task token speaks for
+    // its own task only: the posted source_agent_id is ignored (B2).
+    const sourceId = resolveSourceId(auth, body.source_agent_id);
 
     const targetId = typeof body.target_node_id === 'string'
       ? hashString(body.target_node_id)
@@ -514,9 +513,7 @@ async function agentEventsRoutes(fastify, options) {
         return reply.code(rec.status).send({ success: false, error: rec.error, ...tag });
       }
 
-      const sourceId = typeof eventData.source_agent_id === 'string'
-        ? hashString(eventData.source_agent_id)
-        : eventData.source_agent_id;
+      const sourceId = resolveSourceId(auth, eventData.source_agent_id);
 
       const targetId = typeof eventData.target_node_id === 'string'
         ? hashString(eventData.target_node_id)
@@ -625,9 +622,14 @@ async function agentEventsRoutes(fastify, options) {
       });
     }
     try {
-      const out = await persistTrajectory(pool, request.body);
+      // B1: a task token may write only trajectories its own task owns.
+      const taskId = request.auth && request.auth.mode === 'task-token' ? request.auth.taskId : null;
+      const out = await persistTrajectory(pool, request.body, taskId);
       return reply.send({ success: true, steps: out.steps });
     } catch (err) {
+      if (err instanceof TrajectoryForbiddenError) {
+        return reply.code(403).send({ success: false, error: err.message });
+      }
       if (err instanceof TrajectoryInputError) {
         return reply.code(400).send({ success: false, error: err.message });
       }
@@ -884,6 +886,17 @@ function eventMatchesRef(event, ref) {
     return URN_FIELDS.some(k => typeof md[k] === 'string' && md[k] === ref);
   }
   return false;
+}
+
+/**
+ * The numeric source agent id for an emitted action. A task token proves one
+ * task, so its source is always that task (the same server-side stamping as
+ * withTaskId); any source_agent_id the client posted is ignored. Other
+ * credentials keep the caller's value, hashed when it is a string.
+ */
+function resolveSourceId(auth, posted) {
+  if (auth && auth.taskId) return hashString(String(auth.taskId));
+  return typeof posted === 'string' ? hashString(posted) : posted;
 }
 
 /**
