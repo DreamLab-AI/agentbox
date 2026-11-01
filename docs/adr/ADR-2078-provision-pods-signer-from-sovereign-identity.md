@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 3d717c40f48223666a8f2abd1151cd477b5bb9cc
+verified_commit: 4f3bd5325eb56b582d1220bc9b0a0b79e918fdae
 verified_paths: [management-api/lib/pod-signer.js, management-api/lib/agent-identity.js, management-api/adapters/index.js, management-api/adapters/pods/_solid-http-base.js, tests/sovereign/pod-sovereign-signer.node-test.js]
 owner: jjohare
 review_trigger: ADR-2064 flipping sign_requests back to true, a change to nostr-pod-bridge bootstrap key layout, or a second stack needing its own pod identity
@@ -174,3 +174,7 @@ Nothing this record decides is changed; its status axes are unchanged. Re-run: `
 ## Re-verification — 2026-11-01 (`3d717c40f`)
 
 Governed path `management-api/adapters/index.js` changed since `cc949bb79` by ADR-2164 amendment 3: the `BaseAdapter`/`CONTRACT_VERSIONS` imports, a `ConfigFailedAdapter` class, and a try/catch around `slotConfig` + construction in `resolveAdapters`, so a slot whose config cannot be built (the missing ruvector password file) is withdrawn instead of exiting the API (`git diff cc949bb79..3d717c40f -- management-api/adapters/index.js`). The pods signer is untouched: `buildPodNip98` reports a failed key load through `onError` rather than throwing, so `sign_requests` still reaches the adapter as `requireSigned` and the pods slot still fails closed per request (ADR-2064). Decision unchanged; `verified_commit` bumped.
+
+## Re-verification — 2026-11-01 (`4f3bd5325`)
+
+Governed-path delta since `3d717c40f`: `management-api/adapters/index.js`: `slotConfig` passes `baseUrl` (was `externalUrl`) and a config-failed slot records the configured file at fault (ADR-2164 amendment 4). This record's decision does not concern these changes. Decision unchanged; `verified_commit` bumped. Re-run: `git diff 3d717c40f..4f3bd5325 -- management-api/adapters/index.js`.

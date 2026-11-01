@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: cc949bb79c9ac89858d01c1235dd3bca6e2226a2
+verified_commit: 4f3bd5325eb56b582d1220bc9b0a0b79e918fdae
 verified_paths: [scripts/ruvector-sidecar-update.sh, tests/config/ruvector-sidecar-ops.test.sh]
 owner: jjohare
 review_trigger: a ruvector extension or image bump; a new read-only consumer or readable table; any pg_hba change; `ruvector reader-role --yes` and `hba-harden --yes` run on the live sidecar (activation → live)
@@ -65,3 +65,7 @@ Governed-path delta since `9db3bcc49` is the RuVector Postgres credential custod
 - `scripts/ruvector-sidecar-update.sh`: `owner_client_passwords` reads the container password file instead of scraping a conninfo out of `.mcp.json`, plus two comments.
 
 Nothing this record decides is changed; its status axes are unchanged. Re-run: `git diff 9db3bcc49..cc949bb79 -- scripts/ruvector-sidecar-update.sh`.
+
+## Re-verification — 2026-11-01 (`4f3bd5325`)
+
+Governed-path delta since `cc949bb79`: `scripts/ruvector-sidecar-update.sh`: `owner_client_passwords` reads the client password file in the agentbox container (new `CLIENT_CONTAINER`), not the postgres one, so the pre-upgrade SCRAM check covers that client (ADR-2164 amendment 4); `tests/config/ruvector-sidecar-ops.test.sh`: a stub branch and one case proving the password file is read in the agentbox container (ADR-2164 amendment 4). This record's `hba-harden` SCRAM pre-check reads the client password file; it now reads it in the agentbox container where it lives (the postgres container never held it), so the check covers that client instead of silently dropping it. The decision is unchanged. Decision unchanged; `verified_commit` bumped. Re-run: `git diff cc949bb79..4f3bd5325 -- scripts/ruvector-sidecar-update.sh tests/config/ruvector-sidecar-ops.test.sh`.
