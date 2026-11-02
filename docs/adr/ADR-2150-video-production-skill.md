@@ -17,6 +17,12 @@ domain: GOVERNANCE-capabilities
 
 # ADR-2150: Video productions are directed through existing media sidecars under one evidence discipline, with a Rust toolkit for the deterministic halves
 
+## External review reconciliation — 2026-11-02
+
+The external review recommends promotion when code is active. At `eb570ca93`, committed `skills/video-production/` supplies the skill/toolkit, but this record separately requires measured neighbour routing and a live cross-vendor-accepted production. This reconciliation supplies neither receipt. Retain the decision and activation axes; committed implementation alone does not establish complete acceptance. The earlier 'untracked' observation is dated 2026-10-23 and is historical, not the current checkout state.
+
+This is a scoped assessment; existing whole-record verification fields are retained.
+
 ## Context
 A research programme produced complete films with Blender, ComfyUI, FFmpeg and speech, and showed that delivery
 integrity, physical conformance and creative acceptance are separate claims: a complete 750-frame film passed

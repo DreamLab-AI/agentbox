@@ -16,6 +16,12 @@ repo: agentbox
 
 # ADR-2032 — Daemon reapers identify processes by argv boundaries against a launcher allowlist and fail closed on anything else
 
+## External review reconciliation — 2026-11-02
+
+An external summary claims both daemon reapers compare recorded argv and start time before signalling, eliminating PID reuse. At source `eb570ca93`, Hermes uses `process_identity::verify` (`services/agentbox-ops/src/hermes/mod.rs:326,589,610`), but `ruflo-daemon-gc.rs:148-157` calls `procs::confirm_daemon`, which checks the current launcher argv only (`procs.rs:79-85`). It does not compare a captured start time. A replacement daemon with an allowed argv can therefore pass the reaper's check. Even separate identity verification and kill are not an atomic kernel process handle. The historical acceptance text above describes Hermes; it must not be read as a proof that every reaper meets the full identity rule. Implementation remains partial. Acceptance requires an owned-process regression for replacement with the same allowed launcher and a stable process handle or an explicitly documented residual race. No live signal was sent.
+
+This is a scoped assessment; existing whole-record verification fields are retained.
+
 ## Re-verification — 2026-10-01 (dependency refresh)
 
 The reaper changes only rustix's renamed Signal::TERM variant, not argv matching, PID bounds or explicit kill policy. The operations crate's sandboxed tests pass. No live process-reaping test was used to establish this source invariant.

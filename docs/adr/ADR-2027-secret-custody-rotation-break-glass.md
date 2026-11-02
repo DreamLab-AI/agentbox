@@ -17,6 +17,12 @@ domain: SECURITY-profiles
 
 # ADR-2027 — Secret custody, rotation, and break-glass lifecycle
 
+## External review reconciliation — 2026-11-02
+
+The external review describes break-glass bearer access as expiry/scope bounded. At `eb570ca93`, `config/nip98-proxy/proxy.mjs:60-82` explicitly permits unset expiry and scope: unset expiry means no expiry, unset scope means unrestricted. These are supported controls, not unconditional properties of every accepted bearer. Report effective configuration with the use receipt; never infer bounded authority from the verifier's existence. This source check changes no credential or activation state.
+
+This is a scoped assessment; existing whole-record verification fields are retained.
+
 ## Context
 
 Panel finding P1-5: at least five load-bearing secrets are implied across the

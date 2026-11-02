@@ -18,6 +18,12 @@ lineage: ADR-2027 (secret custody; role accounts become its custodians, owner Q3
 
 # ADR-2122 — Role service accounts, /run/secrets, and the identity port
 
+## External review reconciliation — 2026-11-02
+
+Scoped review at `eb570ca93`: `agentbox.toml:2543` still sets role_isolation=false. The external count of 37 DEVUSER_CLASS secrets is historical: `config/custody/env-classes.json` now classifies 36 names. A classification count does not prove those values are set in a running environment. ADR-2164's file-only RuVector credential amendment already supersedes the claim that every such credential is ambient. A read-only observation on 2026-11-02 found the mounted Docker socket mode 0666; this is deployment evidence for that mount only, not a new host-wide inventory. W3b and the flag-on rehearsal remain required before a cutover claim. The proposed external action to flip the flag is a follow-up requiring its existing acceptance procedure, not performed by this documentation update. No secret values were inspected.
+
+This is a scoped assessment; existing whole-record verification fields are retained.
+
 ## Scoped packaging verification — 2026-11-02
 
 The only governed delta since the previous verification stages the canonical

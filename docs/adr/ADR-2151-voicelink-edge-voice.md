@@ -3,7 +3,7 @@ id: ADR-2151
 title: Run voice at the client edge and drive native CLI panes over the ssh attach chain
 date: 2026-10-27
 decision_status: proposed
-implementation_status: none
+implementation_status: partial
 activation_status: inactive
 supersedes: []
 superseded_by: []
@@ -15,6 +15,12 @@ repo: agentbox
 ---
 
 # ADR-2151 — Run voice at the client edge and drive native CLI panes over the ssh attach chain
+
+## External review reconciliation — 2026-11-02
+
+Source at `eb570ca93` enables `[voicelink]` and record_events (`agentbox.toml:2259-2272`); `config/entrypoint-unified.sh:892-936,2156-2194` projects recorder hooks. On 2026-11-02, read-only inspection found `/opt/agentbox/bin/voice-paned` baked as a Nix executable and Claude Stop/Notification registrations naming `voice-paned record`. This supersedes the historical implementation_status=none claim: the source and bake exist, so implementation is partial. The grouped-session client link and end-to-end voice test were not run; activation remains inactive pending that receipt. Decision acceptance is not inferred from the enabled flag.
+
+This is a scoped assessment; existing whole-record verification fields are retained.
 
 ## Context
 The operator works remotely by ssh to the host and `agentbox.sh shell` (`docker exec -it --user 1000 … tmux attach -t agentbox`), driving native `claude`/`codex` CLIs in tmux tabs; AoE (tab 8) is rarely used. The existing voice plane (ADR-044: Nemotron ASR, Pocket TTS, Unmute, the `:8444` cockpit) transcribes server-side and targets tab0-bridge/AoE, which is the wrong surface for this workflow. Client devices (an AMD Strix Halo laptop with 64 GB unified memory, NVIDIA boxes, CPU-only machines, macOS) can run speech and a conversational model locally. tmux tracks the current window per session, not per client, so two attached terminals cannot follow focus independently.

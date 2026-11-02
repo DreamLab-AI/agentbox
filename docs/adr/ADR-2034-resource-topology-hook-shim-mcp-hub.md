@@ -17,6 +17,10 @@ domain: BASELINE-container
 
 # ADR-2034 — Tool-call hooks and stateless MCP servers run resident, and the container envelope is manifest-projected
 
+## External review reconciliation — 2026-11-02
+
+At `eb570ca93`, `flake.nix:231-234` still includes precedent-bridge in the fallback hub list. That is a retained default, not evidence that the retired server is running: the effective list comes from agentbox.toml when supplied. The external hygiene recommendation is valid for the stale fallback and comments; updating configuration code is outside this ADR-only reconciliation. Do not describe Colloquy's replacement as removal of every old name. This scoped note retains the historical verification fields and partial/staged axes.
+
 ## Context
 Measured 2026-09-05 with 40 Claude Code sessions: the container averaged 9.7 of
 its 30 CPUs, of which ≈7 were `ruflo hooks pre-command`/`post-command` CLI boots

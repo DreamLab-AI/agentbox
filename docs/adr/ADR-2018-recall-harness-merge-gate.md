@@ -17,6 +17,12 @@ lineage: "legacy PRD-020 / ADR-040 D2 (I14)."
 
 # ADR-2018 — The recall harness is the mandatory merge gate for any retrieval-geometry change
 
+## External review reconciliation — 2026-11-02
+
+At source `eb570ca93`, `scripts/ruvector-recall-harness.mjs:218-225,492-497` retains the frozen 175/102/nonnegative-delta band and median-of-three protocol, and `scripts/recall-gate.mjs` consumes bound receipts. These are engineering controls, not a proof of current recall or universal enforcement of every possible merge. The external praise must be read with the historical measured failures and later receipts in this record. This reconciliation ran no live recall experiment and changed no retrieval geometry.
+
+This is a scoped assessment; existing whole-record verification fields are retained.
+
 ## Context
 Any change to what a query returns — a rerank, a blend, an index rebuild, a new
 consumer — can silently degrade recall. Single-run recall numbers are noisy, so a

@@ -17,6 +17,10 @@ domain: GOVERNANCE-capabilities
 
 # ADR-2100 — Every chain settlement passes the payment_settlement authority gate, the spend budget is durable, and no settlement gate fails open
 
+## External review reconciliation — 2026-11-02
+
+At `eb570ca93`, the external three-ledger observation still describes distinct concerns: tree-search reservations in `services/agentbox-ops/src/cost_cap/ledger.rs`, pod payment balance/state through `management-api/routes/payments.js`, and grant budgets in `management-api/lib/llm-marketplace.js`. These are different accounting domains, so consolidation requires a reconciliation contract, not treating their amounts as interchangeable. No production call to authority.guard with payment_settlement was found under management-api; marketplace's existing guard concerns mandate_revoke (`routes/llm-marketplace.js:472`), not settlement. Retain proposed/none/inactive. This source review neither settles funds nor establishes a runtime bypass; acceptance remains the signed-decision and restart/budget fixtures specified here. Historical whole-record verification fields are retained.
+
 ## Context
 
 `agentbox.toml [skills.authority.classes]` declares `payment_settlement = "zero-tolerance"`

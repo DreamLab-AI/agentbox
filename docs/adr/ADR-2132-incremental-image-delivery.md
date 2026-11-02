@@ -17,6 +17,12 @@ domain: BASELINE-container
 
 # ADR-2132 — Incremental image delivery and explicit activation
 
+## External review reconciliation — 2026-11-02
+
+The external overview's fixed four-layer image and flake line count describe an older tree. At `eb570ca93`, grouping comes from `lib/image-layers.nix`; `scripts/runtime-delivery.cjs:31-45,205-206` reports actual layers and compares loaded RootFS diff IDs. A read-only observation on 2026-11-02 matched the active receipt's clean sourceCommit `eb570ca93ab4a0443dcfb0def35ac47493b059d6` and imageId `sha256:bdf63be07f48df77d2d4fe5bee93823e177230d03dc230e331d0ec42732bcdd2` to the running container. That receipt has five layers and activation time 18:34:18 UTC. This establishes the Agentbox activation only; it does not certify sidecars, XR, or newer producer dependencies. In particular `lib/solid-pod-rs.nix:58` still pins `76ab7aab3e882f32508b2461b3f51e4c09bdcfa1`, before the Solid mirror-publication repair at producer main `9b6143c`.
+
+This is a scoped assessment; existing whole-record verification fields are retained.
+
 ## Scoped re-verification — 2026-10-31
 
 Reviewed the governed-path delta since the previous verification: only the

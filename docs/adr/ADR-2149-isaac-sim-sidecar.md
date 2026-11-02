@@ -17,6 +17,12 @@ domain: BASELINE-container
 
 # ADR-2149 — Isaac Sim runs as an opt-in headless sidecar behind a typed job API
 
+## External review reconciliation — 2026-11-02
+
+The external recommendation to promote this record because a manifest flag is active does not apply to this decision: Decision 1 explicitly keeps this sidecar live-class and outside agentbox.toml. Source presence or a healthy unrelated GPU sidecar cannot satisfy the four-level smoke evidence in Decision 6. At the 2026-11-02 read-only Docker inventory no isaac-sim container was running. Retain proposed/partial/staged pending the named build and simulator fixtures. The internal trusted-script API boundary in Consequences remains a limitation, not public API authentication.
+
+This is a scoped assessment; existing whole-record verification fields are retained.
+
 ## Context
 Blender and ComfyUI are GPU sidecars (ADR-2142, ADR-2148). Articulated-body and robot simulation
 needs NVIDIA Isaac Sim, whose Ubuntu/Omniverse runtime cannot live in the Nix image. The existing
