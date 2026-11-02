@@ -68,6 +68,10 @@ pkgs.rustPlatform.buildRustPackage {
     cp ${../config/registered-hooks.txt} registered-hooks.txt
     cp ${../config/role-accounts.json} role-accounts.json
     cp ${../config/custody/env-classes.json} env-classes.json
+    # The routing regression checks the shipped manifest, not a stale fixture.
+    cp ${../agentbox.toml} agentbox.toml
+    substituteInPlace src/routing.rs \
+      --replace-fail '../../../agentbox.toml' '../agentbox.toml'
     substituteInPlace src/hooks.rs \
       --replace-fail '../../../config/registered-hooks.txt' '../registered-hooks.txt'
     substituteInPlace src/stacks.rs \
