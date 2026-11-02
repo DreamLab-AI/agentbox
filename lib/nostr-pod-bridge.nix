@@ -102,6 +102,10 @@ let
     cp ${../agentbox.toml} $out/project/agentbox/agentbox.toml
     cp ${../config/custody/identity-port-acl.json} \
       $out/project/agentbox/config/custody/identity-port-acl.json
+    # The federation-kind parity test includes the canonical registry at compile time.
+    mkdir -p $out/project/agentbox/schema
+    cp ${../schema/federation-kinds.json} \
+      $out/project/agentbox/schema/federation-kinds.json
     chmod -R u+w $out
   '';
 
