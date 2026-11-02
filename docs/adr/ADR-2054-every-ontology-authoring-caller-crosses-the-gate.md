@@ -18,6 +18,12 @@ lineage: ADR-2022 (governed ontology writes; named this CLI as its last remainin
 
 # ADR-2054 — Route every ontology authoring caller through the authority gate
 
+## External review reconciliation — 2026-11-02
+
+At Agentbox `eb570ca93`, grouped create/amend proposals are explicitly refused in `management-api/lib/ontology-apply.js:570-576,699-705`; the producer's ability to sign grouped subjects therefore exceeds this consumer's one-page application contract. Keep that limitation visible until group application is atomic or the producer refuses unsupported groups. Explicit promote checks request case tag and subject (`adapters/orchestrator/local-process-manager.js:444-452`) but lacks the proposal.digest equality used by approve (`:400-402`). Acceptance must bind the same proposal digest on both paths.
+
+The external recommendation to start recording actual created paths is already implemented here: `ontology-apply.js:626,795-798` prefers the command's returned path, and Ontomark `4b9d15d` `crates/ontomark-compile/src/write/create.rs:304` returns it. The fallback path remains a contract assumption when output omits path; a source-backed positive control is not proof that every producer always supplies it. This is a scoped source review, not a write, governance decision, or whole-record re-verification.
+
 > **Superseded by ADR-2108 (2026-09-22).** The authority gate this record
 > governs is deleted along with the in-place corpus write it protected
 > (`ontology-local.js` `axiomAdd`/`propose`, `ontology-local.cjs`,
