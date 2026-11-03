@@ -213,4 +213,4 @@ fixtures synthetic and independent of the blocked VisionClaw/Codescape work.
 7. Evaluation budget, harness/model availability and frozen baseline before any
    tuning. No empirical improvement is claimed by this inventory.
 
-No implementation work remains authorised under the current handoff-only request.
+Historical scope note: the handoff-only instruction was later superseded by the operator’s request to implement and integrate VisionCraft. See [current status](../visioncraft-handoff.md).
