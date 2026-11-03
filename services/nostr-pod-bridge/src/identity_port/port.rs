@@ -546,6 +546,15 @@ impl Port {
                 format!("method must be one of {METHODS:?}"),
             ));
         }
+        // The HTTP verifier consumes the original URL spelling. WHATWG parsing
+        // repairs backslashes and strips control bytes, so reject those inputs
+        // before comparing the parsed origin with the signing allowlist.
+        if req.url.bytes().any(|b| b == b'\\' || b.is_ascii_control()) {
+            return Err(Refused::new(
+                op,
+                "url must not contain backslashes or control bytes",
+            ));
+        }
         let url = Url::parse(req.url.trim())
             .map_err(|_| Refused::new(op, "url is not an absolute URL"))?;
         if !url.username().is_empty() || url.password().is_some() {
@@ -1254,6 +1263,24 @@ mod tests {
             "x".repeat(MAX_REQUEST_BYTES)
         );
         assert!(refused(&f.port.handle(DEV, &huge)));
+    }
+
+    #[test]
+    fn nip98_refuses_ambiguous_url_bytes_before_signing() {
+        let f = fx();
+        for url in [
+            "https://pod.example\\@evil.example/x",
+            "https://pod.example/\\evil.example/x",
+            "https://po\td.example/x",
+            "https://pod.example/a\r\nb",
+        ] {
+            let v = f
+                .port
+                .handle(DEV, &req("nip98", json!({"method":"GET","url":url})));
+            assert!(refused(&v), "ambiguous URL was signed: {url:?}");
+            assert!(v.get("header").is_none());
+        }
+        assert!(receipts(&f).iter().all(|r| r["decision"] == "refuse"));
     }
 
     #[test]
