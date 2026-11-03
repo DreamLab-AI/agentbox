@@ -35,9 +35,11 @@
 // Key scheme: scripts/lib/corpus-chunker.mjs (reverse-engineered from the live rows;
 // docs/reference/corpus-memory-ingest.md). Idempotent: a row whose content hash
 // matches and that already has an embedding is never re-embedded; its metadata is
-// refreshed only when the page metadata or the generation changed. Metadata gains
-// `generation` (visionGraph HEAD sha, "+dirty" when the vault has uncommitted
-// changes) and `corpus_version`. A `_manifest` row stamps generation, row counts
+// refreshed only when the page metadata changed. Metadata gains `generation`
+// (visionGraph HEAD sha, "+dirty" when the vault has uncommitted changes) and
+// `corpus_version`, recording the generation the row was last WRITTEN at: a
+// generation-only difference is never rewritten, because every metadata write
+// re-inserts the row's node in the tombstone-only HNSW index. A `_manifest` row stamps generation, row counts
 // and failures; when its generation equals the checkout's and it recorded no
 // failures, a re-run is a no-op.
 //
@@ -130,7 +132,7 @@ export function planIngest(pages, existing, { generation, corpusVersion, known, 
   const collisions = [];
   const generated = new Set();
   const scanned = new Set(pages.map((p) => p.fileName));
-  const counts = { pages: pages.length, chunks: 0, new: 0, changed: 0, unchanged: 0, metadata_refresh: 0, generation_bump: 0, conflict: 0, collisions: 0, prune_vanished: 0, prune_stale: 0 };
+  const counts = { pages: pages.length, chunks: 0, new: 0, changed: 0, unchanged: 0, metadata_refresh: 0, generation_behind: 0, conflict: 0, collisions: 0, prune_vanished: 0, prune_stale: 0 };
   for (const page of pages) {
     const cp = chunkPage({ fileName: page.fileName, text: page.text, vault: page.vault });
     for (const k of cp.collisions) collisions.push(`${page.fileName}: ${k}`);
@@ -148,10 +150,10 @@ export function planIngest(pages, existing, { generation, corpusVersion, known, 
       // vector does not reproduce under the current pipeline (cosine ~0.27-0.30 on 2 sampled rows).
       else if (row.content_hash !== c.contentHash || !row.embedded || row.embed_model !== embedModel) action = 'changed';
       else if (row.meta_hash !== metaHash) action = 'metadata';
-      else if (row.generation !== generation) action = 'generation';
       else action = 'unchanged';
       generated.add(c.key);
-      byKey.set(c.key, { ...c, metaHash, action, metadata: { ...meta, meta_hash: metaHash, generation, corpus_version: corpusVersion } });
+      const behind = action === 'unchanged' && row.generation !== generation;
+      byKey.set(c.key, { ...c, metaHash, action, behind, metadata: { ...meta, meta_hash: metaHash, generation, corpus_version: corpusVersion } });
     }
   }
   const chunks = [...byKey.values()];
@@ -160,8 +162,7 @@ export function planIngest(pages, existing, { generation, corpusVersion, known, 
     if (c.action === 'new') counts.new++;
     else if (c.action === 'changed') counts.changed++;
     else if (c.action === 'metadata') { counts.unchanged++; counts.metadata_refresh++; }
-    else if (c.action === 'generation') { counts.unchanged++; counts.generation_bump++; }
-    else counts.unchanged++;
+    else { counts.unchanged++; if (c.behind) counts.generation_behind++; }
   }
   counts.collisions = collisions.length;
   // Prune candidates: knowledge-sourced rows that carry a source_file, are no
@@ -228,8 +229,8 @@ export async function applyPlan(plan, d) {
     }
   }
 
-  // Unchanged content: metadata-only refresh (no re-embed).
-  const refresh = plan.chunks.filter((c) => c.action === 'metadata' || c.action === 'generation');
+  // Unchanged content, changed page metadata: metadata-only refresh (no re-embed).
+  const refresh = plan.chunks.filter((c) => c.action === 'metadata');
   for (let i = 0; i < refresh.length; i += 500) {
     const part = refresh.slice(i, i + 500);
     await pool.query(
@@ -286,7 +287,7 @@ export function summarise(plan, { generation, namespace, existingRows }) {
   return [
     `namespace ${namespace} @ ${generation}`,
     `pages ${c.pages}, chunks ${c.chunks} (existing rows ${existingRows})`,
-    `new ${c.new}, changed ${c.changed} (re-embed), unchanged ${c.unchanged} (metadata refresh ${c.metadata_refresh}, generation bump ${c.generation_bump})`,
+    `new ${c.new}, changed ${c.changed} (re-embed), unchanged ${c.unchanged} (metadata refresh ${c.metadata_refresh}, older generation left unwritten ${c.generation_behind})`,
     `prune candidates ${plan.pruneCandidates.length} (vanished pages ${c.prune_vanished}, stale sections ${c.prune_stale}); ${plan.prune.length ? 'WILL prune' : 'not pruning (no --prune)'}`,
     `key collisions (last wins) ${c.collisions}, foreign-key conflicts skipped ${c.conflict}`,
   ];
