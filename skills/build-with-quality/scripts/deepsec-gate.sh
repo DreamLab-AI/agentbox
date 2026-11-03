@@ -293,7 +293,11 @@ if os.path.isfile(fj):
             findings.append(it)
         elif isinstance(it, dict) and isinstance(it.get("findings"), list):
             for f in it["findings"]:
+                if not isinstance(f, dict):
+                    raise ValueError("finding must be an object")
                 f = dict(f); f.setdefault("filePath", it.get("filePath")); findings.append(f)
+        else:
+            raise ValueError("unrecognised finding export row")
 elif os.path.isdir(fj):
     for p in glob.glob(os.path.join(fj, "*.json")):
         doc = load(p)
@@ -310,8 +314,10 @@ for p in glob.glob(os.path.join(data, "files", "**", "*.json"), recursive=True):
         pass
 by_sev = {s: 0 for s in ORDER}
 for f in findings:
-    s = str(f.get("severity", "LOW")).upper()
-    by_sev[s] = by_sev.get(s, 0) + 1
+    if not isinstance(f, dict) or not isinstance(f.get("severity"), str) or f["severity"].upper() not in ORDER:
+        raise ValueError("finding requires a recognised severity")
+    s = f["severity"].upper()
+    by_sev[s] += 1
 blocking = [f for f in findings if str(f.get("severity", "LOW")).upper() in ORDER and ORDER.index(str(f["severity"]).upper()) <= threshold]
 if mode == "scan-only":
     result = "SCANNED"

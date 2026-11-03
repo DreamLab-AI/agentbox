@@ -28,8 +28,10 @@ batch failures. A findings comment is written only after successful batches.
 The wrapper now resolves and validates file manifests before invocation,
 requires a fresh report directory, requires that invocation's nonempty comment
 for a findings exit, and rejects failed, missing or malformed exports. Five
-new regression groups failed before the repair; all 15 fixture tests pass
-with it, including positive no-finding and real-finding controls. These are
+new regression groups failed before the repair; all 16 fixture tests pass
+with it, including positive no-finding and real-finding controls. Same-family peer review
+also reproduced malformed-row and unknown-severity false passes; both now fail
+closed with their own regression controls. These are
 wrapper tests, separate from paid model review. Source integration does not
 assert that an already running image contains this repaired script.
 

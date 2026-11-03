@@ -242,3 +242,23 @@ test('reused report directory cannot lend stale success evidence to another invo
   assert.doesNotMatch(r.log, /process/);
   assert.equal(readFileSync(join(rep, 'comment.md'), 'utf8'), 'old findings');
 });
+
+
+test('malformed finding rows and unknown severities fail closed', () => {
+  const root = makeRepo(); const bin = join(root, 'bin'); makeFakeCli(bin);
+  const m = manifest(root, ENABLED);
+  const invalid = [[null], [42], [{}], [{severity: 'SUPERHIGH'}], [{severity: null}], [{findings: [null]}], [{findings: [{}]}]];
+  for (const [i, data] of invalid.entries()) {
+    const r = run(root, ['--diff', 'HEAD', '--report-dir', join(root, `invalid-${i}`)], {
+      PATH: `${bin}:${PATH_NO_DEEPSEC}`, AGENTBOX_CONFIG: m, FAKE_DEEPSEC_FINDINGS: JSON.stringify(data), FAKE_DEEPSEC_RC: '1',
+    });
+    assert.equal(r.status, 70, `${JSON.stringify(data)}: ${r.stdout} ${r.stderr}`);
+    assert.doesNotMatch(r.stdout, /PASS/);
+  }
+  const r = run(root, ['--diff', 'HEAD', '--report-dir', join(root, 'nested-valid')], {
+    PATH: `${bin}:${PATH_NO_DEEPSEC}`, AGENTBOX_CONFIG: m,
+    FAKE_DEEPSEC_FINDINGS: JSON.stringify([{filePath: 'app.js', findings: [{severity: 'HIGH', title: 'nested'}]}]), FAKE_DEEPSEC_RC: '1',
+  });
+  assert.equal(r.status, 1, r.stderr);
+  assert.match(r.stdout, /BLOCK/);
+});
