@@ -186,3 +186,10 @@ In order:
    for the passphrase without echo. The vault survives on the `browsercontainer-profile`
    volume. Never run `down -v` on the sidecar, because that deletes the volume and the sealed
    key with it.
+## W3b consumer preparation (2026-11-03)
+
+Isolation-aware callers now use the identity port for Jarvis, nightly forum suggestions, mirror self-DMs, gateway control DMs, and Dream governance/digest. A missing/refused port stops that operation; it never enables the flag-off secret reader. The checked-in ACL returns public mirror identity only and uses `mirror_wrap` for self-DMs. Old local policies with `mirror_key.secret = true` must be replaced before boot; the loader rejects them.
+
+Before a flag-on rehearsal, the operator must independently provision the optional `DREAM_GOVERNANCE_PRIVKEY_HEX` identity-role secret and admit its public key for agent panel/case authorship at the forum. Do not reuse a human decision key. Missing material refuses Dream governance publication; digest retains the independently provisioned Jarvis identity. Keep 31401, 31403–31405 and 38414 forbidden for every port key. The source change does not perform key generation, registry admission, flag activation, host socket changes or browser Podkey ceremonies.
+
+Use the exact pinned forum/Solid sources and committed locks for the rebuild: the old forum pin `fe36bf36` lacks the shared authenticated grant-opening API used here. After building, verify real port receipts and both plaintext/encrypted-zone caller journeys before treating W3b as operationally complete. Source tests are recorded in [ADR-2122](../adr/ADR-2122-role-service-accounts-run-secrets-and-the-identity-port.md#w3b-source-readiness--2026-11-03).

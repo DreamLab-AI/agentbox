@@ -39,6 +39,9 @@ const { resolveAdapters } = require('../../management-api/adapters');
 const { ExternalPodsAdapter } = require('../../management-api/adapters/pods/external');
 const { SigningUnavailable } = require('../../management-api/adapters/errors');
 const { buildPodNip98 } = require('../../management-api/lib/pod-signer');
+// Keep the bounded caller contract in the existing npm test:node gate, even
+// when this file's real-port suite is skipped because no Rust binary exists.
+require('./identity-consumers.node-test');
 
 const CRATE = path.join(__dirname, '../../services/nostr-pod-bridge');
 function findBin() {
@@ -74,6 +77,7 @@ async function startPort(tmp) {
     keys: { core: { file: 'core.key', required: true, nip98_url_prefixes: [POD] } },
     callers: { [String(process.getuid())]: { name: 'node-test', ops: {
       pubkey: { keys: ['core'] }, nip98: { keys: ['core'] },
+      nip17_wrap: { keys: ['core'] }, nip17_unwrap: { keys: ['core'] },
     } } },
   }));
   const sock = path.join(run, 'identity.sock');
@@ -187,6 +191,22 @@ describe('identity port: NIP-98 via serve-identity', { skip: SKIP }, () => {
     }, generateSecretKey());
     const r = NostrBridge.verifyNip98(`Nostr ${Buffer.from(JSON.stringify(ev)).toString('base64')}`, 'GET', 'http://x/');
     assert.equal(r.valid, true, `verifier unavailable: ${r.error} (set NODE_PATH)`);
+  });
+
+  test('shared custody client opens a real typed self-DM without receiving a key', async () => {
+    const identityPort = require('../../management-api/lib/identity-port');
+    const signer = identityPort.signer('core');
+    assert.equal(signer.pubkey, ctx.port.pubkey);
+    assert.equal(signer.skBytes, undefined);
+    const wrap = await signer.wrapDm(ctx.port.pubkey, 'typed IPC fixture');
+    const opened = await signer.unwrapAny(wrap);
+    assert.equal(opened.rumor.kind, 14);
+    assert.equal(opened.rumor.content, 'typed IPC fixture');
+    assert.equal(opened.sealer, ctx.port.pubkey);
+    const receiptDir = path.join(ctx.tmp, 'receipts');
+    for (const name of fs.readdirSync(receiptDir)) {
+      assert.equal(fs.readFileSync(path.join(receiptDir, name), 'utf8').includes('typed IPC fixture'), false);
+    }
   });
 
   test('case 1: sign-request nip98 verifies as the port key with the body bound', () => {
