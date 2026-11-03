@@ -7,8 +7,8 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 2f15c531b02b8f8393d68d29ce3491712bdd862c
-verified_paths: [skills/sealmap-review/scripts/review-cadence.cjs, skills/sealmap-review/run-cron.sh, skills/sealmap-review/crontab, schema/agentbox.toml.schema.json]
+verified_commit: 7bfaa18a2
+verified_paths: [skills/sealmap-review/scripts/review-cadence.cjs, skills/sealmap-review/scripts/external-review.cjs, skills/sealmap-review/scripts/review-context.cjs, skills/sealmap-review/scripts/merge-findings.cjs, skills/sealmap-review/run-cron.sh, skills/sealmap-review/crontab, schema/agentbox.toml.schema.json]
 owner: jjohare
 review_trigger: the first month of real Gemini spend (compare ledger cost with the estimate); a change to Gemini or Z.AI pricing; a GLM model change behind [consultants.zai]; a second corpus joining repos
 repo: agentbox
@@ -17,6 +17,64 @@ lineage: ADR-2130 (external review is a transport outside [model_routing]; seal 
 ---
 
 # ADR-2131 — Diagram review runs on a ledgered cadence with a gated Gemini audit
+
+## Amendment — review evidence and unresolved work, 2026-11-03
+
+Source and offline tests verified at `7bfaa18a2`. This amendment replaces the
+previous consequence that triage Markdown alone was the open queue. It changes
+no provider endpoint, credential scope, manifest schedule, pricing or budget.
+Activation remains staged until the rebuilt image is observed running this code.
+
+1. **Keep outcomes distinct.** Model output remains an unverified hypothesis.
+   Malformed/incomplete findings, ambiguous triage verdicts and truncated replies
+   are inconclusive. An empty review requires an explicit first-line
+   `NO_FINDINGS` response and successful transport completion; quoted examples
+   cannot satisfy it. Rejection requires counterevidence, not a failed setup.
+2. **Preserve the observation.** Exact packs, prompts/replies and manifests are
+   retained under `docs/review/runs/`, including partial runs. New finding origins
+   record full corpus revision, tracked dirty state, pack/scope hashes, register
+   mode, model/provider, run identifier and prompt hash. Pre-call source snapshots
+   remain distinct from later repository changes. A changed paid-review pack
+   does not settle its reservation as a successful audit.
+3. **Compare only comparable reviews.** Direct claim matches count as agreement
+   only for matching pack bytes, topic scope and register mode, with recognised
+   distinct model families. Filenames and transitive similarity are insufficient.
+   Historical findings without provenance remain readable and uncorroborated.
+   Numbered reruns are selected in date/sequence order. Agreement ranks claims;
+   it establishes neither their truth nor an independent semantic verification.
+4. **Retain open triage.** Per-topic results and hashes in the existing ledger
+   reconstruct the queue; earlier Markdown re-author lists import as open
+   hypotheses. Quiet ticks retain flags without spending again. Editing a flagged
+   topic triggers a check against current cited-source snapshots, not an empty
+   diff. Only a subsequent unambiguous NO clears it; clipped or unavailable
+   context remains pending. A paid audit refuses shards with pending flags.
+   An empty queue is not a source-fidelity certificate.
+5. **Refuse unknown accounting.** Missing history is distinct from unreadable or
+   corrupt history. Torn rows, invalid costs and unavailable accounting stop paid
+   work. Diagnostic status remains readable and reports the uncertainty. Raw
+   history is preserved for evidence-based repair; deleting it to reopen budget
+   is not recovery. Complete EOF rows without a newline can still be appended.
+6. **Use one disposition validator.** `review-cadence.cjs receipts` delegates
+   `init`, `check` and `summary` to the Sealmap Rust `review` CLI. It preserves
+   exit codes and treats an unavailable binary as unavailable. Adjacent hashed
+   receipts leave original findings intact and distinguish source, tested,
+   merged, published, adopted and deployed evidence. Scheduled hypothesis
+   generation needs no receipt to exist. No extra database or JavaScript
+   disposition validator is introduced.
+
+Validation: `node --test skills/sealmap-review/scripts/*.test.cjs` passed 76
+checks; the final quoted-sentinel regression rerun passed all six integrity
+checks. `tests/config/diagram-review-cron.test.sh` passed 21 checks and the estate
+skill lint passed. Provider responses in tests are fakes: this is not a live
+GLM/Gemini run or proof of deployment. The generic skill-creator validator rejects
+the skill's unchanged `compatibility` and `related_skills` frontmatter extensions;
+the repository's own skill validator accepts them.
+
+The shared investigation method remains
+[`build-with-quality/references/review-evidence.md`](../../skills/build-with-quality/references/review-evidence.md);
+[`review-receipts.md`](../../skills/sealmap-review/references/review-receipts.md)
+describes the concrete receipt workflow. Runtime consumer release/pin verification
+belongs to the Sealmap integration checkpoint, separately from these source tests.
 
 ## Scoped re-verification — 2026-10-31
 
@@ -65,7 +123,7 @@ Gemini is priced from constants dated 2026-10-06 (input $0.75/M, cached $0.075/M
 - The expensive reviewer is rare by construction, and the cap holds across all configured repos. The cost is a bounded daily GLM bill and findings that arrive without being asked for.
 - The estate corpus is about 850k tokens across 139 topics and 16 repositories; sharding keeps each pack inside GLM and Gemini limits at the price of cross-area contradictions being seen by no single reviewer.
 - Nothing edits a topic or commits. The runner dirties the reviewed repo with the ledger and `docs/review/` files; the owner commits them.
-- The triage window advances every run, so a flagged topic that is not re-authored does not reappear; the triage files are the queue.
+- Historical policy, replaced by the 2026-11-03 amendment: the triage window advanced every run and Markdown files alone held the queue. The ledger now retains outstanding per-topic results and imports those historical lists.
 - The program holds no secret file, so it takes no ADR-2122 role. It inherits `ZAI_ANTHROPIC_API_KEY` and `GEMINI_API_KEY` from the container environment, as podcast-cron does.
 - `enabled` is rebuild-class (baked supervisor text). Schedules, thresholds, budget and repos apply on a program restart.
 - `GEMINI_API_KEY` is an uncapped key: the cap is this runner's, not Google's. Anything else spending on it is invisible to the ledger.
