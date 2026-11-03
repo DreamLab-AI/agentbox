@@ -1,10 +1,10 @@
 ---
 id: ADR-2033
-title: deepsec is the executed Security gate of build-with-quality, baked as a manifest-gated CLI under a names-only credential policy
+title: Deepsec is the optional VisionCraft security reviewer, baked under a names-only credential policy
 date: 2026-09-05
 decision_status: accepted
 implementation_status: partial
-activation_status: live
+activation_status: staged
 supersedes: []
 superseded_by: []
 verified_commit: 5a010d084b0544c0173757fa54fdec5c4766ec90
@@ -15,11 +15,15 @@ repo: agentbox
 domain: GOVERNANCE-capabilities
 ---
 
-# ADR-2033 — deepsec is the executed Security gate of build-with-quality, baked as a manifest-gated CLI under a names-only credential policy
+# ADR-2033 — Deepsec is the optional VisionCraft security reviewer
 
 ## Amendment — VisionCraft ownership, 2026-11-03
 
 ADR-2165 moves the executable gate to the pinned independent VisionCraft release.
+VisionCraft 0.1.0 source and registry publication are confirmed; the current
+source consumes upstream `9cf450c5fb82033139527ace29d5731a77d96fc7`. Activation is
+staged for the operator rebuild. Historical live receipts below describe the
+retired wrapper at their recorded revisions, not the new image.
 Agentbox owns installation and the Rust `agentbox-manifest deepsec-gate` policy
 projection; the old skill shell implementation is removed. The host reads typed
 TOML and environment overrides, passes credential names only through literal

@@ -10,8 +10,11 @@ Deepsec adapter, the canonical 34-file skill, worked examples, ADRs and a
 Sealmap-generated diagram corpus. It consumes `sealmap-corpus` 0.4.0. The
 [Sealmap release receipt](sealmap-0.4-release.md) records that completed release.
 
-Publication and Agentbox adoption are being verified before the operator's
-rebuild. This document does not establish live image activation.
+VisionCraft 0.1.0 is published to crates.io, and source commit
+`9cf450c5fb82033139527ace29d5731a77d96fc7` is published on the upstream main branch.
+The upstream CI run `41633405043` passed. Agentbox source pins that immutable
+release and its complete payload. Image activation remains pending the operator's
+rebuild; neither publication nor source checks establish live activation.
 
 ## Retained inventory
 
@@ -49,7 +52,33 @@ Both versions scored 100%; the result demonstrates no measured regression on
 that small set and does not establish an improvement. Raw evidence is retained
 outside task worktrees under `~/workspace/evidence/visioncraft-20261103/`.
 
-Independent model review findings are being reproduced and corrected before
-release. Source tests, publication, host adoption and live deployment must retain
-separate receipts. Do not reopen the unrelated VisionClaw/Codescape audit or
-modify the operator's planning files as part of this extraction.
+Independent model reviews produced useful findings; confirmed host faults were
+reproduced and repaired. Their encompassing strict review receipts remain ERROR
+because of process or disclosed context-coverage limits. They are not relabelled
+as successful production audits. See the [host review dispositions](visioncraft-host-review.md)
+for the retained findings and baseline hub limitations.
+
+A separate real-provider smoke reviewed one isolated fixture and returned PASS
+(run `20261103120613-531b8465941bbf17`, 695 output tokens, 71,215 ms). Its receipt
+SHA-256 is `dfbc3a43ad70ed18bc2f36d68e779f06a78366597401f776b08772ebf3852474`.
+That establishes the completed adapter path on that fixture, not a clean audit
+of the production code.
+
+The host source gate records 235 Rust tests, Clippy, 18 protocol fixtures against
+the actual crates.io-installed binary,
+eight cutover/AQE/Jev cases, 71 existing router tests and the skill/configuration
+checks. The installed binary remained SHA-256
+`ae5d7568af0a56e46cb134d93391d2ede856544bbead6a0d68a43d5f510dce17`
+before and after the 84.6-second protocol run. The source snapshot and released lockfile pass the native integrity
+checker; the official Nix NAR hash matches and changed Nix files parse. No full
+Nix image evaluation or build was performed inside the container. See
+[consumer and rebuild checks](visioncraft-consumption.md).
+
+Existing whole-estate failures remain separate: main already fails the old
+terminal-tab contract and three user_cron setup drift checks; historical ADR
+verification stamps remain stale. Main's baked routing parity passes, while the
+new VisionCraft source cannot match the old running image until rebuild. That
+parity check remains an activation requirement.
+
+Do not reopen the unrelated VisionClaw/Codescape audit or modify the operator's
+planning files as part of this extraction.

@@ -135,6 +135,27 @@ check source writes and receipts for truncation before retrying. Restore known
 reviewed bytes, rerun affected checks, and reclaim only owned caches after
 preserving evidence. Another worker's build directory is not spare space.
 
+## Resume from an explicit checkpoint
+
+An interrupted attempt keeps its identity, raw captures and incomplete outcome.
+Create a successor with a new attempt ID and fresh output directory. In the
+host's existing task or handoff record, link the predecessor attempt and the
+exact checkpoint revision, selected-input hashes, configuration identity,
+interruption reason and required checks that must run again. Resolve credentials
+through the host; do not copy their values into the checkpoint.
+
+Before resuming, establish which writers and external effects remain active.
+Detaching an observer is different from stopping a controller. Quiesce conflicting
+writers through the host's existing lifecycle before restoring files, then check
+the restored bytes. Do not blindly retry a publish/payment/deploy operation after
+an unknown response: observe the destination and use its idempotency contract.
+
+This lineage is a host workflow requirement, not an automatically populated
+VisionCraft receipt field or a new recovery engine. The CLI already requires
+fresh execution directories and validates current evidence; the host records
+the predecessor relationship. Preserve failed attempts rather than appending a
+successful continuation to their captures or retrospectively relabelling them.
+
 ## Close out without changing the claim
 
 Keep finding IDs and the raw export hash bound to the same bytes. Evidence of
@@ -155,6 +176,12 @@ path-patched integration, remove that patch and exercise the actual released
 consumer source/checksum before claiming adoption. Reuse checksum-verified
 release artefacts where the release contract requires them; do not silently
 substitute locally compiled bytes for a reviewed toolchain pin.
+
+For delivery, record the actual destination and final writer alongside the
+observed release digest/version or running instance identity. A successful
+delivery cannot turn a failed quality run into a pass, and a passing quality
+run cannot establish delivery. Reuse Sealmap delivery attestations and the
+host's receipts rather than introducing another status database.
 
 Naming/discovery repairs do not migrate prior state. Define precedence,
 conflicts and recovery for records under the old convention. For permission

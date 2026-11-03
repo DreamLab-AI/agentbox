@@ -18,6 +18,17 @@ as evidence of the previous implementation. See [ADR-2165](../adr/ADR-2165-visio
 | Shared durable memory | Agentbox's existing governed memory MCP |
 | Jev candidate source | `config/hooks/lib/skill-route.cjs` reads current skill descriptions and registrations per invocation |
 
+## Published release and activation
+
+The pin consumes published VisionCraft 0.1.0 from upstream commit
+`9cf450c5fb82033139527ace29d5731a77d96fc7`. The source archive's official Nix hash is
+`sha256-810h+LaFM/Ly3GyXAFChh0g7GM3cY3c/G67sMHgOizk=`; the released lockfile's
+SHA-256 is `9cbb7bf2815ffcde944b4121935af59ca7e3fad481624754500e510c41341744`.
+All 34 skill files and that lockfile were compared byte-for-byte with the archive
+and committed upstream tree. Registry publication is confirmed. Source, parser
+and consumer checks pass; the operator's image rebuild and runtime acceptance
+remain outstanding.
+
 ## Local authority boundary
 
 The gate is a caller-controlled local CLI, not a privilege boundary or a remote

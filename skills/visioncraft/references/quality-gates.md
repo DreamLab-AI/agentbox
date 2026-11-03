@@ -33,6 +33,13 @@ it does not pre-populate successful evidence.
 
 ## Workflow through the gates
 
+Before starting checks, validate the complete plan and its aggregate resource
+budget, including optional checks. Per-check deadlines do not bound an unlimited
+sequence or a host's retry loop. VisionCraft admits at most 1,024 checks, one day
+of summed declared deadlines and one GiB of summed capture limits per plan.
+The host must separately bound retries, model spend and concurrent runs. An
+invalid plan must not start a worker; a missing evaluator remains unavailable.
+
 Clarify intent and domain boundaries, record the expectations that matter,
 implement with a testable feedback loop, produce evidence, perform applicable
 review and challenge, stabilise important scenarios, then assess release and
@@ -44,6 +51,11 @@ Checks may run alongside implementation when independent, but preserve a final
 subject revision and configuration. Paid external review follows the current
 project's cadence; do not run it automatically after every increment. A check
 before later edits must not be presented as review of the final diff.
+
+Give a repair reviewer a fresh context containing the current candidate, required
+claims, raw evidence and previous finding IDs/dispositions. Keep the implementer's
+narrative identifiable as a claim. Session freshness does not establish independent
+model families, and a new run ID does not revalidate unchanged cached findings.
 
 When available, [AQE's direct tools](agentic-qe.md) can propose tests and explain
 coverage gaps. Preserve the generated source and measurement provenance, then

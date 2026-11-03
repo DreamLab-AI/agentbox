@@ -3,7 +3,7 @@ id: ADR-2165
 title: VisionCraft owns the portable quality method; Agentbox supplies installation and policy
 date: 2026-11-03
 decision_status: accepted
-implementation_status: partial
+implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
@@ -85,8 +85,12 @@ Consumer checks cover typed policy precedence, explicit missing-manifest refusal
 literal argv/stdin and exit-code preservation, payload tampering and missing or
 extra files, native-name retirement, the actual Jev candidate map and gate fixture
 outcomes. The previously invalid invariants workflow was reproduced with a YAML
-parser and repaired by quoting its colon-containing step name. Release pinning and
-the final consumer gate complete before this record moves to implementation complete.
+parser and repaired by quoting its colon-containing step name. The final source
+pin consumes published VisionCraft 0.1.0, upstream commit
+`9cf450c5fb82033139527ace29d5731a77d96fc7`. All 34 payload files and Cargo.lock match
+that commit and the official-Nix-hashed archive. Source integrity, affected Jev,
+skill, configuration/catalogue and environment checks pass. Nix parsing is verified;
+full image evaluation, rebuild and runtime activation remain outstanding.
 
 The independent host review also reproduced two existing projector faults.
 Private JSON writes now use exclusive, unpredictable, owner-only staging files

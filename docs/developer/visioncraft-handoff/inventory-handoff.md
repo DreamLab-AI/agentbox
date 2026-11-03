@@ -1,9 +1,11 @@
 # VisionCraft / build-with-quality revamp: inventory handoff
 
-Prepared 2026-11-03. **Handoff only. The operator explicitly deferred the revamp;
-do not interpret this document as authorisation to start extraction.** No source,
-registration, deployment or package publication changed during this inventory.
-No VisionClaw/Codescape audit work was inspected or resumed.
+Prepared 2026-11-03 as a historical inventory before extraction. The operator
+subsequently resumed and authorised the revamp; the former handoff-only stop is
+superseded. [Current release and adoption status](../visioncraft-handoff.md)
+is authoritative. No source, registration, deployment or package publication
+changed during this original inventory, and no VisionClaw/Codescape audit work
+was inspected or resumed.
 
 ## Source and coverage
 
