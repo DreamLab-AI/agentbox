@@ -1,0 +1,674 @@
+[
+  {
+    "source": "skills/build-with-quality/BUILD-WITH-QUALITY-PROMPT.md",
+    "line": 12,
+    "target": "./config/skill.yaml",
+    "resolved": "skills/build-with-quality/config/skill.yaml",
+    "exists_at_revision": true,
+    "inside_skill": true
+  },
+  {
+    "source": "skills/build-with-quality/BUILD-WITH-QUALITY-PROMPT.md",
+    "line": 13,
+    "target": "./USAGE-EXAMPLES.md",
+    "resolved": "skills/build-with-quality/USAGE-EXAMPLES.md",
+    "exists_at_revision": true,
+    "inside_skill": true
+  },
+  {
+    "source": "skills/build-with-quality/DEBUGGING-PROTOCOL.md",
+    "line": 168,
+    "target": "references/review-evidence.md",
+    "resolved": "skills/build-with-quality/references/review-evidence.md",
+    "exists_at_revision": true,
+    "inside_skill": true
+  },
+  {
+    "source": "skills/build-with-quality/README.md",
+    "line": 3,
+    "target": "./SKILL.md",
+    "resolved": "skills/build-with-quality/SKILL.md",
+    "exists_at_revision": true,
+    "inside_skill": true
+  },
+  {
+    "source": "skills/build-with-quality/README.md",
+    "line": 9,
+    "target": "./EDD-PROTOCOL.md",
+    "resolved": "skills/build-with-quality/EDD-PROTOCOL.md",
+    "exists_at_revision": true,
+    "inside_skill": true
+  },
+  {
+    "source": "skills/build-with-quality/README.md",
+    "line": 17,
+    "target": "./BUILD-WITH-QUALITY-PROMPT.md",
+    "resolved": "skills/build-with-quality/BUILD-WITH-QUALITY-PROMPT.md",
+    "exists_at_revision": true,
+    "inside_skill": true
+  },
+  {
+    "source": "skills/build-with-quality/README.md",
+    "line": 18,
+    "target": "./USAGE-EXAMPLES.md",
+    "resolved": "skills/build-with-quality/USAGE-EXAMPLES.md",
+    "exists_at_revision": true,
+    "inside_skill": true
+  },
+  {
+    "source": "skills/build-with-quality/README.md",
+    "line": 19,
+    "target": "./EDD-PROTOCOL.md",
+    "resolved": "skills/build-with-quality/EDD-PROTOCOL.md",
+    "exists_at_revision": true,
+    "inside_skill": true
+  },
+  {
+    "source": "skills/build-with-quality/README.md",
+    "line": 20,
+    "target": "./SKILL.md",
+    "resolved": "skills/build-with-quality/SKILL.md",
+    "exists_at_revision": true,
+    "inside_skill": true
+  },
+  {
+    "source": "skills/build-with-quality/README.md",
+    "line": 21,
+    "target": "./config/skill.yaml",
+    "resolved": "skills/build-with-quality/config/skill.yaml",
+    "exists_at_revision": true,
+    "inside_skill": true
+  },
+  {
+    "source": "skills/build-with-quality/README.md",
+    "line": 22,
+    "target": "./references/deepsec-security-gate.md",
+    "resolved": "skills/build-with-quality/references/deepsec-security-gate.md",
+    "exists_at_revision": true,
+    "inside_skill": true
+  },
+  {
+    "source": "skills/build-with-quality/README.md",
+    "line": 28,
+    "target": "./references/agents.md",
+    "resolved": "skills/build-with-quality/references/agents.md",
+    "exists_at_revision": true,
+    "inside_skill": true
+  },
+  {
+    "source": "skills/build-with-quality/README.md",
+    "line": 75,
+    "target": "./EDD-PROTOCOL.md",
+    "resolved": "skills/build-with-quality/EDD-PROTOCOL.md",
+    "exists_at_revision": true,
+    "inside_skill": true
+  },
+  {
+    "source": "skills/build-with-quality/README.md",
+    "line": 113,
+    "target": "./BUILD-WITH-QUALITY-PROMPT.md",
+    "resolved": "skills/build-with-quality/BUILD-WITH-QUALITY-PROMPT.md",
+    "exists_at_revision": true,
+    "inside_skill": true
+  },
+  {
+    "source": "skills/build-with-quality/README.md",
+    "line": 269,
+    "target": "./config/skill.yaml",
+    "resolved": "skills/build-with-quality/config/skill.yaml",
+    "exists_at_revision": true,
+    "inside_skill": true
+  },
+  {
+    "source": "skills/build-with-quality/SKILL.md",
+    "line": 24,
+    "target": "./BUILD-WITH-QUALITY-PROMPT.md",
+    "resolved": "skills/build-with-quality/BUILD-WITH-QUALITY-PROMPT.md",
+    "exists_at_revision": true,
+    "inside_skill": true
+  },
+  {
+    "source": "skills/build-with-quality/SKILL.md",
+    "line": 25,
+    "target": "./USAGE-EXAMPLES.md",
+    "resolved": "skills/build-with-quality/USAGE-EXAMPLES.md",
+    "exists_at_revision": true,
+    "inside_skill": true
+  },
+  {
+    "source": "skills/build-with-quality/SKILL.md",
+    "line": 26,
+    "target": "./EDD-PROTOCOL.md",
+    "resolved": "skills/build-with-quality/EDD-PROTOCOL.md",
+    "exists_at_revision": true,
+    "inside_skill": true
+  },
+  {
+    "source": "skills/build-with-quality/SKILL.md",
+    "line": 27,
+    "target": "./DEBUGGING-PROTOCOL.md",
+    "resolved": "skills/build-with-quality/DEBUGGING-PROTOCOL.md",
+    "exists_at_revision": true,
+    "inside_skill": true
+  },
+  {
+    "source": "skills/build-with-quality/SKILL.md",
+    "line": 28,
+    "target": "./references/agents.md",
+    "resolved": "skills/build-with-quality/references/agents.md",
+    "exists_at_revision": true,
+    "inside_skill": true
+  },
+  {
+    "source": "skills/build-with-quality/SKILL.md",
+    "line": 29,
+    "target": "./references/methodologies.md",
+    "resolved": "skills/build-with-quality/references/methodologies.md",
+    "exists_at_revision": true,
+    "inside_skill": true
+  },
+  {
+    "source": "skills/build-with-quality/SKILL.md",
+    "line": 30,
+    "target": "./references/quality-gates-and-workflow.md",
+    "resolved": "skills/build-with-quality/references/quality-gates-and-workflow.md",
+    "exists_at_revision": true,
+    "inside_skill": true
+  },
+  {
+    "source": "skills/build-with-quality/SKILL.md",
+    "line": 31,
+    "target": "./references/quality-gates-and-workflow.md",
+    "resolved": "skills/build-with-quality/references/quality-gates-and-workflow.md",
+    "exists_at_revision": true,
+    "inside_skill": true
+  },
+  {
+    "source": "skills/build-with-quality/SKILL.md",
+    "line": 32,
+    "target": "./references/review-evidence.md",
+    "resolved": "skills/build-with-quality/references/review-evidence.md",
+    "exists_at_revision": true,
+    "inside_skill": true
+  },
+  {
+    "source": "skills/build-with-quality/SKILL.md",
+    "line": 33,
+    "target": "./references/deepsec-security-gate.md",
+    "resolved": "skills/build-with-quality/references/deepsec-security-gate.md",
+    "exists_at_revision": true,
+    "inside_skill": true
+  },
+  {
+    "source": "skills/build-with-quality/SKILL.md",
+    "line": 34,
+    "target": "./references/rust/steering.md",
+    "resolved": "skills/build-with-quality/references/rust/steering.md",
+    "exists_at_revision": true,
+    "inside_skill": true
+  },
+  {
+    "source": "skills/build-with-quality/SKILL.md",
+    "line": 34,
+    "target": "./references/rust/review.md",
+    "resolved": "skills/build-with-quality/references/rust/review.md",
+    "exists_at_revision": true,
+    "inside_skill": true
+  },
+  {
+    "source": "skills/build-with-quality/SKILL.md",
+    "line": 34,
+    "target": "./references/rust/port.md",
+    "resolved": "skills/build-with-quality/references/rust/port.md",
+    "exists_at_revision": true,
+    "inside_skill": true
+  },
+  {
+    "source": "skills/build-with-quality/SKILL.md",
+    "line": 34,
+    "target": "./references/rust/lints/lints.toml",
+    "resolved": "skills/build-with-quality/references/rust/lints/lints.toml",
+    "exists_at_revision": true,
+    "inside_skill": true
+  },
+  {
+    "source": "skills/build-with-quality/SKILL.md",
+    "line": 35,
+    "target": "./references/architecture.md",
+    "resolved": "skills/build-with-quality/references/architecture.md",
+    "exists_at_revision": true,
+    "inside_skill": true
+  },
+  {
+    "source": "skills/build-with-quality/SKILL.md",
+    "line": 36,
+    "target": "./references/bhil-traceability.md",
+    "resolved": "skills/build-with-quality/references/bhil-traceability.md",
+    "exists_at_revision": true,
+    "inside_skill": true
+  },
+  {
+    "source": "skills/build-with-quality/SKILL.md",
+    "line": 37,
+    "target": "./references/migration.md",
+    "resolved": "skills/build-with-quality/references/migration.md",
+    "exists_at_revision": true,
+    "inside_skill": true
+  },
+  {
+    "source": "skills/build-with-quality/SKILL.md",
+    "line": 47,
+    "target": "./references/rust/steering.md",
+    "resolved": "skills/build-with-quality/references/rust/steering.md",
+    "exists_at_revision": true,
+    "inside_skill": true
+  },
+  {
+    "source": "skills/build-with-quality/SKILL.md",
+    "line": 60,
+    "target": "./BUILD-WITH-QUALITY-PROMPT.md",
+    "resolved": "skills/build-with-quality/BUILD-WITH-QUALITY-PROMPT.md",
+    "exists_at_revision": true,
+    "inside_skill": true
+  },
+  {
+    "source": "skills/build-with-quality/SKILL.md",
+    "line": 90,
+    "target": "./references/architecture.md",
+    "resolved": "skills/build-with-quality/references/architecture.md",
+    "exists_at_revision": true,
+    "inside_skill": true
+  },
+  {
+    "source": "skills/build-with-quality/SKILL.md",
+    "line": 113,
+    "target": "./EDD-PROTOCOL.md",
+    "resolved": "skills/build-with-quality/EDD-PROTOCOL.md",
+    "exists_at_revision": true,
+    "inside_skill": true
+  },
+  {
+    "source": "skills/build-with-quality/SKILL.md",
+    "line": 122,
+    "target": "./references/methodologies.md",
+    "resolved": "skills/build-with-quality/references/methodologies.md",
+    "exists_at_revision": true,
+    "inside_skill": true
+  },
+  {
+    "source": "skills/build-with-quality/SKILL.md",
+    "line": 126,
+    "target": "./scripts/deepsec-gate.sh",
+    "resolved": "skills/build-with-quality/scripts/deepsec-gate.sh",
+    "exists_at_revision": true,
+    "inside_skill": true
+  },
+  {
+    "source": "skills/build-with-quality/SKILL.md",
+    "line": 130,
+    "target": "./references/deepsec-security-gate.md",
+    "resolved": "skills/build-with-quality/references/deepsec-security-gate.md",
+    "exists_at_revision": true,
+    "inside_skill": true
+  },
+  {
+    "source": "skills/build-with-quality/SKILL.md",
+    "line": 135,
+    "target": "./references/rust/steering.md",
+    "resolved": "skills/build-with-quality/references/rust/steering.md",
+    "exists_at_revision": true,
+    "inside_skill": true
+  },
+  {
+    "source": "skills/build-with-quality/SKILL.md",
+    "line": 140,
+    "target": "./references/rust/review.md",
+    "resolved": "skills/build-with-quality/references/rust/review.md",
+    "exists_at_revision": true,
+    "inside_skill": true
+  },
+  {
+    "source": "skills/build-with-quality/SKILL.md",
+    "line": 141,
+    "target": "./references/rust/port.md",
+    "resolved": "skills/build-with-quality/references/rust/port.md",
+    "exists_at_revision": true,
+    "inside_skill": true
+  },
+  {
+    "source": "skills/build-with-quality/USAGE-EXAMPLES.md",
+    "line": 529,
+    "target": "./config/skill.yaml",
+    "resolved": "skills/build-with-quality/config/skill.yaml",
+    "exists_at_revision": true,
+    "inside_skill": true
+  },
+  {
+    "source": "skills/build-with-quality/USAGE-EXAMPLES.md",
+    "line": 543,
+    "target": "./BUILD-WITH-QUALITY-PROMPT.md",
+    "resolved": "skills/build-with-quality/BUILD-WITH-QUALITY-PROMPT.md",
+    "exists_at_revision": true,
+    "inside_skill": true
+  },
+  {
+    "source": "skills/build-with-quality/USAGE-EXAMPLES.md",
+    "line": 544,
+    "target": "./config/skill.yaml",
+    "resolved": "skills/build-with-quality/config/skill.yaml",
+    "exists_at_revision": true,
+    "inside_skill": true
+  },
+  {
+    "source": "skills/build-with-quality/references/agents.md",
+    "line": 17,
+    "target": "./rust/review.md",
+    "resolved": "skills/build-with-quality/references/rust/review.md",
+    "exists_at_revision": true,
+    "inside_skill": true
+  },
+  {
+    "source": "skills/build-with-quality/references/architecture.md",
+    "line": 18,
+    "target": "../../agentdb-memory-patterns/KHIVE-LEARNINGS.md",
+    "resolved": "skills/agentdb-memory-patterns/KHIVE-LEARNINGS.md",
+    "exists_at_revision": true,
+    "inside_skill": false
+  },
+  {
+    "source": "skills/build-with-quality/references/architecture.md",
+    "line": 96,
+    "target": "../config/skill.yaml",
+    "resolved": "skills/build-with-quality/config/skill.yaml",
+    "exists_at_revision": true,
+    "inside_skill": true
+  },
+  {
+    "source": "skills/build-with-quality/references/deepsec-security-gate.md",
+    "line": 3,
+    "target": "./quality-gates-and-workflow.md",
+    "resolved": "skills/build-with-quality/references/quality-gates-and-workflow.md",
+    "exists_at_revision": true,
+    "inside_skill": true
+  },
+  {
+    "source": "skills/build-with-quality/references/deepsec-security-gate.md",
+    "line": 81,
+    "target": "./review-evidence.md",
+    "resolved": "skills/build-with-quality/references/review-evidence.md",
+    "exists_at_revision": true,
+    "inside_skill": true
+  },
+  {
+    "source": "skills/build-with-quality/references/methodologies.md",
+    "line": 4,
+    "target": "../EDD-PROTOCOL.md",
+    "resolved": "skills/build-with-quality/EDD-PROTOCOL.md",
+    "exists_at_revision": true,
+    "inside_skill": true
+  },
+  {
+    "source": "skills/build-with-quality/references/quality-gates-and-workflow.md",
+    "line": 9,
+    "target": "./deepsec-security-gate.md",
+    "resolved": "skills/build-with-quality/references/deepsec-security-gate.md",
+    "exists_at_revision": true,
+    "inside_skill": true
+  },
+  {
+    "source": "skills/build-with-quality/references/quality-gates-and-workflow.md",
+    "line": 22,
+    "target": "./review-evidence.md",
+    "resolved": "skills/build-with-quality/references/review-evidence.md",
+    "exists_at_revision": true,
+    "inside_skill": true
+  },
+  {
+    "source": "skills/build-with-quality/references/quality-gates-and-workflow.md",
+    "line": 60,
+    "target": "../../sealmap-review/references/review-receipts.md",
+    "resolved": "skills/sealmap-review/references/review-receipts.md",
+    "exists_at_revision": true,
+    "inside_skill": false
+  },
+  {
+    "source": "skills/build-with-quality/references/quality-gates-and-workflow.md",
+    "line": 66,
+    "target": "./rust/steering.md",
+    "resolved": "skills/build-with-quality/references/rust/steering.md",
+    "exists_at_revision": true,
+    "inside_skill": true
+  },
+  {
+    "source": "skills/build-with-quality/references/quality-gates-and-workflow.md",
+    "line": 67,
+    "target": "./rust/review.md",
+    "resolved": "skills/build-with-quality/references/rust/review.md",
+    "exists_at_revision": true,
+    "inside_skill": true
+  },
+  {
+    "source": "skills/build-with-quality/references/quality-gates-and-workflow.md",
+    "line": 67,
+    "target": "./rust/port.md",
+    "resolved": "skills/build-with-quality/references/rust/port.md",
+    "exists_at_revision": true,
+    "inside_skill": true
+  },
+  {
+    "source": "skills/build-with-quality/references/rust/port.md",
+    "line": 4,
+    "target": "./NOTICE.md",
+    "resolved": "skills/build-with-quality/references/rust/NOTICE.md",
+    "exists_at_revision": true,
+    "inside_skill": true
+  },
+  {
+    "source": "skills/build-with-quality/references/rust/port.md",
+    "line": 17,
+    "target": "./steering.md",
+    "resolved": "skills/build-with-quality/references/rust/steering.md",
+    "exists_at_revision": true,
+    "inside_skill": true
+  },
+  {
+    "source": "skills/build-with-quality/references/rust/port.md",
+    "line": 67,
+    "target": "./steering.md",
+    "resolved": "skills/build-with-quality/references/rust/steering.md",
+    "exists_at_revision": true,
+    "inside_skill": true
+  },
+  {
+    "source": "skills/build-with-quality/references/rust/port.md",
+    "line": 148,
+    "target": "./steering.md",
+    "resolved": "skills/build-with-quality/references/rust/steering.md",
+    "exists_at_revision": true,
+    "inside_skill": true
+  },
+  {
+    "source": "skills/build-with-quality/references/rust/review.md",
+    "line": 4,
+    "target": "./NOTICE.md",
+    "resolved": "skills/build-with-quality/references/rust/NOTICE.md",
+    "exists_at_revision": true,
+    "inside_skill": true
+  },
+  {
+    "source": "skills/build-with-quality/references/rust/review.md",
+    "line": 5,
+    "target": "./steering.md",
+    "resolved": "skills/build-with-quality/references/rust/steering.md",
+    "exists_at_revision": true,
+    "inside_skill": true
+  },
+  {
+    "source": "skills/build-with-quality/references/rust/review.md",
+    "line": 21,
+    "target": "./steering.md",
+    "resolved": "skills/build-with-quality/references/rust/steering.md",
+    "exists_at_revision": true,
+    "inside_skill": true
+  },
+  {
+    "source": "skills/build-with-quality/references/rust/review.md",
+    "line": 105,
+    "target": "./steering.md",
+    "resolved": "skills/build-with-quality/references/rust/steering.md",
+    "exists_at_revision": true,
+    "inside_skill": true
+  },
+  {
+    "source": "skills/build-with-quality/references/rust/review.md",
+    "line": 105,
+    "target": "./sources/",
+    "resolved": "skills/build-with-quality/references/rust/sources",
+    "exists_at_revision": true,
+    "inside_skill": true
+  },
+  {
+    "source": "skills/build-with-quality/references/rust/review.md",
+    "line": 169,
+    "target": "./lints/lints.toml",
+    "resolved": "skills/build-with-quality/references/rust/lints/lints.toml",
+    "exists_at_revision": true,
+    "inside_skill": true
+  },
+  {
+    "source": "skills/build-with-quality/references/rust/review.md",
+    "line": 170,
+    "target": "./lints/clippy.toml",
+    "resolved": "skills/build-with-quality/references/rust/lints/clippy.toml",
+    "exists_at_revision": true,
+    "inside_skill": true
+  },
+  {
+    "source": "skills/build-with-quality/references/rust/review.md",
+    "line": 178,
+    "target": "../quality-gates-and-workflow.md",
+    "resolved": "skills/build-with-quality/references/quality-gates-and-workflow.md",
+    "exists_at_revision": true,
+    "inside_skill": true
+  },
+  {
+    "source": "skills/build-with-quality/references/rust/steering.md",
+    "line": 4,
+    "target": "./NOTICE.md",
+    "resolved": "skills/build-with-quality/references/rust/NOTICE.md",
+    "exists_at_revision": true,
+    "inside_skill": true
+  },
+  {
+    "source": "skills/build-with-quality/references/rust/steering.md",
+    "line": 5,
+    "target": "./sources/",
+    "resolved": "skills/build-with-quality/references/rust/sources",
+    "exists_at_revision": true,
+    "inside_skill": true
+  },
+  {
+    "source": "skills/build-with-quality/references/rust/steering.md",
+    "line": 9,
+    "target": "./review.md",
+    "resolved": "skills/build-with-quality/references/rust/review.md",
+    "exists_at_revision": true,
+    "inside_skill": true
+  },
+  {
+    "source": "skills/build-with-quality/references/rust/steering.md",
+    "line": 9,
+    "target": "./port.md",
+    "resolved": "skills/build-with-quality/references/rust/port.md",
+    "exists_at_revision": true,
+    "inside_skill": true
+  },
+  {
+    "source": "skills/build-with-quality/references/rust/steering.md",
+    "line": 10,
+    "target": "./lints/",
+    "resolved": "skills/build-with-quality/references/rust/lints",
+    "exists_at_revision": true,
+    "inside_skill": true
+  },
+  {
+    "source": "skills/build-with-quality/references/rust/steering.md",
+    "line": 49,
+    "target": "../../SKILL.md",
+    "resolved": "skills/build-with-quality/SKILL.md",
+    "exists_at_revision": true,
+    "inside_skill": true
+  },
+  {
+    "source": "skills/build-with-quality/references/rust/steering.md",
+    "line": 51,
+    "target": "../quality-gates-and-workflow.md",
+    "resolved": "skills/build-with-quality/references/quality-gates-and-workflow.md",
+    "exists_at_revision": true,
+    "inside_skill": true
+  },
+  {
+    "source": "skills/build-with-quality/references/rust/steering.md",
+    "line": 89,
+    "target": "./lints/lints.toml",
+    "resolved": "skills/build-with-quality/references/rust/lints/lints.toml",
+    "exists_at_revision": true,
+    "inside_skill": true
+  },
+  {
+    "source": "skills/build-with-quality/references/rust/steering.md",
+    "line": 89,
+    "target": "./lints/clippy.toml",
+    "resolved": "skills/build-with-quality/references/rust/lints/clippy.toml",
+    "exists_at_revision": true,
+    "inside_skill": true
+  },
+  {
+    "source": "skills/build-with-quality/references/rust/steering.md",
+    "line": 544,
+    "target": "./sources/rust-api-guidelines.md",
+    "resolved": "skills/build-with-quality/references/rust/sources/rust-api-guidelines.md",
+    "exists_at_revision": true,
+    "inside_skill": true
+  },
+  {
+    "source": "skills/build-with-quality/references/rust/steering.md",
+    "line": 546,
+    "target": "./sources/effective-rust.md",
+    "resolved": "skills/build-with-quality/references/rust/sources/effective-rust.md",
+    "exists_at_revision": true,
+    "inside_skill": true
+  },
+  {
+    "source": "skills/build-with-quality/references/rust/steering.md",
+    "line": 549,
+    "target": "./sources/rust-design-patterns.md",
+    "resolved": "skills/build-with-quality/references/rust/sources/rust-design-patterns.md",
+    "exists_at_revision": true,
+    "inside_skill": true
+  },
+  {
+    "source": "skills/build-with-quality/references/rust/steering.md",
+    "line": 551,
+    "target": "./sources/microsoft-rust-guidelines.md",
+    "resolved": "skills/build-with-quality/references/rust/sources/microsoft-rust-guidelines.md",
+    "exists_at_revision": true,
+    "inside_skill": true
+  },
+  {
+    "source": "skills/build-with-quality/references/rust/steering.md",
+    "line": 553,
+    "target": "./sources/google-rust-style-guide.md",
+    "resolved": "skills/build-with-quality/references/rust/sources/google-rust-style-guide.md",
+    "exists_at_revision": true,
+    "inside_skill": true
+  },
+  {
+    "source": "skills/build-with-quality/references/rust/steering.md",
+    "line": 557,
+    "target": "./NOTICE.md",
+    "resolved": "skills/build-with-quality/references/rust/NOTICE.md",
+    "exists_at_revision": true,
+    "inside_skill": true
+  }
+]

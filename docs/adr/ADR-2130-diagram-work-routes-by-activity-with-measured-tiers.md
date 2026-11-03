@@ -105,3 +105,29 @@ Governed-path delta since `2f15c531b` is the RuVector Postgres credential custod
 - `agentbox.toml`: the two `conninfo` URLs drop the `@@RUVECTOR_PG_PASSWORD@@` placeholder password, with their comments.
 
 Nothing this record decides is changed; its status axes are unchanged. Re-run: `git diff 2f15c531b..cc949bb79 -- agentbox.toml`.
+
+
+## Scoped adoption — 2026-11-03, Sealmap 0.4
+
+The 0.4.0 source tag is `ad2e960f1f36eb2b8b63eb66ac508dae4ad30762`.
+`lib/sealmap.nix` now consumes its actual GitHub archive and byte-identical
+lockfile. The archive NAR hash is
+`sha256-uThGCztA6RVxz97uLiNkHgg6APK6EN6w9T/HbkZ5npk=`; the hashing tool first
+reproduced the existing 0.3.0 pin before checking the published 0.4.0 archive.
+
+Sealmap is independent of Agentbox. Generic route and tier APIs accept portable
+providers, model namespaces and activity identifiers; `parse_agentbox` preserves
+this estate's narrow adapter policy. Exact family catalogues support other
+models without treating serving providers as model identities. Prefix-boundary
+regressions prevent names such as `gpt-j` being misclassified as OpenAI. The
+cross-family refusal and conservative unknown-family behaviour are tested;
+independent revalidation marked the reproduced prefix issue fixed.
+
+This does not finish activity execution or measured tier descent. The manifest
+routes are not yet dispatched by Sealmap, the tier reader remains a library API,
+and no LAN-only independent reviewer has been qualified here. Therefore the
+partial implementation and inactive activity-routing status remain accurate.
+
+The running image was observed with `sealmap 0.3.0` during this release task,
+correcting the historical statement that no rebuild had occurred since 0.3.
+The source pin to 0.4 is a rebuild input, not evidence of live 0.4 activation.

@@ -337,6 +337,9 @@ and [standalone Sealmap](https://github.com/DreamLab-AI/sealmap). Package and sk
 source changes reach the running image through the normal rebuild; source
 integration does not by itself establish runtime activation.
 
+[Sealmap 0.4 release receipt](sealmap-0.4-release.md) ·
+[Build-with-quality / VisionCraft handoff](visioncraft-handoff.md).
+
 - [Sovereign mesh internals](sovereign-mesh.md)
 - [Adapter pattern](adapters.md)
 - [Identity and tracing mesh](identity-mesh.md)

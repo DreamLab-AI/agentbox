@@ -1,0 +1,52 @@
+{
+  "at": "2026-11-03T10:14:52.629863+00:00",
+  "purpose": "read-only handoff; user deferred implementation",
+  "source_revision": "4e1f4fff4e0f7827e8588c33bbf031c8420f52ad",
+  "files": {
+    "inventory-handoff.md": {
+      "bytes": 20540,
+      "sha256": "484818e7d0fa1f2b4086c3827c2a637f2366be2dfbb874b12b06e9f7b1249409"
+    },
+    "source-inventory.json": {
+      "bytes": 62011,
+      "sha256": "3ce87029e5d5cbda1d757e635689b879920103c943ffc6c0a27818bd8d349558"
+    },
+    "completeness-matrix.csv": {
+      "bytes": 10867,
+      "sha256": "a8dfb1edb652199a387af4c6362a0cce174da64c95c972953eba064101a37aab"
+    },
+    "completeness-matrix.json": {
+      "bytes": 16411,
+      "sha256": "e2c7e4f7228680a82f3669d861ad92a74423e99ef78c67a1c8ae17c15ea646db"
+    },
+    "callers.tsv": {
+      "bytes": 76849,
+      "sha256": "f6703c5de358db84b3649f4eeaf37d568b731298eaed6f99ff9a1e91f09b5616"
+    },
+    "callers.json": {
+      "bytes": 97168,
+      "sha256": "286517e891a980aff69638198930f8ace7cae64b53ef3c41e01e03a236b65b2c"
+    },
+    "all-callers.txt": {
+      "bytes": 83581,
+      "sha256": "b8ec51d3128c44cbd196bd11f79192add9a6b1870a751c846b19a08455e7e1a0"
+    },
+    "relative-links.json": {
+      "bytes": 21679,
+      "sha256": "87b406d03ba0df1776e496fe5ff44b6d9ca1f1e02c8bbb626fef46e0246568f1"
+    }
+  },
+  "checks": {
+    "source_matrix_path_coverage": "28/28",
+    "literal_caller_matches": 292,
+    "literal_caller_files": 107,
+    "active_reference_files": 66,
+    "absent_relative_file_links": 0
+  },
+  "limits": [
+    "Static inventory, not live activation proof",
+    "No models or benchmarks run",
+    "No source edits or VisionCraft implementation",
+    "No VisionClaw/Codescape audit paths used"
+  ]
+}

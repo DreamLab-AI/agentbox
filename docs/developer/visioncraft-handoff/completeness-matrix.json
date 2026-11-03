@@ -1,0 +1,254 @@
+[
+  {
+    "source_path": "SKILL.md",
+    "source_lines": "1\u2013154",
+    "capability_to_preserve": "Entry workflow, when/when-not, model roles, gates",
+    "current_reality": "Usable instructions; 1.5.3; estate/harness defaults mixed into general method",
+    "proposed_destination": "Portable visioncraft skill entry plus Agentbox profile",
+    "completion_evidence": "All named methods remain reachable; portable metadata and truthful capability/version checks",
+    "licence_provenance": "Declared MIT; confirm contribution provenance"
+  },
+  {
+    "source_path": "README.md",
+    "source_lines": "1\u2013433",
+    "capability_to_preserve": "Overview, install, examples, API, targets, migration",
+    "current_reality": "README retains deleted TypeScript/npm API and unsupported achieved-performance claims",
+    "proposed_destination": "Independent package README describing only shipped CLI/library/skill",
+    "completion_evidence": "Every advertised command/API compiled or CLI-smoked; retain explained workflows without false runtime promises",
+    "licence_provenance": "Declared MIT at EOF; historical API package removed"
+  },
+  {
+    "source_path": "BUILD-WITH-QUALITY-PROMPT.md",
+    "source_lines": "1\u2013849",
+    "capability_to_preserve": "Full activation prompt, six gates, profiles, topology, degraded modes",
+    "current_reality": "Substantive but contradictory: mandatory Claude Flow/AQE, stale model and memory instructions",
+    "proposed_destination": "Portable activation template plus optional provider/harness/estate profiles",
+    "completion_evidence": "Feature-by-feature preservation of phases/profiles; no implicit installs or model spend; current invocation smoke",
+    "licence_provenance": "Inherited skill declarations; original provenance needs explicit manifest"
+  },
+  {
+    "source_path": "DEBUGGING-PROTOCOL.md",
+    "source_lines": "1\u2013208",
+    "capability_to_preserve": "Feedback loop, static oracle, ranked hypotheses, diagram diagnosis, design interrogation",
+    "current_reality": "Usable diagnostic method; static-oracle improvement has separate tuning history",
+    "proposed_destination": "Portable debug reference with policy-driven escalation/harness adapter",
+    "completion_evidence": "Runnable/setup-blocked/static-only distinction; no unexecuted PASS; preserve valid positive controls",
+    "licence_provenance": "Matt Pocock diagnose attribution lacks pinned source/licence in file"
+  },
+  {
+    "source_path": "EDD-PROTOCOL.md",
+    "source_lines": "1\u2013488",
+    "capability_to_preserve": "Seven-step EDD, expectations, receipts, independence, ageing, stabilisation, workshops",
+    "current_reality": "Instruction/templates; no current machine gate implementation; hard audit versus degraded fallback conflict",
+    "proposed_destination": "Portable EDD reference/templates; proposed typed expectation/gate core",
+    "completion_evidence": "Explicit risk policy; distinguish producer/auditor identities and families; stale/reference/receipt/stabilisation checks",
+    "licence_provenance": "Inherited skill MIT declaration; trace attribution before republishing"
+  },
+  {
+    "source_path": "USAGE-EXAMPLES.md",
+    "source_lines": "1\u2013552",
+    "capability_to_preserve": "Five complete project examples and priority/quality variations",
+    "current_reality": "Examples usable as task designs; stale model/install/capability claims need correction",
+    "proposed_destination": "Portable worked examples and fixed evaluation seeds",
+    "completion_evidence": "Retain Todo/API/e-commerce/CLI/chat coverage; run promised CLI snippets; distinguish illustrative numbers",
+    "licence_provenance": "Inherited skill MIT declaration"
+  },
+  {
+    "source_path": "config/skill.yaml",
+    "source_lines": "1\u2013507",
+    "capability_to_preserve": "Configuration-shaped capability/domain/gate/model/workflow catalogue",
+    "current_reality": "No loader found; version1.5.0 differs from SKILL1.5.3; hooks and integrations are descriptive",
+    "proposed_destination": "Reviewed portable policy schema/example; Agentbox-specific profile values separate",
+    "completion_evidence": "Unknown-key rejection; no inert config advertised as enforced; generated version/description parity",
+    "licence_provenance": "Inherited skill declaration; new schema authored independently"
+  },
+  {
+    "source_path": "scripts/deepsec-gate.sh",
+    "source_lines": "1\u2013347",
+    "capability_to_preserve": "Policy/route/preflight, bounded process, fresh receipts, export/threshold parser",
+    "current_reality": "Real executable entrypoint used by CI; bash+embedded Python; source pinned4e1f4fff4",
+    "proposed_destination": "Generic Rust gate/process functions with Agentbox compatibility wrapper",
+    "completion_evidence": "Preserve flags/env precedence/exit0,1,70,78,124; offline protocol conformance + pinned CLI checks",
+    "licence_provenance": "Agentbox-origin wrapper11804ba4b; no file-level SPDX; root AGPL boundary"
+  },
+  {
+    "source_path": "scripts/deepsec-gate.test.mjs",
+    "source_lines": "1\u2013264",
+    "capability_to_preserve": "Offline provider double and process/receipt/error controls",
+    "current_reality": "Real tests: latest parent reports16 passing; earlier15 independently rerun and malformed-export red cases fixed",
+    "proposed_destination": "Portable gate conformance fixtures plus adapter compatibility suite",
+    "completion_evidence": "Strict realistic CLI flags; ambient provider excluded; runtime failures/unknown severity never PASS",
+    "licence_provenance": "Agentbox-origin tests; root AGPL boundary requires provenance decision"
+  },
+  {
+    "source_path": "references/agents.md",
+    "source_lines": "1\u201384",
+    "capability_to_preserve": "34 logical roles and actual registered harness mapping",
+    "current_reality": "Useful role catalogue; estate model assignments and disabled SONA roles are not executable fleet",
+    "proposed_destination": "Portable capability/role catalogue + Agentbox bindings",
+    "completion_evidence": "Logical role is never claimed as spawned worker; unknown role/capability degrades visibly",
+    "licence_provenance": "Inherited skill declaration"
+  },
+  {
+    "source_path": "references/architecture.md",
+    "source_lines": "1\u2013101",
+    "capability_to_preserve": "Learning/memory/roles/execution, proposed enhancements, targets",
+    "current_reality": "Mixed current off flags, proposed memory APIs and unsupported BFT/metrics claims",
+    "proposed_destination": "Portable architecture description; ecosystem integrations marked actual/proposed",
+    "completion_evidence": "No own database/orchestrator invented; declared availability and observed receipt kept distinct",
+    "licence_provenance": "KHIVE/RuvNet references; provenance unresolved beyond links"
+  },
+  {
+    "source_path": "references/bhil-traceability.md",
+    "source_lines": "1\u2013156",
+    "capability_to_preserve": "PRD/SPEC/ADR/TASK graph, prompt versions, eval/guardrail templates",
+    "current_reality": "Useful templates; BHIL commands depend on other skills; graph/API enforcement not local",
+    "proposed_destination": "Portable traceability templates and optional adapters",
+    "completion_evidence": "Accept external IDs/paths; validate supplied edges; no mandatory new tracker; versioned prompt/eval pairing",
+    "licence_provenance": "BHIL link present, no pinned source/licence notice here"
+  },
+  {
+    "source_path": "references/deepsec-security-gate.md",
+    "source_lines": "1\u2013104",
+    "capability_to_preserve": "Actual gate operating contract, receipts, model routes, limits",
+    "current_reality": "Source-aligned new error protocol; contains Agentbox paths/policy/installation assumptions",
+    "proposed_destination": "Generic Deepsec adapter reference + Agentbox setup guide",
+    "completion_evidence": "Examples match packaged binary and CLI; source-set/dirty scope/export history limits explicit",
+    "licence_provenance": "Wrapper documentation; root AGPL/skill declaration boundary"
+  },
+  {
+    "source_path": "references/methodologies.md",
+    "source_lines": "1\u201390",
+    "capability_to_preserve": "DDD/ADR/TDD, ADR staleness, optional Ruflo graph integration",
+    "current_reality": "General method strong; optional plugin commands marked when published; no local ADR engine",
+    "proposed_destination": "Portable DDD/ADR/TDD guide; optional Ruflo integration",
+    "completion_evidence": "Non-vacuous governed paths; code-before-ADR stamp; proposed decisions remain proposed; method is not fake runtime",
+    "licence_provenance": "Inherited skill declaration and external ADR tooling references"
+  },
+  {
+    "source_path": "references/migration.md",
+    "source_lines": "1\u201342",
+    "capability_to_preserve": "Superseded skills and old invocation migrations",
+    "current_reality": "Outdated migration says all51 agents/100tools integrated and imports removed UnifiedMemory API",
+    "proposed_destination": "Compatibility/migration guide with explicit removed/available paths",
+    "completion_evidence": "Legacy name resolves correctly; removed API fails honestly; no dormant fleet reinstated",
+    "licence_provenance": "Inherited skill declaration"
+  },
+  {
+    "source_path": "references/quality-gates-and-workflow.md",
+    "source_lines": "1\u2013155",
+    "capability_to_preserve": "Gate catalogue, findings intake, Sealmap receipts, Rust lens, advisor and phase flow",
+    "current_reality": "Methods and one executable security gate; numeric percentages not universal measured acceptance",
+    "proposed_destination": "Portable quality methodology + explicit project-selected gate policy",
+    "completion_evidence": "No missing evidence becomes green; independent audit separate from deterministic structural validation",
+    "licence_provenance": "Inherited skill declaration with Agentbox-authored recent lessons"
+  },
+  {
+    "source_path": "references/review-evidence.md",
+    "source_lines": "1\u2013213",
+    "capability_to_preserve": "Estate lessons: cause/version/effects, consolidation, gate semantics, delivery, release",
+    "current_reality": "Current source-grounded procedural guidance, no autonomous evaluator",
+    "proposed_destination": "Core portable review evidence reference; fixtures referenced by proposed validator",
+    "completion_evidence": "Preserve every lesson family and rejected-candidate memory; no new issue database or automatic scope creep",
+    "licence_provenance": "Agentbox-authored lessons; clarify intended licence for standalone extraction"
+  },
+  {
+    "source_path": "references/rust/NOTICE.md",
+    "source_lines": "1\u201342",
+    "capability_to_preserve": "Vendored source pin, file coverage and complete MIT notice",
+    "current_reality": "Explicit provenance for BeautifulRust a9cdcfa94d1330c0d41c7f67764c5f7786fbb71d",
+    "proposed_destination": "Retain unmodified third-party notice and source mapping",
+    "completion_evidence": "Package includes notice; all vendored files stay mapped; estate overlay distinct",
+    "licence_provenance": "Explicit Morgan Linton2026 MIT notice"
+  },
+  {
+    "source_path": "references/rust/steering.md",
+    "source_lines": "1\u2013557",
+    "capability_to_preserve": "Rust ownership/API/errors/async/unsafe/docs/tests/performance plus estate overlay",
+    "current_reality": "Useful full language guidance; estate publication and crypto policies mixed into section0",
+    "proposed_destination": "Portable Rust guide plus explicit optional estate overlay",
+    "completion_evidence": "All13 sections retained; CI feature set/MSRV/rustdoc/test expectations remain coherent",
+    "licence_provenance": "BeautifulRust MIT with marked estate changes"
+  },
+  {
+    "source_path": "references/rust/review.md",
+    "source_lines": "1\u2013181",
+    "capability_to_preserve": "Risk-ordered Rust review and report format, lint/profile handoff",
+    "current_reality": "Useful review rubric with evidence-intake integration",
+    "proposed_destination": "Portable Rust review guide",
+    "completion_evidence": "Severity/source-anchor/test-control rules retained; same-family review labelled honestly",
+    "licence_provenance": "BeautifulRust MIT with marked estate changes"
+  },
+  {
+    "source_path": "references/rust/port.md",
+    "source_lines": "1\u2013150",
+    "capability_to_preserve": "Whether to port, preserve behaviour/tests, per-language semantics, proportionality",
+    "current_reality": "Useful port method; dead-code/crypto/publication estate overlays",
+    "proposed_destination": "Portable Rust port guide and explicit estate policy",
+    "completion_evidence": "No low-value thin-wrapper port; behavioural parity/error/float/ownership quirks tested",
+    "licence_provenance": "BeautifulRust MIT with marked estate changes"
+  },
+  {
+    "source_path": "references/rust/lints/clippy.toml",
+    "source_lines": "1\u201312",
+    "capability_to_preserve": "Clippy bool parameter and test allowances",
+    "current_reality": "Real drop-in config; only enforced by consuming projects",
+    "proposed_destination": "Versioned opt-in lint asset",
+    "completion_evidence": "Representative consuming crate loads file on declared MSRV/CI toolchain",
+    "licence_provenance": "BeautifulRust MIT per NOTICE"
+  },
+  {
+    "source_path": "references/rust/lints/lints.toml",
+    "source_lines": "1\u201373",
+    "capability_to_preserve": "Cargo lint table with public API/unsafe/docs/error/cast policies",
+    "current_reality": "Real opt-in data, not automatically installed",
+    "proposed_destination": "Versioned opt-in lint asset",
+    "completion_evidence": "Library/application profile distinction; checked feature/toolchain matrix; no automatic repo mutation",
+    "licence_provenance": "BeautifulRust MIT per NOTICE"
+  },
+  {
+    "source_path": "references/rust/sources/effective-rust.md",
+    "source_lines": "1\u2013196",
+    "capability_to_preserve": "Effective Rust digest,35 items",
+    "current_reality": "Vendored reference digest; never executable authority",
+    "proposed_destination": "Retain language reference resource",
+    "completion_evidence": "Notice and original source link retained; no claim of independently reverified upstream version",
+    "licence_provenance": "BeautifulRust MIT per NOTICE; underlying book attribution retained"
+  },
+  {
+    "source_path": "references/rust/sources/google-rust-style-guide.md",
+    "source_lines": "1\u2013208",
+    "capability_to_preserve": "Google Rust style digest",
+    "current_reality": "Vendored reference digest",
+    "proposed_destination": "Retain language reference resource",
+    "completion_evidence": "Source link preserved; project policy conflicts made explicit",
+    "licence_provenance": "BeautifulRust MIT per NOTICE; underlying source attribution retained"
+  },
+  {
+    "source_path": "references/rust/sources/microsoft-rust-guidelines.md",
+    "source_lines": "1\u2013269",
+    "capability_to_preserve": "Microsoft pragmatic Rust digest, including AI provenance guidance",
+    "current_reality": "Vendored reference digest; source header names2026.6",
+    "proposed_destination": "Retain language reference resource",
+    "completion_evidence": "Version/notice/source link retained; future updates recheck full overlay",
+    "licence_provenance": "BeautifulRust MIT per NOTICE; source header also declares MIT"
+  },
+  {
+    "source_path": "references/rust/sources/rust-api-guidelines.md",
+    "source_lines": "1\u2013214",
+    "capability_to_preserve": "Official Rust API guidelines digest",
+    "current_reality": "Vendored reference digest",
+    "proposed_destination": "Retain language reference resource",
+    "completion_evidence": "API/metadata/docs/compatibility guidance remains linked and complete",
+    "licence_provenance": "BeautifulRust MIT per NOTICE; underlying source attribution retained"
+  },
+  {
+    "source_path": "references/rust/sources/rust-design-patterns.md",
+    "source_lines": "1\u2013184",
+    "capability_to_preserve": "Rust idioms/patterns/anti-patterns/functional digest",
+    "current_reality": "Vendored reference digest",
+    "proposed_destination": "Retain language reference resource",
+    "completion_evidence": "Reference remains available without loading all text into default context",
+    "licence_provenance": "BeautifulRust MIT per NOTICE; underlying source attribution retained"
+  }
+]
