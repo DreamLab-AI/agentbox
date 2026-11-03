@@ -65,6 +65,16 @@ case "$sql" in
   *"RENAME TO"*)                    echo COMMIT ;;
   *EXPLAIN*)                        echo "  ->  Index Scan using idx_memory_embedding_hnsw on memory_entries" ;;
   *"count(DISTINCT id)"*)           echo SET; echo "${STUB_PROBE:-20:20}" ;;
+  # pre-swap screen: STUB_SCREEN_SEQ="new:old,…", one pair per build attempt
+  # (default 185:180); ERR simulates a statement timeout.
+  *"ROLLBACK;"*)                    n=$(cat "$STUB_SCREEN_COUNTER" 2>/dev/null || echo 0)
+                                    pair=$(printf '%s' "${STUB_SCREEN_SEQ:-185:180}" | cut -d, -f$((n+1)))
+                                    [ -n "$pair" ] || pair="${STUB_SCREEN_SEQ##*,}"
+                                    [ "$pair" = ERR ] && { echo "ERROR: canceling statement due to statement timeout" >&2; exit 1; }
+                                    case "$sql" in
+                                      *"DROP INDEX idx_memory_embedding_hnsw_rebuild;"*) echo BEGIN; echo SET; echo "${pair#*:}"; echo ROLLBACK; echo $((n+1)) > "$STUB_SCREEN_COUNTER" ;;
+                                      *) echo BEGIN; echo SET; echo "${pair%%:*}"; echo ROLLBACK ;;
+                                    esac ;;
   *"FROM pg_roles WHERE rolname"*)  echo "${STUB_ROLE_PRESENT:-}" ;;
   *"SHOW hba_file"*)                echo "/var/lib/postgresql/data/pg_hba.conf" ;;
   *"pg_hba_file_rules"*)            r="${STUB_HBA_RULES-__default__}"
@@ -103,9 +113,9 @@ mk_toml "$T/off.toml" false false
 # run <case> <args…> — fresh log/state per case; output to $T/<case>.out, rc to $T/<case>.rc
 run() {
   local c="$1"; shift
-  rm -f "$T/recall.n"; : > "$T/$c.log"; mkdir -p "$T/state-$c"
+  rm -f "$T/recall.n" "$T/screen.n"; : > "$T/$c.log"; mkdir -p "$T/state-$c"
   printf '{"phase":"done","previous_ref":"img:1"}\n' > "$T/state-$c/state.json"
-  env PATH="$T/bin:$PATH" STUB_LOG="$T/$c.log" STUB_RECALL_COUNTER="$T/recall.n" \
+  env PATH="$T/bin:$PATH" STUB_LOG="$T/$c.log" STUB_RECALL_COUNTER="$T/recall.n" STUB_SCREEN_COUNTER="$T/screen.n" \
       RUVECTOR_RECALL_HARNESS="$T/harness.mjs" RUVECTOR_SIDECAR_STATE_DIR="$T/state-$c" \
       RUVECTOR_SIDECAR_TOML="${TOMLF:-$T/on.toml}" STUB_INDEXDEF="${STUB_INDEXDEF:-$INDEXDEF_OK}" \
       WORKSPACE="$T" HOME="$T" bash "$SCRIPT" "$@" > "$T/$c.out" 2>&1
@@ -172,6 +182,28 @@ l_drop=$(grep -n 'DROP\\ INDEX\\ IF\\ EXISTS\\ public.idx_memory_embedding_hnsw_
 l_build=$(grep -n 'CREATE\\ INDEX' "$T/r-left.log" | head -1 | cut -d: -f1)
 [ "$(rc r-left)" = 0 ] && [ -n "$l_drop" ] && [ "$l_drop" -lt "$l_build" ] \
   && _ok "a leftover rebuild index is dropped before the build" || _bad "leftover handling"
+
+# pre-swap screen (ADR-2133 amendment 2026-10-31)
+screen_ln=$(grep -n 'ROLLBACK' "$T/r-ok.log" | head -1 | cut -d: -f1)
+[ -n "$screen_ln" ] && [ "$screen_ln" -gt "$build_ln" ] && [ "$screen_ln" -lt "$swap_ln" ] \
+  && _ok "the screen runs between the build and the swap" || _bad "screen ordering" "build=$build_ln screen=$screen_ln swap=$swap_ln"
+! grep -E 'ARGV:.*ROLLBACK' "$T/r-ok.log" | grep -q COMMIT \
+  && _ok "the screen never commits its DROP" || _bad "screen committed"
+[ "$(state r-ok .reindex.screen_new_1)/$(state r-ok .reindex.screen_old_1)" = "185/180" ] \
+  && _ok "state.json records both screen scores" || _bad "screen scores recorded" "$(cat "$T/state-r-ok/state.json")"
+
+STUB_SCREEN_SEQ="170:183,190:183" STUB_RECALL_SEQ="170:100:FAIL,189:115:PASS" run r-retry reindex --yes
+[ "$(rc r-retry)" = 0 ] && [ "$(grep -c 'CREATE\\ INDEX' "$T/r-retry.log")" = 2 ] && grep -q 'RENAME' "$T/r-retry.log" \
+  && _ok "a losing build is dropped and rebuilt once, then swapped when it wins" || _bad "screen retry" "$(tail -4 "$T/r-retry.out")"
+
+STUB_SCREEN_SEQ="170:183,175:183" STUB_RECALL_SEQ="170:100:FAIL,189:115:PASS" run r-keepold reindex --yes
+[ "$(rc r-keepold)" != 0 ] && ! grep -q 'RENAME' "$T/r-keepold.log" && [ "$(state r-keepold .reindex.phase)" = kept-old ] \
+  && [ "$(recall_calls)" = 1 ] && _has "$T/r-keepold.out" "is kept and still serves searches" \
+  && _ok "two losing builds keep the current index and never swap" || _bad "kept-old" "$(tail -4 "$T/r-keepold.out")"
+
+STUB_SCREEN_SEQ="ERR" STUB_RECALL_SEQ="170:100:FAIL,189:115:PASS" run r-screenerr reindex --yes
+[ "$(rc r-screenerr)" != 0 ] && ! grep -q 'RENAME' "$T/r-screenerr.log" && [ "$(state r-screenerr .reindex.phase)" = screen-failed ] \
+  && _ok "a screen that cannot score refuses the swap" || _bad "screen error" "$(tail -4 "$T/r-screenerr.out")"
 
 # ═════ reader-role ═════
 PW="s3cret-$RANDOM-$RANDOM"

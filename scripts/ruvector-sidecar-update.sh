@@ -1303,6 +1303,33 @@ hnsw_ann_probe_sql() {
     printf "SET enable_seqscan = off; SELECT count(*) || ':' || count(DISTINCT id) FROM (SELECT id FROM memory_entries ORDER BY embedding <=> (SELECT embedding FROM memory_entries WHERE embedding IS NOT NULL ORDER BY id LIMIT 1) LIMIT 20) q;"
 }
 
+# Pre-swap screen (ADR-2133 amendment, 2026-10-31). Two serial index-law builds
+# on identical data scored 168/200 and 183/200 self-recall, so a valid build is
+# not necessarily a good one. DROP INDEX is transactional: dropping one of the
+# two indexes inside a transaction, scoring self-recall on the fixture rows and
+# rolling back measures the other index alone and leaves both intact and
+# maintained. Each probe holds ACCESS EXCLUSIVE on memory_entries for its run
+# (~7 s at 266k rows), bounded by statement_timeout. The SQL reproduces the
+# harness's self-recall exactly (unfiltered top-10 on each row's own vector).
+SCREEN_TIMEOUT_S="${REINDEX_SCREEN_TIMEOUT_S:-30}"
+SCREEN_FIXTURE="${SCRIPT_DIR}/recall-fixtures/recall-fixture.v1.json"
+
+hnsw_screen_sql() { # hnsw_screen_sql <index-to-hide> <comma-separated self-recall ids>
+    printf "BEGIN; SET LOCAL lock_timeout = '60s'; SET LOCAL statement_timeout = '%ss'; DROP INDEX %s; SET LOCAL enable_seqscan = off; SELECT count(*) FILTER (WHERE s.id = ANY(ARRAY(SELECT m.id FROM memory_entries m ORDER BY m.embedding <=> s.embedding LIMIT 10))) FROM memory_entries s WHERE s.id::text = ANY('{%s}'::text[]); ROLLBACK;" \
+        "$SCREEN_TIMEOUT_S" "$1" "$2"
+}
+
+screen_score() { # screen_score <index-to-hide> → self-recall hits of the other index, or empty on error
+    local ids
+    ids=$(jq -r '.self_recall.ids | join(",")' "$SCREEN_FIXTURE" 2>/dev/null) || return 1
+    [[ -n "$ids" ]] || return 1
+    pg "$CONTAINER" "$(hnsw_screen_sql "$1" "$ids")" 2>/dev/null | grep -E '^[0-9]+$' | tail -1
+}
+
+screen_verdict() { # screen_verdict <new-score> <old-score> → keep-new | keep-old
+    if (( $1 >= $2 )); then echo keep-new; else echo keep-old; fi
+}
+
 cmd_reindex() {
     local apply=0
     while [[ $# -gt 0 ]]; do
@@ -1349,7 +1376,10 @@ cmd_reindex() {
     echo "  plan:"
     echo "    1. recall harness (median-of-3) — recorded as the before figure"
     echo "    2. SET max_parallel_maintenance_workers = 0; $(hnsw_create_sql "$HNSW_REBUILD")"
-    echo "    3. $(hnsw_swap_sql)"
+    echo "    3. screen: score ${HNSW_REBUILD} and ${HNSW_INDEX} alone (drop one in a"
+    echo "       rolled-back transaction, ~7 s lock each); swap only if the new one is no"
+    echo "       worse, else rebuild once; if it loses again, keep ${HNSW_INDEX}."
+    echo "       swap: $(hnsw_swap_sql)"
     echo "    4. verify: definition, planner uses ${HNSW_INDEX}, top-20 ids distinct; ANALYZE"
     echo "    5. recall harness — must PASS at ≥${RECALL_FLOOR_SELF}/200 self, ≥${RECALL_FLOOR_TRUE}/120 true"
     echo "  impact    : writes to memory_entries wait for the build (~5–8 min); ANN"
@@ -1371,21 +1401,46 @@ cmd_reindex() {
                 "reindex.pre_verdict=${RECALL_VERDICT}" "reindex.pre_artifact=${RECALL_ARTIFACT}"
     echo "  before    : self ${RECALL_SELF}/200, true ${RECALL_TRUE}/120 — ${RECALL_VERDICT}"
 
-    info "2/5 building ${HNSW_REBUILD} (serial, non-concurrent)"
     [[ -n "$leftover" ]] && pg "$CONTAINER" "DROP INDEX IF EXISTS public.${HNSW_REBUILD};" >/dev/null
-    state_write "reindex.phase=building"
-    local t0 t1 secs
-    t0=$(date +%s)
-    if ! pg "$CONTAINER" "SET max_parallel_maintenance_workers = 0; $(hnsw_create_sql "$HNSW_REBUILD")" >/dev/null; then
-        pg "$CONTAINER" "DROP INDEX IF EXISTS public.${HNSW_REBUILD};" >/dev/null 2>&1 || true
-        state_write "reindex.phase=build-failed"
-        die "build of ${HNSW_REBUILD} failed; ${HNSW_INDEX} is untouched."
+    local t0 t1 secs build_try new_score old_score verdict=""
+    for build_try in 1 2; do
+        info "2/5 building ${HNSW_REBUILD} (serial, non-concurrent; attempt ${build_try}/2)"
+        state_write "reindex.phase=building" "reindex.build_attempt=${build_try}"
+        t0=$(date +%s)
+        if ! pg "$CONTAINER" "SET max_parallel_maintenance_workers = 0; $(hnsw_create_sql "$HNSW_REBUILD")" >/dev/null; then
+            pg "$CONTAINER" "DROP INDEX IF EXISTS public.${HNSW_REBUILD};" >/dev/null 2>&1 || true
+            state_write "reindex.phase=build-failed"
+            die "build of ${HNSW_REBUILD} failed; ${HNSW_INDEX} is untouched."
+        fi
+        t1=$(date +%s); secs=$((t1 - t0))
+        state_write "reindex.build_seconds=${secs}"
+        ok "built in ${secs}s"
+        [[ "$(pg "$CONTAINER" "SELECT indisvalid FROM pg_index WHERE indexrelid = to_regclass('public.${HNSW_REBUILD}');")" == "t" ]] \
+            || die "${HNSW_REBUILD} is not valid after the build; ${HNSW_INDEX} is untouched."
+
+        info "   screen: each index alone, in a rolled-back transaction"
+        new_score=$(screen_score "$HNSW_INDEX") || new_score=""
+        old_score=$(screen_score "$HNSW_REBUILD") || old_score=""
+        if [[ -z "$new_score" || -z "$old_score" ]]; then
+            state_write "reindex.phase=screen-failed"
+            die "the pre-swap screen could not score both indexes (lock or ${SCREEN_TIMEOUT_S}s timeout,
+       or the fixture is unreadable). ${HNSW_INDEX} still serves searches and
+       ${HNSW_REBUILD} is built and valid. Retry later, or swap by hand:
+       docker exec ${CONTAINER} psql -U ${PG_USER} -d ${PG_DB} -c \"$(hnsw_swap_sql)\""
+        fi
+        verdict=$(screen_verdict "$new_score" "$old_score")
+        state_write "reindex.screen_new_${build_try}=${new_score}" "reindex.screen_old_${build_try}=${old_score}"
+        echo "  screen    : new ${new_score}/200, current ${old_score}/200 self-recall → ${verdict}"
+        [[ "$verdict" == "keep-new" ]] && break
+        pg "$CONTAINER" "DROP INDEX IF EXISTS public.${HNSW_REBUILD};" >/dev/null
+        warn "the new build scored below the current index; dropped it"
+    done
+    if [[ "$verdict" != "keep-new" ]]; then
+        state_write "reindex.phase=kept-old"
+        die "two builds both scored below the current index (last: new ${new_score}/200,
+       current ${old_score}/200). ${HNSW_INDEX} is kept and still serves searches;
+       nothing was swapped."
     fi
-    t1=$(date +%s); secs=$((t1 - t0))
-    state_write "reindex.build_seconds=${secs}"
-    ok "built in ${secs}s"
-    [[ "$(pg "$CONTAINER" "SELECT indisvalid FROM pg_index WHERE indexrelid = to_regclass('public.${HNSW_REBUILD}');")" == "t" ]] \
-        || die "${HNSW_REBUILD} is not valid after the build; ${HNSW_INDEX} is untouched."
 
     info "3/5 swap"
     local attempt swapped=0
@@ -1432,8 +1487,10 @@ cmd_reindex() {
         echo -e "${RED}════════════════════════════════════════════════════════════════${NC}" >&2
         die "RECALL BELOW THE ENFORCED FLOOR after the rebuild: self ${RECALL_SELF}/200
        (floor ${RECALL_FLOOR_SELF}), true ${RECALL_TRUE}/120 (floor ${RECALL_FLOOR_TRUE}), verdict ${RECALL_VERDICT}.
-       The index is the index-law rebuild; the cause is elsewhere (fixture, embedder,
-       corpus). Artifact: ${RECALL_ARTIFACT}"
+       The screen passed but the full harness did not: index-law builds vary in
+       quality run to run (168 vs 183/200 on identical data, 2026-10-31), so a rebuild
+       may recover it; otherwise check the fixture, embedder and corpus.
+       Artifact: ${RECALL_ARTIFACT}"
     fi
     state_write "reindex.phase=done"
     echo -e "${GREEN}reindex complete: ${secs}s build, recall clears the floor.${NC}"
