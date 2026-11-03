@@ -45,10 +45,10 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Install pinned deepsec + Claude Code (same versions the image bakes)
+      - name: Install pinned deepsec + Claude Code
         run: |
           set -euo pipefail
-          npm install -g deepsec@2.3.9 @anthropic-ai/claude-code@2.1.257
+          npm install -g deepsec@2.3.10 @anthropic-ai/claude-code@2.1.257
           deepsec --version
 
       - name: Run the gate (direct Anthropic route; key NAME only reaches disk)

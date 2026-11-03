@@ -25,6 +25,7 @@ wrapper treated an empty export as a completed review. Inspection of the baked
 2.3.10 implementation confirms exit 1 also covers invalid input, quota and
 batch failures. A findings comment is written only after successful batches.
 
+The CI Deepsec pin now matches the inspected image version, 2.3.10.
 The wrapper now resolves and validates file manifests before invocation,
 requires a fresh report directory, requires that invocation's nonempty comment
 for a findings exit, and rejects failed, missing or malformed exports. Five
