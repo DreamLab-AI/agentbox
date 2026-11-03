@@ -7,8 +7,8 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 4f3bd5325eb56b582d1220bc9b0a0b79e918fdae
-verified_paths: [agents/registered-agents.txt, scripts/reconcile-agents.sh, scripts/reconcile-commands.sh, scripts/project-skill-roots.mjs, config/registered-commands.txt, config/entrypoint-unified.sh, flake.nix, tests/config/agent-reconcile.test.sh]
+verified_commit: c1b0c700c42596d35a1faba3074b667c1928d8fb
+verified_paths: [agents/registered-agents.txt, scripts/reconcile-agents.sh, scripts/reconcile-commands.sh, scripts/project-skill-roots.mjs, config/registered-commands.txt, config/entrypoint-unified.sh, flake.nix, tests/config/agent-reconcile.test.sh, scripts/reconcile-skills.sh, skills/registered-skills.txt, skills/codex-registered-skills.txt, tests/config/visioncraft-cutover.test.mjs]
 owner: jjohare
 review_trigger: a new subagent worth always-loading, or evidence the router surfaces baked-but-unregistered skills too slowly; a reconcile audit on the running image showing ~/.claude/agents matches agents/registered-agents.txt (activation → live)
 repo: agentbox
@@ -424,3 +424,9 @@ Re-stamped again at `09067b095`: the one further change to `config/entrypoint-un
 ## Re-verification — 2026-11-01 (`4f3bd5325`)
 
 Governed-path delta since `09067b095`: `config/entrypoint-unified.sh`: the credential-scrub block (`PGSCRUB_MARKER`) now also rewrites Claude Code's backups and the `*.pre-*`/`*.bak*` snapshots of the projected config, writes atomically (sibling temp file, fsync, rename) keeping owner and mode, and scopes its text rules to RuVector's own values (ADR-2164 amendment 4). This record's decision does not concern these changes. Decision unchanged; `verified_commit` bumped. Re-run: `git diff 09067b095..4f3bd5325 -- config/entrypoint-unified.sh`.
+
+## Scoped source re-verification — 2026-11-03
+
+Verified source commit `c1b0c700c42596d35a1faba3074b667c1928d8fb`.
+
+Reviewed the earlier shared-file deltas (DREAM_GOVERNANCE_PRIVKEY_HEX custody classification and removal of retired precedent-bridge from the default hub list) and this task's Nix/source-pin, AQE boot and quality-name cutover changes. Existing agent/command reconciler bodies and their allowlists are unchanged. The skill reconciler retires the old name only after VisionCraft is available, preserves custom content in a hidden archive, and passes both migration and idempotence cases. Source inventory, 131-skill lint/count and Nix parsing pass. No running-image reconciliation or deployment receipt is claimed.

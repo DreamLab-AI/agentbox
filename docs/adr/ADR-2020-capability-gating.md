@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: cc949bb79c9ac89858d01c1235dd3bca6e2226a2
+verified_commit: c1b0c700c42596d35a1faba3074b667c1928d8fb
 verified_paths: [agentbox.toml, skills/tree-search-coder/SKILL.md, services/agentbox-ops/src/bin/tree-search-cap.rs]
 owner: jjohare
 review_trigger: any new optional skill/feature block added to agentbox.toml, or any change to the tree-search-coder spend/route posture
@@ -349,3 +349,9 @@ Governed-path delta since `2f15c531b` is the RuVector Postgres credential custod
 - `agentbox.toml`: the two `conninfo` URLs drop the `@@RUVECTOR_PG_PASSWORD@@` placeholder password, with their comments.
 
 Nothing this record decides is changed; its status axes are unchanged. Re-run: `git diff 2f15c531b..cc949bb79 -- agentbox.toml`.
+
+## Scoped source re-verification — 2026-11-03
+
+Verified source commit `c1b0c700c42596d35a1faba3074b667c1928d8fb`.
+
+The optional agentic_qe gate changes false to true; both Claude and Codex projection retain disabled/missing-binary removal and preserve unrelated settings. Its existing rebuild-class catalogue contract remains. Tree-search skill references change the neighbouring quality method to VisionCraft without altering explicit opt-in, spend limits or never-auto-route rules; tree-search-cap.rs is unchanged. Three AQE boot cases, the manifest validator and all 118 catalogue paths pass. The running image has not yet enabled AQE.

@@ -7,8 +7,8 @@ implementation_status: partial
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 5a010d084b0544c0173757fa54fdec5c4766ec90
-verified_paths: [flake.nix, agentbox.toml, schema/agentbox.toml.schema.json, scripts/agentbox-config-validate.js, management-api/lib/system-manifest.js, scripts/visioncraft-deepsec-gate.sh, services/agentbox-manifest/src/deepsec_gate.rs, skills/visioncraft/references/deepsec.md, .github/workflows/deepsec.yml]
+verified_commit: c1b0c700c42596d35a1faba3074b667c1928d8fb
+verified_paths: [flake.nix, agentbox.toml, schema/agentbox.toml.schema.json, scripts/agentbox-config-validate.js, management-api/lib/system-manifest.js, scripts/visioncraft-deepsec-gate.sh, services/agentbox-manifest/src/deepsec_gate.rs, skills/visioncraft/references/deepsec.md, .github/workflows/deepsec.yml, lib/visioncraft.nix, config/visioncraft-source.json, lib/lockfiles/visioncraft-0.1.0.Cargo.lock, tests/config/visioncraft-deepsec.test.mjs]
 owner: jjohare
 review_trigger: a deepsec major version, a change to its CLI exit-code contract or model-route schema, any new model route, or the first paid full-repo run
 repo: agentbox
@@ -515,3 +515,9 @@ Nothing this record decides is changed; its status axes are unchanged. Re-run: `
 ## Re-verification — 2026-10-31 (`5a010d084`)
 
 Governed-path delta since `cc949bb79` is three documentation commits to `skills/build-with-quality/references/deepsec-security-gate.md` (042d5cfc4, 9dfbf7cec, 686db14b1: review-evidence and boundary-check guidance, +24 lines). Nothing this record decides is changed. Re-run: `git diff cc949bb79..5a010d084 -- skills/build-with-quality/references/deepsec-security-gate.md`.
+
+## Scoped source re-verification — 2026-11-03
+
+Verified source commit `c1b0c700c42596d35a1faba3074b667c1928d8fb`.
+
+The current paths now bind the thin host wrapper, typed Rust policy projector, published VisionCraft payload, source pin and released lockfile. Since the previous verification, pre-existing shared-file deltas were the Deepsec CI pin correction to 2.3.10 and removal of retired precedent-bridge from a default hub list; neither weakens this policy boundary. The owned changes replace shell execution/receipt interpretation with the single published VisionCraft implementation and preserve names-only credentials and explicit caller overrides. All 18 protocol cases pass against the actual crates.io-installed 0.1.0 binary, with unchanged SHA-256 ae5d7568af0a56e46cb134d93391d2ede856544bbead6a0d68a43d5f510dce17; 235 Rust tests, Clippy, policy/catalogue checks and Nix parsing pass. The independent production review receipts remain ERROR; the separate one-file real-provider PASS proves only the adapter path. A full production review, labelled-PR CI execution and rebuilt-image acceptance remain unverified, so partial/staged is retained.

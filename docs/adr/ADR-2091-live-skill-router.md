@@ -7,8 +7,8 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 4f3bd5325eb56b582d1220bc9b0a0b79e918fdae
-verified_paths: [config/hooks/lib/skill-route.cjs, config/hooks/skill-route.cjs, skills/skill-router/scripts/route.mjs, config/entrypoint-unified.sh, tests/config/skill-route.test.js]
+verified_commit: c1b0c700c42596d35a1faba3074b667c1928d8fb
+verified_paths: [config/hooks/lib/skill-route.cjs, config/hooks/skill-route.cjs, skills/skill-router/scripts/route.mjs, config/entrypoint-unified.sh, tests/config/skill-route.test.js, skills/visioncraft/SKILL.md, skills/registered-skills.txt, skills/codex-registered-skills.txt, tests/system-one/visioncraft-picker.test.mjs]
 owner: jjohare
 review_trigger: the first project that needs a per-project routing bypass (ADR-2090), a Jev model change, or a measured runtime-path accuracy below 85% on the 40-item set
 repo: agentbox
@@ -295,3 +295,9 @@ Re-stamped again at `09067b095`: the one further change to `config/entrypoint-un
 ## Re-verification — 2026-11-01 (`4f3bd5325`)
 
 Governed-path delta since `09067b095`: `config/entrypoint-unified.sh`: the credential-scrub block (`PGSCRUB_MARKER`) now also rewrites Claude Code's backups and the `*.pre-*`/`*.bak*` snapshots of the projected config, writes atomically (sibling temp file, fsync, rename) keeping owner and mode, and scopes its text rules to RuVector's own values (ADR-2164 amendment 4). This record's decision does not concern these changes. Decision unchanged; `verified_commit` bumped. Re-run: `git diff 09067b095..4f3bd5325 -- config/entrypoint-unified.sh`.
+
+## Scoped source re-verification — 2026-11-03
+
+Verified source commit `c1b0c700c42596d35a1faba3074b667c1928d8fb`.
+
+The previous-to-current governed delta includes the earlier DREAM_GOVERNANCE_PRIVKEY_HEX role classification and the new boot call projecting AQE into Codex TOML. Neither changes the picker algorithm, per-request candidate loading or typed Choice contract. The active candidate comes from the newly pinned 34-file VisionCraft snapshot and both registries; no persistent Jev cache requires migration. All 71 existing Jev router tests and the focused candidate/mock-wire cases pass. Existing live-router status describes the mechanism; the VisionCraft candidate is source-complete and pending rebuild, not yet live.

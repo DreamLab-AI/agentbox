@@ -7,7 +7,7 @@ implementation_status: none
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: cc949bb79c9ac89858d01c1235dd3bca6e2226a2
+verified_commit: c1b0c700c42596d35a1faba3074b667c1928d8fb
 verified_paths: [mcp/servers/lib/aggregate-effectiveness.js, scripts/ruvector-sona-feeder.mjs, agentbox.toml]
 owner: jjohare
 review_trigger: A SONA binary with configurable embedding_dim (384-capable) ships, or a dimension migration is planned
@@ -338,3 +338,9 @@ Governed-path delta since `2f15c531b` is the RuVector Postgres credential custod
 - `scripts/ruvector-sona-feeder.mjs`: the pool config comes from `management-api/lib/pg-config.js`; the conninfo parser and `password=ruvector` default are gone.
 
 Nothing this record decides is changed; its status axes are unchanged. Re-run: `git diff 2f15c531b..cc949bb79 -- agentbox.toml mcp/servers/lib/aggregate-effectiveness.js scripts/ruvector-sona-feeder.mjs`.
+
+## Scoped source re-verification — 2026-11-03
+
+Verified source commit `c1b0c700c42596d35a1faba3074b667c1928d8fb`.
+
+Only agentbox.toml changed: AQE is enabled and Deepsec comments name VisionCraft. The shared bge model, dimensionality, SONA and reranking configuration are unchanged. AQE receives ephemeral memory, disabled periodic workers and no configured embedder endpoint/token; it is not pointed at the incompatible bge service. The image rejects its optional local transformer dependency. Memory mode alone does not disable upstream embedding attempts. Three enabled/disabled/malformed AQE projection cases and the environment inventory pass; no model-lifecycle activation is claimed.

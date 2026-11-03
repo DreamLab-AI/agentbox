@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: b65c3d4eda3c2449d7ea8512ae1bda33a24c2312
+verified_commit: c1b0c700c42596d35a1faba3074b667c1928d8fb
 verified_paths: [skills/lint-skills.mjs, skills/gen-routing-table.mjs, skills/SKILL-DIRECTORY.md, skills/system-one/scripts/route-eval.mjs]
 owner: jjohare
 review_trigger: the next time a skill is demoted, merged, or added to a cluster that already shows measured overlap
@@ -169,3 +169,9 @@ Re-verified 2026-10-22 at `0382cc4b5e34f75a62184bf350f865533010dc52`: reviewed t
 `21769a881..d1dd896f4`: `skills/SKILL-DIRECTORY.md` changes one cell, the `mermaid-diagrams` engine description (rendering via Pele instead of the browsercontainer sidecar). No availability marker, row, section or overlap-ledger entry changes, so nothing ADR-2089 governs changes meaning. The decision holds. Re-verified by reading `git diff 21769a881..d1dd896f4 -- skills/SKILL-DIRECTORY.md`; `bash skills/lint-skills.sh` passes.
 
 Re-verified 2026-10-31 at `b65c3d4ed`. Governed paths changed: `skills/SKILL-DIRECTORY.md`: the build-with-quality rows (`8151fe8d0`, PR #39) and the ontology-augment row naming `ontomark` (`f4beec643`). No section this record governs changed; the decision holds. Re-verified by `git diff d1dd896f4..b65c3d4ed -- <verified_paths>`; no re-implementation was needed. The image carries it at the next rebuild.
+
+## Scoped source re-verification — 2026-11-03
+
+Verified source commit `c1b0c700c42596d35a1faba3074b667c1928d8fb`.
+
+The governed change is SKILL-DIRECTORY.md: quality-method links move to the single canonical VisionCraft entry, while dated historical observations retain their original names. The status vocabulary, linter, routing-table generator and evaluator are unchanged. All 131 skills lint clean, the generated table and count match, and the real candidate/registration plus mocked Jev wire tests expose VisionCraft without the retired candidate. The small paired method evaluation showed no measured regression, not improved routing accuracy; live activation awaits rebuild.

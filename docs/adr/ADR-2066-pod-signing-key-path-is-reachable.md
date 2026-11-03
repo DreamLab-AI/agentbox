@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: 2f15c531b02b8f8393d68d29ce3491712bdd862c
+verified_commit: c1b0c700c42596d35a1faba3074b667c1928d8fb
 verified_paths: [mcp/servers/nostr-bridge.js, scripts/agentbox-config-validate.js, tests/config/semantic-rules.test.js]
 owner: jjohare
 review_trigger: provisioning per-stack nostr key material, changing the profiles root or `$WORKSPACE`, or any new consumer of `loadSigner`
@@ -114,3 +114,9 @@ re-verification of this record's paths.
 **Deliberately left open:** per-stack `nostr.key.enc` + `nostr.salt` provisioning and naming a signing stack. It is tied to owner-parked ADR-2078 (the pods signer moves to the identity port) and is not touched. `implementation_status` stays `partial` and `activation_status` stays `inactive`.
 
 Re-verified 2026-10-31 at `2f15c531b02b8f8393d68d29ce3491712bdd862c` (W7 and W8 integration, `adr-sprint/w78`). Governed-path delta since `1e41b64b6`: `scripts/agentbox-config-validate.js` and `tests/config/semantic-rules.test.js`: additions only for E083 (brackets) and E082 (floats) and their tests; the E010 `$WORKSPACE` profiles-root code this record's close-out rests on is not touched. Read from the diff and checked against the merged tree's gates (cargo, jest, validator); nothing it changes is a key, table or code path this record decides, so the decision and status axes are unchanged. Re-run: `git diff 1e41b64b6..2f15c531b -- scripts/agentbox-config-validate.js tests/config/semantic-rules.test.js`.
+
+## Scoped source re-verification — 2026-11-03
+
+Verified source commit `c1b0c700c42596d35a1faba3074b667c1928d8fb`.
+
+The sole governed delta is the W070 Deepsec warning text in agentbox-config-validate.js, replacing build-with-quality with VisionCraft. loadSigner, profiles roots, signing configuration and semantic-rule tests are unchanged. Manifest validation passes. This does not claim new key provisioning or pod-signing activation.

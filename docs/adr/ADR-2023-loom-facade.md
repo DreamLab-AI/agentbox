@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: cc949bb79c9ac89858d01c1235dd3bca6e2226a2
+verified_commit: c1b0c700c42596d35a1faba3074b667c1928d8fb
 verified_paths: [agentbox.toml, mcp/servers/lib/ontology-retrieval.js]
 owner: jjohare
 review_trigger: model swap behind the Loom, or ADR-051 deferred-distillation MCP tools becoming a discrete server
@@ -407,3 +407,9 @@ Governed-path delta since `2f15c531b` is the RuVector Postgres credential custod
 - `agentbox.toml`: the two `conninfo` URLs drop the `@@RUVECTOR_PG_PASSWORD@@` placeholder password, with their comments.
 
 Nothing this record decides is changed; its status axes are unchanged. Re-run: `git diff 2f15c531b..cc949bb79 -- agentbox.toml`.
+
+## Scoped source re-verification — 2026-11-03
+
+Verified source commit `c1b0c700c42596d35a1faba3074b667c1928d8fb`.
+
+Only agentbox.toml changed: AQE is enabled and Deepsec comments name VisionCraft. No Loom URL, port, model or ontology-retrieval code changes. AQE is not configured to use the Loom or bge embedding endpoint. Manifest validation passes. This is source-delta verification, not a new live Loom probe; existing status axes retain their prior scope.

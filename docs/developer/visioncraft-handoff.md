@@ -76,7 +76,9 @@ Nix image evaluation or build was performed inside the container. See
 
 Existing whole-estate failures remain separate: main already fails the old
 terminal-tab contract and three user_cron setup drift checks; historical ADR
-verification stamps remain stale. Main's baked routing parity passes, while the
+verification stamps remain stale. All 14 touched/scoped ADR records validate;
+the whole ledger retains 42 baseline errors versus main's 45, with no new errors.
+Main's baked routing parity passes, while the
 new VisionCraft source cannot match the old running image until rebuild. That
 parity check remains an activation requirement.
 

@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: cc949bb79c9ac89858d01c1235dd3bca6e2226a2
+verified_commit: c1b0c700c42596d35a1faba3074b667c1928d8fb
 verified_paths: [skills/ontology-augment, skills/podcast-knowledge-ingest, agents/ontology-curator.md, mcp/mcp.json, agentbox.toml, AGENTS.md]
 owner: jjohare
 review_trigger: a request to register any MCP server that reads or writes visionGraph, the ADR-140 /mcp plane reaching the deployed Loom, or the first `vault` subcommand an agent cannot express
@@ -161,3 +161,9 @@ Governed-path delta since `2f15c531b` is the RuVector Postgres credential custod
 - `mcp/mcp.json`: `${RUVECTOR_PG_CONNINFO}` env entries become the parts plus the password-file path.
 
 Nothing this record decides is changed; its status axes are unchanged. Re-run: `git diff 2f15c531b..cc949bb79 -- agentbox.toml mcp/mcp.json`.
+
+## Scoped source re-verification — 2026-11-03
+
+Verified source commit `c1b0c700c42596d35a1faba3074b667c1928d8fb`.
+
+Only agentbox.toml changed: the optional direct AQE toolchain is enabled and Deepsec comments name VisionCraft. The [vault] corpus configuration, corpus skills, mcp/mcp.json and ontology-curator registration are unchanged. AQE is a quality-engineering MCP, not a corpus reader/writer; this amendment adds no ontology MCP. Manifest/configuration checks and the enabled/disabled AQE projection cases pass. Existing corpus activation limits remain.

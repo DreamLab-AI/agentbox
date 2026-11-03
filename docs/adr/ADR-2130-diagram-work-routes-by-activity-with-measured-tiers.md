@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: cc949bb79c9ac89858d01c1235dd3bca6e2226a2
+verified_commit: c1b0c700c42596d35a1faba3074b667c1928d8fb
 verified_paths: [services/agentbox-manifest/src/routing.rs, agentbox.toml, schema/agentbox.toml.schema.json]
 owner: jjohare
 review_trigger: the sealmap skill landing (DESIGN §10 step 5) with the four routes and two hosts; a Loom model swap; a change of the GLM model behind [consultants.zai]; a seal review whose author and reviewer share a family; ADR-2079's router consolidating [model_routing.routes]
@@ -131,3 +131,9 @@ partial implementation and inactive activity-routing status remain accurate.
 The running image was observed with `sealmap 0.3.0` during this release task,
 correcting the historical statement that no rebuild had occurred since 0.3.
 The source pin to 0.4 is a rebuild input, not evidence of live 0.4 activation.
+
+## Scoped source re-verification — 2026-11-03
+
+Verified source commit `c1b0c700c42596d35a1faba3074b667c1928d8fb`.
+
+The governed deltas are AQE enablement, quality-method naming, Deepsec duration documentation and an optional Deepsec subprocess-output cap. No model_routing activity, route parser, tier or model-family rule changes. The 235-test manifest suite includes the existing routing tests; configuration/catalogue checks pass. Diagram activity activation remains inactive and no measured tier descent or paid review is asserted.

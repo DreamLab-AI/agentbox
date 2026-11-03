@@ -39,7 +39,7 @@ Claude Code's advisor tool (`advisorModel`, `--advisor`, `/advisor`; code.claude
 - `[claude_code]` gains `model`, `effort` and `advisor_model`, reconciled every boot by `agentbox-manifest permissions-project` into the root settings and every profile whose settings carry no `env.ANTHROPIC_BASE_URL` (gateway profiles pin their own model and cannot reach the Anthropic-only advisor). A key removed from the manifest is retracted only while settings still hold the value boot wrote; `advisor_model = "off"` removes it. Running value: Sonnet, high effort, Opus advisor.
 - Search subagents run on Haiku through `agents/Explore.md` (overrides the built-in by name). `CLAUDE_CODE_SUBAGENT_MODEL` is never set globally: it would also downgrade general-purpose and the `model: inherit` engineers.
 - Advisor checkpoints are instructions in the Claude-only tier (`config/instructions/workspace.claude.md`): before a multi-file plan locks, after the same failure twice, before declaring done or committing. ADR-2135 nudges them mechanically.
-- build-with-quality treats the advisor as a same-vendor second opinion; the EDD evidence-auditor stays cross-vendor. ruflo is coordination state, not a model router.
+- VisionCraft (formerly build-with-quality) treats the advisor as a same-family second opinion; the EDD evidence auditor must be independent of the actual producer family. Ruflo is coordination state, not a model router.
 - ruflo-mods' prompt route is off by default (bake-time `routeTasks` option).
 
 ## Consequences
