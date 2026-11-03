@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 4f3bd5325eb56b582d1220bc9b0a0b79e918fdae
+verified_commit: c7c2f76b93bfe81dadd8e3bb8c3104cda6b57bec
 verified_paths: [agentbox.toml, schema/agentbox.toml.schema.json, crates/system-one/system-one-proxy/src/config.rs, crates/system-one/system-one-proxy/tests/proxy.rs, tests/config/semantic-rules.test.js, crates/system-one/system-one-proxy/src/server.rs, crates/system-one/system-one-proxy/src/key.rs, services/agentbox-manifest/src/system_one.rs, config/entrypoint-unified.sh, config/hooks/lib/skill-route.cjs, config/seal-bootstrap.sh, lib/system-one-proxy.nix, flake.nix, scripts/agentbox-config-validate.js, agentbox.sh]
 owner: jjohare
 review_trigger: SubQ Snap leaving public preview or changing its price, retention default or the Decisions request shape; a Kev, Clef or pplx-decider release that serves /v1/systemone on a 9B-class checkpoint; a system-one-eval run on the ADR-2089 corpus that moves any backend by more than 5 points; the first compaction replay whose keep-rate is above 5%
@@ -17,6 +17,17 @@ acceptance_boundary: cargo system-one-proxy (13 + 7 passed), agentbox-manifest f
 ---
 
 # ADR-2139 — Treat the System One judge as a vendor slot, measured per consumer, with SubQ Snap as the first alternative to Jev
+
+## Scoped source re-verification — 2026-11-03
+
+Shared-file changes add pinned VisionCraft and direct AQE registration, retire
+the unused precedent-bridge default, and extend governance custody/config
+scrubbing. This record's own mechanism is retained; existing partial/staged
+limitations and historical receipts are not promoted to new runtime acceptance.
+
+Evidence: [rebuild verification receipt](../estate-closeout/adr-reverification-2026-11-03.md).
+This verifies the scoped source amendment, not new whole-record runtime
+acceptance. Decision, implementation and activation statuses are unchanged.
 
 ## Scoped re-verification — 2026-10-31
 

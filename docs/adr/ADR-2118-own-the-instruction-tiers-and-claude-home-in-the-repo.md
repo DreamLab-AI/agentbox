@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 4f3bd5325eb56b582d1220bc9b0a0b79e918fdae
+verified_commit: c7c2f76b93bfe81dadd8e3bb8c3104cda6b57bec
 verified_paths: [config/instructions, services/agentbox-manifest/src/instructions.rs, services/agentbox-manifest/src/cred_sync.rs, config/entrypoint-unified.sh, agentbox.sh, flake.nix, docker-compose.yml, docker-compose.override.yml, tests/config/claude-home-migration.test.sh, tests/config/compose-persistence.test.cjs]
 owner: jjohare
 review_trigger: Claude Code starts reading AGENTS.md natively (drop the @AGENTS.md wrappers and the embed); or a Claude Code release changes where credentials live
@@ -16,6 +16,17 @@ domain: BASELINE-container
 ---
 
 # ADR-2118 — Own the instruction tiers and the Claude home in the repo
+
+## Scoped source re-verification — 2026-11-03
+
+Shared-file changes add pinned VisionCraft and direct AQE registration, retire
+the unused precedent-bridge default, and extend governance custody/config
+scrubbing. This record's own mechanism is retained; existing partial/staged
+limitations and historical receipts are not promoted to new runtime acceptance.
+
+Evidence: [rebuild verification receipt](../estate-closeout/adr-reverification-2026-11-03.md).
+This verifies the scoped source amendment, not new whole-record runtime
+acceptance. Decision, implementation and activation statuses are unchanged.
 
 ## Scoped re-verification — 2026-10-31
 

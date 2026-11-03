@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: "484ee34972afa0add170c6f7ed76914004519f28"
+verified_commit: c7c2f76b93bfe81dadd8e3bb8c3104cda6b57bec
 verified_paths: [lib/ontomark.nix]
 owner: jjohare
 review_trigger: Before shared workspace extraction or any consumer dependency or generation migration
@@ -15,6 +15,16 @@ repo: agentbox
 ---
 
 # ADR-2136 — Pin the shared ontology toolchain independently of the host application
+
+## Scoped source re-verification — 2026-11-03
+
+Consumed Ontomark is 0.7.3 at 6c3f693b with matching fixed hashes and lock. The
+hermetic build passed. This does not complete the proposed cross-estate ontology
+migration.
+
+Evidence: [rebuild verification receipt](../estate-closeout/adr-reverification-2026-11-03.md).
+This verifies the scoped source amendment, not new whole-record runtime
+acceptance. Decision, implementation and activation statuses are unchanged.
 
 ## Released producer adoption — 2026-11-03
 

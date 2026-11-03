@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 4f3bd5325eb56b582d1220bc9b0a0b79e918fdae
+verified_commit: c7c2f76b93bfe81dadd8e3bb8c3104cda6b57bec
 verified_paths: [lib/factrail.nix, config/entrypoint-unified.sh, lib/claude-code-binary.nix]
 owner: jjohare
 review_trigger: the first measured residency bill that exceeds the summary path's re-read savings, a Claude Code function-hook API change, a request to fence a class other than email, or a change to ADR-2121 (its implementation); `/jev-compact status` answering in a fresh session on a booted image (activation → live)
@@ -15,6 +15,17 @@ repo: agentbox
 ---
 
 # ADR-2093 — Compact context by Jev judgement, verbatim, with email fenced out and a switch
+
+## Scoped source re-verification — 2026-11-03
+
+Shared-file changes add pinned VisionCraft and direct AQE registration, retire
+the unused precedent-bridge default, and extend governance custody/config
+scrubbing. This record's own mechanism is retained; existing partial/staged
+limitations and historical receipts are not promoted to new runtime acceptance.
+
+Evidence: [rebuild verification receipt](../estate-closeout/adr-reverification-2026-11-03.md).
+This verifies the scoped source amendment, not new whole-record runtime
+acceptance. Decision, implementation and activation statuses are unchanged.
 
 ## Re-verification — 2026-10-29 at 3b498088e (ADR-2153 cutover)
 

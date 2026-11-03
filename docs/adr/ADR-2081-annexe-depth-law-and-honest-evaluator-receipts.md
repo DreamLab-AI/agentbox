@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: cc949bb79c9ac89858d01c1235dd3bca6e2226a2
+verified_commit: c7c2f76b93bfe81dadd8e3bb8c3104cda6b57bec
 verified_paths: [services/dream-engine/src/engine.rs, services/dream-engine/src/runner.rs, services/dream-engine/src/dispatch.rs, services/dream-engine/src/candidate_flow.rs]
 owner: jjohare
 review_trigger: first nightly dream-engine run on the rebuilt image (live supervised binary carries 'bash -o pipefail -c', checked 2026-10-30) whose receipts show the annexe depth layout and a pipefail-graded evaluator — that receipt moves this to live; or any change to annexe layout or receipt classification
@@ -15,6 +15,15 @@ repo: agentbox
 ---
 
 # ADR-2081 — Annexe mirrors workspace depth; evaluator receipts carry the producer's exit code; a no-patch ACCEPT is unproven, not a harness fault
+
+## Scoped source re-verification — 2026-11-03
+
+Remote archives reconstruct and verify the expected git tree before evaluation.
+The wrong-bytes fixture passes. Canonical workspace depth and pipefail remain.
+
+Evidence: [rebuild verification receipt](../estate-closeout/adr-reverification-2026-11-03.md).
+This verifies the scoped source amendment, not new whole-record runtime
+acceptance. Decision, implementation and activation statuses are unchanged.
 
 ## Context
 Seven nights of dream-cycle reports (2026-09-01 → 09-07, six repos) were harvested on 2026-09-07. Four engine defects explained most of the wasted nights:

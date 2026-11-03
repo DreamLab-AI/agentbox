@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 4f3bd5325eb56b582d1220bc9b0a0b79e918fdae
+verified_commit: c7c2f76b93bfe81dadd8e3bb8c3104cda6b57bec
 verified_paths: [mcp/servers/lib/orchestration-proxy.js, mcp/servers/ruvector-mcp.cjs, mcp/servers/lib/ruvector-gates.js, config/entrypoint-unified.sh]
 owner: jjohare
 review_trigger: next image rebuild (activation), a Ruflo release that changes plugin/runtime resolution or renames the swarm/agent/task/coordination tools, or any proposal to forward a memory_* tool
@@ -16,6 +16,17 @@ domain: LEARNING-memory
 ---
 
 # ADR-2082 — The governed server projects one pinned Ruflo capability; memory never crosses
+
+## Scoped source re-verification — 2026-11-03
+
+Shared-file changes add pinned VisionCraft and direct AQE registration, retire
+the unused precedent-bridge default, and extend governance custody/config
+scrubbing. This record's own mechanism is retained; existing partial/staged
+limitations and historical receipts are not promoted to new runtime acceptance.
+
+Evidence: [rebuild verification receipt](../estate-closeout/adr-reverification-2026-11-03.md).
+This verifies the scoped source amendment, not new whole-record runtime
+acceptance. Decision, implementation and activation statuses are unchanged.
 
 ## Re-verification — 2026-10-29 at 3b498088e (ADR-2153 cutover)
 

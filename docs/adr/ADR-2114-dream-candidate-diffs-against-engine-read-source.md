@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: cc949bb79c9ac89858d01c1235dd3bca6e2226a2
+verified_commit: c7c2f76b93bfe81dadd8e3bb8c3104cda6b57bec
 verified_paths: [services/dream-engine/src/engine.rs, services/dream-engine/src/candidate_flow.rs, services/dream-engine/src/prompt.rs, services/dream-engine/src/prompt/nightly.tmpl]
 owner: jjohare
 review_trigger: the dream engine gaining a tool-using (agentic) model call, or a month of nights in which repair.json records more NO-PATCH/absent outcomes than recovered patches; the first live dream night on a rebuilt image (activation → live)
@@ -17,6 +17,15 @@ lineage: amends legacy ADR-061 (dream ACCEPT persisted as a draft PR — the typ
 ---
 
 # ADR-2114 — Dream candidate diffs are written against source the engine reads from the dispatched commit
+
+## Scoped source re-verification — 2026-11-03
+
+Apply-repair excerpts use the estate denylist and prompts are redacted. Remote
+archives bind the expected tree. Prepared Dream tests cover wrong-tree refusal.
+
+Evidence: [rebuild verification receipt](../estate-closeout/adr-reverification-2026-11-03.md).
+This verifies the scoped source amendment, not new whole-record runtime
+acceptance. Decision, implementation and activation statuses are unchanged.
 
 ## Context
 ADR-061 made an ACCEPT night emit its change as a ```dream-patch unified diff, which ADR-2024's gate applies and re-evaluates.

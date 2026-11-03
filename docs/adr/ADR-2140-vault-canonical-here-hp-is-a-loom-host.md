@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 4f3bd5325eb56b582d1220bc9b0a0b79e918fdae
+verified_commit: c7c2f76b93bfe81dadd8e3bb8c3104cda6b57bec
 verified_paths: [scripts/hp-loom-reconcile.sh, config/entrypoint-unified.sh, agentbox.toml, management-api/lib/system-manifest.js, schema/agentbox.toml.schema.json, tests/config/hp-loom-reconcile.test.sh, skills/ontology-augment/scripts/ontology-augment.sh, tests/skills/ontology-augment-grounding.test.sh]
 owner: jjohare
 review_trigger: a reconcile failure or change to the builder pin or published-generation schema; any proposal to run an agentbox on the HP again; any proposal for the HP to read the vault directly; a second consumer of the built generation
@@ -15,6 +15,17 @@ repo: agentbox
 ---
 
 # ADR-2140 — Keep the vault canonical on this host, reconcile the HP Loom to it at every boot, and retire the HP agentbox
+
+## Scoped source re-verification — 2026-11-03
+
+Shared-file changes add pinned VisionCraft and direct AQE registration, retire
+the unused precedent-bridge default, and extend governance custody/config
+scrubbing. This record's own mechanism is retained; existing partial/staged
+limitations and historical receipts are not promoted to new runtime acceptance.
+
+Evidence: [rebuild verification receipt](../estate-closeout/adr-reverification-2026-11-03.md).
+This verifies the scoped source amendment, not new whole-record runtime
+acceptance. Decision, implementation and activation statuses are unchanged.
 
 ## Scoped re-verification — 2026-10-31
 

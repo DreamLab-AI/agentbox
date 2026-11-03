@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: [ADR-2002, ADR-2063, ADR-2079]
 superseded_by: []
-verified_commit: 4f3bd5325eb56b582d1220bc9b0a0b79e918fdae
+verified_commit: c7c2f76b93bfe81dadd8e3bb8c3104cda6b57bec
 verified_paths: [services/agentbox-sessions, config/session-plane, lib/agentbox-sessions.nix, flake.nix, flake.lock, agentbox.toml, config/entrypoint-unified.sh, config/role-accounts.json, config/custody/session-plane-acl.json, config/tab0-bridge, config/nostr-gateway/gateway.cjs, config/nip98-proxy, config/tmux-autostart.sh, config/hooks/session-state.cjs, config/registered-hooks.txt, scripts/session-provision.mjs, scripts/session-control.cjs, scripts/activation/session-plane-cutover.mjs, scripts/activation/session-plane-acceptance.mjs, management-api/lib/system-manifest.js, schema/agentbox.toml.schema.json, services/agentbox-manifest/src/stacks.rs, services/agentbox-manifest/src/stacks_env.rs, tests/cli/session-launch-contract.test.mjs, tests/cli/session-control.test.cjs, tests/config/session-plane-notify.test.sh]
 owner: jjohare
 review_trigger: Antigravity signed in and OpenRouter answering the canned round trip (closes §11 acceptance → implementation complete); the agentbox-aoe-profiles mount migration; any AoE consumer found to have been missed
@@ -15,6 +15,16 @@ repo: agentbox
 ---
 
 # ADR-2153 — Replace Agent of Empires with an owned, tmux-backed session plane that reconciles to the manifest
+
+## Scoped source re-verification — 2026-11-03
+
+Gateway crypto uses typed custody when isolation selects it. The owned daemon,
+peer-authorised socket and dirty-worktree protection remain. Antigravity
+sign-in/provider round trips are still separate acceptance.
+
+Evidence: [rebuild verification receipt](../estate-closeout/adr-reverification-2026-11-03.md).
+This verifies the scoped source amendment, not new whole-record runtime
+acceptance. Decision, implementation and activation statuses are unchanged.
 
 ## Scoped re-verification — 2026-10-31
 

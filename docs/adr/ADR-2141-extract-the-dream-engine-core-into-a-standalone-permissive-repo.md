@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: cc949bb79c9ac89858d01c1235dd3bca6e2226a2
+verified_commit: c7c2f76b93bfe81dadd8e3bb8c3104cda6b57bec
 verified_paths: [services/dream-engine/Cargo.toml, services/dream-engine/Cargo.lock, lib/dream-engine.nix, services/dream-engine/src/engine.rs, services/dream-engine/tests/night_e2e.rs]
 owner: jjohare
 review_trigger: the image rebuild activates the registry-pinned crates, a new release of dream-core or dream-gate is adopted, or any new module is added under services/dream-engine/src that is not estate-specific
@@ -15,6 +15,16 @@ repo: agentbox
 ---
 
 # ADR-2141 — Extract the dream engine core into a standalone permissive repo
+
+## Scoped source re-verification — 2026-11-03
+
+The AGPL estate adapter consumes dream-core 0.4.1 and dream-gate 0.3.0; local
+defaults, source denylist and seams remain here. Prepared Dream unit/integration
+tests pass; no new nightly acceptance is claimed.
+
+Evidence: [rebuild verification receipt](../estate-closeout/adr-reverification-2026-11-03.md).
+This verifies the scoped source amendment, not new whole-record runtime
+acceptance. Decision, implementation and activation statuses are unchanged.
 
 ## Registry repair adoption — 2026-11-03
 

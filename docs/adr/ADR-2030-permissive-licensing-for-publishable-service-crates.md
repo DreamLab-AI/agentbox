@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: dcbdbeb8a4a2bc23f27fb070af71936a01cc4076
+verified_commit: c7c2f76b93bfe81dadd8e3bb8c3104cda6b57bec
 verified_paths: [services/LICENSING-NOTICE.md, docs/developer/licensing.md, scripts/ci/check-crate-licensing.sh, services/*/Cargo.toml]
 owner: jjohare
 review_trigger: any new crate under services/, any services crate gaining an AGPL dependency, or first publication of a services crate to crates.io
@@ -15,6 +15,15 @@ repo: agentbox
 ---
 
 # ADR-2030 — Publishable service crates are MIT OR Apache-2.0 inside the AGPL-3.0 repository
+
+## Scoped source re-verification — 2026-11-03
+
+Manifest dependencies change but licence grants do not. All 11 service packages
+pass the licensing gate; AGPL-linked Dream and bridge remain AGPL aggregates.
+
+Evidence: [rebuild verification receipt](../estate-closeout/adr-reverification-2026-11-03.md).
+This verifies the scoped source amendment, not new whole-record runtime
+acceptance. Decision, implementation and activation statuses are unchanged.
 
 ## Re-verification — 2026-10-15 (ADR-2141)
 

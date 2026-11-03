@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: cc949bb79c9ac89858d01c1235dd3bca6e2226a2
+verified_commit: c7c2f76b93bfe81dadd8e3bb8c3104cda6b57bec
 verified_paths: [management-api/routes/exec-record.js, tests/integration/exec-record.test.js, services/dream-engine/src/journal.rs, services/dream-engine/src/engine.rs, services/dream-engine/src/records.rs]
 owner: jjohare
 review_trigger: an approver is wired into the action pipeline, a second process gains an events-adapter write path, or the nightly acquires a new external side effect
@@ -17,6 +17,15 @@ lineage: ADR-2041 (wire the execution journal and action pipeline onto POST /v1/
 ---
 
 # ADR-2071 — Journal the nightly dream cycle before policing it, and fix the deny-path typo first
+
+## Scoped source re-verification — 2026-11-03
+
+The engine delta repairs documentation links only. Journalling/policing
+limitations remain; no new approval authority is claimed.
+
+Evidence: [rebuild verification receipt](../estate-closeout/adr-reverification-2026-11-03.md).
+This verifies the scoped source amendment, not new whole-record runtime
+acceptance. Decision, implementation and activation statuses are unchanged.
 
 ## Context
 

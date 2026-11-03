@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: [ADR-2022, ADR-2054]
 superseded_by: []
-verified_commit: 4f3bd5325eb56b582d1220bc9b0a0b79e918fdae
+verified_commit: c7c2f76b93bfe81dadd8e3bb8c3104cda6b57bec
 verified_paths: [lib/vault.nix, flake.nix, agentbox.toml, schema/agentbox.toml.schema.json, config/entrypoint-unified.sh, mcp/mcp.json, services/agentbox-manifest/tests/golden, management-api/lib/ontology-propose.js]
 owner: jjohare
 review_trigger: a `vault --version` gate failure at boot; a request to re-register any deleted server; ontology-monitor, typed-spawn and ontology-workingset re-pointed off mcp/servers/lib/ontology-local.js (vault shipped, so this is now due; ADR-2136); a vaultSrc bump that changes the vault verb set
@@ -17,6 +17,17 @@ lineage: ADR-2107 (no MCP for the corpus), ADR-2029 (rune, the gated-binary patt
 ---
 
 # ADR-2108 — ontology-bridge is retired; the vault binary is baked by Nix
+
+## Scoped source re-verification — 2026-11-03
+
+Shared-file changes add pinned VisionCraft and direct AQE registration, retire
+the unused precedent-bridge default, and extend governance custody/config
+scrubbing. This record's own mechanism is retained; existing partial/staged
+limitations and historical receipts are not promoted to new runtime acceptance.
+
+Evidence: [rebuild verification receipt](../estate-closeout/adr-reverification-2026-11-03.md).
+This verifies the scoped source amendment, not new whole-record runtime
+acceptance. Decision, implementation and activation statuses are unchanged.
 
 ## Scoped re-verification — 2026-10-31
 

@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: cc949bb79c9ac89858d01c1235dd3bca6e2226a2
+verified_commit: c7c2f76b93bfe81dadd8e3bb8c3104cda6b57bec
 verified_paths: [services/dream-engine/src/wanted.rs, services/dream-engine/src/engine.rs, services/dream-engine/src/inbox.rs, services/dream-engine/src/governance.rs, services/dream-engine/src/prompt/nightly.tmpl, services/dream-engine/Cargo.toml]
 owner: jjohare
 review_trigger: a change to the nightly prompt's Human-action shape, to the wanted store's expiry, to dream-core's requested-source contract (ADR-DE-008), or a governance case that again asks the operator for a file
@@ -15,6 +15,16 @@ repo: agentbox
 ---
 
 # ADR-2143 — Source supply is plumbing, not a decision; every operator question is four plain-English fields
+
+## Scoped source re-verification — 2026-11-03
+
+Shared ledger parsing and configured-path selection preserve plain-language
+decision/source-supply handling. Custody changes signing under isolation, not
+source-request scheduling.
+
+Evidence: [rebuild verification receipt](../estate-closeout/adr-reverification-2026-11-03.md).
+This verifies the scoped source amendment, not new whole-record runtime
+acceptance. Decision, implementation and activation statuses are unchanged.
 
 ## Context
 On 2026-10-17 the forum governance panel (ADR-2115) held 57 open cases. Nine of them asked the human to "bundle", "re-supply" or "inline" named source files for the next night, several for the third time, and most of the rest were phrased in engine words ("if ACCEPT is upheld, review the draft PR (evaluation-is-not-promotion)", "deep", "annexe", "ledger row") with no statement of what approving would change. Two causes: the tree-read planner (ADR-2114) never saw the previous night's unmet source request, so the engine forwarded its own file list to a person; and the prompt put no shape on **Human action recommended**.

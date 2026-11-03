@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: cc949bb79c9ac89858d01c1235dd3bca6e2226a2
+verified_commit: c7c2f76b93bfe81dadd8e3bb8c3104cda6b57bec
 verified_paths: [management-api/lib/ontology-apply.js, management-api/lib/ontology-propose.js, management-api/lib/kg-proposal-extractor.js, management-api/lib/elevation-publisher.js, management-api/routes/kg-elevation.js, management-api/adapters/orchestrator/local-process-manager.js, management-api/tests/ontology-apply.test.js, management-api/tests/ontology-propose-vault.test.js]
 owner: jjohare
 review_trigger: the `vault` binary landing on PATH (VisionClaw WS-C), or Loom deploying `/loom/attest` (WS-H)
@@ -17,6 +17,16 @@ acceptance_boundary: 95 + 24 node tests passing, and the forum e2e script green 
 ---
 
 # ADR-2109 — Ontology proposals and decisions both go through `vault`
+
+## Scoped source re-verification — 2026-11-03
+
+Explicit promote now binds the embedded proposal digest to the approved case
+before launching the compiler. Ontology tests pass with stubs; no corpus writes
+were performed.
+
+Evidence: [rebuild verification receipt](../estate-closeout/adr-reverification-2026-11-03.md).
+This verifies the scoped source amendment, not new whole-record runtime
+acceptance. Decision, implementation and activation statuses are unchanged.
 
 ## Scoped repair — 2026-11-03
 

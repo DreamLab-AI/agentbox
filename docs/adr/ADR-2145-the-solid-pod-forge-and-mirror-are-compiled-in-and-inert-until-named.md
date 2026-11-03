@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: cc949bb79c9ac89858d01c1235dd3bca6e2226a2
+verified_commit: c7c2f76b93bfe81dadd8e3bb8c3104cda6b57bec
 verified_paths: [lib/solid-pod-rs.nix, lib/solid-pod-rs.cargo-lock, flake.nix, agentbox.toml, scripts/ci/check-manifest-catalogue.js]
 owner: jjohare
 review_trigger: the first image rebuilt with this pin; any change to the forge block defaults (open_edit, allow_mainnet, mirror_follow); a solid-pod-rs release that changes the forge feature names; a second operator
@@ -15,6 +15,16 @@ repo: agentbox
 ---
 
 # ADR-2145 — The solid-pod forge and mirror are compiled into the native pod and inert until relays and follows are named
+
+## Scoped source re-verification — 2026-11-03
+
+Consumed Solid is alpha.20 at d4910c0 with matching lock and enabled
+ACL/Git/payment/provenance checks. Forge gating and inert follow/announce
+defaults remain. Historical alpha.17 receipts are not the current pin.
+
+Evidence: [rebuild verification receipt](../estate-closeout/adr-reverification-2026-11-03.md).
+This verifies the scoped source amendment, not new whole-record runtime
+acceptance. Decision, implementation and activation statuses are unchanged.
 
 ## Scoped re-verification — 2026-10-31
 

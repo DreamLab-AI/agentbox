@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 4f3bd5325eb56b582d1220bc9b0a0b79e918fdae
+verified_commit: c7c2f76b93bfe81dadd8e3bb8c3104cda6b57bec
 verified_paths: [management-api/lib/junkiejarvis-clarify.js, management-api/lib/junkiejarvis-agent.js, management-api/server.js, scripts/dream-forum-suggestions.mjs, scripts/run-junkiejarvis.cjs, tests/sovereign/junkiejarvis-clarify.test.js, tests/sovereign/junkiejarvis-dm-send.test.js, tests/sovereign/dream-forum-suggestions-jj-gate.test.js]
 owner: jjohare
 review_trigger: any change to the clarity signals, MIN_SPECIFICITY, the 7-day expiry, or the forum-suggestions ingest path
@@ -15,6 +15,17 @@ repo: agentbox
 ---
 
 # ADR-2088 — JunkieJarvis grills the author before acting on an unclear forum item
+
+## Scoped source re-verification — 2026-11-03
+
+Forum and Jarvis use purpose-bound custody under isolation, retaining
+clarification and reply-author matching. Calendar creation refuses active
+encrypted zones and uses request-scoped IDs. W3b delegation, quotas and
+content-policy gaps remain open.
+
+Evidence: [rebuild verification receipt](../estate-closeout/adr-reverification-2026-11-03.md).
+This verifies the scoped source amendment, not new whole-record runtime
+acceptance. Decision, implementation and activation statuses are unchanged.
 
 ## Context
 

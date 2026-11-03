@@ -2,7 +2,7 @@
 
 # Architecture Decision Records
 
-**How to work against this pack** (engineering/build-with-quality agents start here):
+**How to work against this pack** (engineering/VisionCraft agents start here):
 
 The ADR pack for any domain is **its living governing document in `docs/` plus the
 ledger records below that amend it**. The living docs are normative — their
@@ -59,7 +59,7 @@ detect changes to files it already lists — it is structurally blind to **addit
 is exactly how a new crate landed unlicensed under ADR-2030 while the record still read as
 verified and its `review_trigger` ("any new crate under `services/`") sat unactioned.
 
-_146 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
+_147 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
 
 | ID | Title | Domain | Date | Decision | Impl | Activation | Supersedes | Superseded by | Owner | Repo |
 |----|-------|--------|------|----------|------|------------|------------|---------------|-------|------|
@@ -95,7 +95,7 @@ _146 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
 | [ADR-2030](ADR-2030-permissive-licensing-for-publishable-service-crates.md) | Publishable service crates are MIT OR Apache-2.0 inside the AGPL-3.0 repository | — | 2026-09-03 | accepted | partial | live | — | — | jjohare | agentbox |
 | [ADR-2031](ADR-2031-consultant-model-manifest-projection.md) | Consultant model selection is projected from the manifest at boot; environment wins, TUI preserves the operator's choice, and tariffs are dated | — | 2026-09-04 | accepted | complete | staged | — | — | jjohare | agentbox |
 | [ADR-2032](ADR-2032-daemon-identification-argv-boundaries.md) | Daemon reapers identify processes by argv boundaries against a launcher allowlist and fail closed on anything else | — | 2026-09-04 | accepted | partial | staged | — | — | jjohare | agentbox |
-| [ADR-2033](ADR-2033-deepsec-security-gate.md) | deepsec is the executed Security gate of build-with-quality, baked as a manifest-gated CLI under a names-only credential policy | GOVERNANCE-capabilities | 2026-09-05 | accepted | partial | live | — | — | jjohare | agentbox |
+| [ADR-2033](ADR-2033-deepsec-security-gate.md) | Deepsec is the optional VisionCraft security reviewer, baked under a names-only credential policy | GOVERNANCE-capabilities | 2026-09-05 | accepted | partial | staged | — | — | jjohare | agentbox |
 | [ADR-2034](ADR-2034-resource-topology-hook-shim-mcp-hub.md) | Tool-call hooks and stateless MCP servers run resident, and the container envelope is manifest-projected | BASELINE-container | 2026-09-05 | accepted | partial | staged | — | — | jjohare | agentbox |
 | [ADR-2035](ADR-2035-adapter-connect-per-slot-deadline-quarantine.md) | Adapter connect uses a per-slot deadline and quarantines a failed adapter before replacing it | BASELINE-container | 2026-09-05 | accepted | complete | live | — | — | jjohare | agentbox |
 | [ADR-2036](ADR-2036-dispatch-two-layer-encoder-is-a-gated-surface.md) | The adapter dispatch wrap is two layers; JSON-LD encoding is a gated surface that enforces its own ordering | BASELINE-container | 2026-09-05 | accepted | complete | live | ADR-2005 | — | jjohare | agentbox |
@@ -209,3 +209,4 @@ _146 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
 | [ADR-2162](ADR-2162-the-mesh-block-gets-one-reader-pinned-peers-a-node-key-and-the-dataspace-crossing.md) | The mesh block gets one reader — pinned peers, a node federation key and the dataspace crossing | — | 2026-10-30 | proposed | none | inactive | — | — | jjohare | agentbox |
 | [ADR-2163](ADR-2163-video-production-seam-window-identity-tooling.md) | Video production gains measured seam, window, stitch, lint and identity tooling, with every borrowed threshold provisional | GOVERNANCE-capabilities | 2026-10-30 | proposed | partial | staged | — | — | jjohare | agentbox |
 | [ADR-2164](ADR-2164-per-task-action-token-keeps-the-management-api-key-out-of-tasks.md) | A per-task action token keeps the Management API key out of tasks | — | 2026-11-01 | accepted | complete | staged | — | — | jjohare | agentbox |
+| [ADR-2165](ADR-2165-visioncraft-owns-the-portable-quality-method.md) | VisionCraft owns the portable quality method; Agentbox supplies installation and policy | GOVERNANCE-capabilities | 2026-11-03 | accepted | complete | staged | — | — | jjohare | agentbox |

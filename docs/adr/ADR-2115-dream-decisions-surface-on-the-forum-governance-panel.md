@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: cc949bb79c9ac89858d01c1235dd3bca6e2226a2
+verified_commit: c7c2f76b93bfe81dadd8e3bb8c3104cda6b57bec
 verified_paths: [services/dream-engine/src/governance.rs, services/dream-engine/src/digest.rs, services/dream-engine/src/relay.rs, services/dream-engine/src/inbox.rs, services/dream-engine/src/engine.rs, config/hooks/dream-inbox-surface.cjs]
 owner: jjohare
 review_trigger: JunkieJarvis registered in the relay agent_registry and the first night that publishes cases (activation_status → live), or any change to the forum's 31402/31403 wire format
@@ -15,6 +15,16 @@ repo: agentbox
 ---
 
 # ADR-2115 — Dream-machine decisions surface on the forum governance panel
+
+## Scoped source re-verification — 2026-11-03
+
+Digest and governance share escaped-pipe ledger parsing; context follows
+configured ledger paths and rejects invalid-config decoys. Isolated signing uses
+distinct governance/forum aliases. No live forum publication is certified.
+
+Evidence: [rebuild verification receipt](../estate-closeout/adr-reverification-2026-11-03.md).
+This verifies the scoped source amendment, not new whole-record runtime
+acceptance. Decision, implementation and activation statuses are unchanged.
 
 ## Scoped ledger reader repair — 2026-11-03
 

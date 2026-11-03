@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: cc949bb79c9ac89858d01c1235dd3bca6e2226a2
+verified_commit: c7c2f76b93bfe81dadd8e3bb8c3104cda6b57bec
 verified_paths: [flake.nix, lib/sbomnix.nix, lib/sbomnix-python.nix, lib/agentbox-vex.nix, lib/vex-evidence.nix, services/agentbox-vex, scripts/security-scan.sh, scripts/runtime-delivery.cjs, agentbox.sh, tests/security, tests/config/runtime-delivery.test.cjs, .github/workflows/build-multi-arch.yml, .github/workflows/image-scan.yml, .github/workflows/release.yml, .github/workflows/security-vex.yml, .github/workflows/flake-check.yml]
 owner: jjohare
 review_trigger: image inventory, VEX predicates, scanner matching or release artefact selection changes; a host preparation bundle that carries raw and VEX-filtered Grype reports, or a release with matching-commit scan artefacts (activation → live)
@@ -16,6 +16,17 @@ domain: BASELINE-container
 ---
 
 # ADR-2137 — Image-scoped vulnerability evidence
+
+## Scoped source re-verification — 2026-11-03
+
+Shared-file changes add pinned VisionCraft and direct AQE registration, retire
+the unused precedent-bridge default, and extend governance custody/config
+scrubbing. This record's own mechanism is retained; existing partial/staged
+limitations and historical receipts are not promoted to new runtime acceptance.
+
+Evidence: [rebuild verification receipt](../estate-closeout/adr-reverification-2026-11-03.md).
+This verifies the scoped source amendment, not new whole-record runtime
+acceptance. Decision, implementation and activation statuses are unchanged.
 
 ## Scoped re-verification — 2026-10-31
 

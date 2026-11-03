@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: cc949bb79c9ac89858d01c1235dd3bca6e2226a2
+verified_commit: c7c2f76b93bfe81dadd8e3bb8c3104cda6b57bec
 verified_paths: [agentbox.sh, scripts/runtime-delivery.*, scripts/refresh-compose.sh, config/build-registry.json, lib/image-layers.nix, flake.nix, tests/config/runtime-delivery*, .github/workflows/invariants.yml, docs/developer/incremental-builds.md]
 owner: jjohare
 review_trigger: layer grouping, delivery transport, candidate validation or cache retention changes
@@ -16,6 +16,17 @@ domain: BASELINE-container
 ---
 
 # ADR-2132 — Incremental image delivery and explicit activation
+
+## Scoped source re-verification — 2026-11-03
+
+Shared-file changes add pinned VisionCraft and direct AQE registration, retire
+the unused precedent-bridge default, and extend governance custody/config
+scrubbing. This record's own mechanism is retained; existing partial/staged
+limitations and historical receipts are not promoted to new runtime acceptance.
+
+Evidence: [rebuild verification receipt](../estate-closeout/adr-reverification-2026-11-03.md).
+This verifies the scoped source amendment, not new whole-record runtime
+acceptance. Decision, implementation and activation statuses are unchanged.
 
 ## External review reconciliation — 2026-11-02
 

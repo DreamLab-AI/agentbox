@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 044f1d689569572417a98f91afcf744fc2ca2385
+verified_commit: c7c2f76b93bfe81dadd8e3bb8c3104cda6b57bec
 verified_paths: [services/agentbox-ops/src/procs.rs, services/agentbox-ops/src/bin/ruflo-daemon-gc.rs]
 owner: jjohare
 review_trigger: a new daemon launcher shape (new package path, wrapper script or runtime flags), any new binary that signals processes, or adoption of pidfd-based identity; activation — a signalling-caller inventory covering every estate reaper, and the rebuilt agentbox-ops binaries exercised against a live daemon
@@ -15,6 +15,16 @@ repo: agentbox
 ---
 
 # ADR-2032 — Daemon reapers identify processes by argv boundaries against a launcher allowlist and fail closed on anything else
+
+## Scoped source re-verification — 2026-11-03
+
+GC now captures argv/start-time identity, opens a pidfd, rechecks identity and
+staleness and signals only that process. Unknown wrappers and
+unverifiable/reused identities remain refused.
+
+Evidence: [rebuild verification receipt](../estate-closeout/adr-reverification-2026-11-03.md).
+This verifies the scoped source amendment, not new whole-record runtime
+acceptance. Decision, implementation and activation statuses are unchanged.
 
 ## Scoped repair — 2026-11-03
 

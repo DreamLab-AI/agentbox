@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: 2f15c531b02b8f8393d68d29ce3491712bdd862c
+verified_commit: c7c2f76b93bfe81dadd8e3bb8c3104cda6b57bec
 verified_paths: [config/egress-policy.json, config/hooks/lib/egress-policy.cjs, config/hooks/nostr-live-mirror.cjs, tests/sovereign/egress-boundary.test.js]
 owner: jjohare
 review_trigger: any change to config/hooks/nostr-live-mirror.cjs or the mobile_bridge digest, or the recipient/relay configuration
@@ -16,6 +16,16 @@ domain: SECURITY-profiles
 ---
 
 # ADR-2026 — Session-mirror cloud egress boundary
+
+## Scoped source re-verification — 2026-11-03
+
+Mirror crypto selects mirror_key/mirror_wrap under isolation; compatibility
+signing, redaction, allowlist and off-switch remain. Live delivery and retention
+remain unverified.
+
+Evidence: [rebuild verification receipt](../estate-closeout/adr-reverification-2026-11-03.md).
+This verifies the scoped source amendment, not new whole-record runtime
+acceptance. Decision, implementation and activation statuses are unchanged.
 
 ## Re-verification — 2026-10-03 at a10f336fc (prompt egress register, N-7)
 
