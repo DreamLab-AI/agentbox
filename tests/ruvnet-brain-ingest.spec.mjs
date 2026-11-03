@@ -193,4 +193,7 @@ test('staleKeys: existing keys absent from the new corpus, never the manifest', 
   assert.deepEqual(staleKeys(existing, seen).sort(), ['ruvnet/a/2']);
   assert.deepEqual(staleKeys(new Set(['ruvnet/manifest']), new Set()), []);
   assert.deepEqual(staleKeys(seen, seen), []);
+  // A stored key whose --force re-embed failed is pruned so the next run re-embeds it.
+  assert.deepEqual(staleKeys(existing, seen, new Set(['ruvnet/a/1'])).sort(), ['ruvnet/a/1', 'ruvnet/a/2']);
+  assert.deepEqual(staleKeys(existing, seen, new Set(['ruvnet/manifest'])).sort(), ['ruvnet/a/2']);
 });

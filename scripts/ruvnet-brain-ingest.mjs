@@ -173,10 +173,14 @@ export function evaluateProvenance({ zipSha256, receiptText, sigBytes, releaseBo
  * rewrote every unchanged chunk (~171k rows) per release; with the GIN index on
  * metadata no such update is HOT, so each re-inserted an HNSW node and
  * tombstoned the old one. The manifest row is never pruned.
+ *
+ * `failed` holds stored keys whose --force re-embed failed. They are pruned too,
+ * so the next (non-forced) run finds them missing and re-embeds them, instead of
+ * keeping a vector from a superseded pipeline and recording no failure.
  */
-export function staleKeys(existing, seen) {
+export function staleKeys(existing, seen, failed = new Set()) {
   const out = [];
-  for (const k of existing) if (k !== MANIFEST_KEY && !seen.has(k)) out.push(k);
+  for (const k of existing) if (k !== MANIFEST_KEY && (!seen.has(k) || failed.has(k))) out.push(k);
   return out;
 }
 
@@ -429,6 +433,7 @@ async function main() {
   let seen = 0, inserted = 0, skipped = 0, failedChunks = 0;
   const MAX_FAILED = Math.max(0, Number(process.env.RUVNET_BRAIN_MAX_FAILED_CHUNKS) || 1000);
   const seenKeys = new Set();
+  const failedExisting = new Set(); // stored keys whose --force re-embed failed
 
   const insertBatch = (items, embs) => upsertRows(pool, items.map((it, i) => ({
     id: entryId(it.key), namespace: NAMESPACE, key: it.key,
@@ -447,8 +452,9 @@ async function main() {
       await insertBatch(items, embs);
     },
     onInserted: (n) => { inserted += n; },
-    onFailure: () => {
+    onFailure: (item) => {
       failedChunks++;
+      if (item && existing.has(item.key)) failedExisting.add(item.key);
       if (failedChunks > MAX_FAILED) die(`${failedChunks} failed chunks exceeds RUVNET_BRAIN_MAX_FAILED_CHUNKS=${MAX_FAILED} — aborting before prune (existing corpus left intact)`);
     },
   });
@@ -483,7 +489,7 @@ async function main() {
   if (failedChunks > 0 && inserted === 0 && skipped === 0) die(`all ${failedChunks} chunks failed — aborting before prune`);
 
   // 6. Prune rows that vanished from the new corpus (stored, not seen).
-  const stale = staleKeys(existing, seenKeys);
+  const stale = staleKeys(existing, seenKeys, failedExisting);
   const pruned = { rowCount: 0 };
   for (let i = 0; i < stale.length; i += 500) {
     const r = await pool.query(
