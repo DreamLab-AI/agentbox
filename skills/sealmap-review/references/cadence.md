@@ -102,9 +102,14 @@ C=skills/sealmap-review/scripts/review-cadence.cjs
 node $C triage|review-glm|audit-gemini|status [--manifest f] [--repo dir]... [--dry-run] [--now ISO]
 ```
 
-`--repo` (repeatable) overrides discovery and runs even when `enabled` is false (for a
-manual run); `--workspace` changes the scan root. `--dry-run` decides and prints; it writes no ledger line and calls no
-model. Exit 1 when any repo failed; a refusal is not a failure.
+`--repo` (repeatable) selects which repositories to review and runs even when
+`enabled` is false (for a manual run); `--workspace` changes the scan root.
+Gemini accounting still includes every configured or discovered repository,
+explicit invocation repository and repository remembered by this month's budget
+witness, deduplicated by canonical path. Removing a corpus or excluding a
+repository from review does not remove its previously observed spend.
+`--dry-run` decides and prints; it writes neither ledger nor witness and calls no
+model. Exit 1 when any repo failed; a normal budget refusal is not a failure.
 
 ### merge
 
@@ -178,8 +183,13 @@ The reservation comes from free `countTokens` calls for both lenses: the larger 
 at the uncached input rate for each lens, plus an enforced maximum of 30,000 output and
 thinking tokens per lens. Cache hits lower the settlement, never the reservation.
 The run itself is `external-review.cjs --files-from`, given
-exactly the shard's topics; the ledger records the cost from the usage it reports. One
-`docs/review/<date>-gemini.md` and `.json` cover the run.
+exactly the shard's topics; the ledger records the cost from the usage it reports.
+Each valid shard settles immediately against its retained `runs/<run>/<shard>/findings.json`
+and manifest, before another shard starts. A later malformed manifest, missing
+usage or failed generation retains that shard's estimated charge without losing
+earlier successful settlements. A rerun therefore observes the completed shard's
+interval. One `docs/review/<date>-gemini.md` and `.json` present the combined run;
+failure to write that presentation cannot erase a completed settlement.
 
 Prices (USD per million tokens), constants at the top of `review-cadence.cjs`,
 Gemini 3.8 Flash, checked against [Google's pricing](https://ai.google.dev/gemini-api/docs/pricing)
@@ -196,6 +206,26 @@ cannot erase potentially billed spend. A matching settlement replaces that reser
 in the monthly total. CLI audits hold a kernel `flock` across all repos; a concurrent
 audit skips, and termination releases the lock automatically.
 
+Before paid work, the runner checks a small monthly integrity witness at
+`$XDG_STATE_HOME/sealmap-review/gemini-budget-YYYY-MM.json`, defaulting to
+`~/.local/state/sealmap-review/`. It retains canonical repository paths, observed
+ledger byte lengths and SHA-256 hashes. It contains no source, findings or cost
+records: the append-only JSONL ledgers remain authoritative. The 0600 witness is
+atomically replaced in a 0700 directory outside the reviewed working trees,
+with persistence after each reservation **before** generation and after each
+settlement. Preserve this private state across container rebuilds.
+
+New ledger bytes may append to the witnessed prefix; a valid settlement can
+therefore lower a reservation's charge. A shortened, rewritten, missing or
+unreadable observed ledger, or an unreadable/malformed witness, stops paid work.
+Previously observed repositories stay in the accounting scope even if discovery
+no longer finds them. `status` checks the witness without changing it and reports
+inconclusive accounting. Restore observed history from verified evidence; never
+delete either file to reopen the cap. On first adoption the witness can only
+protect history still available. This protects against ordinary Git rollbacks,
+not an operator who can edit both the ledgers and private state, and it is not a
+provider billing reconciliation service.
+
 The supervisor and crontab use the baked `/opt/agentbox/skills/sealmap-review` tree,
 with `TZ=UTC` explicit. `DIAGRAM_REVIEW_LOCAL_FILE` can override the private repo-list
 path; the baked default reads `config/diagram-review.local` in the mounted Agentbox checkout.
@@ -208,7 +238,8 @@ run (per shard for reviews and audits). Fields: `ts`, `kind` (`triage`, `review`
 `unresolved` (skipped source paths), `pack_sha256`, `tokens`, `est_usd`, `findings` (path),
 `high_severity`, `changed_topics`, `skipped` (the reason, or null), plus `error`
 on a failed call. Audit settlements have `reservation_at` matching the reservation's
-timestamp, shard and pack hash. A torn line is skipped on read. `node $C status` summarises it.
+timestamp, shard and pack hash. A torn line makes accounting inconclusive;
+`node $C status` diagnoses it and paid audits refuse it.
 Commit the ledger with the corpus, or ignore it, as the repo prefers: the runner
 only appends.
 
@@ -249,7 +280,7 @@ models or historical exports without provenance are retained, uncorroborated.
 Each raw export remains immutable; [review receipts](review-receipts.md) carry
 subsequent dispositions and delivery evidence through the Sealmap Rust validator.
 
-A missing ledger means no history. Read errors, malformed/torn rows and invalid
+A missing ledger with no observed prefix means no history. Read errors, malformed/torn rows and invalid
 Gemini costs do not: paid work refuses them. `status` remains diagnostic and says
 accounting is inconclusive. Preserve the raw ledger and restore accounting from
 verified run/reservation evidence; do not delete a damaged history to reopen the

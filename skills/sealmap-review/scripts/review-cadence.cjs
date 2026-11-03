@@ -277,14 +277,16 @@ function resolveRepos(cfg, { workspace = process.env.WORKSPACE || DEFAULT_WORKSP
 
 function ledgerPath(repo) { return path.join(repo, LEDGER_REL); }
 
-function readLedger(repo) {
-  let text = '';
-  try { text = fs.readFileSync(ledgerPath(repo), 'utf8'); } catch (err) {
-    if (err.code === 'ENOENT') return [];
+function ledgerBytes(repo) {
+  try { return fs.readFileSync(ledgerPath(repo)); } catch (err) {
+    if (err.code === 'ENOENT') return Buffer.alloc(0);
     throw new Error(`cannot read review ledger ${ledgerPath(repo)}: ${err.code}`);
   }
+}
+
+function parseLedger(bytes, repo) {
   const out = [];
-  for (const [i, line] of text.split('\n').entries()) {
+  for (const [i, line] of bytes.toString('utf8').split('\n').entries()) {
     if (!line.trim()) continue;
     try {
       const row = JSON.parse(line);
@@ -294,6 +296,8 @@ function readLedger(repo) {
   }
   return out;
 }
+
+function readLedger(repo) { return parseLedger(ledgerBytes(repo), repo); }
 
 /** Append one run to the ledger. Append-only: the file is never rewritten. */
 function appendLedger(repo, entry) {
@@ -338,6 +342,74 @@ function monthToDateUsd(ledgers, now) {
     }
   }
   return Math.round(total * 1e6) / 1e6;
+}
+
+/** The paid gate remembers observed ledger prefixes outside Git. It is a
+ * monthly integrity witness, not another findings or spending database.
+ * A user who can edit both the ledger and this private state can reset it;
+ * ordinary checkout/reset/deletion must not silently reopen the budget. */
+function budgetLedgers(repos, now, { stateDir = path.join(process.env.XDG_STATE_HOME || path.join(os.homedir(), '.local', 'state'), 'sealmap-review'), persist = true } = {}) {
+  const month = new Date(now).toISOString().slice(0, 7);
+  const file = path.join(stateDir, `gemini-budget-${month}.json`);
+  let previous = { version: 1, month, ledgers: {} };
+  try {
+    previous = JSON.parse(fs.readFileSync(file, 'utf8'));
+    if (!previous || previous.version !== 1 || previous.month !== month || !previous.ledgers
+        || typeof previous.ledgers !== 'object' || Array.isArray(previous.ledgers)
+        || Object.keys(previous).some((k) => !['version', 'month', 'ledgers'].includes(k))) throw new Error('unsupported witness schema');
+    for (const [repo, entry] of Object.entries(previous.ledgers)) {
+      if (!path.isAbsolute(repo) || !entry || !Number.isSafeInteger(entry.bytes) || entry.bytes < 0
+          || !/^[a-f0-9]{64}$/.test(entry.sha256) || Object.keys(entry).some((k) => !['bytes', 'sha256'].includes(k))) throw new Error('invalid ledger witness');
+      // A remembered canonical path must not silently move to another checkout.
+      const current = real(repo);
+      if (current && current !== repo) throw new Error(`remembered repository changed identity: ${repo}`);
+    }
+  } catch (err) {
+    if (err.code !== 'ENOENT') throw new Error(`Gemini budget witness is inconclusive (${file}): ${err.message}; preserve and restore verified accounting`);
+  }
+  const all = [...new Set([...repos.map((repo) => real(repo) || path.resolve(repo)), ...Object.keys(previous.ledgers)])].sort();
+  // Resolve existing ancestors too: a not-yet-created directory below a
+  // symlink must not put the witness back inside a Git working tree.
+  let ancestor = path.resolve(stateDir);
+  const tail = [];
+  while (!real(ancestor) && path.dirname(ancestor) !== ancestor) {
+    tail.unshift(path.basename(ancestor)); ancestor = path.dirname(ancestor);
+  }
+  const stateRoot = path.join(real(ancestor) || ancestor, ...tail);
+  if (all.some((repo) => stateRoot === repo || stateRoot.startsWith(`${repo}${path.sep}`))) {
+    throw new Error('Gemini budget witness must be outside every reviewed working tree');
+  }
+  const next = { version: 1, month, ledgers: Object.create(null) };
+  const ledgers = [];
+  for (const repo of all) {
+    const bytes = ledgerBytes(repo);
+    const observed = previous.ledgers[repo];
+    if (observed && (bytes.length < observed.bytes || sha256(bytes.subarray(0, observed.bytes)) !== observed.sha256)) {
+      throw new Error(`Gemini ledger rewind or rewrite detected: ${ledgerPath(repo)}; preserve and restore the observed prefix before paid review`);
+    }
+    ledgers.push(parseLedger(bytes, repo));
+    next.ledgers[repo] = { bytes: bytes.length, sha256: sha256(bytes) };
+  }
+  const mtd = monthToDateUsd(ledgers, now); // Validate costs before accepting a new prefix.
+  if (persist) {
+    fs.mkdirSync(stateDir, { recursive: true, mode: 0o700 });
+    fs.chmodSync(stateDir, 0o700);
+    const temporary = `${file}.${process.pid}.${crypto.randomUUID()}.tmp`;
+    let fd;
+    try {
+      fd = fs.openSync(temporary, 'wx', 0o600);
+      fs.writeFileSync(fd, `${JSON.stringify(next)}\n`);
+      fs.fsyncSync(fd); fs.closeSync(fd); fd = undefined;
+      fs.renameSync(temporary, file);
+      const directory = fs.openSync(stateDir, 'r');
+      try { fs.fsyncSync(directory); } finally { fs.closeSync(directory); }
+    } catch (err) {
+      if (fd !== undefined) fs.closeSync(fd);
+      try { fs.unlinkSync(temporary); } catch (cleanup) { if (cleanup.code !== 'ENOENT') throw cleanup; }
+      throw new Error(`cannot persist Gemini budget witness: ${err.message}; paid review refused`);
+    }
+  }
+  return { repos: all, ledgers, mtd, witness: file };
 }
 
 // ── Git, source resolution and change detection ─────────────────────────────────────────────
@@ -954,26 +1026,38 @@ async function auditGemini(repo, ctx) {
     const reviewedCommits = headsOf(reposOf(e.shardTopics));
     appendLedger(repo, { ts: stamp, kind: 'audit-reservation', reviewer: 'gemini', shard: shard.name,
       pack_sha256: shard.sha, est_usd: estUsd, skipped: 'reserved before generation; charged until settled' });
+    ctx.checkpoint?.(); // Persist the observed reservation outside Git before billable work.
     mtd += estUsd;
+    let result;
     try {
       await ctx.runExternal(path.join(repo, CORPUS_REL), outDir, shard.files);
+      const manifest = JSON.parse(fs.readFileSync(path.join(outDir, 'manifest.json'), 'utf8'));
+      if (manifest.complete !== true || manifest.pack_sha256 !== shard.sha) throw new Error(`inconclusive audit ${shard.name}: incomplete result or pack changed during review; reservation retained`);
+      const sFindings = JSON.parse(fs.readFileSync(path.join(outDir, 'findings.json'), 'utf8')).map((f) => ({ ...f, id: `${shard.name}:${f.id}`, shard: shard.name }));
+      const sDocs = (manifest.lenses ?? []).map((l) => `## ${shard.name} / ${l.name}\n\n${fs.readFileSync(path.join(outDir, `${l.name}.md`), 'utf8').trim()}\n`);
+      const usd = actualGeminiUsd(manifest.lenses);
+      const sum = (k) => (manifest.lenses ?? []).reduce((a, l) => a + (l[k] ?? 0), 0);
+      result = { shard, usd, changed: e.changed, model: manifest.model, findings: sFindings, docs: sDocs,
+        tokens: { input: sum('prompt_tokens'), cached: sum('cached_tokens'), output: sum('thinking_tokens') + sum('output_tokens') },
+        commits: reviewedCommits, artefacts: rel(repo, outDir) };
+      // Each successful shard owns durable evidence and a settlement before the next
+      // shard starts. The combined report below is presentation, not the receipt.
+      appendLedger(repo, { ts: stamp, reservation_at: stamp, kind: 'audit', reviewer: 'gemini', shard: shard.name,
+        commit: head, commits: reviewedCommits, pack_sha256: shard.sha, tokens: result.tokens, est_usd: usd,
+        findings: rel(repo, path.join(outDir, 'findings.json')), changed_topics: e.changed,
+        artefacts: result.artefacts, run_id: run.runId });
     } catch (err) {
-      // A failed generateContent may already have been billed: count the estimate.
-      appendLedger(repo, { ts: stamp, reservation_at: stamp, kind: 'audit', reviewer: 'gemini', shard: shard.name, commit: head, pack_sha256: shard.sha, tokens: { input: packTokens }, est_usd: estUsd, error: err.message.slice(0, 300), skipped: `error: ${err.message.slice(0, 160)}` });
+      // Generation and any later output/usage validation may fail after billing.
+      appendLedger(repo, { ts: stamp, reservation_at: stamp, kind: 'audit', reviewer: 'gemini', shard: shard.name, commit: head, pack_sha256: shard.sha, tokens: { input: packTokens }, est_usd: estUsd, error: err.message.slice(0, 300), skipped: `error: ${err.message.slice(0, 160)}`, artefacts: rel(repo, outDir), run_id: run.runId });
+      ctx.checkpoint?.();
       errors.push(`${shard.name}: ${err.message.slice(0, 160)}`);
       continue;
     }
-    const manifest = JSON.parse(fs.readFileSync(path.join(outDir, 'manifest.json'), 'utf8'));
-    if (manifest.complete !== true || manifest.pack_sha256 !== shard.sha) throw new Error(`inconclusive audit ${shard.name}: incomplete result or pack changed during review; reservation retained`);
-    const sFindings = JSON.parse(fs.readFileSync(path.join(outDir, 'findings.json'), 'utf8')).map((f) => ({ ...f, id: `${shard.name}:${f.id}`, shard: shard.name }));
-    findings.push(...sFindings);
-    for (const l of manifest.lenses ?? []) docs.push(`## ${shard.name} / ${l.name}\n\n${fs.readFileSync(path.join(outDir, `${l.name}.md`), 'utf8').trim()}\n`);
-    const usd = actualGeminiUsd(manifest.lenses);
-    mtd = Math.round((mtd - estUsd + usd) * 1e6) / 1e6;
-    const sum = (k) => (manifest.lenses ?? []).reduce((a, l) => a + (l[k] ?? 0), 0);
-    ran.push({ shard, usd, changed: e.changed, model: manifest.model,
-      tokens: { input: sum('prompt_tokens'), cached: sum('cached_tokens'), output: sum('thinking_tokens') + sum('output_tokens') },
-      commits: reviewedCommits, artefacts: rel(repo, outDir) });
+    // If witness persistence fails after settlement, stop without creating a
+    // second settlement. The completed shard is still recorded for a later run.
+    ctx.checkpoint?.();
+    mtd = Math.round((mtd - estUsd + result.usd) * 1e6) / 1e6;
+    findings.push(...result.findings); docs.push(...result.docs); ran.push(result);
   }
   let out = null;
   if (ran.length) {
@@ -981,9 +1065,6 @@ async function auditGemini(repo, ctx) {
     fs.writeFileSync(out, [`# Gemini audit ${utcDate(now)} (${ran[0].model}): ${findings.length} findings, ${ran.length} shard(s)`, '',
       `Revision ${head ? head.slice(0, 12) : 'unknown'}. Shards: ${ran.map((r) => r.shard.name).join(', ')}. Unverified hypotheses: reproduce each with a failing test or check (build-with-quality) before acting.`, '', ...docs].join('\n'));
     fs.writeFileSync(out.replace(/\.md$/, '.json'), `${JSON.stringify(findings, null, 2)}\n`);
-    for (const r of ran) {
-      appendLedger(repo, { ts: stamp, reservation_at: stamp, kind: 'audit', reviewer: 'gemini', shard: r.shard.name, commit: head, commits: r.commits, pack_sha256: r.shard.sha, tokens: r.tokens, est_usd: r.usd, findings: rel(repo, out), changed_topics: r.changed, artefacts: r.artefacts, run_id: run.runId });
-    }
   }
   if (errors.length) throw new Error(`${errors.length} shard(s) failed: ${errors.join('; ')}`);
   return ran.length
@@ -1018,7 +1099,7 @@ function runExternalChild(corpus, outDir, files) {
 }
 
 /** The resolved repo list, per-repo ledger summaries, overlaps and month-to-date spend. */
-function statusOf(repos, now, info = {}) {
+function statusOf(repos, now, info = {}, budget = null) {
   const lines = [];
   lines.push(`Repos (${info.source ?? 'given'}${info.added ? `, +${info.added} from the local file` : ''}${info.excluded ? `, ${info.excluded} excluded` : ''}): ${repos.length}`);
   for (const r of repos) lines.push(`  ${r}`);
@@ -1047,7 +1128,14 @@ function statusOf(repos, now, info = {}) {
     } catch (err) { lines.push(`  freshness INCONCLUSIVE: ${err.message}`); }
   }
   let mtd = null;
-  try { if (ledgers.some((l) => l.error)) throw new Error('unreadable ledger'); mtd = monthToDateUsd(ledgers.map((l) => l.ledger), now); } catch (err) { lines.push(`Gemini accounting INCONCLUSIVE: ${err.message}; paid audits refuse to run`); }
+  try {
+    if (ledgers.some((l) => l.error)) throw new Error('unreadable ledger');
+    if (budget) {
+      const accounting = budgetLedgers(budget.repos, now, { stateDir: budget.stateDir, persist: false });
+      mtd = accounting.mtd;
+      lines.push(`Gemini budget scope: ${accounting.repos.length} configured, discovered, explicit or previously observed repo(s)`);
+    } else mtd = monthToDateUsd(ledgers.map((l) => l.ledger), now);
+  } catch (err) { lines.push(`Gemini accounting INCONCLUSIVE: ${err.message}; paid audits refuse to run`); }
   if (mtd !== null) lines.push(`Gemini spend ${new Date(now).toISOString().slice(0, 7)}: $${mtd.toFixed(2)}`);
   return { text: lines.join('\n'), mtd };
 }
@@ -1090,15 +1178,20 @@ async function main(argv, deps = {}) {
   const opts = parseArgs(argv);
   const cfg = loadConfig(opts.manifest);
   const now = opts.now ? new Date(opts.now) : new Date();
+  const configured = resolveRepos(cfg, { workspace: opts.workspace, localFile: deps.localFile ?? LOCAL_FILE });
+  const canonicalRepos = (paths) => [...new Set(paths.map((r) => real(r) || path.resolve(r)))].sort();
   const info = opts.repos.length
-    ? { repos: opts.repos, source: 'given on the command line' }
-    : resolveRepos(cfg, { workspace: opts.workspace, localFile: deps.localFile ?? LOCAL_FILE });
+    ? { repos: canonicalRepos(opts.repos), source: 'given on the command line' }
+    : configured;
+  // --repo selects work, not its budget. The private witness adds previously
+  // observed paths even if their corpus, discovery entry or checkout disappeared.
+  const accountingRepos = canonicalRepos([...configured.repos, ...opts.repos]);
   const repos = info.repos.filter((r) => {
     if (hasCorpus(r) || fs.existsSync(path.join(r, CORPUS_REL))) return true;
     console.log(`review-cadence: ${r} has no ${CORPUS_REL}; skipped`);
     return false;
   });
-  if (opts.cmd === 'status') { console.log(statusOf(repos, now, info).text); return 0; }
+  if (opts.cmd === 'status') { console.log(statusOf(repos, now, info, { repos: accountingRepos, stateDir: deps.budgetStateDir }).text); return 0; }
   if (!cfg.enabled && opts.repos.length === 0) { console.log('review-cadence: [diagram_review].enabled is false; nothing to do'); return 0; }
   if (repos.length === 0) { console.log(`review-cadence: no repos with a ${CORPUS_REL} corpus (${info.source})`); return 0; }
 
@@ -1110,11 +1203,14 @@ async function main(argv, deps = {}) {
   if (opts.cmd === 'audit-gemini' && ctx.model !== 'gemini-3.8-flash') {
     throw new Error('scheduled Gemini pricing is pinned to gemini-3.8-flash; review pricing before changing the model');
   }
+  if (opts.cmd === 'audit-gemini') ctx.checkpoint = () => budgetLedgers(accountingRepos, now, { stateDir: deps.budgetStateDir, persist: !opts.dryRun });
   let failed = 0;
   for (const repo of repos) {
-    // Spend is capped across every repo, so each audit sees what the earlier ones just booked.
-    ctx.mtd = monthToDateUsd(repos.map(readLedger), now);
-    try { console.log(`${opts.cmd} ${repo}: ${JSON.stringify(await fn(repo, ctx))}`); }
+    try {
+      // Refuse an inconclusive global balance before countTokens or generation.
+      if (ctx.checkpoint) ctx.mtd = ctx.checkpoint().mtd;
+      console.log(`${opts.cmd} ${repo}: ${JSON.stringify(await fn(repo, ctx))}`);
+    }
     catch (err) { failed++; console.error(`${opts.cmd} ${repo}: ${err.message}`); }
   }
   return failed ? 1 : 0;
@@ -1122,7 +1218,7 @@ async function main(argv, deps = {}) {
 
 module.exports = {
   readSection, loadConfig, discoverRepos, isLinkedWorktree, hasCorpus, readLocalFile, resolveRepos, createResolver, parseSources, loadTopics,
-  triageCandidates, outstandingTriage, changedByRepo, headsOf, reposOf, buildShards, shardChangedTopics, readLedger, appendLedger, monthToDateUsd,
+  triageCandidates, outstandingTriage, changedByRepo, headsOf, reposOf, buildShards, shardChangedTopics, readLedger, appendLedger, monthToDateUsd, budgetLedgers,
   ledgerPath, decideGemini, estimateGeminiUsd, actualGeminiUsd, packUnchanged, isHighSeverity, parseVerdict, zaiSettings, glm,
   triage, reviewGlm, auditGemini, mergeReviews, statusOf, receiptCommand, main, parseArgs, DEFAULTS, GEMINI_USD_PER_M, GLM_TRIAGE_MAX_OUTPUT_TOKENS,
 };
