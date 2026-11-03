@@ -42,6 +42,40 @@ An explicit missing or invalid manifest is refused; only an absent default
 manifest uses upstream defaults. The host passes credential names, never their
 resolved values, into policy JSON.
 
+## Participants and skill improvement
+
+VisionCraft's [role catalogue](../../skills/visioncraft/references/roles.md)
+names engineering responsibilities. Agentbox's
+[agent registry](../../agents/registered-agents.txt) and individual agent files
+define the available Claude Code subagent names. Use the current harness's
+actual delegation interface; these names do not create Codex workers or grant
+permission to delegate.
+
+| Responsibility | Agentbox resource |
+|---|---|
+| Architecture and test strategy | [system-architect](../../agents/system-architect.md) |
+| Rust implementation | Lead session or [rust-engineer](../../agents/rust-engineer.md) |
+| Tests, coverage, mutation and flaky-test investigation | [test-engineer](../../agents/test-engineer.md) |
+| Code and security review | [code-reviewer](../../agents/code-reviewer.md), [security-reviewer](../../agents/security-reviewer.md) |
+| Performance and resilience experiments | [performance-engineer](../../agents/performance-engineer.md) |
+| Durable lessons and memory maintenance | [memory-curator](../../agents/memory-curator.md) |
+| Browser journeys and dynamic web checks | [browser skill](../../skills/browser/SKILL.md) |
+
+[ADR-2134](../adr/ADR-2134-model-roles-sonnet-lead-opus-advisor-haiku-explore.md)
+owns host model/advisor policy. An independent evidence audit still requires a
+different actual model family from the producer; choosing a different row or
+model tier above does not establish independence. The
+[Codex companion](../../skills/codex-companion/SKILL.md) describes one cross-family
+route when the producer is a Claude agent.
+
+For measured improvements to the method, use
+[skill-tuning](../../skills/skill-tuning/SKILL.md); use
+[skill-builder](../../skills/skill-builder/SKILL.md) for authoring and structural
+review. Submit portable edits to the upstream VisionCraft repository and follow
+the release procedure below. The pinned copy here remains generated from that
+release. Keep historical Build with Quality experiments separate from
+[VisionCraft's own evaluation](https://github.com/DreamLab-AI/visioncraft/blob/main/docs/EVALUATION.md).
+
 ## Updating the release
 
 Make portable changes upstream, run its quality gates and publish the release.

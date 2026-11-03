@@ -20,9 +20,11 @@ raise the score on **held-out** items. It is the empirical counterpart to
 actually makes an agent *succeed*. This one does.
 
 > **Trial of record:** the framework was validated end-to-end by tuning the
-> `visioncraft` skill's `DEBUGGING-PROTOCOL.md` against a Rust
-> stub-and-restore task. That run is the worked example throughout; build-with-
-> quality was only the *trial subject* — the capability generalizes to any skill.
+> former `build-with-quality` skill's `DEBUGGING-PROTOCOL.md` against a Rust
+> stub-and-restore task. That historical run is the worked example throughout.
+> Its successor resource is VisionCraft's [debugging guide](../visioncraft/references/debugging.md);
+> the historical result does not establish an improvement in the rewritten skill.
+> The tuning capability applies to any skill with a measurable task.
 
 ## When To Use
 
