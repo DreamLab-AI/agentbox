@@ -410,9 +410,11 @@ function loadInboxSk(env = process.env, fsImpl = fs, warn = () => {}) {
 
 /**
  * Open a kind-1059 addressed to `skBytes`, accepting any rumor kind (the
- * kit's `unwrap_any`). Unlike nostr-tools' `nip59.unwrapEvent`, this verifies
- * the seal's id + signature and that the rumor's author is the seal's author,
- * so the returned `sealer` is authenticated. Throws on any failure.
+ * kit's `unwrap_any`). This returns the authenticated seal author alongside
+ * the rumor, after verifying its signature and author binding. The consumed
+ * nostr-tools 2.25.2 `nip59.unwrapEvent` also checks both properties; this
+ * wrapper additionally exposes the sealer and supports the separate inbox key.
+ * Throws on any failure.
  *
  * When `inboxSk` is supplied (default: `loadInboxSk()`, i.e. the
  * `AGENTBOX_ZONE_INBOX_SK_FILE` secret when configured) it is tried first and

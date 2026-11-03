@@ -37,14 +37,15 @@
  *     local Uint8Array, and is NEVER logged or returned.
  *
  * Every durable identifier is minted through lib/uris.js — calendar event `d`
- * tags are slugs, not URNs (NIP-52 contract), but the agent's own activity
- * receipts use canonical URNs.
+ * tags on newly requested events are request-scoped canonical URNs; the
+ * exported builder retains legacy slug compatibility for existing seed data.
  */
 
 const crypto = require('crypto');
 const zoneKeys = require('./zone-keys');
 const { readRoleSecretFirst } = require('./role-secret');
 const identityPort = require('./identity-port');
+const uris = require('./uris');
 const { junkiejarvisEnabled } = require('./junkiejarvis-clarify');
 
 let nostrTools = null;
@@ -401,8 +402,8 @@ function hasSchedulingIntent(text) {
  * @param {number} [createdAt]
  * @returns {object} unsigned event
  */
-function buildCalendarEvent(spec, createdAt) {
-  const slug = `${spec.zone}-${spec.title.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}`;
+function buildCalendarEvent(spec, createdAt, requestId) {
+  const slug = requestId || `${spec.zone}-${spec.title.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}`;
   const tags = [
     ['d', slug],
     ['title', spec.title],
@@ -891,7 +892,8 @@ class JunkieJarvisAgent {
     const userText = typeof rumor.content === 'string' ? rumor.content : '';
     if (!userText.trim()) return;
 
-    const reply = await this._think(userText, { zone: null });
+    const reply = await this._think(userText, { zone: null, requester: asker,
+      requestId: rumor.id || uris.mint({ kind: 'event', pubkey: asker, payload: rumor }) });
     if (reply == null) {
       const last = this._apologisedAt.get(asker) || 0;
       if (Date.now() - last < APOLOGY_COOLDOWN_MS) {
@@ -907,7 +909,7 @@ class JunkieJarvisAgent {
 
   /**
    * Store a zone-key grant. The wrap is re-opened with `zoneKeys.unwrapAny`,
-   * which authenticates the seal author (nip59.unwrapEvent does not); the
+   * which returns the authenticated seal author alongside the rumor; the
    * grant is accepted only from an admin and only when its secret derives to
    * its pubkey. Only zone/epoch are logged, never the secret.
    */
@@ -1038,7 +1040,7 @@ class JunkieJarvisAgent {
 
     const root = channelRootTag(event);
     const zone = channelZone(event);
-    const reply = await this._think(userText, { zone });
+    const reply = await this._think(userText, { zone, requester: asker, requestId: event.id });
     if (reply == null) {
       this.logger.warn({ asker }, 'junkiejarvis brain unavailable — staying silent in channel');
       return;
@@ -1144,7 +1146,7 @@ class JunkieJarvisAgent {
         // If the channel had a zone and the directive didn't pick a hard zone,
         // prefer the channel's zone for correct relay write-gating.
         if (ctx && ctx.zone && VALID_ZONES.includes(ctx.zone)) spec.zone = ctx.zone;
-        const confirmation = await this._createEvent(spec);
+        const confirmation = await this._createEvent(spec, ctx);
         body = body ? `${body}\n${confirmation}` : confirmation;
       }
     }
@@ -1159,9 +1161,24 @@ class JunkieJarvisAgent {
    * @param {{ title, start, end, zone, venue }} spec
    * @returns {Promise<string>}
    */
-  async _createEvent(spec) {
+  async _createEvent(spec, ctx = {}) {
     try {
-      const unsigned = buildCalendarEvent(spec);
+      // NIP-52 metadata exposes title, venue and zone in tags. There is no
+      // encrypted-calendar contract in this estate; encrypting content alone
+      // would still disclose them. Keep every calendar write closed while an
+      // encrypted zone is active, including ambiguous legacy zone labels.
+      if (this.zoneCrypto && zoneKeys.anyZoneEncrypted(this.zoneCrypto)) {
+        this.logger.warn('junkiejarvis calendar publication refused while encrypted zones are active');
+        return 'I cannot publish calendar details while encrypted zones are active.';
+      }
+      // This entry point creates events; no edit caller exists. Scope to the
+      // authenticated request so unrelated identical titles cannot replace one
+      // another or a seeded legacy event, while retries keep their identity.
+      const eventId = uris.mint({ kind: 'event', pubkey: this.pubkey, payload: {
+        operation: 'calendar-create', requester: ctx && ctx.requester || null,
+        request: ctx && ctx.requestId || { spec },
+      } });
+      const unsigned = buildCalendarEvent(spec, undefined, eventId);
       const signed = await this.bridge.publish(unsigned, this.signer);
       const dTag = Array.isArray(signed.tags) ? (signed.tags.find((t) => t[0] === 'd') || [])[1] : null;
       const when = new Date(spec.start * 1000).toUTCString();

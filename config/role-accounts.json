@@ -28,6 +28,7 @@
         { "file": "AGENTBOX_PRIVKEY_HEX", "from_env": "AGENTBOX_PRIVKEY_HEX" },
         { "file": "AGENTBOX_NSEC", "from_env": "AGENTBOX_NSEC" },
         { "file": "JUNKIEJARVIS_PRIVKEY_HEX", "from_env": "JUNKIEJARVIS_PRIVKEY_HEX" },
+        { "file": "DREAM_GOVERNANCE_PRIVKEY_HEX", "from_env": "DREAM_GOVERNANCE_PRIVKEY_HEX" },
         { "file": "CONCIERGE_PRIVKEY_HEX", "from_env": "CONCIERGE_PRIVKEY_HEX" }
       ],
       "at_rest": [

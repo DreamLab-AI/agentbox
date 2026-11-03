@@ -612,6 +612,25 @@ describe('JunkieJarvis in encrypted zones', () => {
     return { agent, bridge, store, llmSeen };
   }
 
+  test('calendar metadata stays unpublished while encrypted zones are active, with or without a held key', async () => {
+    for (const keys of [[], [zoneKey()]]) {
+      const { agent, bridge } = agentWith({ keys });
+      for (const zone of ['business', 'public', 'zone4']) {
+        const result = await agent._createEvent({ title: 'Private fixture',start:1_800_000_000,end:1_800_003_600,zone,venue:'Private venue' });
+        assert.match(result, /cannot publish calendar details/);
+      }
+      assert.equal(bridge.published.length, 0);
+    }
+  });
+
+  test('calendar publication retains existing behaviour when zone encryption is disabled', async () => {
+    const { agent, bridge } = agentWith({ gate: false });
+    const result = await agent._createEvent({ title:'Public fixture',start:1_800_000_000,end:1_800_003_600,zone:'public',venue:'' });
+    assert.match(result, /Done/);
+    assert.equal(bridge.published.length, 1);
+    assert.equal(bridge.published[0].kind, 31923);
+  });
+
   function mention(content, tags = []) {
     return finalizeEvent({
       kind: 42,

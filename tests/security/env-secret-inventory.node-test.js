@@ -16,7 +16,7 @@ const table = inv.loadTable();
 
 const REQUIRED_ROLE = [
   'AGENTBOX_NSEC', 'AGENTBOX_PRIVKEY_HEX', 'AGENTBOX_BRIDGE_SK', 'OPERATOR_NOSTR_PRIVKEY',
-  'JUNKIEJARVIS_PRIVKEY_HEX', 'AGENTBOX_AGENT_PRIVKEY_HEX',
+  'JUNKIEJARVIS_PRIVKEY_HEX', 'DREAM_GOVERNANCE_PRIVKEY_HEX', 'AGENTBOX_AGENT_PRIVKEY_HEX',
 ];
 const REQUIRED_ROLE_INGRESS = ['NIP98_PROXY_ALLOW_BEARER', 'NIP98_PROXY_SESSION_SECRET'];
 const REQUIRED_DEVUSER = [
@@ -26,6 +26,11 @@ const REQUIRED_DEVUSER = [
 
 test('the table has exactly the three classes', () => {
   assert.deepEqual(Object.keys(table.classes).sort(), ['DEVUSER_CLASS', 'NON_SECRET', 'ROLE']);
+});
+
+test('identity-port file declarations are real readers, while derived aliases are not env vars', () => {
+  const names = inv.extractNames(JSON.stringify({keys:{agent:{file:'DREAM_GOVERNANCE_PRIVKEY_HEX'},derived:{file:'NOT_A_SECRET_VAR',gateway_child:true}}}), 'identity-acl');
+  assert.deepEqual([...names], ['DREAM_GOVERNANCE_PRIVKEY_HEX']);
 });
 
 test('the brief\'s ROLE secrets are ROLE, each with a role and a <NAME>_FILE', () => {

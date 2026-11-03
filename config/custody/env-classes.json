@@ -6,6 +6,7 @@
   "sources": [
     "config/entrypoint-unified.sh",
     "config/lib/role-custody.sh",
+    "config/custody/identity-port-acl.json",
     "flake.nix",
     "docker-compose*.yml",
     "management-api/**/*.js|.cjs|.mjs",
@@ -512,6 +513,7 @@
         "JUNKIEJARVIS_MODEL",
         "JUNKIEJARVIS_NOSTR_RELAYS",
         "JUNKIEJARVIS_PRIVKEY_HEX_FILE",
+        "DREAM_GOVERNANCE_PRIVKEY_HEX_FILE",
         "JUNKIEJARVIS_PROFILE_DELAY_MS",
         "KILL",
         "KNOWLEDGE_GIT_CLONE",

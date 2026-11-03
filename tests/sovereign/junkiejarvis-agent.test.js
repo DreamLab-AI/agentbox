@@ -458,6 +458,20 @@ describe('JunkieJarvisAgent._think', () => {
     expect(reply).toMatch(/Reunion/);
   });
 
+  test('calendar creation uses request identity rather than title and retries stay stable', async () => {
+    const bridge = makeBridge();
+    const agent = new JunkieJarvisAgent({ bridge, signer: fakeSigner, logger: silentLogger });
+    const spec = { title:'Same title',start:1800000000,end:1800003600,zone:'public',venue:null };
+    await agent._createEvent(spec, { requester: ASKER, requestId:'first' });
+    await agent._createEvent(spec, { requester: ASKER, requestId:'second' });
+    await agent._createEvent(spec, { requester: ASKER, requestId:'first' });
+    const ids = bridge.published.map(e => e.tags.find(t => t[0] === 'd')[1]);
+    expect(ids[0]).toMatch(/^urn:agentbox:event:/);
+    expect(ids[0]).not.toBe(ids[1]);
+    expect(ids[0]).toBe(ids[2]);
+    expect(ids).not.toContain('public-same-title');
+  });
+
   test('channel zone overrides the directive zone for write-gating', async () => {
     const bridge = makeBridge();
     const start = 1800000000;

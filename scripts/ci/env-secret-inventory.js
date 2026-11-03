@@ -105,6 +105,14 @@ function extractNames(text, kind) {
     }
   };
   switch (kind) {
+    case 'identity-acl':
+      // The port opens these named role files through KeyRing::load; it never
+      // reads them from a caller's environment. Inventory the declarative
+      // reader as well as imperative env readers. Derived aliases are not vars.
+      for (const key of Object.values(JSON.parse(text).keys || {})) {
+        if (!key.gateway_child) add(key.file);
+      }
+      break;
     case 'shell':
       each(new RegExp(`\\$\\{?(${NAME})`, 'g'));
       break;
@@ -139,6 +147,7 @@ function extractNames(text, kind) {
 }
 
 function kindOf(file) {
+  if (file.endsWith('/config/custody/identity-port-acl.json')) return 'identity-acl';
   if (/\.nix$/.test(file)) return 'nix';
   if (/docker-compose[^/]*\.ya?ml$/.test(file)) return 'compose';
   if (/\.(c|m)?js$/.test(file)) return 'js';
