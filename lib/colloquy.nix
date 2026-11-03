@@ -25,7 +25,7 @@
 # layout the relative path-dep expects is reassembled around the source.
 #
 # This pin and lib/nostr-pod-bridge.nix's forumRev are the SAME revision
-# (fe36bf36, forum HEAD 2026-09-30), so both binaries compile one nostr-bbs-core
+# (a3812b8e, forum HEAD 2026-11-03), so both binaries compile one nostr-bbs-core
 # and hash event ids / verify signatures identically. Move the two together;
 # both crates' checked-in Cargo.lock files resolve this tree as-is.
 #
@@ -43,8 +43,8 @@ let
   version = "0.1.0";
 
   # Same revision as lib/nostr-pod-bridge.nix — see the header.
-  forumRev  = "fe36bf365b7027337dde03368f8a52e1218c2f6c";
-  forumHash = "sha256-9HooIa4vyu0Iw47VPr7RkMDyKrEazcElR2xPIe0njvE=";
+  forumRev  = "a3812b8e79846b569c1f19054f0774e94fed1248";
+  forumHash = "sha256-W4+4Xs2OCesHZyBFCAxnZhKE746cK+FFGUmxMS54G20=";
 
   forumSrc = pkgs.fetchFromGitHub {
     owner = "DreamLab-AI";

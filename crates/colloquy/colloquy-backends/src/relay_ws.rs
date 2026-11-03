@@ -84,8 +84,8 @@ impl WsRelayBackend {
     /// disagrees with its own secret is a configuration error that should fail
     /// here rather than produce events nobody can verify.
     pub fn new(url: impl Into<String>, secret_key: &[u8; 32]) -> Result<Self, RelayWsError> {
-        let signing_key =
-            SigningKey::from_bytes(secret_key).map_err(|e| RelayWsError::Key(e.to_string()))?;
+        let signing_key = SigningKey::from_bytes(secret_key.into())
+            .map_err(|e| RelayWsError::Key(e.to_string()))?;
         let pubkey = hex::encode(signing_key.verifying_key().to_bytes());
         Ok(Self {
             url: url.into(),
