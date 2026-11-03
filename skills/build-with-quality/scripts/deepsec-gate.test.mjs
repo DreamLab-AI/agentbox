@@ -56,11 +56,17 @@ case "$1" in
     printf '{"filePath":"app.js","candidates":[{"vulnSlug":"xss"},{"vulnSlug":"sqli"}]}' > "data/$pid/files/app.js.json"
     exit 0 ;;
   process)
+    for ((i=1;i<=$#;i++)); do
+      if [ "\${!i}" = "--files-from" ]; then
+        j=$((i+1)); [ "\${!j}" = "-" ] || [ -f "\${!j}" ] || exit 1
+      fi
+    done
     if [ -n "\${FAKE_DEEPSEC_FINDINGS:-}" ] && [ "\${FAKE_DEEPSEC_FINDINGS}" != "[]" ]; then
       for ((i=1;i<=$#;i++)); do [ "\${!i}" = "--comment-out" ] && { j=$((i+1)); echo "findings" > "\${!j}"; }; done
     fi
     exit "\${FAKE_DEEPSEC_RC:-0}" ;;
   export)
+    [ "\${FAKE_EXPORT_ERROR:-0}" = "0" ] || exit 1
     for ((i=1;i<=$#;i++)); do [ "\${!i}" = "--out" ] && { j=$((i+1)); printf '%s' "\${FAKE_DEEPSEC_FINDINGS:-[]}" > "\${!j}"; }; done
     exit 0 ;;
   *) echo "fake deepsec: unknown command $1" >&2; exit 64 ;;
@@ -186,4 +192,53 @@ test('no manifest at all falls back to defaults (PR-mode still works in CI)', ()
   assert.equal(r.status, 0, r.stderr);
   const plan = JSON.parse(r.stdout);
   assert.equal(plan.policy_source, 'defaults'); assert.equal(plan.fail_on, 'HIGH'); assert.equal(plan.max_duration, '45m');
+});
+
+
+test('relative file manifest is resolved before changing to the review workspace', () => {
+  const root = makeRepo(); const bin = join(root, 'bin'); makeFakeCli(bin);
+  const m = manifest(root, ENABLED);
+  writeFileSync(join(root, 'files.txt'), 'app.js\n');
+  const r = run(root, ['--files-from', 'files.txt'], { PATH: `${bin}:${PATH_NO_DEEPSEC}`, AGENTBOX_CONFIG: m });
+  assert.equal(r.status, 0, r.stderr);
+  assert.ok(r.log.includes(`--files-from ${join(root, 'files.txt')} `), r.log);
+});
+
+test('missing manifest fails before invoking the reviewer', () => {
+  const root = makeRepo(); const bin = join(root, 'bin'); makeFakeCli(bin);
+  const r = run(root, ['--files-from', 'absent.txt'], { PATH: `${bin}:${PATH_NO_DEEPSEC}`, AGENTBOX_CONFIG: manifest(root, ENABLED) });
+  assert.equal(r.status, 78, r.stderr);
+  assert.equal(r.log, '');
+});
+
+test('exit 1 without a new findings comment is an error even if export would succeed', () => {
+  const root = makeRepo(); const bin = join(root, 'bin'); makeFakeCli(bin);
+  const rep = join(root, 'rep');
+  const r = run(root, ['--diff', 'bad-ref', '--report-dir', rep], {
+    PATH: `${bin}:${PATH_NO_DEEPSEC}`, AGENTBOX_CONFIG: manifest(root, ENABLED), FAKE_DEEPSEC_RC: '1',
+  });
+  assert.equal(r.status, 70, r.stderr);
+  assert.doesNotMatch(r.stdout, /PASS/);
+});
+
+test('export failure and malformed export cannot produce a PASS receipt', () => {
+  const root = makeRepo(); const bin = join(root, 'bin'); makeFakeCli(bin);
+  const m = manifest(root, ENABLED);
+  for (const env of [{ FAKE_EXPORT_ERROR: '1' }, { FAKE_DEEPSEC_FINDINGS: '{}' }, { FAKE_DEEPSEC_FINDINGS: '{' }]) {
+    const rep = join(root, `rep-${Object.values(env)[0].length}-${Object.keys(env)[0]}`);
+    const r = run(root, ['--diff', 'HEAD', '--report-dir', rep], { PATH: `${bin}:${PATH_NO_DEEPSEC}`, AGENTBOX_CONFIG: m, ...env });
+    assert.equal(r.status, 70, r.stderr);
+    assert.doesNotMatch(r.stdout, /PASS/);
+  }
+});
+
+test('reused report directory cannot lend stale success evidence to another invocation', () => {
+  const root = makeRepo(); const bin = join(root, 'bin'); makeFakeCli(bin);
+  const rep = join(root, 'rep'); mkdirSync(rep); writeFileSync(join(rep, 'comment.md'), 'old findings');
+  const r = run(root, ['--diff', 'bad-ref', '--report-dir', rep], {
+    PATH: `${bin}:${PATH_NO_DEEPSEC}`, AGENTBOX_CONFIG: manifest(root, ENABLED), FAKE_DEEPSEC_RC: '1',
+  });
+  assert.equal(r.status, 78, r.stderr);
+  assert.doesNotMatch(r.log, /process/);
+  assert.equal(readFileSync(join(rep, 'comment.md'), 'utf8'), 'old findings');
 });

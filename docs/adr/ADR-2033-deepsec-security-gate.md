@@ -17,6 +17,22 @@ domain: GOVERNANCE-capabilities
 
 # ADR-2033 — deepsec is the executed Security gate of build-with-quality, baked as a manifest-gated CLI under a names-only credential policy
 
+## Scoped repair — 2026-11-03
+
+The Sealmap review exposed a false PASS: a relative `--files-from` manifest
+became missing after the wrapper changed directory; Deepsec exited 1 and the
+wrapper treated an empty export as a completed review. Inspection of the baked
+2.3.10 implementation confirms exit 1 also covers invalid input, quota and
+batch failures. A findings comment is written only after successful batches.
+
+The wrapper now resolves and validates file manifests before invocation,
+requires a fresh report directory, requires that invocation's nonempty comment
+for a findings exit, and rejects failed, missing or malformed exports. Five
+new regression groups failed before the repair; all 15 fixture tests pass
+with it, including positive no-finding and real-finding controls. These are
+wrapper tests, separate from paid model review. Source integration does not
+assert that an already running image contains this repaired script.
+
 ## Scoped re-verification — 2026-10-31
 
 Reviewed the governed-path delta since the previous verification: only the

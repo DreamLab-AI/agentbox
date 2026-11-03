@@ -200,3 +200,14 @@ records written under the old convention and define conflict handling and
 recovery before changing precedence. Report the producer repair separately
 from migration acceptance; for permission data, verify owner access and denied
 access after migration rather than assuming either filename is authoritative.
+
+
+### A reviewer failure cannot become an empty review
+
+Exercise the gate's error protocol as well as its successful result parser.
+Input errors, provider failures, missing exports and truncated JSON must remain
+errors. Some tools reuse the findings exit code for runtime failures: verify
+completion using fresh evidence from that invocation, never an earlier comment
+or an empty fallback array. Keep a no-finding positive control and a real-finding
+control beside the failed-invocation regression. This caught a false PASS in the
+Deepsec wrapper during the Sealmap 0.4 release review.

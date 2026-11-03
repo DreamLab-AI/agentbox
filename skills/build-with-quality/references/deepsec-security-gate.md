@@ -35,7 +35,10 @@ never "passed") · `124` `max_duration` reached (deepsec checkpoints; re-run to 
 
 Receipts land in `<repo>/.deepsec-gate/reports/<UTC stamp>/` (gitignored):
 `plan.json`, `deepsec.log`, `findings.json`, `comment.md` (PR-comment shaped,
-only when findings exist) and `receipt.json`. Cite `receipt.json` as the EDD
+only after a completed review finds issues) and `receipt.json`. Report directories
+are unique per invocation; an existing `--report-dir` is refused. Relative
+`--files-from` paths resolve against the invoking shell before the wrapper changes
+directory. Missing manifests fail with 78 before a model call. Cite `receipt.json` as the EDD
 evidence for the Security gate; the auditor re-runs `--diff` on the same
 revision to verify.
 
@@ -60,6 +63,13 @@ changing flags — the CLI contract moves:
 `configuration.md`, `writing-matchers.md`).
 
 ## Interpret the receipt
+
+Deepsec 2.3.10 overloads exit 1: it can mean findings, invalid inputs, exhausted
+quota or failed batches. The wrapper accepts it as findings only when that
+invocation created a nonempty PR comment, which the pinned CLI writes after
+successful batch completion. Missing comments, failed exports and malformed
+exports are runtime errors (70), never empty successful reviews. Recheck this
+contract when changing the Deepsec version.
 
 A PASS means no exported finding crossed the configured threshold; it does not
 mean zero findings. Inspect `findings_by_severity` and the raw findings, including
