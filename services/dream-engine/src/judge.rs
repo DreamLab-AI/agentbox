@@ -6,7 +6,7 @@
 //! (`replay.json`, `decision.json` and the files [`dream_core::replay`]
 //! documents). `dream-core`'s `replay verify` can then recompute the verdict
 //! from the stored files under the **same** protected set the live night used,
-//! because the policy additions ([`PolicyExtras`]) are stored with it.
+//! because the policy additions ([`dream_core::replay::PolicyExtras`]) are stored with it.
 //!
 //! There is no second way to judge in this crate: nothing here or in the
 //! engine calls `gate::decide` directly (a test enforces it).

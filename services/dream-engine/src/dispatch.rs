@@ -59,7 +59,7 @@ fn run_remote(hp_host: &str, script: &str) -> std::io::Result<Output> {
 
 /// Run a command on the connected node via SSH.
 ///
-/// The script runs under bash (see [`REMOTE_BASH_FROM_STDIN`]) so POSIX syntax
+/// The script runs under bash (via `REMOTE_BASH_FROM_STDIN`) so POSIX syntax
 /// (&&, redirects, cd) behaves as written.
 pub fn ssh(hp_host: &str, cmd: &str) -> Result<String, DispatchError> {
     if hp_host.trim().is_empty() {

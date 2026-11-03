@@ -16,6 +16,21 @@ repo: agentbox
 
 # ADR-2141 — Extract the dream engine core into a standalone permissive repo
 
+## Registry repair adoption — 2026-11-03
+
+The adapter pins published `dream-core = "=0.4.1"` and resolves Ontomark compiler
+0.6.4 for its shared credential checks. Cargo.lock contains registry checksums;
+temporary local test patches are not retained. Formatting confinement, repair
+source withholding and post-evaluator identity checks remain in the permissive
+core. The host supplies its denylist and establishes a matching Git tree after
+archive transport so the new checks can run on the annexe.
+
+The full adapter suite, including all 11 whole-night tests, passes against the
+registry release. Clippy passes after replacing an existing checked unwrap in
+Jev endpoint selection, and rustdoc passes after correcting stale internal links.
+No running nightly daemon was restarted. Historical package and activation
+observations below retain their dates.
+
 ## Context
 - `services/dream-engine` (AGPL-3.0-only) held three kinds of code in one crate: the gate that decides whether a model-written patch may be ACCEPTed, the loop mechanism around it (worktrees, ledger, source reading, prompts), and the estate wiring (Z.AI/Loom, the annexe, RuVector, the forum).
 - The first two are reusable and carry no estate secret; only the third links `nostr-bbs-core` and `zone_crypto`.

@@ -391,7 +391,7 @@ fn finding_from(rec: &MemoryRecord) -> Result<DreamFinding, SinkError> {
 /// engine writes `memory_entries` by direct SQL. It is a Rust daemon outside
 /// the MCP hook path and it embeds client-side, so the write mirrors what the
 /// MCP embedding pipeline does: `bge-small-en-v1.5` via Xinference, asserted to
-/// be exactly 384 dimensions on every write ([`check_dims`], before any SQL).
+/// be exactly 384 dimensions on every write (`check_dims`, before any SQL).
 #[derive(Debug, Clone)]
 pub struct RuVectorSink {
     cfg: RuVectorConfig,

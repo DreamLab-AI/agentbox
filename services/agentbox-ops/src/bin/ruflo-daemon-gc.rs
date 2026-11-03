@@ -2,13 +2,14 @@
 //!
 //! Replaces `scripts/ruflo-daemon-gc.py`. Registry-first discovery with a
 //! process-table sweep fallback, staleness = workspace gone OR older than the
-//! TTL, and a PID-REUSE GUARD: a PID is signalled only after re-probing its
-//! live command line; unconfirmable PIDs are refused, never killed.
+//! TTL. Captured argv/start-time identity is rechecked after opening a pidfd;
+//! only that pinned process can receive a signal. Unverifiable targets are refused.
 //!
 //! No ruflo daemon runs under supervisord and the runtime pins
 //! `RUFLO_DAEMON_AI_WORKERS=0`, so anything found here was started ad hoc
 //! inside a session.
 
+use agentbox_ops::process_identity::{self, ProcFs, ProcessIdentity};
 use agentbox_ops::procs;
 use agentbox_ops::pyjson;
 use clap::Parser;
@@ -92,6 +93,22 @@ fn registry_pid(pid: u64) -> Option<u32> {
     (pid > 0 && pid <= i32::MAX as u64).then_some(pid as u32)
 }
 
+/// Pin the kernel process before rechecking identity, closing the verify/kill race.
+fn terminate(recorded: &ProcessIdentity) -> Result<(), String> {
+    let raw = i32::try_from(recorded.pid)
+        .ok()
+        .and_then(rustix::process::Pid::from_raw)
+        .ok_or_else(|| "invalid process id".to_string())?;
+    let fd = rustix::process::pidfd_open(raw, rustix::process::PidfdFlags::empty())
+        .map_err(|e| format!("cannot pin process identity: {e}"))?;
+    let verdict = process_identity::verify(&ProcFs::default(), recorded);
+    if !verdict.is_match() {
+        return Err(format!("process identity refused: {verdict:?}"));
+    }
+    rustix::process::pidfd_send_signal(&fd, rustix::process::Signal::TERM)
+        .map_err(|e| format!("signal failed: {e}"))
+}
+
 fn main() {
     let args = Args::parse();
     let home = std::env::var("HOME").unwrap_or_else(|_| "/home/devuser".into());
@@ -99,31 +116,41 @@ fn main() {
 
     let mut daemons = registry_daemons(&cf_home);
     for d in procs::sweep() {
-        daemons.entry(d.pid).or_insert(Discovered {
-            workspace: d.workspace,
-            source: "ps".to_string(),
-        });
+        daemons.insert(
+            d.pid,
+            Discovered {
+                workspace: d.workspace,
+                source: "ps".to_string(),
+            },
+        );
     }
 
     let mut rows: Vec<Value> = Vec::new();
-    let mut stale_confirmed: Vec<u32> = Vec::new();
+    let mut stale_confirmed: Vec<ProcessIdentity> = Vec::new();
     let mut stale_unconfirmed: Vec<u32> = Vec::new();
 
     for (pid, d) in &daemons {
-        let confirmed = match procs::confirm_daemon(*pid) {
-            // A registry entry whose PID now belongs to something else.
-            Some(false) => continue,
-            Some(true) => true,
-            None => false,
+        let captured = process_identity::capture(&ProcFs::default(), *pid).ok();
+        if captured
+            .as_ref()
+            .is_some_and(|p| !process_identity::is_ruflo_daemon_argv(&p.argv_refs()))
+        {
+            continue;
+        }
+        let confirmed = captured.is_some();
+        // A stale registry row must not supply the workspace of a replacement process.
+        let workspace = match &captured {
+            Some(p) => procs::workspace_argv(&p.argv_refs()),
+            None => d.workspace.clone(),
         };
         let age = procs::run_time_secs(*pid);
         let workspace_gone =
-            d.workspace != "?" && !d.workspace.is_empty() && !Path::new(&d.workspace).is_dir();
+            workspace != "?" && !workspace.is_empty() && !Path::new(&workspace).is_dir();
         let stale = workspace_gone || age.map(|a| a > args.ttl).unwrap_or(false);
 
         if stale {
-            if confirmed {
-                stale_confirmed.push(*pid);
+            if let Some(identity) = captured {
+                stale_confirmed.push(identity);
             } else {
                 stale_unconfirmed.push(*pid);
             }
@@ -131,7 +158,7 @@ fn main() {
 
         rows.push(json!({
             "pid": pid,
-            "workspace": d.workspace,
+            "workspace": workspace,
             "source": d.source,
             "age_s": age,
             "confirmed": confirmed,
@@ -145,17 +172,16 @@ fn main() {
         for pid in &stale_unconfirmed {
             eprintln!("  refuse pid={pid}: cmdline unconfirmable (pid reuse guard)");
         }
-        for pid in &stale_confirmed {
-            // Re-probe immediately before signalling — the guard, not a formality.
-            if procs::confirm_daemon(*pid) != Some(true) {
-                eprintln!("  refuse pid={pid}: cmdline unconfirmable (pid reuse guard)");
+        for identity in &stale_confirmed {
+            let pid = identity.pid;
+            let workspace = procs::workspace_argv(&identity.argv_refs());
+            let gone = workspace != "?" && !workspace.is_empty() && !Path::new(&workspace).is_dir();
+            if !gone && !procs::run_time_secs(pid).is_some_and(|age| age > args.ttl) {
+                eprintln!("  refuse pid={pid}: no longer stale");
                 continue;
             }
-            let Some(raw) = rustix::process::Pid::from_raw(*pid as i32) else {
-                continue;
-            };
-            match rustix::process::kill_process(raw, rustix::process::Signal::TERM) {
-                Ok(()) => killed.push(*pid),
+            match terminate(identity) {
+                Ok(()) => killed.push(pid),
                 Err(e) => eprintln!("  pid={pid}: kill failed ({e})"),
             }
         }
@@ -207,7 +233,37 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
-    use super::registry_pid;
+    use super::*;
+
+    #[test]
+    fn a_reused_identity_is_refused_and_a_matching_child_is_signalled_by_pidfd() {
+        use std::io::BufRead;
+        let mut child = std::process::Command::new("bash")
+            .args(["-c", "printf 'ready\\n'; read -r reaper_fixture_wait"])
+            .stdin(std::process::Stdio::piped())
+            .stdout(std::process::Stdio::piped())
+            .spawn()
+            .unwrap();
+        let mut ready = String::new();
+        std::io::BufReader::new(child.stdout.take().unwrap())
+            .read_line(&mut ready)
+            .unwrap();
+        assert_eq!(ready, "ready\n");
+        let recorded = process_identity::capture(&ProcFs::default(), child.id()).unwrap();
+        let mut reused = recorded.clone();
+        reused.starttime = reused.starttime.wrapping_add(1);
+        let refused = terminate(&reused);
+        let still_running = child.try_wait().unwrap().is_none();
+        let delivered = terminate(&recorded);
+        if delivered.is_err() {
+            let _ = child.kill();
+        }
+        let status = child.wait().unwrap();
+        assert!(refused.is_err(), "a replacement identity must be refused");
+        assert!(still_running, "refusal must not signal the process");
+        assert!(delivered.is_ok(), "{delivered:?}");
+        assert!(!status.success());
+    }
 
     #[test]
     fn registry_pid_rejects_zero_negative_casts_and_truncation() {

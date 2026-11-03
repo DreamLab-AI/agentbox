@@ -979,7 +979,7 @@ checksum = "384b8ab6d37215f3c5301a95a4accb5d64aa607f1fcb26a11b5303878451b4fe"
 
 [[package]]
 name = "ontomark"
-version = "0.7.0"
+version = "0.7.3"
 dependencies = [
  "anyhow",
  "clap",
@@ -997,7 +997,7 @@ dependencies = [
 
 [[package]]
 name = "ontomark-compile"
-version = "0.6.1"
+version = "0.6.4"
 dependencies = [
  "anyhow",
  "hex",
@@ -1557,7 +1557,7 @@ dependencies = [
 
 [[package]]
 name = "rdfs-certificate"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "serde",
  "sha2 0.11.0",

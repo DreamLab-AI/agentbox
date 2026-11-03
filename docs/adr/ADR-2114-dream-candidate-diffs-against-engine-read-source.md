@@ -100,6 +100,23 @@ ADR-2143 extends step 1: paths the previous night listed under **Sources wanted 
 
 Read `git diff 2305d675e..96a9a925d -- services/dream-engine`. `dream-core` moves to `=0.3.0`, which formats a candidate's own files (ADR-DE-009 there) before the gate; `candidate_flow.rs` now copies `c.formatting` into the candidate record and `engine.rs` adds a second PR-body note when formatting was applied ("the logic is the model's, the layout the formatter's"). The source section, planner, repair pass, apply order and apply-repair are untouched in this repository. One consequence for a reader of this record: the amendment of 2026-10-13 already warned that the PR diff may not be byte-for-byte the model's; it now may also be reformatted, and the PR body says so. The single-completion contract and the "no acceptance is easier to reach" claim hold as far as this repository shows: the adapter still passes every candidate to the gate, and formatting is stated upstream to run before it. The ordering inside `dream-core` 0.3.0 was not read from source here. `judge.rs` forbids `rustfmt` and `cargo fmt` in the adapter, so formatting stays in `dream-core`. `cargo test --locked --lib` 167 passed; `night_e2e` 11 passed. The decision holds. Verified at 96a9a925dec7b19b8b75ecb891cce7a0a24d09e4.
 
+## Scoped repair — 2026-11-03
+
+The adapter's apply-repair path now supplies `estate::source_denylist()` to
+`dream_core::source::failing_excerpt_with`, so the repair excerpt observes the
+same path and whole-file credential checks as initial source gathering. The
+assembled repair prompt also crosses the estate redactor. That redactor
+withholds credential-bearing content using dream-core's shared Ontomark
+detector before shortening host paths. The detector recognises specified token
+shapes; it is not a guarantee that arbitrary confidential text can be identified.
+
+The archive-based annexe transport now creates a local Git snapshot only after
+its tree hash matches the prepared candidate. Dream-core can then recheck both
+the publishable and evaluated trees after the evaluators finish. These are
+identity checks, not a sandbox for arbitrary evaluator commands. Local archive
+and whole-night regressions pass; the running nightly service is not updated by
+these source changes. Historical verification anchors are retained.
+
 ## Re-verification — 2026-11-01 (`cc949bb79`)
 
 Governed-path delta since `21769a881` is the RuVector Postgres credential custody change (ADR-2164 amendment 2), nothing else:

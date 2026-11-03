@@ -208,7 +208,7 @@ impl Recording {
     fn candidate_calls(&self) -> usize {
         self.calls()
             .iter()
-            .filter(|(wd, _)| wd.contains("/candidate/"))
+            .filter(|(wd, cmd)| wd.contains("/candidate/") && cmd == "bash scripts/check.sh")
             .count()
     }
 }
@@ -469,6 +469,14 @@ async fn an_accepted_night_leaves_a_branch_a_forge_request_a_ledger_row_and_a_re
         runner.candidate_calls(),
         1,
         "required evaluator re-run once"
+    );
+    assert_eq!(
+        calls
+            .iter()
+            .filter(|(wd, cmd)| wd.contains("/candidate/") && cmd.starts_with("candidate_status="))
+            .count(),
+        1,
+        "one post-evaluation integrity check"
     );
 
     // The candidate tree really was shipped to the (fake) annexe — this is what

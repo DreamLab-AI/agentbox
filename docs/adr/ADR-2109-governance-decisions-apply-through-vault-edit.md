@@ -18,6 +18,16 @@ acceptance_boundary: 95 + 24 node tests passing, and the forum e2e script green 
 
 # ADR-2109 — Ontology proposals and decisions both go through `vault`
 
+## Scoped repair — 2026-11-03
+
+Explicit `promote` decisions carrying a typed patch proposal now require its
+canonical digest to equal the signed request's `d` tag, matching the `approve`
+path. Missing, malformed or unequal digests refuse before a compiler call.
+Legacy promotion requests without a typed patch proposal retain their existing
+behaviour. The ontology-apply suite passes 68 tests, including refusal cases and
+ordinary promotion controls. This verifies the local adapter change; it does
+not establish a live forum-to-corpus deployment or enable grouped application.
+
 > Renumbered from ADR-2106 on 2026-09-22: agentbox ADR-2106 was already taken by the sidestr licensing ADR (committed 11:50 the same day).
 
 ## Context

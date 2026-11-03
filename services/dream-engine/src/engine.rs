@@ -4,7 +4,7 @@
 //! The mechanism (evaluator receipts, candidate worktrees, the ledger, source
 //! reading, the context governor, the streak, the pure gate) lives in the
 //! extracted crates; this module decides *when* each runs and plugs the
-//! estate seams in: [`LlmAdapter`] (Z.AI / Loom), [`SshRunner`] (the annexe),
+//! estate seams in: [`LlmAdapter`] (Z.AI / Loom), [`crate::runner::SshRunner`] (the annexe),
 //! [`RuVectorSink`] (memory) and the inbox and journal notifiers. The
 //! protected-path policy is built once per night ([`policy::for_night`]) and
 //! handed both to the candidate guard and to the gate's context.
@@ -108,7 +108,7 @@ pub struct Engine {
     /// Durable fair-scheduling state (least-recently-dreamed first).
     pub roster_path: PathBuf,
     /// Where a verified candidate is published. Production wires
-    /// [`GhForge`]; tests substitute a recording forge so no PR is opened.
+    /// [`dream_core::seams::GhForge`]; tests substitute a recording forge so no PR is opened.
     pub forge: Arc<dyn Forge>,
     /// Replaces the configured HTTP model for the verdict, source-gather,
     /// context-govern and repair calls. `None` (production) builds a

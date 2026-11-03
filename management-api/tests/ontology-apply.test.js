@@ -1110,6 +1110,25 @@ test('an approve whose proposal digest is not the case refuses; off-roster appro
   assert.deepEqual(stub.calls(), []);
 });
 
+test('explicit promote binds the embedded proposal digest before starting the compiler', async (t) => {
+  const stub = stubVault(t);
+  inScratchCwd(t);
+  withRoster(t, ADMIN_HEX);
+  const adapter = new LocalProcessManagerOrchestratorAdapter({});
+  const event = { ...approveEvent(), content: JSON.stringify({ action: 'promote', iri: IRI }) };
+  for (const digest of [`sha256:${'0'.repeat(64)}`, undefined, '']) {
+    adapter._ontologyDeps = { fetchFn: stubFetch(200), fetchRequest: async () => amendRequest({ digest }) };
+    const result = await adapter.handleGovernanceDecision(event);
+    assert.equal(result.ontology.refused, true, JSON.stringify(result.ontology));
+    assert.match(result.ontology.error, /proposal digest.*approved case/);
+  }
+  assert.deepEqual(stub.calls(), []);
+  adapter._ontologyDeps = { fetchFn: stubFetch(200), fetchRequest: async () => amendRequest() };
+  const result = await adapter.handleGovernanceDecision(event);
+  assert.equal(result.ontology.applied, true, result.ontology.error);
+  assert.deepEqual(stub.calls().map(c => c[0]), ['apply']);
+});
+
 test('the push is held when other sessions\' commits are also ahead of the upstream', async (t) => {
   const stub = stubVault(t);
   const runGit = stubGit({ top: stub.repo, ahead: 36 });

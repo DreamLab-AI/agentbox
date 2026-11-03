@@ -26,7 +26,7 @@ pub struct DaemonProc {
 
 /// Read the workspace as one argument, preserving spaces and flag-like text
 /// within paths. Both common option spellings are supported.
-fn workspace_argv(args: &[&str]) -> String {
+pub fn workspace_argv(args: &[&str]) -> String {
     for (index, arg) in args.iter().enumerate() {
         let value = if *arg == "--workspace" {
             args.get(index + 1)

@@ -16,6 +16,22 @@ repo: agentbox
 
 # ADR-2032 — Daemon reapers identify processes by argv boundaries against a launcher allowlist and fail closed on anything else
 
+## Scoped repair — 2026-11-03
+
+`ruflo-daemon-gc` now captures argv and `/proc` start time at discovery, derives
+the workspace from that captured argv, and rechecks staleness before acting.
+It opens a pidfd before comparing the captured identity and sends SIGTERM through
+that handle only on a match. An unavailable pidfd or unreadable identity refuses
+the action; there is no PID-only fallback. This closes the reaper gap recorded
+below without claiming every estate signalling caller has been inventoried.
+
+An owned subprocess regression verifies that a mismatched start time sends no
+signal and that a matching identity can be signalled through its pidfd. The
+agentbox-ops suite passes with serial test execution; the default parallel run
+exposed the existing target-GC held-lock fixture failure, which passes alone.
+No running daemon was reaped. Activation remains staged pending an image rebuild.
+Historical verification anchors below are retained.
+
 ## External review reconciliation — 2026-11-02
 
 An external summary claims both daemon reapers compare recorded argv and start time before signalling, eliminating PID reuse. At source `eb570ca93`, Hermes uses `process_identity::verify` (`services/agentbox-ops/src/hermes/mod.rs:326,589,610`), but `ruflo-daemon-gc.rs:148-157` calls `procs::confirm_daemon`, which checks the current launcher argv only (`procs.rs:79-85`). It does not compare a captured start time. A replacement daemon with an allowed argv can therefore pass the reaper's check. Even separate identity verification and kill are not an atomic kernel process handle. The historical acceptance text above describes Hermes; it must not be read as a proof that every reaper meets the full identity rule. Implementation remains partial. Acceptance requires an owned-process regression for replacement with the same allowed launcher and a stable process handle or an explicitly documented residual race. No live signal was sent.

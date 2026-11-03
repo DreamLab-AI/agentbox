@@ -230,7 +230,7 @@
         mcpHubUrl         = resHubCfg.url or "http://127.0.0.1:9720";
         mcpHubServers     = resHubCfg.servers or [
           "consultant-codex" "consultant-perplexity" "consultant-deepseek" "consultant-antigravity"
-          "web-researcher" "ruvnet-brain" "precedent-bridge" "harness-bridge" "perplexity"
+          "web-researcher" "ruvnet-brain" "harness-bridge" "perplexity"
         ];
         hookShimEnabled   = resHooksCfg.shim or true;
         hookDrainInterval = toString (resHooksCfg.drain_interval_secs or 30);

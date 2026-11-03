@@ -75,8 +75,11 @@ pub fn self_gc_budget() -> usize {
         .unwrap_or(DEFAULT_BUDGET)
 }
 
-/// Redact annexe-side filesystem paths before receipts leave the LAN.
+/// Withhold credential-bearing content and redact annexe-side filesystem paths.
 pub fn redact(s: &str) -> String {
+    if dream_core::source::has_secret_content(s) {
+        return "[withheld: credential material]".into();
+    }
     s.replace("/home/john", "~")
 }
 
@@ -170,7 +173,9 @@ fn env_or(env: &dyn Fn(&str) -> Option<String>, key: &str, default: &str) -> Str
 pub fn pg_target_from(env: &dyn Fn(&str) -> Option<String>) -> PgTarget {
     PgTarget {
         host: env_or(env, "RUVECTOR_PG_HOST", "ruvector-postgres"),
-        port: env_or(env, "RUVECTOR_PG_PORT", "5432").parse().unwrap_or(5432),
+        port: env_or(env, "RUVECTOR_PG_PORT", "5432")
+            .parse()
+            .unwrap_or(5432),
         database: env_or(env, "RUVECTOR_PG_DATABASE", "ruvector"),
         user: env_or(env, "RUVECTOR_PG_USER", "ruvector"),
         password_file: env_or(
@@ -242,7 +247,13 @@ mod tests {
         };
         let t = pg_target_from(&env);
         assert_eq!(
-            (t.host.as_str(), t.port, t.database.as_str(), t.user.as_str(), t.password_file.as_str()),
+            (
+                t.host.as_str(),
+                t.port,
+                t.database.as_str(),
+                t.user.as_str(),
+                t.password_file.as_str()
+            ),
             ("db", 5433, "mydb", "me", "/x/pw")
         );
     }
@@ -359,5 +370,13 @@ mod tests {
             PathBuf::from("/home/devuser/workspace/.agentbox/dream-roster.json")
         );
         assert_eq!(redact("/home/john/x"), "~/x");
+    }
+
+    #[test]
+    fn provider_credentials_are_withheld_before_prompt_supply() {
+        let token = format!("ghp_{}", "a1B2".repeat(9));
+        let redacted = redact(&format!("curl -H 'Authorization: Bearer {token}'"));
+        assert!(!redacted.contains(&token));
+        assert_eq!(redacted, "[withheld: credential material]");
     }
 }

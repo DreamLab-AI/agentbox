@@ -41,10 +41,10 @@
 # The asset name keeps the `-linux-gnu` suffix the first release used; the
 # binary itself is static-pie and runs on glibc and Nix hosts alike.
 
-{ lib, pkgs, jev ? false, version ? "0.7.0"
-, hash ? "sha256-K4FLBCMCZUDblod7hE8TZjp4fFCctmMrlJgCcO8HK0o=" }:
+{ lib, pkgs, jev ? false, version ? "0.7.3"
+, hash ? "sha256-Aa+MWiS7g0Ueq+0eSLqn78AjDPZzokJ4mdv42Bu3QFM=" }:
 
-# The release binary is built without the Jev feature. Build the same v0.6.1 source
+# The release binary is built without the Jev feature. Build the same v0.7.3 source
 # with `jev` only for the enabled suggestion consumer; off retains the release bytes.
 if jev then pkgs.rustPlatform.buildRustPackage {
   pname = "ontomark";
@@ -52,10 +52,10 @@ if jev then pkgs.rustPlatform.buildRustPackage {
   src = pkgs.fetchFromGitHub {
     owner = "DreamLab-AI";
     repo = "ontomark";
-    rev = "0caae5d4b695cb720942b9b9212017c00a80ad41"; # v0.7.0
-    hash = "sha256-XZ0sLuTb+x3f9rDJUONwKrzN2HkKPhr4dURtYRePsNY=";
+    rev = "6c3f693b36301ee95c8b684a000b5aeec3ac9bbd"; # v0.7.3
+    hash = "sha256-EB8k3ITxdSt8dQZRSInxtrTkcNvAIvE4ZzSdVf5+Q/s=";
   };
-  cargoLock.lockFile = ./lockfiles/ontomark-0caae5d4.Cargo.lock;
+  cargoLock.lockFile = ./lockfiles/ontomark-6c3f693b.Cargo.lock;
   buildAndTestSubdir = "crates/ontomark-cli";
   buildFeatures = [ "jev" ];
   nativeBuildInputs = [ pkgs.pkg-config ];

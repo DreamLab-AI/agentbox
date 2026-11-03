@@ -21,7 +21,7 @@
 //! transport is this module's HTTP client over the same endpoint resolution. The verdict is
 //! written as `discipline_violations`; a failure there records `discipline_screen_fallback` and
 //! leaves the rest of the record and the night unchanged. A night holds one hypothesis, so
-//! nothing is ordered or deferred by it (see [`screen_blocking`]).
+//! nothing is ordered or deferred by it (see `screen_blocking`).
 //!
 //! # Authority
 //!
@@ -149,9 +149,9 @@ impl Config {
         let local_only = truthy(get("AGENTBOX_JEV_DREAM_TRIAGE_LOCAL_ONLY"));
         let declared_local = get("AGENTBOX_SYSTEM_ONE_BACKEND_LOCAL").as_deref() == Some("1");
         let private_url = non_empty(get("AGENTBOX_SYSTEM_ONE_LOCAL_ENDPOINT"));
-        let endpoint = if local_only && private_url.is_some() {
+        let endpoint = if let Some(url) = private_url.filter(|_| local_only) {
             Ok(Endpoint {
-                url: private_url.expect("checked above"),
+                url,
                 model: non_empty(get("AGENTBOX_SYSTEM_ONE_LOCAL_MODEL")).unwrap_or_else(|| DEFAULT_MODEL.into()),
                 bearer: None,
                 local: true,

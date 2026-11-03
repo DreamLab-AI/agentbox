@@ -49,7 +49,7 @@ pub struct Annexe<'a> {
 
 impl Annexe<'_> {
     /// Ship the candidate worktree and return the directory to evaluate in.
-    fn provision(&self, worktree: &Path) -> Result<String, String> {
+    fn provision(&self, worktree: &Path, tree: &str) -> Result<String, String> {
         let cand_remote = format!("{}/candidate", self.remote_dir);
         dispatch::clone_repo_and_siblings(
             self.host,
@@ -60,8 +60,20 @@ impl Annexe<'_> {
             self.workspace,
         )
         .map_err(|e| e.to_string())?;
-        Ok(format!("{}/{}", cand_remote, self.repo_subpath))
+        let remote = format!("{}/{}", cand_remote, self.repo_subpath);
+        dispatch::ssh(self.host, &archive_identity_command(&remote, tree))
+            .map_err(|e| e.to_string())?;
+        Ok(remote)
     }
+}
+
+/// Archives omit `.git`: establish and verify their tree before evaluation so
+/// dream-core can check the exact same identity afterwards. Force-add retains
+/// tracked ignored inputs; no hooks, content filters or caller identity are used.
+fn archive_identity_command(remote: &str, tree: &str) -> String {
+    let remote = dream_gate::outcome::shell_quote(remote);
+    let tree = dream_gate::outcome::shell_quote(tree);
+    format!("cd {remote} && git -c core.hooksPath=/dev/null init -q && git -c core.autocrlf=false -c core.fileMode=true add -f --all && candidate_archive_tree=$(git write-tree) && test \"$candidate_archive_tree\" = {tree} && git -c core.hooksPath=/dev/null -c user.name=dream-engine -c user.email=dream@example.invalid -c commit.gpgsign=false commit --allow-empty -qm 'dream: verified archive'")
 }
 
 /// Everything the candidate step needs besides the patch.
@@ -108,7 +120,7 @@ async fn run_once(flow: &Flow<'_>, patch: &str, op: &str, j: &Journal) -> Attemp
                 .annexe
                 .as_ref()
                 .expect("relocate is only offered with an annexe");
-            let r = a.provision(&p.worktree);
+            let r = a.provision(&p.worktree, &p.tree_hash);
             shipped
                 .borrow_mut()
                 .push(r.as_ref().map(|_| ()).map_err(|e| e.clone()));
@@ -193,10 +205,18 @@ pub async fn attempt_judged(flow: &Flow<'_>, patch: &str, j: &Journal) -> (Attem
         None => {
             info!("candidate patch did not apply — running the one-shot apply-repair pass");
             let excerpt = source::failing_hunk(&detail).and_then(|(path, line)| {
-                source::failing_excerpt(flow.repo, flow.base, &path, line, 40)
+                source::failing_excerpt_with(
+                    flow.repo,
+                    flow.base,
+                    &path,
+                    line,
+                    40,
+                    &crate::estate::source_denylist(),
+                )
             });
-            let prompt =
-                source::apply_repair_prompt(flow.report, patch, &detail, excerpt.as_deref());
+            let prompt = crate::estate::redact(&source::apply_repair_prompt(
+                flow.report, patch, &detail, excerpt.as_deref(),
+            ));
             let c = j
                 .called(
                     "llm.call",
@@ -394,6 +414,52 @@ mod tests {
         git(&["add", "-A"]);
         git(&["commit", "-qm", "init"]);
         (d, repo)
+    }
+
+    #[test]
+    fn archived_candidate_identity_matches_source_and_refuses_wrong_bytes() {
+        let (d, repo) = scratch_repo();
+        let tree = Command::new("git")
+            .arg("-C")
+            .arg(&repo)
+            .args(["rev-parse", "HEAD^{tree}"])
+            .output()
+            .unwrap();
+        let tree = String::from_utf8(tree.stdout).unwrap();
+        let archive = Command::new("git")
+            .arg("-C")
+            .arg(&repo)
+            .args(["archive", "HEAD"])
+            .output()
+            .unwrap();
+        for altered in [false, true] {
+            let copy = d.path().join(if altered { "wrong" } else { "correct" });
+            std::fs::create_dir(&copy).unwrap();
+            let mut unpack = Command::new("tar")
+                .args(["xf", "-", "-C"])
+                .arg(&copy)
+                .stdin(std::process::Stdio::piped())
+                .spawn()
+                .unwrap();
+            std::io::Write::write_all(&mut unpack.stdin.take().unwrap(), &archive.stdout).unwrap();
+            assert!(unpack.wait().unwrap().success());
+            if altered {
+                std::fs::write(copy.join("value.txt"), "wrong\n").unwrap();
+            }
+            let checked = Command::new("bash")
+                .args([
+                    "-c",
+                    &archive_identity_command(copy.to_str().unwrap(), tree.trim()),
+                ])
+                .output()
+                .unwrap();
+            assert_eq!(
+                checked.status.success(),
+                !altered,
+                "{}",
+                String::from_utf8_lossy(&checked.stderr)
+            );
+        }
     }
 
     fn state(repo: &Path) -> String {

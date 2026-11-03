@@ -450,6 +450,11 @@ class LocalProcessManagerOrchestratorAdapter extends BaseAdapter {
           return { applied: false, refused: true,
             error: `ontology-apply: the signed iri ${signedIri} is not the proposal's ${proposal.iri}` };
         }
+        if (outcome === 'promote' && proposal && (proposal.iri || proposal.diff || proposal.kind) &&
+            (!canonicalDigest(proposal.digest) || canonicalDigest(proposal.digest) !== canonicalDigest(dTag))) {
+          return { applied: false, refused: true,
+            error: `ontology-apply: proposal digest ${proposal.digest} is not the approved case ${dTag}` };
+        }
       } else if (outcome === 'promote') {
         return { applied: false, refused: true,
           error: `ontology-apply: the request ${eTag} this promote answers could not be found; ` +

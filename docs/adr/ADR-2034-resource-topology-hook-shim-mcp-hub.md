@@ -88,6 +88,11 @@ cpuset, no pids limit and a read-only cgroup mount. Detail and evidence:
   container-wide teammate budget is Claude Code's, not ours.
 
 ## Verification
+
+Scoped repair, 2026-11-03: the fallback MCP hub server list in `flake.nix` no
+longer names the deleted `precedent-bridge`. Colloquy is the replacement; this
+removes a stale packaging fallback and does not claim an image rebuild.
+
 Code-level, 2026-09-05, in the authoring container (no Nix): `cargo test` —
 agentbox-ops 197 lib tests (hookspool 12, teammates 5), agentbox-manifest 68 +
 golden suites, agentbox-mcp 70 incl. hub child multiplex/respawn/spawn-failure
