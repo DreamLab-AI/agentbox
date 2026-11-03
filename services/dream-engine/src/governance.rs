@@ -227,7 +227,7 @@ pub struct CasePaths {
 }
 
 /// Split a Markdown table row on unescaped pipes (`\|` stays in its cell).
-fn ledger_cells(line: &str) -> Vec<String> {
+pub(crate) fn ledger_cells(line: &str) -> Vec<String> {
     let t = line.trim();
     let t = t.strip_prefix('|').unwrap_or(t);
     let t = t.strip_suffix('|').unwrap_or(t);
@@ -273,11 +273,11 @@ pub fn case_context(paths: &CasePaths, item: &InboxItem) -> CaseContext {
             .and_then(|v| v["reason"].as_str())
             .map(|r| r.split_whitespace().collect::<Vec<_>>().join(" "));
     }
-    let ledger = paths
-        .workspace
-        .join(&item.repo)
-        .join("docs/dream-cycle/LEDGER.md");
-    if let Ok(text) = std::fs::read_to_string(ledger) {
+    let repo = paths.workspace.join(&item.repo);
+    let ledger_text = crate::config::load_dream_config(&repo.join("dream.config.json"))
+        .ok()
+        .and_then(|(cfg, _)| std::fs::read_to_string(repo.join(cfg.ledger_path)).ok());
+    if let Some(text) = ledger_text {
         if let Some((finding, pr)) = ledger_row(&text, &item.date, ctx.deep.as_deref()) {
             if !finding.is_empty() && finding != "NONE" {
                 ctx.finding = Some(finding);
@@ -1312,6 +1312,11 @@ mod tests {
         std::fs::write(night.join("gate.json"), gate.to_string()).unwrap();
         let ledger = paths.workspace.join("site/docs/dream-cycle");
         std::fs::create_dir_all(&ledger).unwrap();
+        std::fs::write(
+            paths.workspace.join("site/dream.config.json"),
+            br#"{"repo":"example/site","slots":[{"deep":"build-content","scan":[]}]}"#,
+        )
+        .unwrap();
         let mut text = String::from("| Date | Deep | Finding | Issue | PR | Evaluated? | Verdict |\n|---|---|---|---|---|---|---|\n");
         for r in ledger_rows {
             text.push_str(r);
@@ -1327,6 +1332,37 @@ mod tests {
         it.night_id = "2026-10-09-site".into();
         it.date = "2026-10-09".into();
         it
+    }
+
+    #[test]
+    fn ledger_contract_case_uses_configured_path_over_default_decoy() {
+        let (_directory, paths) = night_fixture(json!({"verdict":"ACCEPT"}), &[
+            "| 2026-10-09 | build-content | wrong default ledger | NONE | https://example.test/pull/1 | yes | ACCEPT |",
+        ]);
+        let repo = paths.workspace.join("site");
+        std::fs::write(repo.join("dream.config.json"), br#"{"repo":"example/site","slots":[{"deep":"build-content","scan":[]}],"ledgerPath":"records/night.md"}"#).unwrap();
+        std::fs::create_dir_all(repo.join("records")).unwrap();
+        std::fs::write(repo.join("records/night.md"), "| 2026-10-09 | build-content | configured a \\| b | NONE | https://example.test/pull/2 | yes | ACCEPT |\n").unwrap();
+        let ctx = case_context(&paths, &night_item("question", "Review this night"));
+        assert_eq!(ctx.finding.as_deref(), Some("configured a | b"));
+        assert_eq!(ctx.pr_url.as_deref(), Some("https://example.test/pull/2"));
+    }
+
+    #[test]
+    fn ledger_contract_invalid_config_does_not_select_default_decoy() {
+        let (_directory, paths) = night_fixture(json!({"verdict":"ACCEPT"}), &[
+            "| 2026-10-09 | build-content | wrong default ledger | NONE | https://example.test/pull/1 | yes | ACCEPT |",
+        ]);
+        std::fs::write(
+            paths.workspace.join("site/dream.config.json"),
+            "invalid config",
+        )
+        .unwrap();
+        let ctx = case_context(&paths, &night_item("question", "Review this night"));
+        assert_eq!(ctx.finding, None);
+        assert_eq!(ctx.pr_url, None);
+        // Independently recorded night metadata remains available.
+        assert_eq!(ctx.deep.as_deref(), Some("build-content"));
     }
 
     #[test]
