@@ -4,8 +4,9 @@ The Security gate in [quality-gates-and-workflow.md](./quality-gates-and-workflo
 ("zero critical/high vulnerabilities") is executed by
 [deepsec](https://github.com/vercel-labs/deepsec) (Apache-2.0), an agent-powered
 vulnerability reviewer, driven through `scripts/deepsec-gate.sh`. Decision record:
-agentbox ADR-2033. The gate is evidence, not narration: every run leaves a
-`receipt.json` with the revision, policy, counts and blocking findings.
+agentbox ADR-2033. A completed gate writes `receipt.json` with the revision, policy, counts and
+blocking findings. Runtime errors preserve logs and return a nonzero exit;
+absence of a completed receipt is not a pass.
 
 ## Where it comes from
 
