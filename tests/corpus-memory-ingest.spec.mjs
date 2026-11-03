@@ -248,8 +248,12 @@ test('planIngest: new / changed / metadata / generation / unchanged, and foreign
   ];
   const again = planIngest(pagesOf('Demo Page.md'), existing, OPTS);
   assert.deepEqual(again.chunks.map((x) => x.action), ['unchanged', 'changed', 'metadata', 'new']);
+  // A generation-only difference is NOT rewritten: each metadata write re-inserts the
+  // row's HNSW node (tombstone-only AM), so a per-run stamp churns the whole index.
   const gen = planIngest(pagesOf('Demo Page.md'), [row(a, { generation: 'old' })], OPTS);
-  assert.equal(gen.counts.generation_bump, 1);
+  assert.equal(gen.chunks[0].action, 'unchanged');
+  assert.equal(gen.counts.generation_behind, 1);
+  assert.equal(gen.counts.unchanged, 1);
   const legacy = planIngest(pagesOf('Demo Page.md'), [row(a, { embed_model: null })], OPTS);
   assert.equal(legacy.chunks[0].action, 'changed', 'a legacy row without our embed_model stamp is re-embedded once');
   const noVec = planIngest(pagesOf('Demo Page.md'), [row(a, { embedded: false })], OPTS);
@@ -389,12 +393,15 @@ test('run: write, then an identical re-run embeds nothing (manifest no-op and pl
   assert.equal(r3.plan.counts.new + r3.plan.counts.changed, 0);
   assert.equal(emb.seen.length, embedded + 1, 'only the manifest probe is embedded');
 
-  // New generation, same content: metadata is bumped, nothing is re-embedded.
+  // New generation, same content: nothing is re-embedded and no row is rewritten;
+  // only the manifest records the new generation.
   const before = emb.seen.length;
+  const rowBefore = JSON.stringify(db.rows.get('demo-page::features'));
   const r4 = await run(opts, { pool: db, embedder: emb, env, corpus: corpus(['Demo Page.md']), ...quiet, generation: { ...gen, generation: 'b'.repeat(40), corpusVersion: 'visiongraph@bbbbbbbbbbbb' } });
-  assert.equal(r4.plan.counts.generation_bump, 4);
+  assert.equal(r4.plan.counts.generation_behind, 4);
   assert.equal(emb.seen.length, before + 1);
-  assert.equal(db.rows.get('demo-page::features').metadata.generation, 'b'.repeat(40));
+  assert.equal(JSON.stringify(db.rows.get('demo-page::features')), rowBefore, 'unchanged row is not rewritten');
+  assert.equal(db.rows.get(MANIFEST_KEY).value.generation, 'b'.repeat(40));
 });
 
 test('applyPlan: failures over the cap abort before metadata refresh, prune and manifest', async () => {

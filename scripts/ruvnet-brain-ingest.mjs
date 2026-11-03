@@ -56,6 +56,7 @@ import {
 
 // ── Config ───────────────────────────────────────────────────────────────────
 const NAMESPACE   = process.env.RUVNET_BRAIN_NAMESPACE || 'ruvnet-kb';
+const MANIFEST_KEY = 'ruvnet/manifest';
 const SOURCE_TYPE = 'ruvnet-brain-ingest';
 const XINFERENCE  = process.env.XINFERENCE_ENDPOINT || 'http://xinference:9997';
 const EMB_MODEL   = process.env.EMBEDDING_MODEL || 'bge-small-en-v1.5';
@@ -163,6 +164,19 @@ export function evaluateProvenance({ zipSha256, receiptText, sigBytes, releaseBo
     }
   }
   out.shipped_runtime = shippedRuntime(receipt, releaseBody);
+  return out;
+}
+
+/**
+ * Keys to prune: rows already stored that the new corpus no longer contains.
+ * Pruning by key set replaces a per-row `corpus_version` stamp, whose refresh
+ * rewrote every unchanged chunk (~171k rows) per release; with the GIN index on
+ * metadata no such update is HOT, so each re-inserted an HNSW node and
+ * tombstoned the old one. The manifest row is never pruned.
+ */
+export function staleKeys(existing, seen) {
+  const out = [];
+  for (const k of existing) if (k !== MANIFEST_KEY && !seen.has(k)) out.push(k);
   return out;
 }
 
@@ -411,21 +425,10 @@ async function main() {
     (await pool.query(`SELECT key FROM memory_entries WHERE namespace = $1`, [NAMESPACE])).rows.map((r) => r.key));
 
   // 5. Stream, embed (new only), upsert. Content-addressed keys make this
-  //    incremental: unchanged chunk → metadata version bump only.
+  //    incremental: an unchanged chunk is not written at all.
   let seen = 0, inserted = 0, skipped = 0, failedChunks = 0;
   const MAX_FAILED = Math.max(0, Number(process.env.RUVNET_BRAIN_MAX_FAILED_CHUNKS) || 1000);
   const seenKeys = new Set();
-  const versionBumpKeys = [];
-
-  const flushBump = async () => {
-    if (!versionBumpKeys.length) return;
-    await pool.query(
-      `UPDATE memory_entries
-          SET metadata = metadata || jsonb_build_object('corpus_version', $2::text), updated_at = NOW()
-        WHERE namespace = $1 AND key = ANY($3)`,
-      [NAMESPACE, version, versionBumpKeys.splice(0)],
-    );
-  };
 
   const insertBatch = (items, embs) => upsertRows(pool, items.map((it, i) => ({
     id: entryId(it.key), namespace: NAMESPACE, key: it.key,
@@ -468,8 +471,6 @@ async function main() {
       seenKeys.add(key);
       if (existing.has(key) && !FORCE) {
         skipped++;
-        versionBumpKeys.push(key);
-        if (versionBumpKeys.length >= 500) await flushBump();
         continue;
       }
       pending.push({ ...p, key });
@@ -477,18 +478,20 @@ async function main() {
     }
   }
   await flushPending();
-  await flushBump();
 
   if (!seenKeys.size) die('corpus parse produced zero usable passages — aborting before prune');
   if (failedChunks > 0 && inserted === 0 && skipped === 0) die(`all ${failedChunks} chunks failed — aborting before prune`);
 
-  // 6. Prune rows that vanished from the new corpus (stale version stamp).
-  const pruned = await pool.query(
-    `DELETE FROM memory_entries
-      WHERE namespace = $1 AND key <> 'ruvnet/manifest'
-        AND (metadata->>'corpus_version') IS DISTINCT FROM $2`,
-    [NAMESPACE, version],
-  );
+  // 6. Prune rows that vanished from the new corpus (stored, not seen).
+  const stale = staleKeys(existing, seenKeys);
+  const pruned = { rowCount: 0 };
+  for (let i = 0; i < stale.length; i += 500) {
+    const r = await pool.query(
+      `DELETE FROM memory_entries WHERE namespace = $1 AND key = ANY($2)`,
+      [NAMESPACE, stale.slice(i, i + 500)],
+    );
+    pruned.rowCount += r.rowCount;
+  }
 
   // 7. Manifest stamp (+ best-effort ADR-013 dataset URN).
   const urn = mintCorpusUrn(version);

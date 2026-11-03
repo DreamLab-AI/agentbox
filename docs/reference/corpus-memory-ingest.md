@@ -13,7 +13,7 @@ RUVECTOR_ADMIN_WRITE=true node scripts/corpus-memory-ingest.mjs --yes [--prune] 
 - `knowledge/` is always ingested; the private `working/` vault only with `--include-working`. A page present in both is ingested from `knowledge/`.
 - `--prune` deletes `knowledge`-sourced rows the corpus no longer generates (vanished pages, stale sections). The keys are written to a JSONL receipt first. Rows whose page exists only in an excluded vault are kept.
 - Idempotent: a row whose content hash matches, that has a vector and carries the current `embed_model` stamp, is not re-embedded. A run at the generation recorded in `_manifest` with no failures is a no-op.
-- Every row's metadata gains `generation` (visionGraph HEAD sha, `+dirty` when the vault has local changes), `corpus_version`, `content_hash`, `meta_hash`, `embed_model` and `vault`.
+- Every row's metadata gains `generation` (visionGraph HEAD sha, `+dirty` when the vault has local changes), `corpus_version`, `content_hash`, `meta_hash`, `embed_model` and `vault`. `generation` records the generation the row was last written at: a generation-only difference is never rewritten, because each metadata write re-inserts the row's node in the tombstone-only HNSW index. The `_manifest` row carries the current generation.
 - Next step after a write run: rebuild the HNSW index, `scripts/ruvector-sidecar-update.sh reindex --yes` (ADR-2133).
 
 ## Key scheme

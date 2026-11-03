@@ -12,7 +12,7 @@ import { createHash } from 'node:crypto';
 
 import {
   tagDigest, parseDigest, checkContentAddress, siblingAssetUrl,
-  shippedRuntime, evaluateProvenance, buildManifest, pickRelease,
+  shippedRuntime, evaluateProvenance, buildManifest, pickRelease, staleKeys,
 } from '../scripts/ruvnet-brain-ingest.mjs';
 
 const D  = '832bae01c40f0dc695d4ce12eefdf1a297c2bb663437fac8566f6497d7457ec7';
@@ -183,4 +183,14 @@ test('pickRelease: designated latest without the asset falls back to newest comp
 test('pickRelease: drafts skipped; nothing usable yields nulls', () => {
   const r = pickRelease(null, [rel('v9', ['ruvnet-brain.zip'], { draft: true }), rel('v8', ['other.zip'])], 'ruvnet-brain.zip');
   assert.deepEqual(r, { url: null, version: null, body: '', fallback: true });
+});
+
+// Prune by key set, not by a per-row version stamp: stamping every unchanged
+// chunk on each release rewrote ~171k rows and churned the tombstone-only HNSW index.
+test('staleKeys: existing keys absent from the new corpus, never the manifest', () => {
+  const existing = new Set(['ruvnet/manifest', 'ruvnet/a/1', 'ruvnet/a/2', 'ruvnet/b/3']);
+  const seen = new Set(['ruvnet/a/1', 'ruvnet/b/3', 'ruvnet/c/4']);
+  assert.deepEqual(staleKeys(existing, seen).sort(), ['ruvnet/a/2']);
+  assert.deepEqual(staleKeys(new Set(['ruvnet/manifest']), new Set()), []);
+  assert.deepEqual(staleKeys(seen, seen), []);
 });
