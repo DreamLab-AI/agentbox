@@ -24,7 +24,7 @@
 //!         "pubkey": { "keys": ["core"] },
 //!         "nip98": { "keys": ["core"] },
 //!         "sign_event": { "keys": ["core"], "kinds": [38410] },
-//!         "mirror_key": { "secret": true }
+//!         "mirror_key": {}
 //!       }
 //!     }
 //!   }
@@ -47,6 +47,12 @@ pub const OPERATIONS: &[&str] = &[
     OP_FORUM_EVENT,
     OP_NIP42_AUTH,
     OP_MIRROR_KEY,
+    OP_NIP17_WRAP,
+    OP_NIP17_UNWRAP,
+    OP_FORUM_GRANT_UNWRAP,
+    OP_FORUM_SEAL,
+    OP_MIRROR_WRAP,
+    OP_GOVERNANCE_EVENT,
 ];
 
 /// Public key of a held key: x-only hex, npub and `did:nostr`.
@@ -61,6 +67,18 @@ pub const OP_FORUM_EVENT: &str = "forum_event";
 pub const OP_NIP42_AUTH: &str = "nip42_auth";
 /// The live-mirror child key (the phone's key), derived by [`crate::mirror_key`].
 pub const OP_MIRROR_KEY: &str = "mirror_key";
+/// Produce a kind-14 NIP-17 message through the standard NIP-59 envelope.
+pub const OP_NIP17_WRAP: &str = "nip17_wrap";
+/// Open a verified NIP-59 envelope containing a kind-14 message.
+pub const OP_NIP17_UNWRAP: &str = "nip17_unwrap";
+/// Open only a forum zone-key grant or NIP-171 epoch ticket.
+pub const OP_FORUM_GRANT_UNWRAP: &str = "forum_grant_unwrap";
+/// Encrypt and sign a kind-42 forum message for an explicit zone public key.
+pub const OP_FORUM_SEAL: &str = "forum_seal";
+/// Send a provenance-tagged self-DM using the live-mirror child, never its secret.
+pub const OP_MIRROR_WRAP: &str = "mirror_wrap";
+/// Author agent panels/cases or withdraw that key's own events; never a human decision.
+pub const OP_GOVERNANCE_EVENT: &str = "governance_event";
 
 /// Kinds no ACL may grant to `sign_event` or `forum_event`.
 ///
@@ -78,10 +96,10 @@ pub const NEVER_GRANTABLE_KINDS: &[u64] = &[
 /// (31402); the human-decision kinds (31401, 31403-31405) and graduations
 /// (38414) stay refused for every key.
 ///
-/// They are grantable only to `forum_event`, and only when every key the grant
+/// They are grantable only to `forum_event` or `governance_event`, and only when every key the grant
 /// names is declared [`KeySpec::agent_governance`]. Such a key signs nothing
 /// else, so the forum can tell agent authorship from human by the key alone.
-pub const AGENT_GOVERNANCE_KINDS: &[u64] = &[31_400, 31_402];
+pub const AGENT_GOVERNANCE_KINDS: &[u64] = &[31_400, 31_402, 5];
 
 /// One grant: an operation a caller may run.
 #[derive(Debug, Clone, Default, Deserialize)]
@@ -93,8 +111,7 @@ pub struct OpGrant {
     /// Event kinds this caller may sign (only `sign_event` and `forum_event`).
     #[serde(default)]
     pub kinds: Vec<u64>,
-    /// `mirror_key` only: whether the child *secret* is returned, not just the
-    /// child's public key.
+    /// Retired compatibility field: `true` is rejected at load; secrets never leave custody.
     #[serde(default)]
     pub secret: bool,
 }
@@ -135,6 +152,10 @@ pub struct KeySpec {
     /// never derived from the sovereign key (ADR-2101 Decision 3).
     #[serde(default)]
     pub agent_governance: bool,
+    /// The fixed legacy gateway child, derived inside the port from mirror_root.
+    /// Its file field is a descriptive name and is never opened.
+    #[serde(default)]
+    pub gateway_child: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -206,8 +227,11 @@ impl Acl {
             if spec.mirror_root {
                 mirror_roots += 1;
             }
-            if spec.agent_governance && spec.mirror_root {
+            if spec.agent_governance && (spec.mirror_root || spec.gateway_child) {
                 bail!("key {name}: an agent_governance key cannot be the mirror_root");
+            }
+            if spec.gateway_child && spec.mirror_root {
+                bail!("gateway_child cannot be the mirror root");
             }
             let mut url_prefixes = Vec::new();
             for p in resolve_refs(&spec.nip98_url_prefixes, manifest, &mut unresolved) {
@@ -277,7 +301,10 @@ fn validate_grant(
             "caller {uid}: {op:?} is not an identity-port operation (closed list: {OPERATIONS:?})"
         );
     }
-    let takes_kinds = op == OP_SIGN_EVENT || op == OP_FORUM_EVENT;
+    let takes_kinds = op == OP_SIGN_EVENT
+        || op == OP_FORUM_EVENT
+        || op == OP_FORUM_SEAL
+        || op == OP_GOVERNANCE_EVENT;
     if takes_kinds && g.kinds.is_empty() {
         bail!("caller {uid}: {op} needs a non-empty kinds allowlist");
     }
@@ -294,22 +321,39 @@ fn validate_grant(
         .iter()
         .filter(|k| keys[k.as_str()].spec.agent_governance)
         .count();
-    if marked > 0 && marked < g.keys.len() {
+    if marked > 0 && marked < g.keys.len() && op != OP_PUBKEY && op != OP_NIP42_AUTH {
         bail!("caller {uid}: {op} mixes agent_governance and other keys in one grant");
     }
     let agent_grant = marked > 0;
-    if agent_grant && op != OP_FORUM_EVENT {
-        bail!("caller {uid}: an agent_governance key may be granted forum_event only, not {op}");
+    if agent_grant
+        && ![
+            OP_FORUM_EVENT,
+            OP_GOVERNANCE_EVENT,
+            OP_PUBKEY,
+            OP_NIP42_AUTH,
+        ]
+        .contains(&op)
+    {
+        bail!("caller {uid}: agent_governance permits only purpose-bound events and public/auth operations, not {op}");
+    }
+    if op == OP_GOVERNANCE_EVENT && !agent_grant {
+        bail!("caller {uid}: governance_event requires an independently marked agent key");
+    }
+    if agent_grant && takes_kinds && g.kinds.iter().any(|k| !AGENT_GOVERNANCE_KINDS.contains(k)) {
+        bail!("caller {uid}: agent key may author panels/cases and withdraw its own events only");
+    }
+    if op == OP_FORUM_SEAL && g.kinds != [42] {
+        bail!("caller {uid}: forum_seal may grant only kind 42");
     }
     if let Some(k) = g.kinds.iter().find(|k| {
         NEVER_GRANTABLE_KINDS.contains(k) && !(agent_grant && AGENT_GOVERNANCE_KINDS.contains(k))
     }) {
         bail!("caller {uid}: kind {k} may never be granted (see NEVER_GRANTABLE_KINDS)");
     }
-    if g.secret && op != OP_MIRROR_KEY {
-        bail!("caller {uid}: `secret` applies to mirror_key only");
+    if g.secret {
+        bail!("caller {uid}: secret export is retired; use mirror_wrap");
     }
-    if op == OP_MIRROR_KEY {
+    if op == OP_MIRROR_KEY || op == OP_MIRROR_WRAP {
         if !g.keys.is_empty() {
             bail!("caller {uid}: mirror_key derives from the mirror_root key; it takes no keys");
         }
@@ -372,7 +416,7 @@ mod tests {
     const MIN: &str = r#"{"version":1,"keys":{"core":{"file":"core.key","required":true,"mirror_root":true,
         "nip98_url_prefixes":["https://pod.example/base/"],"relays":["ws://127.0.0.1:7777/"]}},
         "callers":{"1000":{"name":"devuser","ops":{"pubkey":{"keys":["core"]},
-        "sign_event":{"keys":["core"],"kinds":[38410]},"mirror_key":{"secret":true}}}}}"#;
+        "sign_event":{"keys":["core"],"kinds":[38410]},"mirror_key":{}}}}}"#;
 
     fn with_ops(ops: &str) -> String {
         format!(
@@ -445,7 +489,10 @@ mod tests {
 
     #[test]
     fn panel_and_case_kinds_stay_refused_without_the_agent_key() {
-        for k in AGENT_GOVERNANCE_KINDS {
+        for k in AGENT_GOVERNANCE_KINDS
+            .iter()
+            .filter(|k| NEVER_GRANTABLE_KINDS.contains(k))
+        {
             for op in ["forum_event", "sign_event"] {
                 let ops = format!(r#"{{"{op}":{{"keys":["core"],"kinds":[{k}]}}}}"#);
                 assert!(
@@ -461,7 +508,6 @@ mod tests {
         for ops in [
             r#"{"sign_event":{"keys":["agent"],"kinds":[31400]}}"#,
             r#"{"sign_event":{"keys":["agent"],"kinds":[1]}}"#,
-            r#"{"pubkey":{"keys":["agent"]}}"#,
             r#"{"forum_event":{"keys":["agent","core"],"kinds":[31400]}}"#,
             r#"{"forum_event":{"keys":["agent","core"],"kinds":[1]}}"#,
         ] {
@@ -470,6 +516,10 @@ mod tests {
                 "{ops} loaded"
             );
         }
+        assert!(
+            Acl::parse(&with_agent_key(r#"{"pubkey":{"keys":["agent"]}}"#), None).is_ok(),
+            "public identity lookup grants no signing authority"
+        );
         let root = with_agent_key(r#"{"pubkey":{"keys":["core"]}}"#).replace(
             r#""agent_governance":true"#,
             r#""agent_governance":true,"mirror_root":true"#,

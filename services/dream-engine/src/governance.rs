@@ -54,7 +54,9 @@ use serde_json::json;
 use tracing::{info, warn};
 
 use crate::inbox::{self, InboxItem};
-use crate::relay::{self, NostrEvent, RelaySession, SigningKey, UnsignedEvent};
+#[cfg(test)]
+use crate::relay::SigningKey;
+use crate::relay::{self, NostrEvent, PublishingKey, RelaySession, UnsignedEvent};
 
 /// `d` tag of the dream-machine panel.
 pub const PANEL_D: &str = "dream-machine";
@@ -660,7 +662,7 @@ fn print_withdrawals(pubkey: &str, plan: &[Withdrawal]) -> usize {
 /// next sweep retries it); a transport error stops the run (fail-open).
 async fn send_withdrawals(
     session: &mut RelaySession,
-    key: &SigningKey,
+    key: &impl relay::EventSigner,
     inbox_path: &Path,
     plan: &[Withdrawal],
     report: &mut Report,
@@ -917,8 +919,8 @@ pub fn plan_decisions(
     out
 }
 
-fn load_key() -> Option<SigningKey> {
-    match relay::load_signing_key(KEY_VAR, &env_file()) {
+fn load_key() -> Option<PublishingKey> {
+    match relay::load_publishing_key(KEY_VAR, &env_file(), "agent_governance") {
         Ok(k) => Some(k),
         Err(e) => {
             warn!(error = %e, "governance: agent key unavailable — skipped (fail-open)");

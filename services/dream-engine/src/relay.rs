@@ -28,6 +28,172 @@ use tracing::{debug, warn};
 /// secp256k1 Schnorr signing key, as `nostr_bbs_core::sign_event` takes it.
 pub type SigningKey = k256::schnorr::SigningKey;
 
+/// Signing capability implemented by local compatibility keys and the custody port.
+pub trait EventSigner {
+    /// Public Nostr identity; never returns a held secret.
+    fn public_key(&self) -> String;
+    /// Sign only an operation admitted for this identity.
+    fn sign_event(&self, event: UnsignedEvent) -> Result<NostrEvent, RelayError>;
+}
+
+impl EventSigner for SigningKey {
+    fn public_key(&self) -> String {
+        hex::encode(self.verifying_key().to_bytes())
+    }
+    fn sign_event(&self, event: UnsignedEvent) -> Result<NostrEvent, RelayError> {
+        nostr_bbs_core::sign_event(event, self).map_err(|e| RelayError::Sign(e.to_string()))
+    }
+}
+
+/// A local compatibility key or a purpose-bound identity-port capability.
+pub enum PublishingKey {
+    /// Used only with role isolation disabled.
+    Local(SigningKey),
+    /// Public identity and approved port alias.
+    Port { key: String, pubkey: String },
+}
+
+fn port_request(op: &str, params: Value) -> Result<Value, RelayError> {
+    use std::io::{BufRead, BufReader, Read, Write};
+    use std::os::unix::net::UnixStream;
+    // The governed socket remains the authority: SO_PEERCRED and its ACL decide.
+    let socket_path = std::env::var("AGENTBOX_IDENTITY_SOCK")
+        .unwrap_or_else(|_| "/run/secrets/ab-identity-port/identity.sock".into());
+    let mut socket = UnixStream::connect(socket_path)
+        .map_err(|_| RelayError::Key("identity port unavailable".into()))?;
+    socket
+        .set_read_timeout(Some(Duration::from_secs(2)))
+        .map_err(|_| RelayError::Key("identity port timeout unavailable".into()))?;
+    socket
+        .set_write_timeout(Some(Duration::from_secs(2)))
+        .map_err(|_| RelayError::Key("identity port timeout unavailable".into()))?;
+    let request = serde_json::to_vec(&json!({"op":op,"params":params}))
+        .map_err(|_| RelayError::Sign("identity request encoding".into()))?;
+    if request.len() > 64 * 1024 {
+        return Err(RelayError::Sign("identity request too large".into()));
+    }
+    socket
+        .write_all(&request)
+        .and_then(|_| socket.write_all(b"\n"))
+        .map_err(|_| RelayError::Key("identity port write failed".into()))?;
+    let mut line = String::new();
+    BufReader::new(socket)
+        .take(256 * 1024 + 1)
+        .read_line(&mut line)
+        .map_err(|_| RelayError::Key("identity port read failed".into()))?;
+    if line.len() > 256 * 1024 {
+        return Err(RelayError::Sign("identity response too large".into()));
+    }
+    let value: Value = serde_json::from_str(&line)
+        .map_err(|_| RelayError::Sign("identity response invalid".into()))?;
+    if value.get("refused").is_some() || value.get("unavailable").is_some() {
+        return Err(RelayError::Sign(
+            "identity port refused or unavailable".into(),
+        ));
+    }
+    Ok(value)
+}
+
+impl EventSigner for PublishingKey {
+    fn public_key(&self) -> String {
+        match self {
+            Self::Local(key) => key.public_key(),
+            Self::Port { pubkey, .. } => pubkey.clone(),
+        }
+    }
+    fn sign_event(&self, event: UnsignedEvent) -> Result<NostrEvent, RelayError> {
+        match self {
+            Self::Local(key) => key.sign_event(event),
+            Self::Port { key, .. } => {
+                let (op, params) = port_sign_request(key, &event)?;
+                port_event(op, params)
+            }
+        }
+    }
+}
+
+fn port_event(op: &str, params: Value) -> Result<NostrEvent, RelayError> {
+    let answer = port_request(op, params)?;
+    serde_json::from_value(answer.get("event").cloned().unwrap_or(Value::Null))
+        .map_err(|_| RelayError::Sign("identity response omitted event".into()))
+}
+
+fn port_sign_request(
+    key: &str,
+    event: &UnsignedEvent,
+) -> Result<(&'static str, Value), RelayError> {
+    if event.kind == 22242 {
+        let tag = |name: &str| {
+            event
+                .tags
+                .iter()
+                .find(|t| t.first().is_some_and(|v| v == name))
+                .and_then(|t| t.get(1))
+        };
+        return Ok((
+            "nip42_auth",
+            json!({"key":key,"relay":tag("relay"),"challenge":tag("challenge")}),
+        ));
+    }
+    let op = if key == "agent_governance" {
+        "governance_event"
+    } else {
+        "forum_event"
+    };
+    Ok((
+        op,
+        json!({"key":key,"kind":event.kind,"tags":event.tags,"content":event.content}),
+    ))
+}
+
+/// Load a purpose-bound port capability under isolation; never open a key file there.
+pub fn load_publishing_key(
+    var: &str,
+    env_file: &Path,
+    purpose: &str,
+) -> Result<PublishingKey, RelayError> {
+    if std::env::var(ROLE_ISOLATION_VAR).as_deref() != Ok("1") {
+        return load_signing_key(var, env_file).map(PublishingKey::Local);
+    }
+    let answer = port_request("pubkey", json!({"key":purpose}))?;
+    let pubkey = answer
+        .get("pubkey")
+        .and_then(Value::as_str)
+        .filter(|p| p.len() == 64 && p.bytes().all(|b| b.is_ascii_hexdigit()))
+        .ok_or_else(|| RelayError::Key("identity response omitted public identity".into()))?;
+    Ok(PublishingKey::Port {
+        key: purpose.into(),
+        pubkey: pubkey.into(),
+    })
+}
+
+impl PublishingKey {
+    /// Sign a digest, preserving the encrypted-zone refusal contract without exporting its author key.
+    pub fn sign_digest(
+        &self,
+        plan: &crate::zone_crypto::WritePlan,
+        mut event: UnsignedEvent,
+    ) -> Result<NostrEvent, RelayError> {
+        if let Self::Port { key, .. } = self {
+            if let crate::zone_crypto::WritePlan::Encrypt(zone) = plan {
+                return port_event(
+                    "forum_seal",
+                    json!({"key":key,"content":event.content,"tags":event.tags,"zone":{"id":zone.zone,"epoch":zone.epoch,"pubkey":zone.pubkey}}),
+                );
+            }
+        }
+        if let crate::zone_crypto::WritePlan::Refuse(_) = plan {
+            return Err(RelayError::Sign("zone key unavailable".into()));
+        }
+        if let Self::Local(key) = self {
+            (event.content, event.tags) =
+                crate::zone_crypto::apply(plan, &key.to_bytes().into(), event.content, event.tags)
+                    .map_err(RelayError::Sign)?;
+        }
+        self.sign_event(event)
+    }
+}
+
 /// The live forum relay (DreamLab Cloudflare worker).
 pub const DEFAULT_RELAY: &str = "wss://dreamlab-nostr-relay.solitary-paper-764d.workers.dev";
 
@@ -143,14 +309,14 @@ fn read_key_file(path: &Path) -> Result<String, RelayError> {
 }
 
 /// Lower-case hex x-only public key of `key`.
-pub fn pubkey_hex(key: &SigningKey) -> String {
-    hex::encode(key.verifying_key().to_bytes())
+pub fn pubkey_hex(key: &impl EventSigner) -> String {
+    key.public_key()
 }
 
 /// Sign `unsigned` with `key`. The event's `pubkey` must be the key's
 /// (core refuses a mismatch rather than produce a self-invalid event).
-pub fn sign(unsigned: UnsignedEvent, key: &SigningKey) -> Result<NostrEvent, RelayError> {
-    nostr_bbs_core::sign_event(unsigned, key).map_err(|e| RelayError::Sign(e.to_string()))
+pub fn sign(unsigned: UnsignedEvent, key: &impl EventSigner) -> Result<NostrEvent, RelayError> {
+    key.sign_event(unsigned)
 }
 
 /// Whether `event`'s id and BIP-340 signature are valid (strict: the id must
@@ -188,7 +354,7 @@ const OK_WAIT: Duration = Duration::from_secs(15);
 impl RelaySession {
     /// Connect to `url` and answer the relay's NIP-42 challenge with `key`.
     /// A relay that sends no challenge within a few seconds is used as-is.
-    pub async fn connect(url: &str, key: &SigningKey) -> Result<Self, RelayError> {
+    pub async fn connect(url: &str, key: &impl EventSigner) -> Result<Self, RelayError> {
         let (ws, _) = tokio::time::timeout(
             Duration::from_secs(15),
             tokio_tungstenite::connect_async(url),
@@ -340,6 +506,33 @@ impl RelaySession {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn custody_requests_keep_governance_separate_from_forum_and_auth() {
+        let mut event = UnsignedEvent {
+            pubkey: "a".repeat(64),
+            created_at: 1,
+            kind: 31402,
+            tags: vec![],
+            content: "fixture".into(),
+        };
+        let (op, params) = port_sign_request("agent_governance", &event).unwrap();
+        assert_eq!(op, "governance_event");
+        assert_eq!(params["key"], "agent_governance");
+        assert_eq!(
+            port_sign_request("junkiejarvis", &event).unwrap().0,
+            "forum_event"
+        );
+        event.kind = 22242;
+        event.tags = vec![
+            vec!["relay".into(), "wss://relay.test".into()],
+            vec!["challenge".into(), "fixture".into()],
+        ];
+        let (op, params) = port_sign_request("agent_governance", &event).unwrap();
+        assert_eq!(op, "nip42_auth");
+        assert_eq!(params["relay"], "wss://relay.test");
+        assert!(params.get("content").is_none());
+    }
 
     #[test]
     fn key_loads_from_env_file_and_signs_verifiably() {

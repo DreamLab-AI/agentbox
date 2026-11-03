@@ -213,19 +213,23 @@ async function main() {
   // The loader ships beside this script (same checkout / same /opt/agentbox),
   // never from AGENTBOX_DIR, which may point at another tree.
   const { readRoleSecretFirst } = require(join(dirname(fileURLToPath(import.meta.url)), '..', 'management-api/lib/role-secret.js'));
+  const identityPort = require(join(dirname(fileURLToPath(import.meta.url)), '..', 'management-api/lib/identity-port.js'));
+  const usePort = identityPort.selected(null, process.env);
   let privHex = '';
   try {
-    privHex = readRoleSecretFirst(['JUNKIEJARVIS_PRIVKEY_HEX', 'CONCIERGE_PRIVKEY_HEX'],
+    if (!usePort) privHex = readRoleSecretFirst(['JUNKIEJARVIS_PRIVKEY_HEX', 'CONCIERGE_PRIVKEY_HEX'],
       { log: (m) => log('WARN', m) }).value;
   } catch (err) { log('ERROR', err.message); return; }
-  if (!privHex) { log('ERROR', 'JUNKIEJARVIS_PRIVKEY_HEX (or its _FILE) not set — skipping'); return; }
+  if (!usePort && !privHex) { log('ERROR', 'JUNKIEJARVIS_PRIVKEY_HEX (or its _FILE) not set — skipping'); return; }
 
   const { NostrBridge } = require(join(AGENTBOX_DIR, 'mcp/servers/nostr-bridge.js'));
   const { signerFromHex, sendGiftWrappedDm, unwrapDmRumor } =
     require(join(AGENTBOX_DIR, 'management-api/lib/junkiejarvis-agent.js'));
   const clarify = require(join(AGENTBOX_DIR, 'management-api/lib/junkiejarvis-clarify.js'));
   const zoneKeys = require(join(AGENTBOX_DIR, 'management-api/lib/zone-keys.js'));
-  const signer = signerFromHex(privHex);
+  let signer;
+  try { signer = usePort ? identityPort.signer('junkiejarvis') : signerFromHex(privHex); }
+  catch { log('ERROR', 'identity port unavailable — skipping'); return; }
   if (signer.pubkey !== JJ_PUBKEY) log('WARN', `signer pubkey ${signer.pubkey.slice(0, 8)}… is not the canonical JunkieJarvis key`);
 
   const state = loadState();
@@ -273,7 +277,7 @@ async function main() {
       let granted = 0;
       for (const wrap of wraps) {
         let opened;
-        try { opened = zoneKeys.unwrapAny(wrap, signer.skBytes); } catch { continue; }
+        try { opened = signer.unwrapAny ? await signer.unwrapAny(wrap) : zoneKeys.unwrapAny(wrap, signer.skBytes); } catch { continue; }
         const res = await zoneKeys.acceptGrant(opened, { store: zc.store, isAdmin: zc.isAdmin });
         if (res.status === 'granted') { granted += 1; log('INFO', `stored zone key ${res.key.zone}:${res.key.epoch}`); }
         if (res.status === 'rejected') log('WARN', `refused a zone-key grant: ${res.error}`);
@@ -350,7 +354,8 @@ async function main() {
         const wraps = await collect(bridge, { kinds: [1059], '#p': [JJ_PUBKEY], since, limit: 500 });
         log('INFO', `${wraps.length} gift wrap(s) to check against ${awaiting.length} parked item(s)`);
         for (const wrap of wraps) {
-          const rumor = unwrapDmRumor(wrap, signer.skBytes);
+          let rumor;
+          try { rumor = signer.unwrapAny ? (await signer.unwrapAny(wrap)).rumor : unwrapDmRumor(wrap, signer.skBytes); } catch { continue; }
           if (!rumor) continue;
           const itemId = clarify.matchReplyToPending(clarifyState, rumor);
           if (!itemId) continue;
@@ -488,8 +493,12 @@ async function main() {
         created_at: Math.floor(Date.now() / 1000),
       };
       try {
-        const unsigned = zoneKeys.applyWritePlan(plain, replyPlan, signer.skBytes);
-        await bridge.publish(unsigned, signer);
+        if (replyPlan.type === 'encrypt' && signer.sealChannel) {
+          await bridge.publish(await signer.sealChannel(plain, replyPlan), { sign: event => event });
+        } else {
+          const unsigned = zoneKeys.applyWritePlan(plain, replyPlan, signer.skBytes);
+          await bridge.publish(unsigned, signer);
+        }
         replied.add(post.id);
         log('INFO', `replied to ${post.id.slice(0, 12)} (${verdict.reply.length} chars)`);
       } catch (err) {

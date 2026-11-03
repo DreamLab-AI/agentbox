@@ -145,15 +145,30 @@ function envFirst(...ks) { for (const k of ks) { const v = process.env[k]; if (v
 // 'agentbox-gateway-v1') if you ever want a dedicated bot contact instead.
 // In both modes the sole authorised commander is the operator, and replies go to
 // the operator (your phone).
-const OP_HEX = operatorKeyHex({ log: log });
-if (!/^[0-9a-f]{64}$/i.test(OP_HEX)) { log('no operator key (AGENTBOX_PRIVKEY_HEX) — exiting'); process.exit(0); }
-const rawSk = Uint8Array.from(Buffer.from(OP_HEX, 'hex'));
-const adminPub = tools.getPublicKey(rawSk).toLowerCase();
+const identityPort = require(path.join(AB, 'management-api', 'lib', 'identity-port'));
+const PORT_SELECTED = identityPort.selected(null, process.env);
 const IDENTITY = (envFirst('AGENTBOX_GATEWAY_IDENTITY') || 'operator').toLowerCase();
-const sk = IDENTITY === 'gateway'
-  ? Uint8Array.from(crypto.createHmac('sha256', Buffer.from(OP_HEX, 'hex')).update(envFirst('AGENTBOX_GATEWAY_KEY_TAG') || 'agentbox-gateway-v1').digest())
-  : rawSk;
-const pub = tools.getPublicKey(sk);                                    // identity we AUTH + receive as
+const PORT_KEY = IDENTITY === 'gateway' ? 'gateway' : 'core';
+let sk, adminPub, pub;
+if (PORT_SELECTED) {
+  if (IDENTITY === 'gateway' && envFirst('AGENTBOX_GATEWAY_KEY_TAG') && envFirst('AGENTBOX_GATEWAY_KEY_TAG') !== 'agentbox-gateway-v1') {
+    log('custom gateway derivation is not admitted by the identity port'); process.exit(0);
+  }
+  try {
+    adminPub = identityPort.requestSync('pubkey', { key: 'core' }).pubkey;
+    pub = identityPort.requestSync('pubkey', { key: PORT_KEY }).pubkey;
+    if (!/^[0-9a-f]{64}$/.test(adminPub) || !/^[0-9a-f]{64}$/.test(pub)) throw new Error('invalid public identity');
+  } catch { log('identity port unavailable — exiting'); process.exit(0); }
+} else {
+  const operatorHex = operatorKeyHex({ log });
+  if (!/^[0-9a-f]{64}$/i.test(operatorHex)) { log('no operator key — exiting'); process.exit(0); }
+  const rawSk = Uint8Array.from(Buffer.from(operatorHex, 'hex'));
+  adminPub = tools.getPublicKey(rawSk).toLowerCase();
+  sk = IDENTITY === 'gateway'
+    ? Uint8Array.from(crypto.createHmac('sha256', Buffer.from(operatorHex, 'hex')).update(envFirst('AGENTBOX_GATEWAY_KEY_TAG') || 'agentbox-gateway-v1').digest())
+    : rawSk;
+  pub = tools.getPublicKey(sk);
+}
 const commanderPub = adminPub;                                          // only the operator may command
 const replyTo = (envFirst('AGENTBOX_GATEWAY_REPLY_TO') || adminPub).toLowerCase(); // replies → your phone
 const relayUrl = /^wss?:\/\//i.test(process.env.NOSTR_MIRROR_RELAY || '') ? process.env.NOSTR_MIRROR_RELAY.trim() : DEFAULT_RELAY;
@@ -258,6 +273,7 @@ function sendKeys(idx, text) {
 
 // ── crypto: reply on the live authed socket ─────────────────────────────────
 function buildWrap(text) {
+  if (PORT_SELECTED) return identityPort.requestSync('nip17_wrap', { key: PORT_KEY, recipient: replyTo, content: String(text).slice(0, MAX_BODY) }).event;
   const rumor = { kind: KIND_DM_RUMOR, created_at: nowSec(), tags: [['p', replyTo], ['client', 'agentbox-nostr-gateway']], content: String(text).slice(0, MAX_BODY), pubkey: pub };
   return tools.nip59.wrapEvent(rumor, sk, replyTo); // gateway → operator (your phone)
 }
@@ -628,7 +644,9 @@ const SUB = 'ctrl';
 function subscribe(ws, quiet) { ws.send(JSON.stringify(['REQ', SUB, { kinds: [KIND_GIFT_WRAP], '#p': [pub], since: nowSec() - WRAP_LOOKBACK }])); if (!quiet) log('REQ sent'); }
 function authenticate(ws, challenge) {
   try {
-    const evt = tools.finalizeEvent({ kind: KIND_AUTH, created_at: nowSec(), tags: [['relay', relayUrl], ['challenge', String(challenge)]], content: '' }, sk);
+    const evt = PORT_SELECTED
+      ? identityPort.requestSync('nip42_auth', { key: PORT_KEY, relay: relayUrl, challenge: String(challenge) }).event
+      : tools.finalizeEvent({ kind: KIND_AUTH, created_at: nowSec(), tags: [['relay', relayUrl], ['challenge', String(challenge)]], content: '' }, sk);
     ws.send(JSON.stringify(['AUTH', evt]));
     log('AUTH sent'); setTimeout(() => subscribe(ws), 200); // re-REQ after auth
   } catch (e) { log('AUTH failed', e.message); }
@@ -666,7 +684,7 @@ function notifyEnquiry(ws, wrap, rumor) {
 function handleWrap(ws, wrap) {
   if (!wrap || wrap.kind !== KIND_GIFT_WRAP) return;
   if (!markSeen(wrap.id)) return;                                     // already handled
-  let rumor; try { rumor = tools.nip59.unwrapEvent(wrap, sk); } catch { return; } // not ours to decrypt — silent
+  let rumor; try { rumor = PORT_SELECTED ? identityPort.requestSync('nip17_unwrap', { key: PORT_KEY, event: wrap }).rumor : tools.nip59.unwrapEvent(wrap, sk); } catch { return; }
   if (!rumor) return;
   if (rumor.kind === 21453) return; // zone-key grant (forum ADR-2016): key material, never a command or a forwarded message
   if (notifyEnquiry(ws, wrap, rumor)) return;                          // website form → phone, never a command

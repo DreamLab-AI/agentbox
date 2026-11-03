@@ -10,9 +10,10 @@
     "operator hex exactly as AGENTBOX_PRIVKEY_HEX supplies it (not the even-y normalised scalar): the mirror child",
     "is derived from it (src/mirror_key.rs), and an odd-y house key would otherwise hand the phone a different key.",
     "`manifest:a.b.c` resolves from /etc/agentbox.toml at start; an unresolved reference grants nothing.",
-    "Kinds 27235, 22242, 31400-31405 and 38414 cannot be granted (the loader refuses the file).",
-    "mirror_key `secret: true` returns the live-mirror CHILD secret (the key the phone holds) because",
-    "config/hooks/nostr-live-mirror.cjs:487 signs the self-DM wrap with it; the sovereign secret never crosses."
+    "Human governance kinds 31401, 31403-31405 and 38414 remain forbidden. Only an independently marked",
+    "agent_governance signer can author panels/cases; auth operations have their own relay/URL checks.",
+    "mirror_key returns public identity only in this policy; mirror_wrap signs bounded self-DMs inside custody.",
+    "Optional agent_governance material must be independently provisioned and admitted by the operator before use."
   ],
   "keys": {
     "core": {
@@ -27,26 +28,46 @@
     },
     "junkiejarvis": {
       "file": "JUNKIEJARVIS_PRIVKEY_HEX",
-      "required": false
+      "required": false,
+      "relays": ["ws://127.0.0.1:7777", "wss://dreamlab-nostr-relay.solitary-paper-764d.workers.dev"]
+    },
+    "gateway": {
+      "file": "derived-gateway",
+      "gateway_child": true,
+      "relays": ["ws://127.0.0.1:7777", "wss://dreamlab-nostr-relay.solitary-paper-764d.workers.dev"]
+    },
+    "agent_governance": {
+      "file": "DREAM_GOVERNANCE_PRIVKEY_HEX",
+      "required": false,
+      "agent_governance": true,
+      "relays": ["ws://127.0.0.1:7777", "wss://dreamlab-nostr-relay.solitary-paper-764d.workers.dev"]
     }
   },
   "callers": {
     "1000": {
       "name": "devuser",
       "ops": {
-        "pubkey": { "keys": ["core", "junkiejarvis"] },
+        "pubkey": { "keys": ["core", "junkiejarvis", "agent_governance"] },
         "nip98": { "keys": ["core"] },
         "sign_event": { "keys": ["core"], "kinds": [38410, 38411, 38412, 38413, 38415, 30840, 30841] },
-        "forum_event": { "keys": ["junkiejarvis"], "kinds": [1, 42, 31923] },
-        "nip42_auth": { "keys": ["core"] },
-        "mirror_key": { "secret": true }
+        "forum_event": { "keys": ["junkiejarvis"], "kinds": [0, 1, 42, 31923] },
+        "governance_event": { "keys": ["agent_governance"], "kinds": [31400, 31402, 5] },
+        "nip42_auth": { "keys": ["core", "junkiejarvis", "agent_governance"] },
+        "nip17_wrap": { "keys": ["junkiejarvis"] },
+        "nip17_unwrap": { "keys": ["junkiejarvis"] },
+        "forum_grant_unwrap": { "keys": ["junkiejarvis"] },
+        "forum_seal": { "keys": ["junkiejarvis"], "kinds": [42] },
+        "mirror_key": {},
+        "mirror_wrap": {}
       }
     },
     "961": {
       "name": "ab-gateway",
       "ops": {
-        "pubkey": { "keys": ["core"] },
-        "nip42_auth": { "keys": ["core"] },
+        "pubkey": { "keys": ["core", "gateway"] },
+        "nip42_auth": { "keys": ["core", "gateway"] },
+        "nip17_wrap": { "keys": ["core", "gateway"] },
+        "nip17_unwrap": { "keys": ["core", "gateway"] },
         "mirror_key": {}
       }
     }

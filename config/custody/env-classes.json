@@ -68,6 +68,11 @@
         "reason": "JunkieJarvis forum agent key (keyring id junkiejarvis): management-api JJ agent, dream-engine governance and digest, dream-forum-suggestions, run-junkiejarvis, run-per-user-agent fallback.",
         "file_var": "JUNKIEJARVIS_PRIVKEY_HEX_FILE"
       },
+      "DREAM_GOVERNANCE_PRIVKEY_HEX": {
+        "role": "ab-identity",
+        "reason": "Independent agent-governance key for panel/case authorship and withdrawal; never the operator or JunkieJarvis identity.",
+        "file_var": "DREAM_GOVERNANCE_PRIVKEY_HEX_FILE"
+      },
       "NIP98_PROXY_ALLOW_BEARER": {
         "role": "ab-ingress",
         "reason": "The LAN-door break-glass bearer at the nip98-proxy (ADR-2027). W1 delivers it to ab-ingress (config/role-accounts.json). 2026-10-03: it is still the SAME VALUE as BRIDGE_TOKEN (management-api/lib/system-manifest.js:79), which stays devuser-class, so isolating this copy protects nothing until the Q4 split mints a separate bearer.",

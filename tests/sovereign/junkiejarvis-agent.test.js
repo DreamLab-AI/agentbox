@@ -691,6 +691,26 @@ describe('startJunkieJarvis gating', () => {
   // deps.manifest; JUNKIEJARVIS_ENABLED is not read (owner decision 2026-10-02, R1).
   const ON = { sovereign_mesh: { junkiejarvis: true } };
 
+  test('isolation starts with only a port signer, without consulting the local signer', () => {
+    const local = jest.fn(() => { throw new Error('local signer must not run'); });
+    const port = jest.fn(() => ({ pubkey: 'd'.repeat(64), sign: async e => e, wrapDm: async () => ({ kind: 1059 }) }));
+    const agent = startJunkieJarvis({ bridge: makeBridge(), logger: silentLogger, manifest: ON,
+      env: { AGENTBOX_ROLE_ISOLATION: '1' }, signerFactory: local, portSignerFactory: port, zoneCrypto: null });
+    expect(agent).not.toBeNull();
+    expect(local).not.toHaveBeenCalled();
+    expect(port).toHaveBeenCalledWith('junkiejarvis', expect.anything());
+    agent.stop();
+  });
+
+  test('port failure under isolation leaves the agent stopped even with a local key present', () => {
+    process.env.JUNKIEJARVIS_PRIVKEY_HEX = '1'.repeat(64);
+    const local = jest.fn(fakeFactory);
+    expect(startJunkieJarvis({ bridge: makeBridge(), logger: silentLogger, manifest: ON,
+      env: { AGENTBOX_ROLE_ISOLATION: '1' }, signerFactory: local,
+      portSignerFactory: () => { throw new Error('unavailable'); }, zoneCrypto: null })).toBeNull();
+    expect(local).not.toHaveBeenCalled();
+  });
+
   test('disabled by default → returns null, no throw', () => {
     expect(startJunkieJarvis({ bridge: makeBridge(), logger: silentLogger, signerFactory: fakeFactory })).toBeNull();
   });

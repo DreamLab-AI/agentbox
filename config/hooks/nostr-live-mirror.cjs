@@ -45,6 +45,7 @@ const crypto = require('crypto');
 // decision table and redaction contract the Rust digest path implements.
 const egress = require('./lib/egress-policy.cjs');
 const { operatorKeyHex } = require('./lib/operator-key.cjs');
+const identityPort = require('../../management-api/lib/identity-port');
 const fs = require('fs');
 const path = require('path');
 
@@ -413,10 +414,12 @@ async function main() {
     log(`egress ${egress.OUTCOME.SKIPPED}: recipient-allowlist-missing-or-invalid`);
     return 0;
   }
-  const childSk = deriveChildKey();
+  const portSelected = identityPort.selected(null, process.env);
+  const portIdentity = portSelected ? await identityPort.request('mirror_key', {}) : null;
+  const childSk = portSelected ? null : deriveChildKey();
   const explicitRecipient = recipientPubkey();
   const pre = egress.egressDecision('live-mirror', {
-    identityPresent: !!(childSk || explicitRecipient),
+    identityPresent: !!(portIdentity?.pubkey || childSk || explicitRecipient),
   });
   if (!pre.allowed) {
     // Say which of the three states this is. Exit zero alone never distinguished
@@ -428,7 +431,7 @@ async function main() {
   const tools = loadNostrTools();
   if (childSk && !tools) { log('egress skipped: recipient-derivation-unavailable'); return 0; }
   let recipient;
-  try { recipient = childSk ? tools.getPublicKey(childSk) : explicitRecipient; }
+  try { recipient = portSelected ? portIdentity.pubkey : (childSk ? tools.getPublicKey(childSk) : explicitRecipient); }
   catch { log('egress skipped: recipient-derivation-failed'); return 0; }
   const rDecision = egress.egressDecision('live-mirror', { recipient, identityPresent: true });
   if (!rDecision.allowed) {
@@ -475,13 +478,16 @@ async function main() {
   }
 
   const WS = loadWs();
-  if (!tools || !tools.nip59 || typeof tools.nip59.wrapEvent !== 'function' || !WS) {
+  if ((!portSelected && (!tools || !tools.nip59 || typeof tools.nip59.wrapEvent !== 'function')) || !WS) {
     log('nostr-tools/ws unavailable; skipping mirror');
     return 0;
   }
 
   let wrap;
   try {
+    if (portSelected) {
+      wrap = (await identityPort.request('mirror_wrap', { recipient, content: body })).event;
+    } else {
     // Default: a SELF-DM on the derived child identity — the root operator key
     // never reaches the phone. Legacy fallback: operator-signed DM to an
     // explicit recipient pubkey.
@@ -498,6 +504,7 @@ async function main() {
     };
     // Recipient FIRST in the wrap's ["p"] tag → passes the relay whitelist gate.
     wrap = tools.nip59.wrapEvent(rumor, sk, recipient);
+    }
     if (!wrap || wrap.kind !== KIND_GIFT_WRAP) return 0;
   } catch (err) {
     log(`wrap failed (non-fatal): ${err && err.message}`);

@@ -36,6 +36,7 @@ use super::receipts::{Receipt, Receipts};
 pub const MAX_REQUEST_BYTES: usize = 64 * 1024;
 /// Longest accepted NIP-42 challenge.
 const MAX_CHALLENGE: usize = 512;
+const MAX_MESSAGE_BYTES: usize = 16 * 1024;
 /// HTTP methods a NIP-98 header may name.
 const METHODS: &[&str] = &["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"];
 /// NIP-98 HTTP Auth kind.
@@ -99,6 +100,9 @@ impl KeyRing {
         let mut keys = BTreeMap::new();
         let mut mirror = None;
         for (name, policy) in &acl.keys {
+            if policy.spec.gateway_child {
+                continue;
+            }
             let path = dir.join(&policy.spec.file);
             let hex_sk = match std::fs::read_to_string(&path) {
                 Ok(s) => Zeroizing::new(s),
@@ -134,6 +138,24 @@ impl KeyRing {
                 });
             }
             keys.insert(name.clone(), held);
+        }
+        for (name, policy) in &acl.keys {
+            if !policy.spec.gateway_child {
+                continue;
+            }
+            let root = acl
+                .keys
+                .iter()
+                .find(|(_, p)| p.spec.mirror_root)
+                .and_then(|(n, _)| keys.get(n))
+                .ok_or_else(|| anyhow!("gateway child requires a held mirror root"))?;
+            let root_hex = Zeroizing::new(hex::encode(*root.sk));
+            let secret = Zeroizing::new(
+                crate::mirror_key::child_secret(&root_hex, Some("agentbox-gateway-v1"))
+                    .map_err(|_| anyhow!("gateway child derivation failed"))?,
+            );
+            let child_hex = Zeroizing::new(hex::encode(*secret));
+            keys.insert(name.clone(), held_key(&child_hex)?);
         }
         Ok(Self { keys, mirror })
     }
@@ -254,6 +276,41 @@ struct Nip42Req {
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct MirrorKeyReq {}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct DmWrapReq {
+    #[serde(default)]
+    key: Option<String>,
+    recipient: String,
+    content: String,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct DmOpenReq {
+    #[serde(default)]
+    key: Option<String>,
+    event: NostrEvent,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ZoneRecipient {
+    id: String,
+    epoch: u64,
+    pubkey: String,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ForumSealReq {
+    #[serde(default)]
+    key: Option<String>,
+    tags: Vec<Vec<String>>,
+    content: String,
+    zone: ZoneRecipient,
+}
 
 /// An event before signing; the author is always the held key.
 struct Draft {
@@ -397,7 +454,25 @@ impl Port {
                 self.op_sign_event(grant, serde_json::from_value(params).map_err(bad)?)
             }
             acl::OP_FORUM_EVENT => {
-                self.op_forum_event(grant, serde_json::from_value(params).map_err(bad)?)
+                self.op_forum_event(op, grant, serde_json::from_value(params).map_err(bad)?)
+            }
+            acl::OP_GOVERNANCE_EVENT => {
+                self.op_forum_event(op, grant, serde_json::from_value(params).map_err(bad)?)
+            }
+            acl::OP_NIP17_WRAP => {
+                self.op_dm_wrap(grant, serde_json::from_value(params).map_err(bad)?)
+            }
+            acl::OP_NIP17_UNWRAP => {
+                self.op_dm_open(grant, serde_json::from_value(params).map_err(bad)?, false)
+            }
+            acl::OP_FORUM_GRANT_UNWRAP => {
+                self.op_dm_open(grant, serde_json::from_value(params).map_err(bad)?, true)
+            }
+            acl::OP_FORUM_SEAL => {
+                self.op_forum_seal(grant, serde_json::from_value(params).map_err(bad)?)
+            }
+            acl::OP_MIRROR_WRAP => {
+                self.op_mirror_wrap(serde_json::from_value(params).map_err(bad)?)
             }
             acl::OP_NIP42_AUTH => {
                 self.op_nip42(grant, serde_json::from_value(params).map_err(bad)?)
@@ -566,15 +641,24 @@ impl Port {
         self.signed_event(op, grant, name, held, d)
     }
 
-    fn op_forum_event(&self, grant: &OpGrant, req: ForumEventReq) -> Result<Admitted, Refused> {
-        let op = acl::OP_FORUM_EVENT;
+    fn op_forum_event(
+        &self,
+        op: &str,
+        grant: &OpGrant,
+        req: ForumEventReq,
+    ) -> Result<Admitted, Refused> {
         if req.zone.is_some() {
             return Err(Refused::new(
                 op,
                 "zone sealing is not an identity-port operation; nothing was signed",
             ));
         }
-        let (name, held) = self.key(op, grant, req.key, DEFAULT_FORUM_KEY)?;
+        let default = if op == acl::OP_GOVERNANCE_EVENT {
+            "agent_governance"
+        } else {
+            DEFAULT_FORUM_KEY
+        };
+        let (name, held) = self.key(op, grant, req.key, default)?;
         let d = Draft {
             kind: req.kind,
             tags: req.tags,
@@ -624,17 +708,171 @@ impl Port {
         })
     }
 
-    fn op_mirror_key(&self, grant: &OpGrant) -> Result<Admitted, Refused> {
+    fn wrapped_message(
+        &self,
+        op: &str,
+        name: String,
+        secret: &[u8; 32],
+        sender: &str,
+        req: DmWrapReq,
+    ) -> Result<Admitted, Refused> {
+        let recipient = nostr_bbs_core::PublicKey::from_hex(&req.recipient)
+            .map_err(|_| Refused::new(op, "recipient is not a valid public key"))?;
+        if req.content.is_empty() || req.content.len() > MAX_MESSAGE_BYTES {
+            return Err(Refused::new(
+                op,
+                "message body exceeds the bounded DM contract",
+            ));
+        }
+        let mut rumor =
+            nostr_bbs_core::gift_wrap::create_rumor(sender, &recipient.to_hex(), &req.content);
+        rumor.created_at = (self.now)();
+        rumor.tags.push(vec![
+            "client".into(),
+            if op == acl::OP_MIRROR_WRAP {
+                "agentbox-live-mirror"
+            } else {
+                "agentbox-identity-port"
+            }
+            .into(),
+        ]);
+        let seal = nostr_bbs_core::gift_wrap::seal_rumor(&rumor, secret, recipient.as_bytes())
+            .map_err(|_| Refused::new(op, "DM sealing failed"))?;
+        let event = nostr_bbs_core::gift_wrap::wrap_seal(&seal, &recipient.to_hex())
+            .map_err(|_| Refused::new(op, "DM wrapping failed"))?;
+        Ok(Admitted {
+            event_id: Some(event.id.clone()),
+            response: json!({"event":event}),
+            key: Some(name),
+            kind: Some(1059),
+            url_host: None,
+        })
+    }
+
+    fn op_dm_wrap(&self, grant: &OpGrant, req: DmWrapReq) -> Result<Admitted, Refused> {
+        let op = acl::OP_NIP17_WRAP;
+        let (name, held) = self.key(op, grant, req.key.clone(), DEFAULT_FORUM_KEY)?;
+        self.wrapped_message(op, name, &held.sk, &held.xonly, req)
+    }
+
+    fn op_mirror_wrap(&self, req: DmWrapReq) -> Result<Admitted, Refused> {
+        let op = acl::OP_MIRROR_WRAP;
+        let child = self
+            .keys
+            .mirror
+            .as_ref()
+            .ok_or_else(|| Refused::new(op, "mirror child unavailable"))?;
+        if req.key.is_some() || req.recipient != child.xonly {
+            return Err(Refused::new(
+                op,
+                "mirror messages must address the derived child itself",
+            ));
+        }
+        self.wrapped_message(op, "mirror".into(), &child.secret, &child.xonly, req)
+    }
+
+    fn op_dm_open(
+        &self,
+        grant: &OpGrant,
+        req: DmOpenReq,
+        grant_message: bool,
+    ) -> Result<Admitted, Refused> {
+        let op = if grant_message {
+            acl::OP_FORUM_GRANT_UNWRAP
+        } else {
+            acl::OP_NIP17_UNWRAP
+        };
+        let (name, held) = self.key(op, grant, req.key, DEFAULT_FORUM_KEY)?;
+        let recipients: Vec<_> = req
+            .event
+            .tags
+            .iter()
+            .filter(|t| t.first().map(String::as_str) == Some("p"))
+            .collect();
+        if recipients.len() != 1 || recipients[0].get(1) != Some(&held.xonly) {
+            return Err(Refused::new(
+                op,
+                "gift wrap must name the held recipient exactly once",
+            ));
+        }
+        let kinds: &[u64] = if grant_message { &[21453, 1014] } else { &[14] };
+        let opened = kinds
+            .iter()
+            .find_map(|kind| nostr_bbs_core::unwrap_gift_kind(&req.event, &held.sk, *kind).ok())
+            .ok_or_else(|| Refused::new(op, "gift wrap failed authenticated message validation"))?;
+        if opened.rumor.content.len() > MAX_MESSAGE_BYTES {
+            return Err(Refused::new(
+                op,
+                "opened message exceeds the bounded contract",
+            ));
+        }
+        // Keep the signed inner epoch ticket's fields for its existing validator.
+        // Envelope authenticity and supported kind were established above by core.
+        let sender = nostr_bbs_core::PublicKey::from_hex(&opened.sender_pubkey)
+            .map_err(|_| Refused::new(op, "invalid authenticated sender"))?;
+        let raw = nostr_bbs_core::nip44::decrypt(&held.sk, sender.as_bytes(), &opened.seal.content)
+            .map_err(|_| Refused::new(op, "validated message could not be reopened"))?;
+        let rumor: Value = serde_json::from_str(&raw)
+            .map_err(|_| Refused::new(op, "invalid opened message JSON"))?;
+        Ok(Admitted {
+            response: json!({"rumor":rumor,"sealer":opened.sender_pubkey}),
+            key: Some(name),
+            kind: Some(opened.rumor.kind),
+            event_id: Some(req.event.id),
+            url_host: None,
+        })
+    }
+
+    fn op_forum_seal(&self, grant: &OpGrant, req: ForumSealReq) -> Result<Admitted, Refused> {
+        let op = acl::OP_FORUM_SEAL;
+        let (name, held) = self.key(op, grant, req.key, DEFAULT_FORUM_KEY)?;
+        if req.content.is_empty()
+            || req.content.len() > MAX_MESSAGE_BYTES
+            || req.zone.id.is_empty()
+            || req.zone.id.len() > 100
+            || req.zone.epoch == 0
+            || !req
+                .zone
+                .id
+                .bytes()
+                .all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_')
+        {
+            return Err(Refused::new(op, "invalid bounded zone message"));
+        }
+        let recipient = nostr_bbs_core::PublicKey::from_hex(&req.zone.pubkey)
+            .map_err(|_| Refused::new(op, "invalid zone public key"))?;
+        let content = nostr_bbs_core::nip44::encrypt(&held.sk, recipient.as_bytes(), &req.content)
+            .map_err(|_| Refused::new(op, "zone encryption failed"))?;
+        let mut tags = req.tags;
+        tags.retain(|t| t.first().map(String::as_str) != Some("zk"));
+        tags.push(vec![
+            "zk".into(),
+            req.zone.id,
+            req.zone.epoch.to_string(),
+            recipient.to_hex(),
+        ]);
+        self.signed_event(
+            op,
+            grant,
+            name,
+            held,
+            Draft {
+                kind: 42,
+                tags,
+                content,
+                created_at: (self.now)(),
+            },
+        )
+    }
+
+    fn op_mirror_key(&self, _grant: &OpGrant) -> Result<Admitted, Refused> {
         let op = acl::OP_MIRROR_KEY;
         let m = self
             .keys
             .mirror
             .as_ref()
             .ok_or_else(|| Refused::new(op, "the mirror root key is not held by this port"))?;
-        let mut response = json!({ "pubkey": m.xonly, "npub": m.npub });
-        if grant.secret {
-            response["secret_hex"] = Value::String(hex::encode(*m.secret));
-        }
+        let response = json!({ "pubkey": m.xonly, "npub": m.npub });
         Ok(Admitted {
             response,
             key: Some("mirror".into()),
@@ -697,7 +935,7 @@ mod tests {
           "sign_event":{"keys":["core"],"kinds":[38410,30840]},
           "forum_event":{"keys":["junkiejarvis"],"kinds":[1,42]},
           "nip42_auth":{"keys":["core"]},
-          "mirror_key":{"secret":true}}},
+          "mirror_key":{}}},
         "961":{"name":"ab-gateway","ops":{
           "nip42_auth":{"keys":["core"]},
           "sign_event":{"keys":["core"],"kinds":[1]},
@@ -727,6 +965,130 @@ mod tests {
 
     fn fx() -> Fx {
         fx_with(ACL, true)
+    }
+
+    fn dm_fx() -> Fx {
+        let mut acl: Value = serde_json::from_str(ACL).unwrap();
+        for op in [
+            acl::OP_NIP17_WRAP,
+            acl::OP_NIP17_UNWRAP,
+            acl::OP_FORUM_GRANT_UNWRAP,
+        ] {
+            acl["callers"]["1000"]["ops"][op] = json!({"keys":["junkiejarvis"]});
+        }
+        acl["callers"]["1000"]["ops"][acl::OP_FORUM_SEAL] =
+            json!({"keys":["junkiejarvis"],"kinds":[42]});
+        acl["callers"]["1000"]["ops"][acl::OP_MIRROR_WRAP] = json!({});
+        fx_with(&acl.to_string(), true)
+    }
+
+    #[test]
+    fn shipped_policy_keeps_child_secrets_inside_and_gateway_derivation_compatible() {
+        let policy = include_str!("../../../../config/custody/identity-port-acl.json");
+        let mut policy: Value = serde_json::from_str(policy).unwrap();
+        policy["keys"]["core"]["file"] = json!("core.key");
+        let f = fx_with(&policy.to_string(), false);
+        let expected = crate::mirror_key::child_secret(CORE, Some("agentbox-gateway-v1")).unwrap();
+        let expected = held_key(&hex::encode(expected)).unwrap();
+        assert_eq!(f.port.keys.pubkey("gateway"), Some(expected.xonly.as_str()));
+        assert!(!f.port.acl.grant(1000, acl::OP_MIRROR_KEY).unwrap().secret);
+        for kind in [31401, 31403, 31404, 31405, 38414] {
+            let out = f.port.handle(
+                DEV,
+                &req(
+                    acl::OP_GOVERNANCE_EVENT,
+                    json!({"key":"agent_governance","kind":kind,"content":"fixture"}),
+                ),
+            );
+            assert!(out.get("refused").is_some());
+        }
+    }
+
+    #[test]
+    fn typed_dm_roundtrip_is_bounded_and_cannot_sign_governance() {
+        let f = dm_fx();
+        let recipient = f.port.keys.pubkey("junkiejarvis").unwrap();
+        let out = f.port.handle(
+            DEV,
+            &req(
+                acl::OP_NIP17_WRAP,
+                json!({"recipient":recipient,"content":"private bounded fixture"}),
+            ),
+        );
+        let event: NostrEvent = serde_json::from_value(out["event"].clone()).unwrap();
+        nostr_bbs_core::verify_event_strict(&event).unwrap();
+        let opened = f
+            .port
+            .handle(DEV, &req(acl::OP_NIP17_UNWRAP, json!({"event":event})));
+        assert_eq!(opened["rumor"]["content"], "private bounded fixture");
+        assert_eq!(opened["rumor"]["kind"], 14);
+        for params in [
+            json!({"recipient":recipient,"content":"x","kind":31403}),
+            json!({"recipient":recipient,"content":"x".repeat(MAX_MESSAGE_BYTES+1)}),
+            json!({"recipient":"not-a-key","content":"x"}),
+        ] {
+            assert!(f
+                .port
+                .handle(DEV, &req(acl::OP_NIP17_WRAP, params))
+                .get("refused")
+                .is_some());
+        }
+        let mut secret = [0u8; 32];
+        hex::decode_to_slice(JJ, &mut secret).unwrap();
+        let forbidden =
+            nostr_bbs_core::gift_wrap_kind(&secret, recipient, recipient, 31403, "human decision")
+                .unwrap();
+        for op in [acl::OP_NIP17_UNWRAP, acl::OP_FORUM_GRANT_UNWRAP] {
+            assert!(f
+                .port
+                .handle(DEV, &req(op, json!({"event":forbidden})))
+                .get("refused")
+                .is_some());
+        }
+        let receipt_bytes = std::fs::read_dir(f.dir.path().join("receipts"))
+            .unwrap()
+            .filter_map(Result::ok)
+            .map(|e| std::fs::read_to_string(e.path()).unwrap())
+            .collect::<String>();
+        assert!(!receipt_bytes.contains("private bounded fixture"));
+    }
+
+    #[test]
+    fn mirror_wrap_is_self_addressed_and_zone_seal_is_only_kind42() {
+        let f = dm_fx();
+        let child = f.port.keys.mirror.as_ref().unwrap();
+        let out = f.port.handle(
+            DEV,
+            &req(
+                acl::OP_MIRROR_WRAP,
+                json!({"recipient":child.xonly,"content":"mirror fixture"}),
+            ),
+        );
+        let event: NostrEvent = serde_json::from_value(out["event"].clone()).unwrap();
+        let opened = nostr_bbs_core::unwrap_gift(&event, &child.secret).unwrap();
+        assert_eq!(opened.rumor.content, "mirror fixture");
+        assert!(f
+            .port
+            .handle(
+                DEV,
+                &req(
+                    acl::OP_MIRROR_WRAP,
+                    json!({"recipient":f.port.keys.pubkey("core"),"content":"x"})
+                )
+            )
+            .get("refused")
+            .is_some());
+        let recipient = f.port.keys.pubkey("junkiejarvis").unwrap();
+        let sealed=f.port.handle(DEV,&req(acl::OP_FORUM_SEAL,json!({"tags":[["e","channel","","root"]],"content":"zone fixture","zone":{"id":"zone2","epoch":1,"pubkey":recipient}})));
+        let event: NostrEvent = serde_json::from_value(sealed["event"].clone()).unwrap();
+        assert_eq!(event.kind, 42);
+        let mut secret = [0u8; 32];
+        hex::decode_to_slice(JJ, &mut secret).unwrap();
+        let pk = nostr_bbs_core::PublicKey::from_hex(recipient).unwrap();
+        assert_eq!(
+            nostr_bbs_core::nip44::decrypt(&secret, pk.as_bytes(), &event.content).unwrap(),
+            "zone fixture"
+        );
     }
 
     const DEV: Peer = Peer {
@@ -1006,17 +1368,14 @@ mod tests {
     }
 
     #[test]
-    fn mirror_key_matches_the_w8_derivation_and_the_secret_is_per_grant() {
+    fn mirror_key_matches_the_w8_derivation_without_exporting_the_secret() {
         let f = fx();
         let v = f.port.handle(DEV, &req("mirror_key", json!({})));
         assert_eq!(
             v["pubkey"],
             crate::mirror_key::child_xonly_pubkey_hex(CORE, None).unwrap()
         );
-        assert_eq!(
-            v["secret_hex"], "a25935d1bb6782faa0ceaca1dce34bb23bf45a507e8e19b8973de836cbdcab72",
-            "W8's synthetic vector for the aaaa key"
-        );
+        assert!(v.get("secret_hex").is_none());
         let v = f.port.handle(GW, &req("mirror_key", json!({})));
         assert!(v.get("pubkey").is_some());
         assert!(

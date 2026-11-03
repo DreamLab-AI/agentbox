@@ -44,6 +44,7 @@
 const crypto = require('crypto');
 const zoneKeys = require('./zone-keys');
 const { readRoleSecretFirst } = require('./role-secret');
+const identityPort = require('./identity-port');
 const { junkiejarvisEnabled } = require('./junkiejarvis-clarify');
 
 let nostrTools = null;
@@ -654,10 +655,16 @@ function signerFromHex(privHex) {
 async function sendGiftWrappedDm({ bridge, signer, recipientPubkey, text, createdAt } = {}) {
   try {
     if (!bridge || typeof bridge.publish !== 'function') return null;
-    if (!signer || !signer.skBytes) return null;
+    if (!signer || (!signer.skBytes && typeof signer.wrapDm !== 'function')) return null;
     if (typeof recipientPubkey !== 'string' || !recipientPubkey.trim()) return null;
     const body = typeof text === 'string' ? text : '';
     if (!body.trim()) return null;
+
+    if (typeof signer.wrapDm === 'function') {
+      const wrapped = await signer.wrapDm(recipientPubkey, body);
+      await bridge.publish(wrapped, { sign: event => event });
+      return wrapped;
+    }
 
     const { nip59 } = getNostrTools();
     const rumor = {
@@ -857,7 +864,7 @@ class JunkieJarvisAgent {
   async _handleDm(wrap) {
     let rumor;
     try {
-      ({ rumor } = zoneKeys.unwrapAny(wrap, this.signer.skBytes));
+      ({ rumor } = this.signer.unwrapAny ? await this.signer.unwrapAny(wrap) : zoneKeys.unwrapAny(wrap, this.signer.skBytes));
     } catch (err) {
       this._logErr('dm-unwrap', err);
       return;
@@ -911,7 +918,7 @@ class JunkieJarvisAgent {
     }
     let opened;
     try {
-      opened = zoneKeys.unwrapAny(wrap, this.signer.skBytes);
+      opened = this.signer.unwrapAny ? await this.signer.unwrapAny(wrap) : zoneKeys.unwrapAny(wrap, this.signer.skBytes);
     } catch (err) {
       this._logErr('grant-unwrap', err);
       return;
@@ -1075,6 +1082,11 @@ class JunkieJarvisAgent {
           this.logger.warn({ zone: target.zone }, `junkiejarvis not replying: ${plan.reason}`);
           return;
         }
+        if (plan.type === 'encrypt' && this.signer.sealChannel) {
+          const signed = await this.signer.sealChannel(unsigned, plan);
+          await this.bridge.publish(signed, { sign: event => event });
+          return;
+        }
         unsigned = zoneKeys.applyWritePlan(unsigned, plan, this.signer.skBytes);
       }
       await this.bridge.publish(unsigned, this.signer);
@@ -1222,13 +1234,16 @@ function startJunkieJarvis(deps = {}) {
       logger.warn('junkiejarvis: no connected bridge available — not starting');
       return null;
     }
-    const privHex = readPrivHex();
-    if (!privHex) {
+    const portSelected = identityPort.selected(deps.manifest, deps.env || process.env);
+    const privHex = portSelected ? null : readPrivHex();
+    if (!portSelected && !privHex) {
       logger.warn('junkiejarvis: manifest gate is on but JUNKIEJARVIS_PRIVKEY_HEX is unset — not starting');
       return null;
     }
     const makeSigner = deps.signerFactory || signerFromHex;
-    const signer = makeSigner(privHex);
+    const signer = portSelected
+      ? (deps.portSignerFactory || identityPort.signer)('junkiejarvis', { env: deps.env || process.env })
+      : makeSigner(privHex);
     if (!signer) {
       logger.warn('junkiejarvis: JUNKIEJARVIS_PRIVKEY_HEX is not 64 hex chars — not starting');
       return null;

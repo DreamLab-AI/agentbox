@@ -11,7 +11,9 @@
 //!   The socket's file mode (0660, group = the callers' group) only narrows who
 //!   can connect; it is never the authorisation.
 //! - **Operations** are a closed list ([`acl::OPERATIONS`]): `pubkey`, `nip98`,
-//!   `sign_event`, `forum_event`, `nip42_auth`, `mirror_key`. Anything else is
+//!   `sign_event`, `forum_event`, `nip42_auth`, `mirror_key`, typed NIP-17
+//!   wrap/open, zone-grant open, zone sealing, mirror self-wrap and agent governance.
+//!   The ACL module lists their exact names. Anything else is
 //!   refused with `{"refused": {"op", "reason"}}`.
 //! - **Receipts**: one JSONL line per decision ([`receipts`]).
 //! - **Crypto**: signing is `nostr-bbs-core`'s `sign_event`; the mirror child is

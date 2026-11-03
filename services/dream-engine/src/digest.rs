@@ -401,7 +401,11 @@ pub async fn run(workspace: &Path, date: &str, dry_run: bool) -> String {
 }
 
 async fn publish(content: String) -> String {
-    let key = match relay::load_signing_key(governance::KEY_VAR, &governance::env_file()) {
+    let key = match relay::load_publishing_key(
+        governance::KEY_VAR,
+        &governance::env_file(),
+        "junkiejarvis",
+    ) {
         Ok(k) => k,
         Err(e) => return format!("digest: key unavailable ({e}) — skipped (fail-open)"),
     };
@@ -427,12 +431,8 @@ async fn publish(content: String) -> String {
     if let WritePlan::Refuse(reason) = &plan {
         return format!("{SKIPPED_NO_ZONE_KEY} ({reason}; not posted in plaintext)");
     }
-    let author_sk: [u8; 32] = key.to_bytes().into();
-    let (content, tags) = match zone_crypto::apply(&plan, &author_sk, content, tags) {
-        Ok(v) => v,
-        Err(e) => return format!("digest: encryption failed ({e}) — skipped"),
-    };
-    let event = match relay::sign(
+    let event = match key.sign_digest(
+        &plan,
         UnsignedEvent {
             pubkey: author,
             created_at: relay::now_secs(),
@@ -440,7 +440,6 @@ async fn publish(content: String) -> String {
             tags,
             content,
         },
-        &key,
     ) {
         Ok(ev) => ev,
         Err(e) => return format!("digest: signing failed ({e}) — skipped"),
