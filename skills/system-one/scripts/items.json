@@ -132,7 +132,7 @@
       "prompt": "Knock me up a landing page mockup for the new product — it needs to look polished and stay on brand."
     },
     {
-      "truth": "build-with-quality",
+      "truth": "visioncraft",
       "tier": "B-directory-derived",
       "prompt": "Add OAuth2 to the API. I want tests and I don't want coverage going backwards."
     },
@@ -197,7 +197,7 @@
       "prompt": "We're onboarding a new dev next month and there's nothing written down. Fix that."
     },
     {
-      "truth": "build-with-quality",
+      "truth": "visioncraft",
       "tier": "B-directory-derived",
       "prompt": "There's a bug somewhere across about six functions and I've been chasing it for two days."
     }

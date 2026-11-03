@@ -210,7 +210,7 @@ export DEFENSE_MCP_AUTO_INSTALL=true
 ## Integration with Other Skills
 
 Combine with:
-- `build-with-quality`: Run security scans as part of CI/CD quality gates
+- `visioncraft`: Run security scans as part of CI/CD quality gates
 - `report-builder`: Generate compliance audit reports in PDF/HTML
 - `sparc-methodology`: Include security hardening in architecture specifications
 - `github-workflow-automation`: Trigger security scans on PR merge

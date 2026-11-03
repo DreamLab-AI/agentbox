@@ -4,7 +4,7 @@
     {
       "id": 1,
       "prompt": "We've got the docs/diagrams corpus for this repo. Get me an outside opinion on the project before we commit to running it for a client.",
-      "expected_output": "Runs scripts/external-review.cjs on docs/diagrams with the default critical and premortem lenses, diagrams only, never code. Checks the corpus passes diagram-index-gen --check first. Reports where the output landed, the token count and cache hits, and summarises the ranked findings, saying which the authors had already marked. Presents every finding as an unverified hypothesis for build-with-quality triage, not as a fix list. Does not use an open 'what do you think' prompt.",
+      "expected_output": "Runs scripts/external-review.cjs on docs/diagrams with the default critical and premortem lenses, diagrams only, never code. Checks the corpus passes diagram-index-gen --check first. Reports where the output landed, the token count and cache hits, and summarises the ranked findings, saying which the authors had already marked. Presents every finding as an unverified hypothesis for visioncraft triage, not as a fix list. Does not use an open 'what do you think' prompt.",
       "files": []
     },
     {
@@ -16,7 +16,7 @@
     {
       "id": 3,
       "prompt": "I just rewrote the control-plane audit topic. Do the diagrams in it still match the code?",
-      "expected_output": "Uses inline mode, not the external Gemini review: a Sonnet subagent (Opus, given an audit and custody topic) reads every cited path:line at the topic's verified_commit and reports faults in the F-nn shape, with a fault class. The author fixes topic faults and the generator gate is rerun until none remain. A code-defect finding goes to build-with-quality to be reproduced test-first.",
+      "expected_output": "Uses inline mode, not the external Gemini review: a Sonnet subagent (Opus, given an audit and custody topic) reads every cited path:line at the topic's verified_commit and reports faults in the F-nn shape, with a fault class. The author fixes topic faults and the generator gate is rerun until none remain. A code-defect finding goes to visioncraft to be reproduced test-first.",
       "files": []
     },
     {

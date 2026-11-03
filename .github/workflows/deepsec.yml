@@ -51,6 +51,14 @@ jobs:
           npm install -g deepsec@2.3.10 @anthropic-ai/claude-code@2.1.257
           deepsec --version
 
+      - name: Install pinned VisionCraft and the host policy adapter
+        run: |
+          set -euo pipefail
+          version="$(node -p 'require("./config/visioncraft-source.json").version')"
+          cargo install visioncraft --version "=$version" --locked
+          cargo install --path services/agentbox-manifest --locked
+          agentbox-manifest visioncraft-source-check --root .
+
       - name: Run the gate (direct Anthropic route; key NAME only reaches disk)
         id: gate
         if: env.HAS_MODEL_KEY == 'true'
@@ -66,7 +74,7 @@ jobs:
         run: |
           set -uo pipefail
           BASE="${{ github.event_name == 'workflow_dispatch' && inputs.base || format('origin/{0}', github.event.pull_request.base.ref) }}"
-          bash skills/build-with-quality/scripts/deepsec-gate.sh --diff "$BASE" --report-dir "$RUNNER_TEMP/deepsec-report"
+          bash scripts/visioncraft-deepsec-gate.sh --diff "$BASE" --report-dir "$RUNNER_TEMP/deepsec-report"
           rc=$?
           echo "rc=$rc" >> "$GITHUB_OUTPUT"
           case "$rc" in

@@ -105,7 +105,7 @@ Full list: https://context7.com/libraries
 | Skill | Relationship |
 |-------|-------------|
 | `codebase-memory` | Use together: codebase-memory for internal architecture, context7 for external library docs |
-| `build-with-quality` | Context7 reduces hallucination in generated code; use before implementation phases |
+| `visioncraft` | Context7 reduces hallucination in generated code; use before implementation phases |
 | `codex-companion` | If GPT-6 Astra is doing the implementation, context7 docs still help ground the generation |
 | `perplexity-research` | Perplexity for general web search; context7 for structured library documentation |
 

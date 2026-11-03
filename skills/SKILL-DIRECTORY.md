@@ -13,10 +13,10 @@
 | `agentdb-optimization` | DEPRECATED | `agentdb-vector-search` |
 | `bencium-impact-designer` | DEPRECATED | `bencium-creative` |
 | `bencium-innovative-ux-designer` | DEPRECATED | `bencium-creative` |
-| `pair-programming` | DEPRECATED | `build-with-quality` |
+| `pair-programming` | DEPRECATED | `visioncraft` |
 | `perplexity` | DEPRECATED | `perplexity-research` |
-| `reasoningbank-agentdb` | DEPRECATED | `build-with-quality` |
-| `reasoningbank-intelligence` | DEPRECATED | `build-with-quality` |
+| `reasoningbank-agentdb` | DEPRECATED | `visioncraft` |
+| `reasoningbank-intelligence` | DEPRECATED | `visioncraft` |
 | `swarm-orchestration` | DEPRECATED | `swarm-advanced` |
 | `v3-cli-modernization` | ARCHIVED | Reference only (v3 shipped) |
 | `v3-core-implementation` | ARCHIVED | Reference only (v3 shipped) |
@@ -48,7 +48,7 @@
 
 | Skill | MCP | Key Capability | When to Choose |
 |-------|-----|----------------|----------------|
-| `build-with-quality` | No | 34 ruflo role labels mapped onto the registered subagents, unified dev+QE, TDD, ADR, quality gates, SONA learning, TinyDancer routing, Rust steering/review/port rubrics + clippy lints (BeautifulRust, `references/rust/`). **Supersedes** pair-programming, reasoningbank-*, agentic-qe | Any multi-file feature, refactor, or project needing quality gates, coverage, and testing |
+| `visioncraft` | No | Pinned portable quality method and Rust CLI: EDD, debugging, quality plans, traceability, evidence-bound reviews, evaluation, Rust rubrics and Deepsec execution. Agentbox supplies host policy and model routing. Replaces the retired build-with-quality skill. | Any multi-file feature, refactor, or project needing quality gates, coverage, and testing |
 | `sparc-methodology` | No | SPARC 5-phase development (Specification, Pseudocode, Architecture, Refinement, Completion), 17 modes | Systematic multi-phase development from spec through deployment |
 | `prd2build` | No | PRD to complete documentation in a single command | Generating full project documentation from a product requirements document |
 | `bhil-methodology` | No | AI-first specification-driven methodology: PRD→SPEC→ADR→TASK traceability, AI-native ADRs (model/prompt/agent), eval suites, guardrails | Starting new features, architecture decisions, sprint planning, quality gates, artifact traceability |
@@ -62,7 +62,7 @@ Phase 1 surfaces require `[skills.code_interpreter] enabled = true` (kernel MCP)
 | `codeact` | Yes (code-interpreter) | Plan-execute-reflect loop over a persistent IPython kernel; variables survive across tool calls. Research-validated lift: +12 pp BBH (PoT/CoC patterns), +20% success rate on tool-use benchmarks (CodeAct). Token-efficient vs JSON-format actions (10–81% reduction). Requires `[skills.code_interpreter] enabled = true`. Degrades to `pytorch-ml` script mode if kernel is unavailable | Multi-step numerical reasoning, data wrangling, scientific Q&A, multi-step calculations that need state to persist between tool calls. NOT for single-file edits or one-shot scripts — use `sparc:code` or direct Edit for those |
 | `expel-lesson-extractor` | Yes | Post-task lesson distillation. Completed trajectory + outcome + execution traces → 0–N `DistilledLesson` rules written to RuVector namespace `code-harness-lessons` (`memory_type=semantic`). Privacy-filtered before write; confidence-decremented on contradiction; garbage-collected below threshold. Auto-invoked at task-end via `hooks post-task` when `[features.expel_lesson_extraction] enabled = true`. Lessons retrieved at future task start via semantic search | Cross-run learning when `ExecutionTrace` evidence is the verification source. Invoke manually after a complex or failed task (≥3 tool calls) to explicitly extract generalisable rules. Do NOT invoke for trivial one-liner tasks |
 | `voyager-skill-library` | Yes | Verified executable skill library. Candidate Python functions pass a three-step `VerificationGate` (static BannedAPI scan → `KernelSession` assertion execution → example execution) before storage in RuVector namespace `code-harness-skills` (`memory_type=procedural`). URN-versioned (`urn:agentbox:skill:<scope>:<name>:v<n>`); superseded versions archived after 30 days. Retrieved by semantic similarity at task start for context injection (≤3 functions, ≤600 tokens). Requires `[skills.voyager_skill_library] enabled = true` and kernel MCP. **Phase 2 scaffold — default off** | Building a reusable corpus of executable utility functions across sessions. Use when a function is likely to recur (parsers, validators, retry wrappers). NOT for one-off scripts or domain-specific logic unlikely to transfer |
-| `tree-search-coder` | Yes | Execution-gated branching code generation. N candidates (≤5) generated via `sparc:coder`, each executed in a fresh `KernelSession`, scored by assertion-pass rate; highest-scoring branch selected (tie-break: shortest code). Slow path — never auto-routed; requires explicit `/tree-search-coder` directive or user request. `spend_cap_usd` is mandatory (no default-unlimited mode). Requires `[skills.tree_search_coder] enabled = true` and kernel MCP (enabled in the live manifest; explicit invocation only, never auto-routed) | Correctness-critical code generation where a single attempt is demonstrably insufficient and the +26.9% correctness lift justifies the N× token cost. NOT a replacement for `sparc:coder`, `build-with-quality`, or direct Edit |
+| `tree-search-coder` | Yes | Execution-gated branching code generation. N candidates (≤5) generated via `sparc:coder`, each executed in a fresh `KernelSession`, scored by assertion-pass rate; highest-scoring branch selected (tie-break: shortest code). Slow path — never auto-routed; requires explicit `/tree-search-coder` directive or user request. `spend_cap_usd` is mandatory (no default-unlimited mode). Requires `[skills.tree_search_coder] enabled = true` and kernel MCP (enabled in the live manifest; explicit invocation only, never auto-routed) | Correctness-critical code generation where a single attempt is demonstrably insufficient and the +26.9% correctness lift justifies the N× token cost. NOT a replacement for `sparc:coder`, `visioncraft`, or direct Edit |
 
 ### Code Quality, Review, and Verification
 
@@ -76,7 +76,7 @@ Phase 1 surfaces require `[skills.code_interpreter] enabled = true` (kernel MCP)
 
 ### Testing and QA
 
-Testing is integrated into `build-with-quality` (TDD agents) and `sparc-methodology` (TDD mode). No standalone testing skill exists. For truth-score verification, use `verification-quality`.
+Testing is integrated into `visioncraft` (TDD agents) and `sparc-methodology` (TDD mode). No standalone testing skill exists. For truth-score verification, use `verification-quality`.
 
 ### GitHub and CI/CD
 
@@ -178,7 +178,7 @@ Testing is integrated into `build-with-quality` (TDD agents) and `sparc-methodol
 | `anatomy` | No | Crafted isometric SVG machines with shared behaviour/readout models, geometry kit, seven examples, optional interaction, WebGL and 3D; topic references load on demand via Jev | Mechanical technical illustrations, algorithm explainers and interactive instruments for docs or web pages; not architecture topology, Mermaid corpora or whole-repository explanations |
 | `diagram-design` | No | Editorial-quality HTML/SVG diagrams: 28 visual types, branded design system, semantic patterns, draw.io/Mermaid import, light/dark/terminal/sketchy variants, accessible animation, self-contained output | Presentation diagrams, blog visuals, branded architecture diagrams, editorial charts, any diagram that will be shared or published |
 | `diagrams-as-code` | No | Citation-verified Mermaid corpus for a whole repository or estate: one topic file per subsystem with dual developer/business narratives, every diagram claim resolved to `path:line` at a declared `verified_commit`, Tension/Debt/Drift/Open/Invariant markers collected into a generated REGISTER.md, plus COVERAGE.md, an index block and a JSON report. Ships the zero-dependency gate `scripts/diagram-index-gen.cjs` (`--check`, `--cite-check`, `--strict-citations`, `--worktree-citations`, `--no-source-paths`, `--render` via mmdc at a 4500px legibility ceiling, `--report`) | Mapping, cataloguing or cartographing a whole codebase in diagrams; extending or re-verifying an existing `docs/diagrams` tree against HEAD; a state-of-play audit that must cite its evidence. NOT a single diagram (`mermaid-diagrams`), a published visual (`diagram-design`), or an audience-facing explainer built on a corpus (`explainer`) |
-| `sealmap-review` | No | Whole-project review from a diagrams-as-code corpus in two modes. External: diagrams only (never code), one shot to Gemini 3.8 Flash at high thinking under a critical due-diligence lens and a pre-mortem lens (`scripts/external-review.cjs`, zero-dependency, `GEMINI_API_KEY`; pack-first so later lenses hit the cache; `--only` per area past 1M tokens; `--register strip` for a blind run). Inline: a Claude subagent checks topics against the code they cite (fault classes: wrong callee, missing call, invented edge, stale claim, ADR contradiction). Both emit unverified `F-nn` findings for build-with-quality triage | "Review this project", an outside opinion, a pre-mortem, due diligence before running or taking over a large system, "do the diagrams still match the code". NOT a diff or PR (`code-review`), writing the corpus (`diagrams-as-code`), or a code security audit (`security-review`) |
+| `sealmap-review` | No | Whole-project review from a diagrams-as-code corpus in two modes. External: diagrams only (never code), one shot to Gemini 3.8 Flash at high thinking under a critical due-diligence lens and a pre-mortem lens (`scripts/external-review.cjs`, zero-dependency, `GEMINI_API_KEY`; pack-first so later lenses hit the cache; `--only` per area past 1M tokens; `--register strip` for a blind run). Inline: a Claude subagent checks topics against the code they cite (fault classes: wrong callee, missing call, invented edge, stale claim, ADR contradiction). Both emit unverified `F-nn` findings for visioncraft triage | "Review this project", an outside opinion, a pre-mortem, due diligence before running or taking over a large system, "do the diagrams still match the code". NOT a diff or PR (`code-review`), writing the corpus (`diagrams-as-code`), or a code security audit (`security-review`) |
 | `mermaid-diagrams` | No | Diagrams-as-code routing hub (routes to diagram-design or Mermaid). Mermaid engine: 25 types, SVG/PNG via Pele (`mmdc` shim), PDF via ImageMagick | Quick technical diagrams in code, version-controlled .mmd files, report/LaTeX embeds. Routes to diagram-design for editorial output |
 | `pdf-signing` | No | Cryptographic PDF signing via **pyHanko** (PAdES/eIDAS-aligned): self-signed identity generation (X.509/RSA-3072), visible signature panel, RFC-3161 timestamps, LTV, `pdfsig` verification, PKCS#11/HSM + eIDAS QES upgrade path. Private key stays in `$PDF_SIGNING_KEYS_DIR`, never in the image | "Digitally sign / e-sign this PDF/invoice/contract", a counterparty requires signed documents, generating a signing identity, verifying or timestamping a signature. NOT for stamping a signature image only (imagemagick) or form-fill (pdftk) |
 | `paperbanana` | No | Publication-quality academic figures via multi-agent VLM pipeline (Gemini/OpenAI) | Research paper figures, methodology diagrams, statistical plots |
@@ -341,7 +341,7 @@ Four methodology skills exist at different phases of the development lifecycle. 
 PHASE 1 — SPECIFICATION
   You have a PRD and need all docs generated                → prd2build
     (outputs: 8 spec files, 27+ ADRs, 11 DDD files, 20+ tasks)
-    (optional --build flag hands off to build-with-quality)
+    (optional --build flag hands off to visioncraft)
 
   You need artifact traceability + sprint scaffolding       → bhil-methodology
     (outputs: PRD-NNN → SPEC-NNN → ADR-NNN → TASK-NNN chain)
@@ -351,15 +351,15 @@ PHASE 2 — IMPLEMENTATION
   Systematic 5-phase development (spec→pseudo→arch→refine→complete)  → sparc-methodology
     (17 modes; delegates to sub-agents per phase)
 
-  Multi-file feature with quality gates, TDD, coverage             → build-with-quality
-    (34 role labels on registered subagents; dev + QE unified; Rust steering; truth scoring)
+  Multi-file feature with quality gates, TDD, coverage             → visioncraft
+    (EDD, quality plans, traceability, evidence validation, Rust steering and optional direct AQE tools)
 
 PHASE 3 — VERIFICATION
   Truth-score verification only, no full pipeline needed    → verification-quality
     (0.0–1.0 truth scoring, automatic rollback at 0.95)
 ```
 
-**Common flow**: `prd2build` → (docs) → `bhil-methodology` → (traceability artifacts) → `build-with-quality` → (code + tests) → `verification-quality` → (confidence score)
+**Common flow**: `prd2build` → (docs) → `bhil-methodology` → (traceability artifacts) → `visioncraft` → (code + tests) → `verification-quality` → (confidence score)
 
 #### Complexity Decision Tree
 
@@ -375,7 +375,7 @@ Q3: How complex is the task?
     |   --> bhil-methodology  [specification-only, no code execution]
     |
     +-- Multi-file feature with quality gates, TDD, coverage, Rust steering
-    |   --> build-with-quality
+    |   --> visioncraft
     |
     +-- Systematic multi-phase (spec -> pseudo -> arch -> refine -> complete)
     |   --> sparc-methodology
@@ -650,7 +650,7 @@ Q3: What do you need?
     |
     +-- Correctness-critical generation needing N-candidate search and execution scoring
     |   --> tree-search-coder (Phase 2-3; ALWAYS explicit opt-in; never auto-routed)
-    |   NOT: sparc:coder (single attempt), build-with-quality (QE pipeline not candidate selection)
+    |   NOT: sparc:coder (single attempt), visioncraft (QE pipeline not candidate selection)
     |
     +-- Autonomous repo-level bug-fixing with bounded file editing and test runner
     |   --> aci-shell (Phase 2 scaffold; READ-ONLY graph queries → use codebase-memory instead)
@@ -849,13 +849,13 @@ Some tasks benefit from combining skills. Common compositions:
 
 | Task Pattern | Primary Skill | Supporting Skill(s) |
 |--------------|---------------|---------------------|
-| Feature with tests and PR review | `build-with-quality` | `github-code-review` |
+| Feature with tests and PR review | `visioncraft` | `github-code-review` |
 | Research report with diagrams | `report-builder` | `diagram-design`, `mermaid-diagrams`, `paperbanana` |
 | Full game project with 3D assets | `game-dev` | `blender`, `comfyui` |
 | Multi-repo release with CI/CD | `github-release-management` | `github-workflow-automation`, `github-multi-repo` |
 | ML model with custom CUDA kernels | `pytorch-ml` | `cuda` |
 | Ontology pipeline (create + enrich) | `ontology-core` | `ontology-enrich` |
-| PRD to working implementation | `prd2build` | `build-with-quality` |
+| PRD to working implementation | `prd2build` | `visioncraft` |
 | Documentation with live web research | `report-builder` | `perplexity-research`, `gemini-url-context` |
 | Visual UI testing after building components | `daisyui` or `ui-ux-pro-max-skill` | `playwright` |
 | Academic paper with AI-generated figures | `latex-documents` | `paperbanana`, `diagram-design`, `mermaid-diagrams` |
@@ -868,7 +868,7 @@ Some tasks benefit from combining skills. Common compositions:
 | Debug web app from Docker | `host-webserver-debug` | `chrome-cdp`, `playwright` |
 | Swarm with automated hooks | `swarm-advanced` | `hooks-automation` |
 | 3DGS with Blender scene prep | `lichtfeld-studio` | `blender` |
-| Architecture review before feature build | `human-architect-mindset` | `build-with-quality` |
+| Architecture review before feature build | `human-architect-mindset` | `visioncraft` |
 
 ---
 
@@ -913,7 +913,7 @@ Generated 2026-09-09 from `skills/mcp.json` (the boot-projection registry; 28 se
 
 **3. AgentDB Optimization**: `agentdb-optimization` is deprecated; merged into `agentdb-vector-search`. Complete.
 
-**4. ReasoningBank + Pair Programming**: Both `reasoningbank-agentdb`, `reasoningbank-intelligence`, and `pair-programming` are deprecated; all merged into `build-with-quality`. Complete.
+**4. ReasoningBank + Pair Programming**: Both `reasoningbank-agentdb`, `reasoningbank-intelligence`, and `pair-programming` are deprecated; all merged into `visioncraft`. Complete.
 
 **5. AgentDB Learning → Advanced**: `agentdb-learning` deprecated; RL Plugins section added to `agentdb-advanced`. All 9 algorithms accessible from a single skill. Complete.
 
@@ -923,7 +923,7 @@ Generated 2026-09-09 from `skills/mcp.json` (the boot-projection registry; 28 se
 
 **8. V3 Implementation Skills (9 archived)**: All archived. Serve as reference only. Could be moved to a `/skills/archive/` subdirectory to reduce clutter.
 
-**9. Development Meta-Skills**: `build-with-quality` vs `sparc-methodology` -- distinct. BWQ focuses on quality engineering (34 role labels on registered subagents); SPARC focuses on phased methodology. Both are needed.
+**9. Development Meta-Skills**: `visioncraft` vs `sparc-methodology` -- distinct. VisionCraft supplies the quality method, evidence contracts and CLI; SPARC focuses on phased methodology.
 
 **10. Flow Nexus Trio**: `flow-nexus-platform`, `flow-nexus-neural`, `flow-nexus-swarm` -- well-separated by concern (platform admin vs ML training vs swarm deployment). No merge needed.
 
@@ -991,7 +991,7 @@ cross-section item, within the documented run-to-run noise).
 
 Skills were also scored on whether they mainly teach what a 2026 frontier model does
 natively, against whether they supply tooling it cannot reach alone. **This is a candidate
-list for human review, not a verdict** — `build-with-quality` scores 0.43 and is plainly not
+list for human review, not a verdict** — the then-current `build-with-quality` scored 0.43 and was plainly not
 chaff, which bounds how far the signal can be trusted.
 
 **Outcome (operator decision, 2026-09-16):** the four highest-margin skills were **removed**
@@ -999,7 +999,7 @@ chaff, which bounds how far the signal can be trusted.
 and renaissance-architecture (+0.59). All four were pure-prose thinking lenses with no
 tooling, and two of them were also each other's only overlap pair (0.70): a double signal.
 Recoverable from git history; inbound references in `vanity-engineering-review`,
-`architecture-studio` and `system-one` were re-pointed at `build-with-quality` and
+`architecture-studio` and `system-one` were re-pointed at the then-current `build-with-quality` and
 `codebase-memory` rather than left dangling.
 
 `typography` (+0.48) and `vanity-engineering-review` (+0.58) were **kept**: the first carries

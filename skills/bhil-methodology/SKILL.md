@@ -42,7 +42,7 @@ Core premise: *The bottleneck in AI-assisted development is not code generation 
 ## When Not to Use
 
 - For single-file quick fixes — use direct editing
-- For code quality/testing execution — use `build-with-quality` (complementary, not competing)
+- For code quality/testing execution — use `visioncraft` (complementary, not competing)
 - For pure code review without methodology — use `code-review-quality` or `sherlock-review`
 - For SEO content — use `toprank`
 
@@ -105,7 +105,7 @@ bash tools/validate-artifacts.sh
 
 | Skill | Relationship |
 |-------|-------------|
-| `build-with-quality` | BWQ executes the code/test/review phases; BHIL provides the spec/ADR/traceability wrapper |
+| `visioncraft` | BWQ executes the code/test/review phases; BHIL provides the spec/ADR/traceability wrapper |
 | `sparc-methodology` | SPARC's 5-phase model maps to BHIL's artifact chain (Spec=PRD+SPEC, Arch=ADR, Code=TASK) |
 | `prd2build` | Generates docs from PRD; BHIL provides the PRD template and traceability |
 | `wardley-maps` | Strategic analysis feeds into PRD and ADR context |

@@ -862,6 +862,8 @@
         "_MRN_PROVIDER",
         "_MRN_TIER",
         "_MRN_TRAJ",
+        "_AQE_CODEX_ARGS",
+        "_AQE_CODEX_PROVIDER",
         "_MR_AQE_PROVIDER",
         "_MR_ENABLED",
         "_MR_PROVIDER_ARG",

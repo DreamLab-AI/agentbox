@@ -90,8 +90,9 @@ the manifest and reachable in a turn:
   execution-gated generation.
 - **deepsec Security gate** — `[toolchains].deepsec = true` bakes the vercel-labs
   vulnerability reviewer; `[security.deepsec]` bounds it (route, `fail_on`,
-  `max_duration`) and `skills/build-with-quality/scripts/deepsec-gate.sh` is the only
-  entry point (ADR-2033). It reads source and sends snippets to the configured model
+  `max_duration`) through `scripts/visioncraft-deepsec-gate.sh`, the Agentbox
+  entry point (ADR-2033). The Rust host projector passes names-only policy to the
+  independent pinned `visioncraft deepsec` executor. It reads source and sends snippets to the configured model
   route; the default route is the operator's own `claude` login, the LAN-only route is
   the Loom façade.
 
@@ -511,7 +512,7 @@ ADR-2020/2021 are partial for hard-limit, off-state and frontmatter/context guar
 
 ## Security gate adoption — 2026-09-05
 
-ADR-2033 makes the build-with-quality Security gate executed rather than declared:
+ADR-2033 makes the visioncraft Security gate executed rather than declared:
 deepsec runs in PR mode under `[security.deepsec]`, every run leaves a receipt, and
 exit 78 is recorded as SKIPPED. Invariants added: credentials are env-var names only
 in the manifest (E072); the gate cannot be enabled without the baked binary (E070);

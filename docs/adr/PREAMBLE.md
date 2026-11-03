@@ -1,4 +1,4 @@
-**How to work against this pack** (engineering/build-with-quality agents start here):
+**How to work against this pack** (engineering/VisionCraft agents start here):
 
 The ADR pack for any domain is **its living governing document in `docs/` plus the
 ledger records below that amend it**. The living docs are normative — their

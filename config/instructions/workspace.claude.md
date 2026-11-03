@@ -10,7 +10,7 @@ Sonnet leads on high effort, an Opus advisor is on call, and search fans out to 
 - when the same test or compiler error fails twice, before a third attempt;
 - before declaring a task done or staging a commit, over the full diff.
 
-Skip it for routine reads, searches and single-file edits. When your own evidence contradicts the advice, say so instead of following it. The advisor is the same model family, not the independent audit: build-with-quality's evidence auditor stays cross-vendor. Pick each subagent's model per call (`model` on the Agent tool): Haiku for lookup, Sonnet for implementation, Opus only for design or review.
+Skip it for routine reads, searches and single-file edits. When your own evidence contradicts the advice, say so instead of following it. The advisor is the same model family, not the independent audit: visioncraft's evidence auditor stays cross-vendor. Pick each subagent's model per call (`model` on the Agent tool): Haiku for lookup, Sonnet for implementation, Opus only for design or review.
 
 ## Browser
 

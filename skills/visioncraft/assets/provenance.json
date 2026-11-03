@@ -1,0 +1,415 @@
+{
+  "version": 1,
+  "source_inventory": {
+    "repository": "https://github.com/DreamLab-AI/agentbox",
+    "revision": "a9125eaf006e2679f5b81444c3c06d0fb45b7481",
+    "root": "skills/build-with-quality/"
+  },
+  "files": [
+    {
+      "path": "SKILL.md",
+      "licence": "MIT OR Apache-2.0",
+      "treatment": "newly written guidance or migration data from the behavioural inventory",
+      "behavioural_sources": [
+        "SKILL.md"
+      ]
+    },
+    {
+      "path": "assets/activation.md",
+      "licence": "MIT OR Apache-2.0",
+      "treatment": "newly written guidance or migration data from the behavioural inventory",
+      "behavioural_sources": [
+        "BUILD-WITH-QUALITY-PROMPT.md"
+      ]
+    },
+    {
+      "path": "assets/adr.md",
+      "licence": "MIT OR Apache-2.0",
+      "treatment": "newly written guidance or migration data from the behavioural inventory",
+      "behavioural_sources": []
+    },
+    {
+      "path": "assets/expectation.md",
+      "licence": "MIT OR Apache-2.0",
+      "treatment": "newly written guidance or migration data from the behavioural inventory",
+      "behavioural_sources": []
+    },
+    {
+      "path": "assets/legacy-paths.json",
+      "licence": "MIT OR Apache-2.0",
+      "treatment": "newly written guidance or migration data from the behavioural inventory",
+      "behavioural_sources": []
+    },
+    {
+      "path": "assets/provenance.json",
+      "licence": "MIT OR Apache-2.0",
+      "treatment": "newly written file-level provenance manifest",
+      "behavioural_sources": []
+    },
+    {
+      "path": "assets/traceability.md",
+      "licence": "MIT OR Apache-2.0",
+      "treatment": "newly written guidance or migration data from the behavioural inventory",
+      "behavioural_sources": []
+    },
+    {
+      "path": "assets/workshop.md",
+      "licence": "MIT OR Apache-2.0",
+      "treatment": "newly written guidance or migration data from the behavioural inventory",
+      "behavioural_sources": []
+    },
+    {
+      "path": "references/agentic-qe.md",
+      "licence": "MIT OR Apache-2.0",
+      "treatment": "New guidance from read-only inspection of published agentic-qe 3.15.10 MCP/CLI contracts; no upstream implementation copied.",
+      "behavioural_sources": [],
+      "external_source": {
+        "package": "agentic-qe",
+        "version": "3.15.10",
+        "contract": "contracts/agentic-qe.json"
+      }
+    },
+    {
+      "path": "references/architecture.md",
+      "licence": "MIT OR Apache-2.0",
+      "treatment": "newly written guidance or migration data from the behavioural inventory",
+      "behavioural_sources": [
+        "references/architecture.md"
+      ]
+    },
+    {
+      "path": "references/debugging.md",
+      "licence": "MIT OR Apache-2.0",
+      "treatment": "newly written guidance or migration data from the behavioural inventory",
+      "behavioural_sources": [
+        "DEBUGGING-PROTOCOL.md"
+      ]
+    },
+    {
+      "path": "references/deepsec.md",
+      "licence": "MIT OR Apache-2.0",
+      "treatment": "newly written guidance or migration data from the behavioural inventory",
+      "behavioural_sources": [
+        "references/deepsec-security-gate.md"
+      ]
+    },
+    {
+      "path": "references/diagram-diagnosis.md",
+      "licence": "MIT OR Apache-2.0",
+      "treatment": "newly written guidance or migration data from the behavioural inventory",
+      "behavioural_sources": []
+    },
+    {
+      "path": "references/ecosystem-agentbox.md",
+      "licence": "MIT OR Apache-2.0",
+      "treatment": "newly written guidance or migration data from the behavioural inventory",
+      "behavioural_sources": []
+    },
+    {
+      "path": "references/edd.md",
+      "licence": "MIT OR Apache-2.0",
+      "treatment": "newly written guidance or migration data from the behavioural inventory",
+      "behavioural_sources": [
+        "EDD-PROTOCOL.md"
+      ]
+    },
+    {
+      "path": "references/evaluation.md",
+      "licence": "MIT OR Apache-2.0",
+      "treatment": "newly written guidance or migration data from the behavioural inventory",
+      "behavioural_sources": []
+    },
+    {
+      "path": "references/methodologies.md",
+      "licence": "MIT OR Apache-2.0",
+      "treatment": "newly written guidance or migration data from the behavioural inventory",
+      "behavioural_sources": [
+        "references/methodologies.md"
+      ]
+    },
+    {
+      "path": "references/migration.md",
+      "licence": "MIT OR Apache-2.0",
+      "treatment": "newly written guidance or migration data from the behavioural inventory",
+      "behavioural_sources": [
+        "README.md",
+        "references/migration.md"
+      ]
+    },
+    {
+      "path": "references/quality-gates.md",
+      "licence": "MIT OR Apache-2.0",
+      "treatment": "newly written guidance or migration data from the behavioural inventory",
+      "behavioural_sources": [
+        "references/quality-gates-and-workflow.md"
+      ]
+    },
+    {
+      "path": "references/review-evidence.md",
+      "licence": "MIT OR Apache-2.0",
+      "treatment": "newly written guidance or migration data from the behavioural inventory",
+      "behavioural_sources": [
+        "references/review-evidence.md"
+      ]
+    },
+    {
+      "path": "references/roles.md",
+      "licence": "MIT OR Apache-2.0",
+      "treatment": "newly written guidance or migration data from the behavioural inventory",
+      "behavioural_sources": [
+        "references/agents.md"
+      ]
+    },
+    {
+      "path": "references/rust/NOTICE.md",
+      "licence": "MIT; VisionCraft additions MIT OR Apache-2.0",
+      "treatment": "MIT body retained; independently written portable overlay, links or migration notice replaces estate wording",
+      "behavioural_sources": [
+        "references/rust/NOTICE.md"
+      ],
+      "upstream": {
+        "repository": "https://github.com/morganlinton/BeautifulRust",
+        "revision": "a9cdcfa94d1330c0d41c7f67764c5f7786fbb71d",
+        "mapping_note": "Inherited full notice and attribution; source_import gives the verified imported file. No independently checked upstream licence-file path is asserted."
+      },
+      "source_import": {
+        "repository": "https://github.com/DreamLab-AI/agentbox",
+        "revision": "a9125eaf006e2679f5b81444c3c06d0fb45b7481",
+        "path": "skills/build-with-quality/references/rust/NOTICE.md",
+        "sha256": "c206613705f463853e862d7d966c30abc9df73f46ece83c486a2ae5c0d8f4ef2"
+      }
+    },
+    {
+      "path": "references/rust/lints/clippy.toml",
+      "licence": "MIT",
+      "treatment": "byte-for-byte retained import",
+      "behavioural_sources": [
+        "references/rust/lints/clippy.toml"
+      ],
+      "upstream": {
+        "repository": "https://github.com/morganlinton/BeautifulRust",
+        "revision": "a9cdcfa94d1330c0d41c7f67764c5f7786fbb71d",
+        "paths": [
+          "lints/clippy.toml"
+        ]
+      },
+      "source_import": {
+        "repository": "https://github.com/DreamLab-AI/agentbox",
+        "revision": "a9125eaf006e2679f5b81444c3c06d0fb45b7481",
+        "path": "skills/build-with-quality/references/rust/lints/clippy.toml",
+        "sha256": "012446990fbaa1b4705319c7cf95ed59ffbd14ac7ca9ec4b907f27a0ead82c42"
+      }
+    },
+    {
+      "path": "references/rust/lints/lints.toml",
+      "licence": "MIT",
+      "treatment": "byte-for-byte retained import",
+      "behavioural_sources": [
+        "references/rust/lints/lints.toml"
+      ],
+      "upstream": {
+        "repository": "https://github.com/morganlinton/BeautifulRust",
+        "revision": "a9cdcfa94d1330c0d41c7f67764c5f7786fbb71d",
+        "paths": [
+          "lints/lints.toml"
+        ]
+      },
+      "source_import": {
+        "repository": "https://github.com/DreamLab-AI/agentbox",
+        "revision": "a9125eaf006e2679f5b81444c3c06d0fb45b7481",
+        "path": "skills/build-with-quality/references/rust/lints/lints.toml",
+        "sha256": "4dbf3367ff178738f248543e9ae298ad57c8de3fb797823e756b5edf3f7f9588"
+      }
+    },
+    {
+      "path": "references/rust/port.md",
+      "licence": "MIT; VisionCraft additions MIT OR Apache-2.0",
+      "treatment": "MIT body retained; independently written portable overlay, links or migration notice replaces estate wording",
+      "behavioural_sources": [
+        "references/rust/port.md"
+      ],
+      "upstream": {
+        "repository": "https://github.com/morganlinton/BeautifulRust",
+        "revision": "a9cdcfa94d1330c0d41c7f67764c5f7786fbb71d",
+        "paths": [
+          "skills/rust-port/SKILL.md"
+        ]
+      },
+      "source_import": {
+        "repository": "https://github.com/DreamLab-AI/agentbox",
+        "revision": "a9125eaf006e2679f5b81444c3c06d0fb45b7481",
+        "path": "skills/build-with-quality/references/rust/port.md",
+        "sha256": "33bd11deee4e0baf3c34a0059c48267684763631770847004c5dbd3a8362b1fd"
+      }
+    },
+    {
+      "path": "references/rust/review.md",
+      "licence": "MIT; VisionCraft additions MIT OR Apache-2.0",
+      "treatment": "MIT body retained; independently written portable overlay, links or migration notice replaces estate wording",
+      "behavioural_sources": [
+        "references/rust/review.md"
+      ],
+      "upstream": {
+        "repository": "https://github.com/morganlinton/BeautifulRust",
+        "revision": "a9cdcfa94d1330c0d41c7f67764c5f7786fbb71d",
+        "paths": [
+          "skills/rust-review/SKILL.md"
+        ]
+      },
+      "source_import": {
+        "repository": "https://github.com/DreamLab-AI/agentbox",
+        "revision": "a9125eaf006e2679f5b81444c3c06d0fb45b7481",
+        "path": "skills/build-with-quality/references/rust/review.md",
+        "sha256": "8803404fbe00f2d6bdaa8c00555a2b37a4ad8f5570157bae94af8c7d5dfec29f"
+      }
+    },
+    {
+      "path": "references/rust/sources/effective-rust.md",
+      "licence": "MIT",
+      "treatment": "byte-for-byte retained import",
+      "behavioural_sources": [
+        "references/rust/sources/effective-rust.md"
+      ],
+      "upstream": {
+        "repository": "https://github.com/morganlinton/BeautifulRust",
+        "revision": "a9cdcfa94d1330c0d41c7f67764c5f7786fbb71d",
+        "paths": [
+          "skills/rust-best-practices/references/effective-rust.md"
+        ]
+      },
+      "source_import": {
+        "repository": "https://github.com/DreamLab-AI/agentbox",
+        "revision": "a9125eaf006e2679f5b81444c3c06d0fb45b7481",
+        "path": "skills/build-with-quality/references/rust/sources/effective-rust.md",
+        "sha256": "c0fe4ea29d2601224ac68b307d8c6137dd932b2565c141c1527c88ba1c5d5415"
+      }
+    },
+    {
+      "path": "references/rust/sources/google-rust-style-guide.md",
+      "licence": "MIT",
+      "treatment": "byte-for-byte retained import",
+      "behavioural_sources": [
+        "references/rust/sources/google-rust-style-guide.md"
+      ],
+      "upstream": {
+        "repository": "https://github.com/morganlinton/BeautifulRust",
+        "revision": "a9cdcfa94d1330c0d41c7f67764c5f7786fbb71d",
+        "paths": [
+          "skills/rust-best-practices/references/google-rust-style-guide.md"
+        ]
+      },
+      "source_import": {
+        "repository": "https://github.com/DreamLab-AI/agentbox",
+        "revision": "a9125eaf006e2679f5b81444c3c06d0fb45b7481",
+        "path": "skills/build-with-quality/references/rust/sources/google-rust-style-guide.md",
+        "sha256": "cfe61cd554c9dc32b412bb22dec7bd58e9eb4b3931db79124a61b8c2f573542c"
+      }
+    },
+    {
+      "path": "references/rust/sources/microsoft-rust-guidelines.md",
+      "licence": "MIT",
+      "treatment": "byte-for-byte retained import",
+      "behavioural_sources": [
+        "references/rust/sources/microsoft-rust-guidelines.md"
+      ],
+      "upstream": {
+        "repository": "https://github.com/morganlinton/BeautifulRust",
+        "revision": "a9cdcfa94d1330c0d41c7f67764c5f7786fbb71d",
+        "paths": [
+          "skills/rust-best-practices/references/microsoft-rust-guidelines.md"
+        ]
+      },
+      "source_import": {
+        "repository": "https://github.com/DreamLab-AI/agentbox",
+        "revision": "a9125eaf006e2679f5b81444c3c06d0fb45b7481",
+        "path": "skills/build-with-quality/references/rust/sources/microsoft-rust-guidelines.md",
+        "sha256": "648cfee06cea304e3d9c525e6de9047c296ce353e156a8117111094418ccc4b8"
+      }
+    },
+    {
+      "path": "references/rust/sources/rust-api-guidelines.md",
+      "licence": "MIT",
+      "treatment": "byte-for-byte retained import",
+      "behavioural_sources": [
+        "references/rust/sources/rust-api-guidelines.md"
+      ],
+      "upstream": {
+        "repository": "https://github.com/morganlinton/BeautifulRust",
+        "revision": "a9cdcfa94d1330c0d41c7f67764c5f7786fbb71d",
+        "paths": [
+          "skills/rust-best-practices/references/rust-api-guidelines.md"
+        ]
+      },
+      "source_import": {
+        "repository": "https://github.com/DreamLab-AI/agentbox",
+        "revision": "a9125eaf006e2679f5b81444c3c06d0fb45b7481",
+        "path": "skills/build-with-quality/references/rust/sources/rust-api-guidelines.md",
+        "sha256": "392a94ed5151a7eeaf6f0d0f0cbd29904fa41ae4c4ae5ae98d79e7da3ba2a8af"
+      }
+    },
+    {
+      "path": "references/rust/sources/rust-design-patterns.md",
+      "licence": "MIT",
+      "treatment": "byte-for-byte retained import",
+      "behavioural_sources": [
+        "references/rust/sources/rust-design-patterns.md"
+      ],
+      "upstream": {
+        "repository": "https://github.com/morganlinton/BeautifulRust",
+        "revision": "a9cdcfa94d1330c0d41c7f67764c5f7786fbb71d",
+        "paths": [
+          "skills/rust-best-practices/references/rust-design-patterns.md"
+        ]
+      },
+      "source_import": {
+        "repository": "https://github.com/DreamLab-AI/agentbox",
+        "revision": "a9125eaf006e2679f5b81444c3c06d0fb45b7481",
+        "path": "skills/build-with-quality/references/rust/sources/rust-design-patterns.md",
+        "sha256": "3102f45153ac7c75179ee43b12d143b33e4aaba9b2209c454dd4f0542cae7ae7"
+      }
+    },
+    {
+      "path": "references/rust/steering.md",
+      "licence": "MIT; VisionCraft additions MIT OR Apache-2.0",
+      "treatment": "MIT body retained; independently written portable overlay, links or migration notice replaces estate wording",
+      "behavioural_sources": [
+        "references/rust/steering.md"
+      ],
+      "upstream": {
+        "repository": "https://github.com/morganlinton/BeautifulRust",
+        "revision": "a9cdcfa94d1330c0d41c7f67764c5f7786fbb71d",
+        "paths": [
+          "skills/rust-best-practices/SKILL.md"
+        ]
+      },
+      "source_import": {
+        "repository": "https://github.com/DreamLab-AI/agentbox",
+        "revision": "a9125eaf006e2679f5b81444c3c06d0fb45b7481",
+        "path": "skills/build-with-quality/references/rust/steering.md",
+        "sha256": "d3bb15d912ff61d78482d9f776f68368d5299f09166518bd1c6c6be8f4368ced"
+      }
+    },
+    {
+      "path": "references/traceability.md",
+      "licence": "MIT OR Apache-2.0",
+      "treatment": "newly written guidance or migration data from the behavioural inventory",
+      "behavioural_sources": [
+        "references/bhil-traceability.md"
+      ]
+    },
+    {
+      "path": "references/worked-examples.md",
+      "licence": "MIT OR Apache-2.0",
+      "treatment": "newly written guidance or migration data from the behavioural inventory",
+      "behavioural_sources": [
+        "USAGE-EXAMPLES.md"
+      ]
+    }
+  ],
+  "limitations": [
+    "Agentbox source declarations mix root AGPL-3.0 and skill MIT; no wholesale relicensing of that source is claimed.",
+    "Non-Rust portable guidance was written anew from the behaviour inventory; legacy executable source and descriptive config were not copied.",
+    "Rust upstream mappings are the pinned import attribution, not a claim that upstream was fetched or re-audited during this migration.",
+    "This file records provenance, not empirical task-success improvement."
+  ]
+}

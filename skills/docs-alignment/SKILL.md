@@ -20,7 +20,7 @@ Skip in favour of a more direct path when:
 - Generating a LaTeX report with charts/bibliography — use `report-builder`.
 - Creating a diagram from text — use `mermaid-diagrams`.
 - Generating API docs from code — use code-level doc tools directly.
-- General code quality/testing workflows — use `build-with-quality`.
+- General code quality/testing workflows — use `visioncraft`.
 
 ## Sequencing with prose-sanitiser
 

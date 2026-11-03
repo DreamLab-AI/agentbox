@@ -44,11 +44,12 @@ pub fn set_server(file: &Path, name: &str) -> Result<(), String> {
 
     let mut cfg = load_strict(file)?;
     jsonio::mcp_servers_mut(&mut cfg).insert(name.to_string(), spec);
-    jsonio::write(file, &cfg, false).map_err(|e| format!("{}: {e}", file.display()))
+    jsonio::write_atomic(file, &cfg, false).map_err(|e| format!("{}: {e}", file.display()))
 }
 
-/// Substitute `${VAR}` with the JSON-escaped value of that environment
+/// Substitute `${VAR}` (ASCII `[A-Za-z_][A-Za-z0-9_]*`) with the JSON-escaped value of that environment
 /// variable, or the empty string when it is unset (`os.environ.get(x, '')`).
+/// Unsupported shell syntax and unmatched openers remain literal text.
 ///
 /// This exists so a secret can reach the spec without passing through argv.
 /// The entrypoint's heredocs let the shell expand ordinary paths and URLs, but
@@ -67,23 +68,28 @@ fn expand_env_placeholders(text: &str) -> String {
     while let Some(start) = rest.find("${") {
         out.push_str(&rest[..start]);
         let after = &rest[start + 2..];
-        match after.find('}') {
-            Some(end) => {
-                let name = &after[..end];
-                let value = std::env::var(name).unwrap_or_default();
-                let escaped = serde_json::to_string(&value).unwrap_or_else(|_| "\"\"".into());
-                // Strip exactly one quote from each end. `trim_matches('"')`
-                // would strip *every* trailing quote, so a value ending in `"`
-                // lost its own escaped quote and left a dangling backslash that
-                // ran the JSON string off the end of the line.
-                out.push_str(&escaped[1..escaped.len() - 1]);
-                rest = &after[end + 1..];
-            }
-            // An unterminated `${` is literal text, not a placeholder.
-            None => {
-                out.push_str(&rest[start..]);
-                return out;
-            }
+        // Accept only the exact ${NAME} grammar. In particular shell defaults,
+        // invalid identifiers and a later JSON object's closing brace are not
+        // variable names. Advancing just past the literal opener on a mismatch
+        // still allows a separate valid placeholder in a later field.
+        let name_end = after
+            .bytes()
+            .position(|byte| !(byte.is_ascii_alphanumeric() || byte == b'_'));
+        let end = name_end.filter(|end| {
+            *end > 0
+                && (after.as_bytes()[0].is_ascii_alphabetic() || after.as_bytes()[0] == b'_')
+                && after.as_bytes()[*end] == b'}'
+        });
+        if let Some(end) = end {
+            let value = std::env::var(&after[..end]).unwrap_or_default();
+            let escaped = serde_json::to_string(&value).expect("a string always serialises");
+            // Strip one delimiter only; quote characters in the value retain
+            // their own JSON escaping, including a quote at the end.
+            out.push_str(&escaped[1..escaped.len() - 1]);
+            rest = &after[end + 1..];
+        } else {
+            out.push_str("${");
+            rest = after;
         }
     }
     out.push_str(rest);
@@ -95,17 +101,40 @@ fn expand_env_placeholders(text: &str) -> String {
 /// `provider` empty removes `AQE_LLM_PROVIDER` rather than writing a blank —
 /// the `env.pop(..., None)` branch, which is what lets an operator turn ADR-041
 /// routing back off without leaving a stale key behind.
-pub fn reconcile_aqe(file: &Path, provider: Option<&str>) -> Result<(), String> {
+pub fn reconcile_aqe(file: &Path, provider: Option<&str>, disabled: bool) -> Result<(), String> {
     let mut cfg = load_strict(file)?;
+    if !cfg.is_object()
+        || cfg
+            .get("mcpServers")
+            .is_some_and(|servers| !servers.is_object())
+    {
+        return Err(
+            "AQE MCP configuration must contain an object server map; preserved unchanged".into(),
+        );
+    }
     let servers = jsonio::mcp_servers_mut(&mut cfg);
-
+    if disabled {
+        servers.shift_remove("agentic-qe");
+        return jsonio::write_atomic(file, &cfg, false)
+            .map_err(|e| format!("{}: {e}", file.display()));
+    }
     let entry = servers.entry("agentic-qe".to_string()).or_insert_with(
         || serde_json::json!({ "command": "aqe", "args": ["mcp"], "type": "stdio" }),
     );
+    aqe_entry(entry, provider)?;
+    jsonio::write_atomic(file, &cfg, false).map_err(|e| format!("{}: {e}", file.display()))
+}
+
+fn aqe_entry(entry: &mut Value, provider: Option<&str>) -> Result<(), String> {
     if !entry.is_object() {
         *entry = serde_json::json!({ "command": "aqe", "args": ["mcp"], "type": "stdio" });
     }
     let obj = entry.as_object_mut().expect("object");
+    obj.insert("command".into(), Value::String("aqe".into()));
+    obj.insert("args".into(), serde_json::json!(["mcp"]));
+    obj.insert("type".into(), Value::String("stdio".into()));
+    obj.shift_remove("url");
+    obj.shift_remove("headers");
     obj.entry("env".to_string())
         .or_insert_with(|| Value::Object(Map::new()));
     let env = obj
@@ -116,6 +145,12 @@ pub fn reconcile_aqe(file: &Path, provider: Option<&str>) -> Result<(), String> 
     env.insert("AQE_MEMORY_BACKEND".into(), Value::String("memory".into()));
     env.insert("AQE_VERBOSE".into(), Value::String("false".into()));
     env.insert("NODE_NO_WARNINGS".into(), Value::String("1".into()));
+    // Explicit task tools only; the upstream package otherwise starts periodic workers.
+    env.insert("AQE_WORKERS_ENABLED".into(), Value::String("false".into()));
+    // AQE's optional local/embedder clients are not the estate memory pipeline.
+    // Empty strings also prevent an inherited endpoint/token activating one.
+    env.insert("AQE_EMBEDDER_ENDPOINT".into(), Value::String(String::new()));
+    env.insert("AQE_EMBEDDER_TOKEN".into(), Value::String(String::new()));
     match provider.filter(|p| !p.is_empty()) {
         Some(p) => {
             env.insert("AQE_LLM_PROVIDER".into(), Value::String(p.to_string()));
@@ -125,7 +160,58 @@ pub fn reconcile_aqe(file: &Path, provider: Option<&str>) -> Result<(), String> 
         }
     }
 
-    jsonio::write(file, &cfg, false).map_err(|e| format!("{}: {e}", file.display()))
+    Ok(())
+}
+
+/// Reconcile the same direct AQE MCP in Codex, preserving unrelated TOML values.
+pub fn reconcile_aqe_codex(
+    file: &Path,
+    provider: Option<&str>,
+    disabled: bool,
+) -> Result<(), String> {
+    use std::io::Write;
+    let text = match std::fs::read_to_string(file) {
+        Ok(text) => text,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => String::new(),
+        Err(_) => return Err("AQE Codex configuration is unreadable".into()),
+    };
+    let mut cfg: toml::Value = toml::from_str(&text)
+        .map_err(|_| "AQE Codex configuration is malformed; preserved unchanged")?;
+    let table = cfg
+        .as_table_mut()
+        .ok_or("AQE Codex configuration must be a table")?;
+    let servers = table
+        .entry("mcp_servers".to_owned())
+        .or_insert_with(|| toml::Value::Table(Default::default()))
+        .as_table_mut()
+        .ok_or("Codex mcp_servers must be a table")?;
+    if disabled {
+        servers.remove("agentic-qe");
+    } else {
+        let mut entry = Value::Null;
+        aqe_entry(&mut entry, provider)?;
+        let object = entry.as_object_mut().expect("AQE object");
+        object.shift_remove("type");
+        object.insert("startup_timeout_sec".into(), Value::from(30));
+        object.insert("required".into(), Value::Bool(false));
+        servers.insert(
+            "agentic-qe".into(),
+            toml::Value::try_from(entry).map_err(|_| "cannot encode AQE Codex entry")?,
+        );
+    }
+    let output = toml::to_string_pretty(&cfg).map_err(|_| "cannot encode Codex config")?;
+    let parent = file.parent().unwrap_or_else(|| Path::new("."));
+    std::fs::create_dir_all(parent).map_err(|_| "cannot create Codex config directory")?;
+    let mut temporary =
+        tempfile::NamedTempFile::new_in(parent).map_err(|_| "cannot stage Codex config")?;
+    temporary
+        .write_all(output.as_bytes())
+        .and_then(|()| temporary.as_file().sync_all())
+        .map_err(|_| "cannot write staged Codex config")?;
+    temporary
+        .persist(file)
+        .map_err(|_| "cannot replace Codex config")?;
+    Ok(())
 }
 
 /// Mirror one server from `from` (the workspace `.mcp.json`) into `to` (the
@@ -153,15 +239,20 @@ pub fn mirror_server(from: &Path, to: &Path, name: &str) -> Result<(), String> {
     };
     let servers = jsonio::mcp_servers_mut(&mut dst);
     if servers.get(name) == Some(spec) {
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let metadata =
+                std::fs::symlink_metadata(to).map_err(|e| format!("{}: {e}", to.display()))?;
+            if metadata.is_file() && metadata.permissions().mode() & 0o7777 == 0o600 {
+                return Ok(());
+            }
+        }
+        #[cfg(not(unix))]
         return Ok(());
     }
     servers.insert(name.to_string(), spec.clone());
     jsonio::write_atomic(to, &dst, false).map_err(|e| format!("{}: {e}", to.display()))?;
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        let _ = std::fs::set_permissions(to, std::fs::Permissions::from_mode(0o600));
-    }
     println!(
         "  [mcp] Mirrored {name} into {} (loads from any cwd)",
         to.display()
@@ -209,7 +300,7 @@ pub fn protect_namespace(file: &Path, server: &str, namespace: &str) -> Result<(
         "RUVECTOR_PROTECTED_NAMESPACES".into(),
         Value::String(names.join(",")),
     );
-    jsonio::write(file, &cfg, false).map_err(|e| format!("{}: {e}", file.display()))?;
+    jsonio::write_atomic(file, &cfg, false).map_err(|e| format!("{}: {e}", file.display()))?;
     println!("  [ruvnet-brain] protected namespace {namespace} in claude-flow env");
     Ok(())
 }
@@ -240,7 +331,7 @@ pub fn deregister_ruvector_fork(file: &Path) -> Result<(), String> {
     for k in &doomed {
         servers.shift_remove(k);
     }
-    jsonio::write(file, &cfg, false).map_err(|e| format!("{}: {e}", file.display()))?;
+    jsonio::write_atomic(file, &cfg, false).map_err(|e| format!("{}: {e}", file.display()))?;
     println!(
         "  [mcp] De-registered ungoverned ruvector fork: {} (ADR-036 D2)",
         doomed.join(", ")
@@ -416,5 +507,45 @@ mod tests {
         let out = expand_env_placeholders(r#"{"k":"${ABM_TEST_QUOTES}"}"#);
         let v: Value = serde_json::from_str(&out).expect("stays valid JSON");
         assert_eq!(v["k"], "\"\"\"");
+    }
+
+    #[test]
+    fn unsupported_shell_expansions_and_cross_field_braces_stay_literal() {
+        for text in [
+            r#"{"args":["-c","echo ${X:-default} ${9X} ${} ${X-Y}"]}"#,
+            r#"{"args":["${UNCLOSED"],"nested":{"keep":true}}"#,
+        ] {
+            assert_eq!(expand_env_placeholders(text), text);
+        }
+    }
+
+    #[test]
+    fn unmatched_literal_does_not_hide_a_later_valid_placeholder() {
+        std::env::set_var("ABM_TEST_AFTER_LITERAL", "expanded");
+        assert_eq!(
+            expand_env_placeholders(
+                r#"{"literal":"${UNCLOSED","next":"${ABM_TEST_AFTER_LITERAL}"}"#
+            ),
+            r#"{"literal":"${UNCLOSED","next":"expanded"}"#
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn unchanged_mirror_still_repairs_public_permissions() {
+        use std::os::unix::fs::PermissionsExt;
+        let scratch = tempfile::tempdir().unwrap();
+        let from = scratch.path().join("from.json");
+        let to = scratch.path().join("to.json");
+        let text = r#"{"mcpServers":{"fixture":{"env":{"TOKEN":"private-fixture"}}}}"#;
+        std::fs::write(&from, text).unwrap();
+        std::fs::write(&to, text).unwrap();
+        std::fs::set_permissions(&to, std::fs::Permissions::from_mode(0o644)).unwrap();
+        mirror_server(&from, &to, "fixture").unwrap();
+        assert_eq!(
+            std::fs::metadata(&to).unwrap().permissions().mode() & 0o777,
+            0o600
+        );
+        assert_eq!(jsonio::read_opt(&from), jsonio::read_opt(&to));
     }
 }

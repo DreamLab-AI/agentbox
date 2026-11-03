@@ -20,7 +20,7 @@ raise the score on **held-out** items. It is the empirical counterpart to
 actually makes an agent *succeed*. This one does.
 
 > **Trial of record:** the framework was validated end-to-end by tuning the
-> `build-with-quality` skill's `DEBUGGING-PROTOCOL.md` against a Rust
+> `visioncraft` skill's `DEBUGGING-PROTOCOL.md` against a Rust
 > stub-and-restore task. That run is the worked example throughout; build-with-
 > quality was only the *trial subject* — the capability generalizes to any skill.
 
@@ -126,7 +126,7 @@ skill/task, and the output artefact list all live in
 
 - `skill-builder` — author a new skill (use *before* tuning a fresh one); it
   links back here for measuring whether wording changes actually work.
-- `build-with-quality` — the trial subject; its EDD layer ("executed evidence
+- `visioncraft` — the trial subject; its EDD layer ("executed evidence
   required; narrative evidence auto-rejected") is the same discipline this loop
   enforces empirically.
 - `docs-alignment` — prose/cross-link consistency (orthogonal to reward).

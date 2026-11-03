@@ -382,15 +382,15 @@
     {
       "prompt": "I have a PRD. Generate the full documentation set from it — specs, ADRs, DDD files, task breakdown.",
       "expected_skill": "prd2build",
-      "rationale": "PRD to complete documentation is phase 1 of the methodology ladder; build-with-quality is phase 3.",
+      "rationale": "PRD to complete documentation is phase 1 of the methodology ladder; visioncraft is phase 3.",
       "class": "near-neighbour",
       "provenance": "directory-derived",
       "late_discriminative": false
     },
     {
       "prompt": "This refactor touches the API, the client and the migration scripts. I want coverage and quality gates on it, not a cowboy job.",
-      "expected_skill": "build-with-quality",
-      "rationale": "Multi-file feature or refactor needing gates and coverage is build-with-quality's stated trigger.",
+      "expected_skill": "visioncraft",
+      "rationale": "Multi-file feature or refactor needing gates and coverage is visioncraft's stated trigger.",
       "class": "near-neighbour",
       "provenance": "directory-derived",
       "late_discriminative": false
@@ -670,7 +670,7 @@
     {
       "prompt": "Rename the variable foo to candidateCount everywhere in this one file, nothing else.",
       "expected_skill": "none",
-      "rationale": "A trivial edit, named in the `none` rubric. build-with-quality is the tempting wrong pick and is explicitly scoped to multi-file work.",
+      "rationale": "A trivial edit, named in the `none` rubric. visioncraft is the tempting wrong pick and is explicitly scoped to multi-file work.",
       "class": "none",
       "provenance": "log-shaped",
       "late_discriminative": false

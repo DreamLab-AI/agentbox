@@ -2276,10 +2276,10 @@ claude_code = true
 ruflo = true
 ruflo_console = true
 claude_flow = true  # legacy alias gate: claude-flow IS ruflo (upstream rename, github.com/ruvnet/ruflo) — either gate bakes the ONE consolidated closure, which ships `ruflo` + `claude-flow` + `claude-flow-mcp` bins
-agentic_qe = false  # 2026-09-25: 0 MCP calls in 14 days; build-with-quality supersedes the aqe fleet. Rebuild-class (drops the aqe CLI + root-session agentic-qe MCP)
+agentic_qe = true   # ADR-2165: pinned upstream AQE provides direct quality-engineering MCP tools alongside VisionCraft; rebuild required.
 metaharness = true  # ADR-064: bakes metaharness@0.3.2 + @metaharness/darwin@0.8.3 CLIs (the versions the ruflo-metaharness plugin pins); pin discipline per ADR-067
 nagual_qe = false  # disabled: upstream sqlx 0.9 SqlSafeStr compilation error
-deepsec = true  # ADR-2033: vercel-labs/deepsec@2.3.9 CLI (npm, Apache-2.0) — the build-with-quality Security gate; policy in [security.deepsec]. First rebuild after enabling resolves nodeModulesHash (see flake.nix deepsecPkg)
+deepsec = true  # ADR-2033: vercel-labs/deepsec@2.3.10 CLI (npm, Apache-2.0) — the visioncraft Security gate; policy in [security.deepsec]. First rebuild after enabling resolves nodeModulesHash (see flake.nix deepsecPkg)
 codebase_memory = true  # MCP-2 (2026-07-22): binary IS baked (codebase-memory-mcp on PATH); the boot MCP-registry projector now registers it, so the CLAUDE.md "USE FIRST" mandate is truthful next rebuild — gate kept ON (not flipped)
 rust = true
 antigravity_cli = true
@@ -2550,9 +2550,9 @@ role_isolation = false
 # Currently enabled feature exceptions (mirrors active feature gates above):
 
 # ADR-2033 — deepsec (vercel-labs) AI vulnerability review as the
-# build-with-quality Security gate (skills/build-with-quality/scripts/deepsec-gate.sh).
+# visioncraft Security gate (scripts/visioncraft-deepsec-gate.sh).
 # Binary is baked by [toolchains].deepsec; this block is the runtime policy the
-# gate script reads. Credentials are NEVER stored here — only env-var NAMES.
+# host Rust adapter reads. Credentials are NEVER stored here — only env-var NAMES.
 [security.deepsec]
 enabled = true
 agent = "claude"              # claude | codex | pi (pi only with model_auth = "custom")

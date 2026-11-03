@@ -34,7 +34,7 @@
     };
 
     # OpenAI Codex plugin for Claude Code (codex-plugin-cc) — pinned + baked so
-    # build-with-quality's EDD adversarial-review stage routes to Codex/GPT via
+    # visioncraft's EDD adversarial-review stage routes to Codex/GPT via
     # /codex:adversarial-review (a different model family from the Claude
     # producer; anti-fox separation). Files-only (commands/agents/hooks) like
     # `skills`, not a built crate like `aoe` — no build phase. Bump the pin with:
@@ -604,11 +604,9 @@
         };
 
         # 4. agentic-qe — gated by toolchains.agentic_qe.
-        #    DEFERRED SIDE EFFECT: `aqe init --auto` writes user config and agent
-        #    templates to $HOME/.claude/agents/ — it must run as the runtime user
-        #    after container start, NOT at Nix build time. Add to agentbox.sh init:
-        #      [[ "${ENABLE_AGENTIC_QE:-false}" == "true" ]] && aqe init --auto || true
-        #    nix-prefetch-url https://registry.npmjs.org/agentic-qe/-/agentic-qe-3.14.7.tgz
+        #    VisionCraft consumes direct aqe mcp tools. Never run aqe init:
+        #    template installation and additional persistent memory are not boot work.
+        #    nix-prefetch-url https://registry.npmjs.org/agentic-qe/-/agentic-qe-3.15.10.tgz
         #    3.13.0 (2026-07-18): QE-Court multi-vendor adversarial review
         #    (Codex/GPT + Cognitum + Claude), Codex CLI provider via `codex
         #    exec`, @huggingface/transformers demoted to optional peer (4 HIGH
@@ -624,7 +622,7 @@
           # cool-off on the 23 October estate-wide upgrade. vibium (the
           # opt-in qe-browser engine) moved from a dependency to an optional
           # peer (^26.8.21), so the closure no longer carries vibium 0.1.8;
-          # qe-browser stays "install with aqe init", as the skill says.
+          # qe-browser remains outside this adoption; no init/template dump.
           version         = "3.15.10";
           packageLock = ./config/npm-locks/agentic-qe-3.15.10.package-lock.json;
           sha256          = "sha256-R4YOKC7XfGiv25OL4u/vOoFqbWz7kuL8un7r3QVYgYg=";
@@ -714,9 +712,9 @@
         };
 
         # 7. deepsec — gated by toolchains.deepsec (ADR-2033). vercel-labs
-        #    agent-powered vulnerability reviewer; the build-with-quality
+        #    agent-powered vulnerability reviewer; the visioncraft
         #    Security gate drives it through
-        #    skills/build-with-quality/scripts/deepsec-gate.sh in PR mode.
+        #    scripts/visioncraft-deepsec-gate.sh in PR mode.
         #    Apache-2.0. `deepsec init` is never used in-container (it would
         #    write a .deepsec/ workspace + node_modules and link a Vercel
         #    project); the gate generates a minimal deepsec.config.mjs instead.
@@ -1836,7 +1834,8 @@
         # sealmap — code lens (`sealmap dense|generate`) and the corpus format
         # the sealmap-review skill reviews; see lib/sealmap.nix.
         sealmapPkg = import ./lib/sealmap.nix { inherit lib; pkgs = rustPkgs; };
-        skillToolPackages = [ diagramIrPkg proseSanitiserPkg sealmapPkg ];
+        visioncraftPkg = import ./lib/visioncraft.nix { inherit lib; pkgs = rustPkgs; };
+        skillToolPackages = [ diagramIrPkg proseSanitiserPkg sealmapPkg visioncraftPkg ];
         # sidestr-agent — the sidechain faucet's engine ([sidechain].faucet).
         # Baked because a workspace cargo build stops executing after every image
         # rebuild (its glibc store path is collected); see lib/sidestr-agent.nix.
@@ -2076,6 +2075,18 @@ default_days = ${toString (relayCfg.retention_days or 30)}
           cp -r ${./mcp} $out/opt/agentbox/mcp
 
           cp -r ${skillsTree} $out/opt/agentbox/skills
+          # Hard cutover: one immutable upstream release owns executable and
+          # portable skill. Local edits to the generated snapshot fail the bake.
+          ${pkgs.diffutils}/bin/diff -r --no-dereference \
+            ${visioncraftPkg.src}/skills/visioncraft $out/opt/agentbox/skills/visioncraft
+          test ! -e $out/opt/agentbox/skills/build-with-quality
+          ${lib.optionalString (toolchainCfg.agentic_qe or false) ''
+            # AQE uses ephemeral task state; never add its optional local model
+            # to the estate's single governed embedding pipeline (ADR-2165).
+            test ! -e ${agenticQePkg}/lib/agentic-qe/node_modules/@huggingface/transformers
+          ''}
+          mkdir -p $out/opt/agentbox/lib/lockfiles
+          cp ${visioncraftPkg.sourceLockFile} $out/opt/agentbox/lib/lockfiles/visioncraft-${visioncraftPkg.version}.Cargo.lock
 
           # Curated subagent set + its registration manifest (ADR-2092). The
           # counterpart to the skills tree above: scripts/reconcile-agents.sh

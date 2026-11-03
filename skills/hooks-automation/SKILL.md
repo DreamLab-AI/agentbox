@@ -26,7 +26,7 @@ configuration templates and Git hook scripts.
 ## When Not To Use
 
 - One-off swarm orchestration without persistent hooks -- use `swarm-advanced` instead
-- Full development pipelines with quality gates -- use `build-with-quality` instead
+- Full development pipelines with quality gates -- use `visioncraft` instead
 - Single-agent plan/memory/security-scan hooks -- use `lazy-fetch` instead (see Related Skills for the ownership split)
 - GitHub-specific CI/CD workflow authoring -- use a GitHub workflow-automation skill instead
 - Standalone performance profiling -- use a performance-analysis skill instead
@@ -214,7 +214,7 @@ an automatic behaviour of the built-in hooks above. Worked example:
 ## Integration with Other Skills
 
 - **SPARC Methodology** -- hooks enhance SPARC workflows
-- **build-with-quality** -- automated quality gates in a full dev+QE pipeline (supersedes the old "Pair Programming" skill, deprecated and merged in)
+- **visioncraft** -- automated quality gates in a full dev+QE pipeline (supersedes the old "Pair Programming" skill, deprecated and merged in)
 - **lazy-fetch** -- owns the single-agent plan/memory/security-scan hook lifecycle (SessionStart/PostToolUse/PreCompact/Stop); this skill owns swarm-coordination and neural/routing-pattern hooks. Install both together if you need both lifecycles; they do not register the same hook events.
 - **GitHub workflows** -- Git integration for commits/PRs (see references/examples.md)
 - **Performance analysis** -- metrics collection in hooks

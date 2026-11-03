@@ -16,6 +16,15 @@ repo: agentbox
 
 # ADR-2134 — Model roles: Sonnet leads, an Opus advisor is on call, search fans out to Haiku
 
+## Amendment — portable quality method, 2026-11-03
+
+VisionCraft replaces build-with-quality (ADR-2165). The portable method selects
+independence against the actual producer family; it does not hard-code a Claude
+producer. Agentbox's configured same-family advisor remains advisory and cannot
+satisfy an independent-audit requirement. This updates the consuming method,
+not the host's model-role settings or their activation status.
+
+
 ## Re-verification — 2026-10-30
 
 The governed Rust files changed only through `c3a370c60` formatting. Reformatting

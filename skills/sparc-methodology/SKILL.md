@@ -37,7 +37,7 @@ reviewed, deployed code, or running a spec→design→TDD→review pipeline.
 
 ## When not to use
 
-- Full quality engineering with 34 agents, coverage gates, and defect prediction — use **build-with-quality**.
+- Full quality engineering with 34 agents, coverage gates, and defect prediction — use **visioncraft**.
 - GitHub-specific code-review swarms on PRs — use **github-code-review**.
 - Queen-led hive-mind / Byzantine consensus without a full dev lifecycle — use **hive-mind-advanced**.
 - PRD-to-documentation generation without the SPARC lifecycle — use **prd2build**.

@@ -20,7 +20,7 @@ apply optimisation recommendations for Claude Flow swarms.
 
 ## When Not To Use
 - CUDA GPU kernel profiling → use the **cuda** skill
-- Full dev pipelines with quality gates and testing → use **build-with-quality**
+- Full dev pipelines with quality gates and testing → use **visioncraft**
 - Truth scoring and automatic rollback of bad changes → use **verification-quality**
 - General swarm orchestration without a performance focus → use **swarm-advanced**
 - AgentDB vector-search performance tuning → use **agentdb-vector-search**

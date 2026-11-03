@@ -21,7 +21,7 @@ related_skills:
   - "sparc:code"  # SPARC: orchestrator-shaped, plans then writes; CodeAct executes interactively
   - deepseek-reasoning  # math-heavy reasoning without execution
   - pytorch-ml  # heavy GPU scripts (no shared state)
-  - build-with-quality  # full TDD swarm -- when assertions + tests matter more than exploration
+  - visioncraft  # full TDD swarm -- when assertions + tests matter more than exploration
 ---
 
 # CodeAct Skill
@@ -86,7 +86,7 @@ see `references/exemplars.md`.
 | **`sparc:code`** | Single-file code generation without execution; plan-then-write, stateless. |
 | **`deepseek-reasoning`** | Pure symbolic / mathematical reasoning with no data to load. |
 | **`pytorch-ml`** | Heavy GPU training or multi-file ML scripts — subprocess/script mode; the kernel MCP is CPU-only in v1. |
-| **`build-with-quality`** | Full TDD pipeline with assertion gates, coverage, defect prediction — a QE swarm, not exploration. |
+| **`visioncraft`** | Full TDD pipeline with assertion gates, coverage, defect prediction — a QE swarm, not exploration. |
 | **`jupyter-notebooks`** | The task is building or running a `.ipynb` notebook file (cell/kernel management, HTML/PDF export) rather than an ephemeral in-session kernel loop — CodeAct's `KernelSession` has no notebook file behind it. |
 
 Reach back for **codeact** whenever the task is multi-step *with* state across

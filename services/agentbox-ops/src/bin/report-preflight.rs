@@ -266,7 +266,7 @@ fn main() {
         "latex-documents",
         "perplexity-research",
         "ui-ux-pro-max-skill",
-        "build-with-quality",
+        "visioncraft",
         "skill-builder",
     ] {
         s.check(skill, skill_exists(skill), "");

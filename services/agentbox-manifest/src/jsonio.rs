@@ -19,7 +19,7 @@
 //! rendered document is necessarily inside a string literal — a flat scan is
 //! therefore correct and needs no parser state.
 
-use std::io;
+use std::io::{self, Write};
 use std::path::Path;
 
 use serde_json::Value;
@@ -70,27 +70,33 @@ pub fn write(path: &Path, value: &Value, trailing_newline: bool) -> io::Result<(
     std::fs::write(path, text)
 }
 
-/// `os.replace(tmp, path)` after writing `tmp` in the destination directory.
+/// Atomically replace a private configuration using a same-directory temp file.
 ///
-/// Matches `model-routing-project.py`'s `tempfile.mkstemp(dir=target_dir)` +
-/// `os.replace` so the reader never observes a partial file.
+/// The staging file is unpredictable, exclusively created and owner-only before
+/// any bytes are written. Existing broad permissions are deliberately narrowed:
+/// all callers write per-user configuration, including secret-bearing MCP data.
+/// Failed staging, permission-setting, writing or replacement returns an error
+/// and the temporary file is removed by RAII. JSON bytes retain CPython parity.
 pub fn write_atomic(path: &Path, value: &Value, trailing_newline: bool) -> io::Result<()> {
-    let dir = path.parent().unwrap_or_else(|| Path::new("."));
-    let tmp = dir.join(format!(".{}.tmp", file_stem(path)));
-    write(&tmp, value, trailing_newline)?;
-    match std::fs::rename(&tmp, path) {
-        Ok(()) => Ok(()),
-        Err(e) => {
-            let _ = std::fs::remove_file(&tmp);
-            Err(e)
-        }
+    let dir = path
+        .parent()
+        .filter(|parent| !parent.as_os_str().is_empty())
+        .unwrap_or_else(|| Path::new("."));
+    let mut temporary = tempfile::NamedTempFile::new_in(dir)?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        temporary
+            .as_file()
+            .set_permissions(std::fs::Permissions::from_mode(0o600))?;
     }
-}
-
-fn file_stem(path: &Path) -> String {
-    path.file_name()
-        .map(|n| n.to_string_lossy().into_owned())
-        .unwrap_or_else(|| "agentbox-manifest".into())
+    temporary.write_all(dumps(value).as_bytes())?;
+    if trailing_newline {
+        temporary.write_all(b"\n")?;
+    }
+    temporary.as_file().sync_all()?;
+    temporary.persist(path).map_err(|error| error.error)?;
+    Ok(())
 }
 
 /// Ensure `root["mcpServers"]` exists as an object and hand back a mutable
@@ -144,5 +150,42 @@ mod tests {
     fn insertion_order_is_preserved_not_sorted() {
         let v: Value = serde_json::from_str(r#"{"z":1,"a":2}"#).unwrap();
         assert_eq!(dumps(&v), "{\n  \"z\": 1,\n  \"a\": 2\n}");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn atomic_write_ignores_predictable_temp_links_and_installs_private_bytes() {
+        use std::os::unix::fs::{symlink, PermissionsExt};
+        let scratch = tempfile::tempdir().unwrap();
+        let path = scratch.path().join("config.json");
+        let victim = scratch.path().join("unrelated");
+        std::fs::write(&victim, "untouched").unwrap();
+        symlink(&victim, scratch.path().join(".config.json.tmp")).unwrap();
+        std::fs::write(&path, "old").unwrap();
+        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o644)).unwrap();
+        write_atomic(&path, &json!({"token": "private-fixture"}), true).unwrap();
+        assert_eq!(std::fs::read_to_string(&victim).unwrap(), "untouched");
+        assert_eq!(
+            std::fs::metadata(&path).unwrap().permissions().mode() & 0o777,
+            0o600
+        );
+        assert_eq!(
+            std::fs::read_to_string(&path).unwrap(),
+            dumps(&json!({"token": "private-fixture"})) + "\n"
+        );
+    }
+
+    #[test]
+    fn failed_atomic_replacement_preserves_target_and_removes_staging_file() {
+        let scratch = tempfile::tempdir().unwrap();
+        let path = scratch.path().join("existing-directory");
+        std::fs::create_dir(&path).unwrap();
+        std::fs::write(path.join("retained"), "old").unwrap();
+        assert!(write_atomic(&path, &json!({"token": "private-fixture"}), false).is_err());
+        assert_eq!(
+            std::fs::read_to_string(path.join("retained")).unwrap(),
+            "old"
+        );
+        assert_eq!(std::fs::read_dir(scratch.path()).unwrap().count(), 1);
     }
 }

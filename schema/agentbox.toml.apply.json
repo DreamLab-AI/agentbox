@@ -204,7 +204,7 @@
     "security.deepsec.enabled": {
       "class": "rebuild",
       "name": "deepsec security gate",
-      "summary": "ADR-2033: vercel-labs deepsec vulnerability reviewer baked as a CLI; build-with-quality drives it in PR mode via scripts/deepsec-gate.sh under the [security.deepsec] policy."
+      "summary": "ADR-2033: vercel-labs deepsec vulnerability reviewer baked as a CLI; visioncraft drives it in PR mode via scripts/visioncraft-deepsec-gate.sh under the [security.deepsec] policy."
     },
     "security.role_isolation": {
       "class": "rebuild",
@@ -484,7 +484,7 @@
     "toolchains.agentic_qe": {
       "class": "rebuild",
       "name": "Agentic QE fleet (aqe)",
-      "summary": "QE fleet CLI + MCP (aqe mcp registered at boot when enabled)."
+      "summary": "Pinned upstream AQE CLI and direct aqe mcp tools for VisionCraft, registered in Claude and Codex at boot; ephemeral task state, periodic workers off, no additional embedder. Disabled or unavailable removes the registrations (ADR-2165)."
     },
     "toolchains.antigravity_cli": {
       "class": "rebuild",
@@ -524,7 +524,7 @@
     "toolchains.deepsec": {
       "class": "rebuild",
       "name": "deepsec security gate",
-      "summary": "ADR-2033: vercel-labs deepsec vulnerability reviewer baked as a CLI; build-with-quality drives it in PR mode via scripts/deepsec-gate.sh under the [security.deepsec] policy."
+      "summary": "ADR-2033: vercel-labs deepsec vulnerability reviewer baked as a CLI; visioncraft drives it in PR mode via scripts/visioncraft-deepsec-gate.sh under the [security.deepsec] policy."
     },
     "toolchains.metaharness": {
       "class": "rebuild",

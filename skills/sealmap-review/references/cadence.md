@@ -251,7 +251,7 @@ only appends.
   as skipped; without the Z.AI key triage lists every candidate (unsure means yes)
   and the GLM review fails.
 - Logs: `/var/log/diagram-review-cron.log` and `.error.log`.
-- Findings are input to build-with-quality like any others; see "After the review"
+- Findings are input to visioncraft like any others; see "After the review"
   in SKILL.md.
 
 

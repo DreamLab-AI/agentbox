@@ -844,7 +844,7 @@ if [ -d "$SKILL_CREATOR_DIR" ] && [ -f "$INSTALLED_JSON" ]; then
 fi
 
 # Pre-install the OpenAI Codex plugin (codex-plugin-cc) so /codex:review and
-# /codex:adversarial-review work on first boot. build-with-quality routes its
+# /codex:adversarial-review work on first boot. visioncraft routes its
 # EDD evidence-audit / adversarial-review stage through Codex/GPT — a genuinely
 # different model family from the Claude producer (anti-fox separation). The
 # Codex CLI is already baked (nix codex-0.x); auth uses [consultants.codex]
@@ -2280,18 +2280,11 @@ if [ "${ENABLE_AGENTIC_QE:-false}" = "true" ] && command -v aqe >/dev/null 2>&1 
         --manifest "$AGENTBOX_CONFIG" --workspace "$WORKSPACE" 2>&1 \
       | sed 's/^/  /' || true
   fi
-elif [ "${ENABLE_AGENTIC_QE:-false}" != "true" ] && [ -f "$_MCP_JSON" ]; then
-  # Gate off ⇒ the entry goes too (ADR-2111). .mcp.json is a host mount that
-  # outlives the toolchain, so without this a disabled fleet stays registered:
-  # ~90 tool names in every session's prefix and a server that fails to spawn.
-  node -e '
-    const fs = require("fs"); const f = process.argv[1];
-    const j = JSON.parse(fs.readFileSync(f, "utf8"));
-    if (j.mcpServers && j.mcpServers["agentic-qe"]) {
-      delete j.mcpServers["agentic-qe"];
-      fs.writeFileSync(f, JSON.stringify(j, null, 2) + "\n");
-      console.log("  [mcp] Removed agentic-qe (toolchains.agentic_qe = false)");
-    }' "$_MCP_JSON" 2>/dev/null || true
+elif [ -f "$_MCP_JSON" ]; then
+  # Disabled or unavailable must remove stale persisted registration.
+  agentbox-manifest mcp-reconcile-aqe --file "$_MCP_JSON" --disabled \
+    2>/dev/null && echo "  [mcp] Removed agentic-qe (disabled or unavailable)" || true
+
 fi
 
 # ── ADR-2080: metaharness cost-optimal router console (AoE `router` seed) ──
@@ -3617,6 +3610,25 @@ AGENTSEOF
   unset _WS_AGENTS _CLAUDE_GLOBAL
   chown 1000:1000 "$_CODEX_AGENTS" 2>/dev/null || true
 fi
+
+# Direct AQE tools are available to Codex as well as Claude after the rebuild.
+# Only the owned server entry is reconciled; other TOML settings remain intact.
+if [ "${ENABLE_CODEX:-false}" = "true" ]; then
+  _AQE_CODEX_ARGS=(--disabled)
+  if [ "${ENABLE_AGENTIC_QE:-false}" = "true" ] && command -v aqe >/dev/null 2>&1; then
+    _AQE_CODEX_ARGS=()
+    _AQE_CODEX_PROVIDER=""
+    if [ "$(_ab_toml_bool model_routing enabled)" = "1" ]; then
+      _AQE_CODEX_PROVIDER="$(_ab_toml_val model_routing aqe_llm_provider)"
+    fi
+    _AQE_CODEX_ARGS=(--provider "$_AQE_CODEX_PROVIDER")
+  fi
+  agentbox-manifest mcp-reconcile-aqe --codex --file "$_CODEX_CONFIG" "${_AQE_CODEX_ARGS[@]}" \
+    2>/dev/null && echo "  [mcp] Reconciled Codex direct AQE registration" || true
+  chown 1000:1000 "$_CODEX_CONFIG" 2>/dev/null || true
+  chmod 600 "$_CODEX_CONFIG" 2>/dev/null || true
+fi
+
 
 if command -v ruflo >/dev/null 2>&1; then
 

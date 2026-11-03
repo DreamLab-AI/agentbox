@@ -60,4 +60,4 @@ pack/model provenance is absent. Do not overwrite original findings with a new
 run ID or change all statuses because a cumulative export has a fresh timestamp.
 
 For the actual investigation method and cross-repository lessons, use
-[build-with-quality: review evidence](../../build-with-quality/references/review-evidence.md).
+[visioncraft: review evidence](../../visioncraft/references/review-evidence.md).

@@ -163,7 +163,7 @@ fn toml_bool_is_fail_open_on_a_missing_manifest() {
 /// Was nine: ADR-2108 retired the `ontology-bridge` step, because agents reach
 /// the corpus through the `vault` CLI and no MCP server fronts it any more.
 #[test]
-fn mcp_upsert_chain_matches_python_at_every_step() {
+fn mcp_upsert_chain_matches_captured_contract_and_aqe_host_policy() {
     let s = Scratch::new("mcp");
     let f = s.join("mcp.json");
     std::fs::write(&f, golden("mcp.seed.json")).unwrap();
@@ -199,6 +199,7 @@ fn mcp_upsert_chain_matches_python_at_every_step() {
         "--provider",
         "claude-code",
     ]);
+    // ADR-2165 extends the captured fixture with task-only AQE env controls.
     check(&f, "mcp.after-agentic-qe.json");
 
     set(

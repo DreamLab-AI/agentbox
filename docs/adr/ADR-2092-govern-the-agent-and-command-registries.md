@@ -16,6 +16,18 @@ repo: agentbox
 
 # ADR-2092 — Agents and slash-commands get the same manifest governance skills already have
 
+## Amendment — one quality skill registration, 2026-11-03
+
+ADR-2165 replaces build-with-quality with VisionCraft in both harness manifests,
+agent stacks, preflight and direct Rust steering references. There is no active
+legacy skill alias. Once the replacement is present in the baked tree and the
+selected manifest, `reconcile-skills.sh` removes the old managed symlink and moves
+any old local copy or other link into a hidden recoverable `.superseded` archive.
+The same reconciler serves Claude and Codex; operator additions are preserved
+outside discovery. The cutover fixture tests exercise both migration cases and
+idempotence. An already running image is unchanged until rebuild/activation.
+
+
 ## Scoped re-verification — 2026-10-31
 
 Reviewed the governed-path delta since the previous verification: only the

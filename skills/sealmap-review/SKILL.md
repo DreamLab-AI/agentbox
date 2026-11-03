@@ -6,12 +6,12 @@ description: >-
   shipping or taking it over. External mode sends the diagrams only, never code,
   to Gemini 3.8 Flash under critical and pre-mortem lenses; inline mode has a
   Claude subagent check topics against the code they cite. Findings are
-  hypotheses for build-with-quality triage. Use for "review this project", "what
+  hypotheses for visioncraft triage. Use for "review this project", "what
   would worry you running this", "pre-mortem this", "have Gemini look at the
   diagrams", "do the diagrams still match the code". Not for a PR or diff
   (code-review), writing the corpus (diagrams-as-code), or web research.
 compatibility: "Claude Code and Codex. External mode is a zero-dependency Node >= 18 script and needs GEMINI_API_KEY in the environment. Inline mode uses the Agent tool to run a Sonnet reviewer; a Codex session runs the same checklist itself, one topic at a time."
-related_skills: [diagrams-as-code, build-with-quality, explainer, consultant]
+related_skills: [diagrams-as-code, visioncraft, explainer, consultant]
 ---
 
 # sealmap review
@@ -29,7 +29,7 @@ different questions.
 Both write findings in one shape, and every finding is a hypothesis.
 What measurement showed works and what does not: [references/evidence.md](references/evidence.md).
 A reviewer may over-assert or be wrong. Nothing is fixed on a reviewer's word:
-findings go to build-with-quality, which reproduces each one with a failing test
+findings go to visioncraft, which reproduces each one with a failing test
 or check before anyone acts on it (see "After the review").
 
 ## When to use
@@ -118,7 +118,7 @@ belong to recognised, distinct families. Filenames, transitive matches and legac
 records without provenance earn no agreement credit. Agreement ranks hypotheses;
 it does not verify them.
 
-Apply [build-with-quality's review-evidence guidance](../build-with-quality/references/review-evidence.md)
+Apply [visioncraft's review-evidence guidance](../visioncraft/references/review-evidence.md)
 when taking a finding into implementation:
 
 1. **Establish what was observed.** Reproduce against the implementation and

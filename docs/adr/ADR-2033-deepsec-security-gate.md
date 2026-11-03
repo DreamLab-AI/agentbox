@@ -17,6 +17,22 @@ domain: GOVERNANCE-capabilities
 
 # ADR-2033 — deepsec is the executed Security gate of build-with-quality, baked as a manifest-gated CLI under a names-only credential policy
 
+## Amendment — VisionCraft ownership, 2026-11-03
+
+ADR-2165 moves the executable gate to the pinned independent VisionCraft release.
+Agentbox owns installation and the Rust `agentbox-manifest deepsec-gate` policy
+projection; the old skill shell implementation is removed. The host reads typed
+TOML and environment overrides, passes credential names only through literal
+`--policy-json`, and preserves stdin and executor exit codes. An explicit missing
+or malformed manifest refuses with 78; an absent default manifest can use defaults.
+The generic executor owns findings validation, output limits and the total deadline.
+Ordinary explicit gate flags retain precedence; callers cannot replace host policy
+with a second `--policy-json`. No `init`, login or automatic update runs here.
+The canonical Agentbox entry is `scripts/visioncraft-deepsec-gate.sh`; tests live
+in `tests/config/visioncraft-deepsec.test.mjs`. Existing Deepsec packaging and
+paid-review gates remain. Source integration does not establish image activation.
+
+
 ## Scoped repair — 2026-11-03
 
 The Sealmap review exposed a false PASS: a relative `--files-from` manifest

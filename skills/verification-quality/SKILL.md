@@ -27,7 +27,7 @@ tags: ["verification", "witness-manifest", "quality", "ci-cd"]
 
 ## When not to use
 
-- Full development pipelines with quality gates → **build-with-quality**.
+- Full development pipelines with quality gates → **visioncraft**.
 - Swarm performance profiling / bottleneck detection → **performance-analysis**.
 - GitHub PR code review with specialised agents → **github-code-review**.
 - Test generation + coverage → TDD workflow in **sparc-methodology**.

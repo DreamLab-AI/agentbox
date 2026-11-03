@@ -86,6 +86,8 @@ pkgs.rustPlatform.buildRustPackage {
       --replace-fail '../../tests/tui/fixtures' 'tests/tui/fixtures'
     substituteInPlace tests/tui_helpers.rs \
       --replace-fail '.join("../..")' '.join(".")'
+    substituteInPlace tests/deepsec_gate.rs \
+      --replace-fail '#!/bin/sh' '#!${pkgs.runtimeShell}'
   '';
 
   doCheck = true;

@@ -63,7 +63,7 @@ order, on the existing recall-gate fixture set? That is a cheap, self-contained
 experiment and the best first thing to build.
 
 ### 3. Guardrails and semantic lints
-**Where** — `build-with-quality` quality gates; hook points around agent input and
+**Where** — `visioncraft` quality gates; hook points around agent input and
 output.
 **Judgments** — jailbreak/injection detection, policy violation, sensitive-data
 exposure, tool-call error, response-quality failure; project-specific conventions as

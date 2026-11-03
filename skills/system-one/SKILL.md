@@ -18,7 +18,7 @@ description: >-
   code already decides.
 triggers: "typesafe, jev, system one, system-one, typed judgment, choice/score/noul, noul, structured decision, classifier instead of prompt, rerank candidates, llm guardrail, semantic lint"
 compatibility: "Claude Code and Codex both read this SKILL.md. Live-doc reads use WebFetch in Claude Code; a Codex/GPT-6 Astra session uses its own fetch tool or `curl` against the same URLs. Fan-out over many candidate judgments may use the Agent tool in Claude Code; sequential in Codex. No MCP server and no Claude-only affordance is required to build an integration."
-related_skills: [ontology-augment, build-with-quality, deep-research, codebase-memory, autoresearch]
+related_skills: [ontology-augment, visioncraft, deep-research, codebase-memory, autoresearch]
 env_vars: [TYPESAFE_API_KEY]
 ---
 
@@ -157,7 +157,7 @@ image closure for this.
 This is a primitive other skills and services call, not only a thing to build apps
 with. The candidate invocation points — knowledge-graph annotation and contradiction
 detection via `ontology-augment`, retrieval reranking in `deep-research`, guardrails
-and semantic lints under `build-with-quality`, model routing, email triage — are
+and semantic lints under `visioncraft`, model routing, email triage — are
 mapped, with their egress posture and their open questions, in
 `references/estate-integration.md`. **None of them are wired yet**; that file is the
 design surface for the next pass, not a description of running code.

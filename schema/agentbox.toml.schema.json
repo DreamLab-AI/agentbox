@@ -868,7 +868,7 @@
           "type": "boolean"
         },
         "agentic_qe": {
-          "description": "Bake the agentic-qe fleet CLI and its MCP server. Off on this estate because build-with-quality supersedes it; turning it off drops the aqe CLI.",
+          "description": "Bake the pinned upstream Agentic QE CLI and direct MCP server for VisionCraft. Enabled for the next rebuild; off removes the CLI and both harness registrations.",
           "type": "boolean"
         },
         "metaharness": {
@@ -881,7 +881,7 @@
         },
         "deepsec": {
           "type": "boolean",
-          "description": "ADR-2033: bake the vercel-labs/deepsec CLI (npm, Apache-2.0) as the build-with-quality Security gate. Runtime policy lives in [security.deepsec]."
+          "description": "ADR-2033: bake the vercel-labs/deepsec CLI (npm, Apache-2.0) as the visioncraft Security gate. Runtime policy lives in [security.deepsec]."
         },
         "codebase_memory": {
           "description": "Bake the codebase-memory MCP, the code-graph index agents are told to use first. The boot registry registers it automatically when on.",
@@ -2240,7 +2240,7 @@
         "deepsec": {
           "type": "object",
           "additionalProperties": false,
-          "description": "ADR-2033: runtime policy for the deepsec AI vulnerability-review gate (skills/build-with-quality/scripts/deepsec-gate.sh). The binary is baked by [toolchains].deepsec. Credentials are NEVER stored here — only env-var NAMES.",
+          "description": "ADR-2033: runtime policy for the deepsec AI vulnerability-review gate (scripts/visioncraft-deepsec-gate.sh). The binary is baked by [toolchains].deepsec. Credentials are NEVER stored here — only env-var NAMES.",
           "properties": {
             "enabled": {
               "description": "Bake the deepsec vulnerability reviewer and let the quality gate drive it. Needs toolchains.deepsec.",
@@ -2293,7 +2293,7 @@
             },
             "max_duration": {
               "type": "string",
-              "description": "GNU timeout syntax; deepsec checkpoints and resumes on re-run."
+              "description": "Positive integer or decimal duration in s/m/h/d, with millisecond precision. One deadline covers the complete review."
             },
             "batch_size": {
               "type": "integer",
@@ -2316,6 +2316,11 @@
             "ai_base_url": {
               "type": "string",
               "description": "custom: OpenAI-compatible base URL, e.g. http://loom:8080/v1."
+            },
+            "max_output_bytes": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "VisionCraft subprocess output cap in bytes; defaults to 16777216. Overflow is inconclusive, never PASS."
             }
           }
         },

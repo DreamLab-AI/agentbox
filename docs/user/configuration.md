@@ -822,10 +822,29 @@ some programs fail closed. Follow
 [Turning on role_isolation](../developer/role-isolation-runbook.md), and keep the
 flag off until its rehearsal passes.
 
-### `[security.deepsec]` — the build-with-quality Security gate (ADR-2033)
+### VisionCraft and Agentic QE (ADR-2165)
 
-Runtime policy for `skills/build-with-quality/scripts/deepsec-gate.sh`, which drives the
-baked `deepsec` CLI (`[toolchains].deepsec = true`) in PR mode and writes a receipt per run.
+VisionCraft is the portable quality method and evidence CLI. The separately
+pinned upstream `agentic-qe` package supplies direct `aqe mcp` tools when
+`[toolchains].agentic_qe = true`. Boot registers these in both Claude and Codex,
+repairs stale commands, and removes them when disabled or unavailable. Jev routes
+quality work to the VisionCraft skill, whose AQE guidance selects the appropriate
+direct tool; Ruflo remains coordination rather than a substitute executor.
+
+This adoption uses ephemeral AQE task state, disables periodic workers and clears
+AQE embedder endpoint/token settings. The image omits its optional transformer
+package. Upstream learning logic still runs; the in-memory flag alone does not
+turn that off. Durable lessons use Agentbox's governed memory MCP. Boot does not
+run `aqe init` or install a separate template fleet. The source flag takes effect
+only after the requested image rebuild and subsequent MCP session reload.
+
+### `[security.deepsec]` — the VisionCraft Security gate (ADR-2033)
+
+Runtime policy for `scripts/visioncraft-deepsec-gate.sh`. The host Rust command
+`agentbox-manifest deepsec-gate` projects this table and environment overrides,
+then replaces itself with `visioncraft deepsec`. The pinned portable CLI owns
+execution, bounded output and receipt validation; Deepsec is baked separately
+by `[toolchains].deepsec = true`.
 
 ```toml
 [security.deepsec]
@@ -835,7 +854,8 @@ model_auth = "local"      # local = the logged-in claude/codex CLI, no key | dir
 model = ""                # empty = deepsec's default for the agent
 thinking_level = "high"   # minimal | low | medium | high | xhigh
 fail_on = "HIGH"          # CRITICAL | HIGH | MEDIUM | HIGH_BUG | BUG | LOW
-max_duration = "45m"      # GNU timeout syntax; deepsec checkpoints and resumes
+max_duration = "45m"      # positive decimal/integer s/m/h/d; one total deadline
+max_output_bytes = 16777216 # subprocess output cap; overflow is inconclusive
 batch_size = 5
 concurrency = 2
 ai_provider = ""          # direct: anthropic | openai; custom: label
@@ -849,6 +869,21 @@ Validator: `E070` enabled without `[toolchains].deepsec`; `E071` route/toolchain
 `E072` a credential value in `ai_api_key_env`; `W070` baked but not enabled. Any key can be
 overridden per run with `DEEPSEC_GATE_<KEY>`. Exit `78` from the gate means SKIPPED, not
 passed. Apply-class: `[toolchains].deepsec` is rebuild; `[security.deepsec]` is read live.
+
+An explicitly configured `AGENTBOX_CONFIG` must exist and parse. A typo, unreadable
+file or invalid typed override refuses the run with exit 78. Only an absent default
+`/etc/agentbox.toml` permits generic defaults. The host adapter reserves
+`--policy-json`; ordinary explicit gate flags override the projected policy.
+Credential values stay in the inherited environment, while policy JSON carries
+credential names. The adapter forwards argv and stdin literally, including
+`--files-from -`, without shell evaluation or temporary policy files.
+
+VisionCraft's deterministic tools and portable skill are always baked beside
+Sealmap. `config/visioncraft-source.json` pins one upstream release for the binary,
+skill and lockfile. Run `agentbox-manifest visioncraft-source-check --root .` in
+the checkout (or `--root /opt/agentbox` after rebuilding) to verify the snapshot.
+Changes to the portable method belong upstream; a local edited copy fails CI and
+the image build. A source merge does not update an already running image.
 
 ### Supervisord user model (commit `2341480c`)
 

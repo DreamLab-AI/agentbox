@@ -78,7 +78,7 @@ exactly this). See [evidence.md](evidence.md).
 | stale-claim | true at an earlier revision, false now | topic, and re-stamp it |
 | adr-contradiction | the topic or code contradicts a governing ADR | a register marker, or the ADR |
 | unsupported-claim | a narrative sentence no citation backs | topic |
-| code-defect | the topic is accurate and the code is wrong | code, test first (build-with-quality) |
+| code-defect | the topic is accurate and the code is wrong | code, test first (visioncraft) |
 
 ## The loop
 
@@ -88,7 +88,7 @@ exactly this). See [evidence.md](evidence.md).
 4. Repeat until the reviewer reports none.
 
 `code-defect` and `adr-contradiction` findings leave the loop and go to
-build-with-quality triage, like external findings.
+visioncraft triage, like external findings.
 
 A Gemini run with the code included is a heavier alternative for a whole area
 at once. Packing the diagrams plus line-numbered cited source found 3 of 3

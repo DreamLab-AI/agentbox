@@ -19,7 +19,7 @@ Application-layer security testing for web services, APIs, and codebases.
 ## When NOT to use
 
 - Linux system hardening, firewall rules, CIS compliance → use `defense-security`
-- Code quality gates and TDD → use `build-with-quality`
+- Code quality gates and TDD → use `visioncraft`
 - Infrastructure security scanning → use `defense-security`
 
 ## Core Capabilities
@@ -64,7 +64,7 @@ vulnerability. Gate PASS means only that the configured threshold was not crosse
 read separate bug categories and skipped coverage as well.
 
 For findings intake and evidence boundaries, follow
-[review-evidence.md](../build-with-quality/references/review-evidence.md).
+[review-evidence.md](../visioncraft/references/review-evidence.md).
 Keep inconclusive findings open rather than labelling them false positives.
 
 For optional binding, distinguish an absent input from a present empty value.
@@ -125,9 +125,9 @@ pip install semgrep
 semgrep --config p/owasp-top-ten .
 ```
 
-## Integration with build-with-quality
+## Integration with visioncraft
 
-Security testing integrates with `build-with-quality` as a quality gate:
+Security testing integrates with `visioncraft` as a quality gate:
 - Run security tests in Phase 3 (QE Verification) of the EDD pipeline
 - Failed security gates block the truth-score from reaching 0.95
 - Use `verification-quality` to track security gate pass/fail history
@@ -135,5 +135,5 @@ Security testing integrates with `build-with-quality` as a quality gate:
 ## See also
 
 - `defense-security` — Linux system hardening, CIS/HIPAA/SOC2 compliance
-- `build-with-quality` — Full development pipeline with integrated security agents
+- `visioncraft` — Full development pipeline with integrated security agents
 - `qe-browser` — Browser-based injection and XSS scanning (after `aqe init`)

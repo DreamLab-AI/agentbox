@@ -21,6 +21,10 @@ on:
       # re-run it. Without this, tests/security/check-listeners.test.mjs could be
       # edited on main and the listener rule never re-asserted on that push.
       - 'tests/security/**'
+      - 'services/agentbox-manifest/**'
+      - 'config/visioncraft-source.json'
+      - 'tests/config/visioncraft*'
+      - 'tests/system-one/**'
       - 'tests/config/protocol-registry-lint.test.mjs'
       - 'tests/config/declared-vs-running.test.js'
       - 'tests/config/fixtures/runtime-state.json'
@@ -145,8 +149,17 @@ jobs:
       - name: routing-table freshness (generated from frontmatter; ADR-2021)
         run: node skills/gen-routing-table.mjs --check
 
-      - name: deepsec-gate unit tests (ADR-2033 — Security gate exit-code/threshold/receipt contract)
-        run: node --test skills/build-with-quality/scripts/deepsec-gate.test.mjs
+      - name: VisionCraft release source and host contract
+        run: |
+          set -euo pipefail
+          version="$(node -p 'require("./config/visioncraft-source.json").version')"
+          cargo install visioncraft --version "=$version" --locked
+          cargo install --path services/agentbox-manifest --locked
+          agentbox-manifest visioncraft-source-check --root .
+          cargo test --manifest-path services/agentbox-manifest/Cargo.toml --locked
+          node --test tests/config/visioncraft-deepsec.test.mjs tests/config/visioncraft-cutover.test.mjs tests/config/visioncraft-aqe.test.mjs
+          node --test tests/system-one/visioncraft-picker.test.mjs
+
 
       - name: research-gates unit tests (deep-research integrity gates — quote/citation/independence contract)
         run: node --test skills/deep-research/scripts/research-gates.test.mjs
@@ -209,7 +222,7 @@ jobs:
       - name: adr-ratchet self-test (an ADR added already decided is not backlog)
         run: bash tests/config/adr-ratchet.test.sh
 
-      - name: adr-ratchet evidence gate self-test (VisionFlow ADR-2007: closing transitions need evidence_class and acceptance_boundary)
+      - name: 'adr-ratchet evidence gate self-test (VisionFlow ADR-2007: closing transitions need evidence_class and acceptance_boundary)'
         run: bash tests/config/adr-ratchet-evidence.test.sh
 
       - name: adr-ratchet (planning cycle 2026-09-21 — a new proposal must close a proposed one)

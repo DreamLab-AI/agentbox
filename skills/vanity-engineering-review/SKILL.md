@@ -37,8 +37,8 @@ Apply this review to any of:
 
 ## When Not to Use
 
-- For domain modelling, bounded contexts, and strategic design -- use the **build-with-quality** skill instead
-- For systematic code quality improvement with testing and quality gates -- use the **build-with-quality** skill instead
+- For domain modelling, bounded contexts, and strategic design -- use the **visioncraft** skill instead
+- For systematic code quality improvement with testing and quality gates -- use the **visioncraft** skill instead
 - For simple code formatting or style fixes -- standard linting and formatting tools suffice
 - For general performance profiling and optimisation -- use the **performance-analysis** skill; **pytorch-ml**/**cuda** only for GPU-kernel- or training-specific perf work
 

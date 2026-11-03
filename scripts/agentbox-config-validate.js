@@ -1365,7 +1365,7 @@ if (ldEnabled) {
   } else if (baked) {
     warnings.push({
       code: 'W070',
-      message: 'W070: [toolchains].deepsec=true bakes the deepsec CLI but [security.deepsec].enabled is not true — the build-with-quality Security gate will exit 78 (SKIPPED) on every run (ADR-2033)',
+      message: 'W070: [toolchains].deepsec=true bakes the deepsec CLI but [security.deepsec].enabled is not true — the visioncraft Security gate will exit 78 (SKIPPED) on every run (ADR-2033)',
     });
   }
 }

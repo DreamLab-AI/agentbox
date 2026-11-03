@@ -16,7 +16,7 @@ Master advanced swarm patterns for distributed research, development, and testin
 - For queen-led hierarchical coordination with Byzantine consensus -- use the hive-mind-advanced skill instead
 - For cloud-based swarm deployment with Flow Nexus platform (cloud-based swarm: requires Flow Nexus account -- not currently installed)
 - For sequential pipeline processing where output chains between steps -- use the stream-chain skill instead
-- For full development + quality engineering with 111+ agents -- use the build-with-quality skill instead
+- For full development + quality engineering with 111+ agents -- use the visioncraft skill instead
 - For GitHub-specific PR review coordination -- use the github-code-review skill instead
 - For structured development workflows with 17 SPARC modes -- use the sparc-methodology skill instead
 - For Byzantine fault-tolerant consensus -- use the hive-mind-advanced skill instead
@@ -200,7 +200,7 @@ try {
 - `sparc-methodology` - Systematic development workflow (17 modes)
 - `hive-mind-advanced` - Byzantine fault-tolerant queen-led coordination
 - `github-code-review` - Repository management and PR automation
-- `build-with-quality` - 111+ agent QE pipeline
+- `visioncraft` - 111+ agent QE pipeline
 - `performance-analysis` - Bottleneck detection and profiling for a running swarm
 
 ## References

@@ -12,7 +12,7 @@
 # Discovery and delivery
 skill-router
 codebase-memory
-build-with-quality
+visioncraft
 docs-alignment
 explainer
 codebase-video

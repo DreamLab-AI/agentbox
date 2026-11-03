@@ -3,7 +3,7 @@
 # Gate: toolchains.agentic_qe / ENABLE_AGENTIC_QE
 #
 # NOTE: aqe init --auto is intentionally NOT run here.
-# First-run initialisation is deferred to agentbox.sh init (see PRD-002 §9).
+# ADR-2165 uses direct task tools; no broad init or template installation.
 
 set -euo pipefail
 

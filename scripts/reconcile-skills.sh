@@ -68,6 +68,29 @@ while IFS= read -r raw; do
   fi
 done < "$MANIFEST"
 
+# VisionCraft hard cutover: this name was previously managed by this reconciler.
+# Retire it only after the replacement has actually been baked and registered.
+# Preserve real directories and non-canonical links in a recoverable, hidden
+# archive rather than deleting an operator's additions. Hidden archives cannot
+# become skill candidates. No alias remains in the native discovery root.
+if [ -f "$SKILLS_TREE/visioncraft/SKILL.md" ] && grep -Eq '^visioncraft([[:space:]]|$)' "$MANIFEST"; then
+  old="$CLAUDE_SKILLS/build-with-quality"
+  if [ -e "$old" ] || [ -L "$old" ]; then
+    if [ "$DRY_RUN" -eq 1 ]; then
+      log "DRY retire build-with-quality after VisionCraft cutover"
+    elif [ -L "$old" ] && [ "$(readlink "$old")" = "$SKILLS_TREE/build-with-quality" ]; then
+      rm "$old" && log "retired managed build-with-quality link"
+    else
+      archive="$CLAUDE_SKILLS/.superseded"
+      mkdir -p "$archive"
+      destination="$(mktemp -d "$archive/build-with-quality.XXXXXX")"
+      if [ -n "$destination" ]; then
+        mv "$old" "$destination/skill" && log "retired build-with-quality to recoverable archive"
+      fi
+    fi
+  fi
+fi
+
 drylabel=""; [ "$DRY_RUN" -eq 1 ] && drylabel=" (dry-run)"
 log "done: $registered registered | new=$linked converted=$converted fixed=$fixed already-ok=$skipped not-baked=$missing${drylabel}"
 exit 0

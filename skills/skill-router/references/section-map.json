@@ -49,7 +49,6 @@
     "book-publishing": "Documentation and Reports",
     "browser": "Browser Automation and Web",
     "browser-automation": "Browser Automation and Web",
-    "build-with-quality": "Development Methodology and Meta-Skills",
     "ceramic-search": "Web Research and Content",
     "chrome-cdp": "Browser Automation and Web",
     "clipcannon": "Media Processing",
@@ -159,6 +158,7 @@
     "web-researcher": "Web Research and Content",
     "web-summary": "Web Research and Content",
     "youtube-transcript-archiver": "Web Research and Content",
-    "isaac-sim": "3D and Game Development"
+    "isaac-sim": "3D and Game Development",
+    "visioncraft": "Development Methodology and Meta-Skills"
   }
 }

@@ -33,7 +33,7 @@ GitHub CLI — beyond traditional single-pass static analysis.
 
 ## When not to use
 
-- Full project development with quality gates, TDD, and coverage analysis → use **build-with-quality**
+- Full project development with quality gates, TDD, and coverage analysis → use **visioncraft**
 - Release versioning, changelog generation, deployment orchestration → use **github-release-management**
 - GitHub Actions workflow creation and CI/CD pipeline setup → use **github-workflow-automation**
 - Cross-repository synchronisation and architecture management → use **github-multi-repo**

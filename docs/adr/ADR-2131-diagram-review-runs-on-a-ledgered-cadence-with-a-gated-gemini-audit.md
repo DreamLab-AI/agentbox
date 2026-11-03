@@ -18,6 +18,15 @@ lineage: ADR-2130 (external review is a transport outside [model_routing]; seal 
 
 # ADR-2131 — Diagram review runs on a ledgered cadence with a gated Gemini audit
 
+## Amendment — quality findings consumer, 2026-11-03
+
+The cadence and merge reports now hand unverified findings to VisionCraft
+(ADR-2165), the independent successor to build-with-quality. Only the named
+consumer changes here; selection, accounting witnesses, reservations, settlements
+and paid-review policy retain their existing contracts. Source naming does not
+assert a new cadence deployment or a paid run.
+
+
 ## Amendment — budget scope and interrupted shard processing, 2026-11-03
 
 Verified in source and offline tests at `becd1f77c2c6f6aa72c90914bcfff45988ca63d8`.

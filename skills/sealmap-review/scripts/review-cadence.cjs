@@ -44,7 +44,7 @@
  *   generateContent may already have been billed. A cited path whose repository is missing, or
  *   whose link dangles, is a logged skip, not a crash.
  *   Nothing here edits a topic or commits anything. Findings are unverified hypotheses for
- *   build-with-quality. The keys are read from the environment and never printed or stored.
+ *   visioncraft. The keys are read from the environment and never printed or stored.
  *
  * WHAT IT MEANS FOR THE CLIENT
  *   The diagrams stay honest without anyone remembering to ask. A cheap model watches every
@@ -951,7 +951,7 @@ async function reviewGlm(repo, ctx) {
     out = uniquePath(path.join(repo, REVIEW_REL), `${utcDate(now)}-glm`, '.md');
     const high = findings.filter((f) => f.high).length;
     fs.writeFileSync(out, [`# GLM review ${utcDate(now)} (${cfg.glm_model}): ${findings.length} findings, ${high} high severity, ${done.length} shard(s)`, '',
-      `Revision ${head ? head.slice(0, 12) : 'unknown'}. Shards: ${done.map((d) => d.shard.name).join(', ')}. Unverified hypotheses: reproduce each with a failing test or check (build-with-quality) before acting.`, '', ...docs].join('\n'));
+      `Revision ${head ? head.slice(0, 12) : 'unknown'}. Shards: ${done.map((d) => d.shard.name).join(', ')}. Unverified hypotheses: reproduce each with a failing test or check (visioncraft) before acting.`, '', ...docs].join('\n'));
     fs.writeFileSync(out.replace(/\.md$/, '.json'), `${JSON.stringify(findings, null, 2)}\n`);
     for (const d of done) {
       appendLedger(repo, {
@@ -1063,7 +1063,7 @@ async function auditGemini(repo, ctx) {
   if (ran.length) {
     out = uniquePath(path.join(repo, REVIEW_REL), `${utcDate(now)}-gemini`, '.md');
     fs.writeFileSync(out, [`# Gemini audit ${utcDate(now)} (${ran[0].model}): ${findings.length} findings, ${ran.length} shard(s)`, '',
-      `Revision ${head ? head.slice(0, 12) : 'unknown'}. Shards: ${ran.map((r) => r.shard.name).join(', ')}. Unverified hypotheses: reproduce each with a failing test or check (build-with-quality) before acting.`, '', ...docs].join('\n'));
+      `Revision ${head ? head.slice(0, 12) : 'unknown'}. Shards: ${ran.map((r) => r.shard.name).join(', ')}. Unverified hypotheses: reproduce each with a failing test or check (visioncraft) before acting.`, '', ...docs].join('\n'));
     fs.writeFileSync(out.replace(/\.md$/, '.json'), `${JSON.stringify(findings, null, 2)}\n`);
   }
   if (errors.length) throw new Error(`${errors.length} shard(s) failed: ${errors.join('; ')}`);

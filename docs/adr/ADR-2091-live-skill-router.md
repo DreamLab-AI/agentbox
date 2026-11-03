@@ -16,6 +16,21 @@ repo: agentbox
 
 # ADR-2091 — Route each turn to a skill with one typed judgement, failing open to the table
 
+## Amendment — VisionCraft picker cutover, 2026-11-03
+
+ADR-2165 replaces the build-with-quality candidate with VisionCraft. Both the
+UserPromptSubmit hook and `/route` call `loadCandidates` in
+`config/hooks/lib/skill-route.cjs`, which reads the current skill tree per request.
+The hook then narrows it through `registered-skills.txt`. BM25 is recomputed for
+that candidate map; there is no persisted picker index. The Jev Choice request
+therefore receives the canonical description after the new image is activated.
+Offline tests in `tests/system-one/visioncraft-picker.test.mjs` assert the real
+registered quality prompt selects VisionCraft and a mocked Jev request exposes
+no retired candidate. This establishes plumbing, not live Jev model accuracy.
+The existing baked/source parity check remains an explicit rebuild acceptance
+check; source tests do not silently promote the current image to the new payload.
+
+
 ## Re-verification — 2026-10-29 at 3b498088e (ADR-2153 cutover)
 
 Reviewed the governed-path diff from this record's previous verification to

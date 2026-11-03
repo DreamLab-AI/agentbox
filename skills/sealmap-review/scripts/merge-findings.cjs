@@ -11,7 +11,7 @@
  *      and an overlap coefficient of at least MIN_OVERLAP.
  * Findings from one family never corroborate each other (critical and premortem lenses of one
  * model are not independent). Agreement ranks; it does not verify. Every finding stays an
- * unverified hypothesis for build-with-quality triage.
+ * unverified hypothesis for visioncraft triage.
  *
  *   node merge-findings.cjs glm.json gemini.json [--out merged.json]
  *

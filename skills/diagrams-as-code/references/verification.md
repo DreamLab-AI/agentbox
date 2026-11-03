@@ -196,7 +196,7 @@ verification; state the scope of each receipt and regenerate indexes accordingly
 For claimed duplicate implementations, trace the consumer's actual call path
 and pinned dependency before describing the canonical path as live. Keep
 proposed migrations and retirement decisions distinct from executed code. The
-[review evidence reference](../../build-with-quality/references/review-evidence.md)
+[review evidence reference](../../visioncraft/references/review-evidence.md)
 covers failure causality, persistence effects and gate-policy limits.
 
 For approval or withholding diagrams, draw where candidate bytes first enter

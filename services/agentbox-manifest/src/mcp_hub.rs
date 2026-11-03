@@ -181,14 +181,7 @@ pub fn apply(
 }
 
 fn write_private(path: &Path, value: &Value) -> Result<(), String> {
-    jsonio::write_atomic(path, value, true).map_err(|e| format!("{}: {e}", path.display()))?;
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o600))
-            .map_err(|e| format!("{}: chmod: {e}", path.display()))?;
-    }
-    Ok(())
+    jsonio::write_atomic(path, value, true).map_err(|e| format!("{}: {e}", path.display()))
 }
 
 /// Entry point for the subcommand. Prints the summary line on success.
@@ -217,7 +210,7 @@ pub fn project(
         &json!({"schema": "agentbox.mcp-hub-state.v1", "servers": Value::Object(state)}),
     )?;
     write_private(out, &config)?;
-    jsonio::write(file, &mcp, false).map_err(|e| format!("{}: {e}", file.display()))?;
+    jsonio::write_atomic(file, &mcp, false).map_err(|e| format!("{}: {e}", file.display()))?;
     println!("[mcp-hub] {}", report.summary(enabled));
     Ok(())
 }

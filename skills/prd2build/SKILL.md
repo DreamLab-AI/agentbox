@@ -20,7 +20,7 @@ executes the build afterwards.
 ## When not to use
 
 - Existing documentation validation and alignment → use **docs-alignment**.
-- Full code implementation with quality gates and testing → use **build-with-quality**.
+- Full code implementation with quality gates and testing → use **visioncraft**.
 - SPARC-phase orchestration across development stages → use **sparc-methodology**.
 - LaTeX report generation with charts and bibliography → use **report-builder**.
 - Simple feature without formal documentation → just write code directly.

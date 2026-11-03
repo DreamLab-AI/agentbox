@@ -82,7 +82,7 @@ This skill composes with:
 | `latex-documents` | LaTeX compilation, bibliography management |
 | `perplexity-research` | Real-time web research with citations |
 | `ui-ux-pro-max` | Professional design guidance for infographics and layout |
-| `build-with-quality` | Quality gates, TDD for Python scripts |
+| `visioncraft` | Quality gates, TDD for Python scripts |
 | `sparc-methodology` | SPARC phases for structured development |
 | `swarm-orchestration` | Hierarchical mesh swarm coordination |
 | `hooks-automation` | Pre/post task hooks for quality checks |

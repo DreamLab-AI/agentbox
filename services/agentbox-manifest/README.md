@@ -23,6 +23,14 @@ boot path has one typed implementation with deterministic output ordering.
   projector read.
 - Emits stable, sorted output so a projection diff is a real configuration
   change rather than map-ordering noise.
+- `deepsec-gate`: projects Agentbox's typed `security.deepsec` policy and
+  `DEEPSEC_GATE_*` overrides, then executes the separately pinned VisionCraft
+  CLI with literal argv and inherited stdin. Explicit missing/malformed policies
+  and unavailable executors refuse with exit 78. Credential values are never
+  resolved into policy JSON. VisionCraft owns review execution and validation.
+- `visioncraft-source-check --root <checkout-or-baked-root>`: verifies the
+  generated portable skill and lockfile against `config/visioncraft-source.json`,
+  refusing changed, missing, extra, symlinked or parallel legacy payloads.
 
 ### Usage
 

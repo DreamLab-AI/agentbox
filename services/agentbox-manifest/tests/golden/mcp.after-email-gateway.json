@@ -32,6 +32,9 @@
         "AQE_MEMORY_BACKEND": "memory",
         "AQE_VERBOSE": "false",
         "NODE_NO_WARNINGS": "1",
+        "AQE_WORKERS_ENABLED": "false",
+        "AQE_EMBEDDER_ENDPOINT": "",
+        "AQE_EMBEDDER_TOKEN": "",
         "AQE_LLM_PROVIDER": "claude-code"
       }
     },

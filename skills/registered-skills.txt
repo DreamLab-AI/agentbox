@@ -45,7 +45,7 @@ ontology-augment
 email-search
 
 # --- development (most-used per skills-upgrade-plan-c5 §2; project CLAUDE.md mandates codebase-memory) ---
-build-with-quality
+visioncraft
 codebase-memory
 
 # --- domain planners ---

@@ -10,7 +10,7 @@ description: >
   invoked explicitly. Use for correctness-critical generation where a single
   attempt is demonstrably insufficient and the measured +26.9% correctness lift
   (ORPS) justifies the cost. NOT for a single generation attempt (use
-  `sparc:coder`), depth-on-one QE/TDD (`build-with-quality`), one-trajectory
+  `sparc:coder`), depth-on-one QE/TDD (`visioncraft`), one-trajectory
   stateful loops (`codeact`), or applying a known edit (`Edit`/`aci.edit_file`).
 version: 0.1.0
 triggers:
@@ -26,7 +26,7 @@ optional_mcps:
 manifest_gate: "[skills.tree_search_coder] enabled = true"
 related_skills:
   - "sparc:coder"          # tree-search invokes this N times internally; single attempt = use it directly
-  - build-with-quality     # QE/TDD pipeline over ONE candidate, not candidate selection
+  - visioncraft     # QE/TDD pipeline over ONE candidate, not candidate selection
   - codeact                # interactive stateful loop, one trajectory, no branching
   - verification-quality   # truth-score a single result; no exploration
 ---
@@ -105,7 +105,7 @@ on the same call. Protocol, exit codes and guarantees:
   algorithm, the `agentbox.toml` manifest gate, validator codes, and the
   URN/observability schema.
 - **[references/negative-routing.md](references/negative-routing.md)** — the
-  when-NOT-to-choose collision table (`sparc:coder`, `build-with-quality`,
+  when-NOT-to-choose collision table (`sparc:coder`, `visioncraft`,
   `codeact`, `Edit`/`aci.edit_file`, `verification-quality`) and the hard
   never-auto-route rule.
 - **[references/exemplars.md](references/exemplars.md)** — three worked

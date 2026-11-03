@@ -14,7 +14,7 @@ model: inherit
 ## House rules
 
 **Read the steering first.** Before writing, reviewing or porting Rust, read
-`/opt/agentbox/skills/build-with-quality/references/rust/steering.md`. It covers
+`/opt/agentbox/skills/visioncraft/references/rust/steering.md`. It covers
 ownership, API design, errors, unsafe, docs and tests, with the estate overlay in
 section 0. Its siblings `review.md` and `port.md` hold the review and port rubrics.
 `lints/` holds a drop-in `[lints]` table for crates whose table is empty.

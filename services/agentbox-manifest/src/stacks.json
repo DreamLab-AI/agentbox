@@ -6,17 +6,17 @@
   },
   "ruflo-orchestrator": {
     "tools": ["ruflo", "@claude-flow/cli", "ruvector"],
-    "skills": ["build-with-quality", "swarm-advanced", "lazy-fetch", "bhil-methodology", "codebase-memory"],
+    "skills": ["visioncraft", "swarm-advanced", "lazy-fetch", "bhil-methodology", "codebase-memory"],
     "env": ["RUVECTOR_PORT", "RUVECTOR_DATA_DIR", "NOSTR_RELAYS"]
   },
   "qe-fleet": {
     "tools": ["agentic-qe", "aqe", "playwright", "chromium"],
-    "skills": ["build-with-quality", "browser-automation", "playwright", "chrome-cdp"],
+    "skills": ["visioncraft", "browser-automation", "playwright", "chrome-cdp"],
     "env": ["PLAYWRIGHT_TIMEOUT", "DISPLAY", "SCREENSHOT_DIR"]
   },
   "nagual-qe": {
     "tools": ["nagual-qe", "agentic-qe", "aqe"],
-    "skills": ["browser-automation", "build-with-quality"],
+    "skills": ["browser-automation", "visioncraft"],
     "env": ["NAGUAL_API_KEY", "NAGUAL_BASE_URL"]
   },
   "rust-builder": {

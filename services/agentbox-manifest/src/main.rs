@@ -21,6 +21,7 @@
 
 mod agents_md;
 mod cred_sync;
+mod deepsec_gate;
 mod hooks;
 mod instructions;
 mod jsonio;
@@ -40,6 +41,7 @@ mod tui_fields;
 mod tui_read;
 mod tui_sections;
 mod tui_write;
+mod visioncraft_source;
 
 use std::io::Read;
 use std::path::PathBuf;
@@ -61,6 +63,19 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
+    /// Verify the vendored VisionCraft skill and lockfile against the release pin.
+    VisioncraftSourceCheck {
+        /// Agentbox checkout or baked /opt/agentbox root.
+        #[arg(long, default_value = ".")]
+        root: PathBuf,
+    },
+    /// Apply Agentbox security.deepsec policy and exec the portable VisionCraft gate.
+    #[command(disable_help_flag = true)]
+    DeepsecGate {
+        /// Existing Deepsec gate arguments, forwarded literally after host policy.
+        #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
+        args: Vec<std::ffi::OsString>,
+    },
     /// Move stateless MCP servers behind the shared loopback hub (ADR-2034):
     /// lifts their stdio definitions into `--state`, rewrites `.mcp.json` to
     /// `type: http` entries and writes the hub's runtime config to `--out`.
@@ -104,6 +119,12 @@ enum Command {
     McpReconcileAqe {
         #[arg(long)]
         file: PathBuf,
+        /// Remove the owned entry when the toolchain is disabled or unavailable.
+        #[arg(long)]
+        disabled: bool,
+        /// Project Codex TOML instead of Claude MCP JSON.
+        #[arg(long)]
+        codex: bool,
         /// Empty or omitted removes `AQE_LLM_PROVIDER` rather than blanking it.
         #[arg(long, default_value = "")]
         provider: String,
@@ -362,17 +383,25 @@ fn restore_default_sigpipe() {
 
 fn main() -> ExitCode {
     restore_default_sigpipe();
-    match run(Cli::parse().command) {
+    let command = Cli::parse().command;
+    let host_policy = matches!(&command, Command::DeepsecGate { .. });
+    match run(command) {
         Ok(()) => ExitCode::SUCCESS,
         Err(e) => {
             eprintln!("{e}");
-            ExitCode::FAILURE
+            if host_policy {
+                ExitCode::from(78)
+            } else {
+                ExitCode::FAILURE
+            }
         }
     }
 }
 
 fn run(cmd: Command) -> Result<(), String> {
     match cmd {
+        Command::VisioncraftSourceCheck { root } => visioncraft_source::check(&root),
+        Command::DeepsecGate { args } => deepsec_gate::execute(&args),
         Command::McpHubProject {
             file,
             state,
@@ -392,8 +421,17 @@ fn run(cmd: Command) -> Result<(), String> {
         }
         Command::McpSetServer { file, name } => mcp::set_server(&file, &name),
         Command::McpMirrorServer { from, to, name } => mcp::mirror_server(&from, &to, &name),
-        Command::McpReconcileAqe { file, provider } => {
-            mcp::reconcile_aqe(&file, Some(provider.as_str()))
+        Command::McpReconcileAqe {
+            file,
+            provider,
+            disabled,
+            codex,
+        } => {
+            if codex {
+                mcp::reconcile_aqe_codex(&file, Some(provider.as_str()), disabled)
+            } else {
+                mcp::reconcile_aqe(&file, Some(provider.as_str()), disabled)
+            }
         }
         Command::McpProtectNamespace {
             file,

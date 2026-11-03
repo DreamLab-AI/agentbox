@@ -122,7 +122,7 @@ Source Files (66 languages via tree-sitter)
 | Skill | Relationship |
 |-------|-------------|
 | `context7` | Use together: codebase-memory for internal structure, context7 for external library docs |
-| `build-with-quality` | Index before starting large refactors; use `detect_changes` to assess diff risk |
+| `visioncraft` | Index before starting large refactors; use `detect_changes` to assess diff risk |
 | `sparc-methodology` | Use `get_architecture` in Specification phase; `detect_changes` in Refinement phase |
 | `github-code-review` | Use `trace_path` + `detect_changes` to understand PR blast radius |
 | `agentic-jujutsu` | Use `detect_changes` before conflict resolution to assess risk |

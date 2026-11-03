@@ -21,7 +21,7 @@ Memory management patterns for AI agents: session memory, long-term storage, pat
 - For reinforcement learning algorithms -- use the **agentdb-advanced** skill (RL Plugins section) instead
 - For pure vector search performance tuning (quantisation, HNSW) -- use the agentdb-vector-search skill instead
 - For non-persistent, session-only state that does not need vector search -- standard in-memory data structures suffice
-- For unified development and quality engineering workflows -- use the build-with-quality skill which includes memory management
+- For unified development and quality engineering workflows -- use the visioncraft skill which includes memory management
 
 ## Pattern Reference
 

@@ -1,0 +1,264 @@
+{
+  "version": 1,
+  "cutover": "hard; migrate active callers then remove old entrypoints and implementation",
+  "source": {
+    "repository": "https://github.com/DreamLab-AI/agentbox",
+    "revision": "a9125eaf006e2679f5b81444c3c06d0fb45b7481",
+    "root": "skills/build-with-quality/"
+  },
+  "canonical_root": "skills/visioncraft/",
+  "mappings": [
+    {
+      "legacy_path": "SKILL.md",
+      "kind": "entrypoint",
+      "target": "SKILL.md",
+      "source_sha256": "4bfc807b6c5e518b5dc2847186f0503fb001c7061cf6a60851bbb4916afe6a53",
+      "source_git_blob": "19f9fd9433ccd04e7329a84e6dc8d41d28e3bb12",
+      "preserved_capability": "Entry workflow, when/when-not, model roles, gates",
+      "migration": "Rewrite every active caller/registry/picker to visioncraft and remove the legacy entrypoint at hard cutover; no retained redirect."
+    },
+    {
+      "legacy_path": "README.md",
+      "kind": "resource",
+      "target": "references/migration.md",
+      "source_sha256": "b60e2f4e52d0f285cad7171d08c2a55cc56fa4b7d37f0f9fe5fd7432d3373bf2",
+      "source_git_blob": "55b664dea2d4e16828e2c38b4a2abbc22d5adc2c",
+      "preserved_capability": "Overview, install, examples, API, targets, migration",
+      "migration": "Historical removed npm API is documented as retired; actual CLI/library documentation belongs to the package README."
+    },
+    {
+      "legacy_path": "BUILD-WITH-QUALITY-PROMPT.md",
+      "kind": "resource",
+      "target": "assets/activation.md",
+      "source_sha256": "7f7a0ad86f9b88159d372cb44a78da4a6091e972ca229761ff03ee0e434eb32f",
+      "source_git_blob": "6c8ba1ee720168c2953c6931503cb6c641e877b6",
+      "preserved_capability": "Full activation prompt, six gates, profiles, topology, degraded modes",
+      "migration": "Rewritten portable task brief preserves phases and explicit profile choices."
+    },
+    {
+      "legacy_path": "DEBUGGING-PROTOCOL.md",
+      "kind": "resource",
+      "target": "references/debugging.md",
+      "source_sha256": "e6f4997dd2c895d25e5754e3743f9ae8f88ae57a32289364b8f4602028fb5c7d",
+      "source_git_blob": "00ebc6fb36a5b06f3e627bb6c9d2a27a2225aa60",
+      "preserved_capability": "Feedback loop, static oracle, ranked hypotheses, diagram diagnosis, design interrogation",
+      "migration": "Feedback loop, blocked setup, static oracle and design interrogation; diagram diagnosis is separately linked."
+    },
+    {
+      "legacy_path": "EDD-PROTOCOL.md",
+      "kind": "resource",
+      "target": "references/edd.md",
+      "source_sha256": "f403ca0cfbe4ec40962b3912050850a8ccd7daa9bb008f311501ab6ea17dd318",
+      "source_git_blob": "c52d56910f8e34532656f3ff949a8c85e52d5c57",
+      "preserved_capability": "Seven-step EDD, expectations, receipts, independence, ageing, stabilisation, workshops",
+      "migration": "Seven steps, evidence categories, independence, freshness, workshops and stabilisation retained without host model defaults."
+    },
+    {
+      "legacy_path": "USAGE-EXAMPLES.md",
+      "kind": "resource",
+      "target": "references/worked-examples.md",
+      "source_sha256": "d46150856d4949bebc6bbaa89aad718979a5777715141d0fc43269440802d0e6",
+      "source_git_blob": "9b131b7169efa09a9e516d686d311d7232689935",
+      "preserved_capability": "Five complete project examples and priority/quality variations",
+      "migration": "All five project examples retained as explicit example contracts, not claimed execution."
+    },
+    {
+      "legacy_path": "config/skill.yaml",
+      "kind": "retired",
+      "target": null,
+      "source_sha256": "2664eba6c09e2a644d52e79327b225898a678e25f8486d1a85c630558a6f00eb",
+      "source_git_blob": "0c7d62ffaf912216e2a72ead067e38ab0c78ecb1",
+      "preserved_capability": "Configuration-shaped capability/domain/gate/model/workflow catalogue",
+      "migration": "No discovered runtime loader; retire this descriptive config instead of advertising inert policy. See references/architecture.md."
+    },
+    {
+      "legacy_path": "scripts/deepsec-gate.sh",
+      "kind": "execution-migration",
+      "target": null,
+      "source_sha256": "bb0495c9fcfe3e24fd6229483f67bce7d845938bc6e4098a425c7d0301f002a7",
+      "source_git_blob": "6d68196732aee6a364b09970c3ef7029b73b9dad",
+      "preserved_capability": "Policy/route/preflight, bounded process, fresh receipts, export/threshold parser",
+      "migration": "Rewrite all callers to the installed VisionCraft Deepsec command and remove the old script; verify argument/exit/receipt contracts in adapter tests."
+    },
+    {
+      "legacy_path": "scripts/deepsec-gate.test.mjs",
+      "kind": "execution-migration",
+      "target": null,
+      "source_sha256": "4e365e98698e5fa51d0e570ffb8f8f28d877f50e575a7ca84ee7f4286aadcfa4",
+      "source_git_blob": "9247cb0f2a72c918d6122821ef8f1f0b253418b6",
+      "preserved_capability": "Offline provider double and process/receipt/error controls",
+      "migration": "Migrate behavioural cases into the Rust/host conformance suites; remove the old wrapper test implementation. Source is not copied into this portable skill."
+    },
+    {
+      "legacy_path": "references/agents.md",
+      "kind": "resource",
+      "target": "references/roles.md",
+      "source_sha256": "4679e71e7d2089423336e1941b97445f7f0b281323b2ed0320ede326caddeba7",
+      "source_git_blob": "c45dc816663fef0c57fc30f945b8996565774c32",
+      "preserved_capability": "34 logical roles and actual registered harness mapping",
+      "migration": "All 34 historical labels remain logical roles; coordination and unavailable ML labels do not become workers."
+    },
+    {
+      "legacy_path": "references/architecture.md",
+      "kind": "resource",
+      "target": "references/architecture.md",
+      "source_sha256": "241516a8b38a7a05566f344f024a442f9686c9b13913926bec3d3029041f9766",
+      "source_git_blob": "d1727df1e8f3fd50cadf5a01cf9ee1319021529c",
+      "preserved_capability": "Learning/memory/roles/execution, proposed enhancements, targets",
+      "migration": "Portable boundaries and optional host capabilities replace unsupported learning, consensus and benchmark claims."
+    },
+    {
+      "legacy_path": "references/bhil-traceability.md",
+      "kind": "resource",
+      "target": "references/traceability.md",
+      "source_sha256": "e67f480f009e53295faee68b0fc9a7ff55182591485529722f1873aeea2b117f",
+      "source_git_blob": "4efdae74bb0082aad7741ab03847942ad4ac970e",
+      "preserved_capability": "PRD/SPEC/ADR/TASK graph, prompt versions, eval/guardrail templates",
+      "migration": "Requirement/decision/task/release lineage plus prompt/evaluation/guardrail concepts, independently worded."
+    },
+    {
+      "legacy_path": "references/deepsec-security-gate.md",
+      "kind": "resource",
+      "target": "references/deepsec.md",
+      "source_sha256": "aa5c0c0ff267583260b89815766dde090a38f10523c2518558ceffa7b2794d16",
+      "source_git_blob": "8fffe035e0dc4e5df128da84becf0316a961cd6b",
+      "preserved_capability": "Actual gate operating contract, receipts, model routes, limits",
+      "migration": "Protocol-level completion, exports, failure and scope guidance; host setup is in ecosystem-agentbox.md."
+    },
+    {
+      "legacy_path": "references/methodologies.md",
+      "kind": "resource",
+      "target": "references/methodologies.md",
+      "source_sha256": "f06d08cd4e69d40739403a705287333f28800f126009bdff7334f72ebb2479d0",
+      "source_git_blob": "25482c5ec763e91899a46741df2af9fc9f711cce",
+      "preserved_capability": "DDD/ADR/TDD, ADR staleness, optional Ruflo graph integration",
+      "migration": "DDD/ADR/TDD and non-vacuous source verification retained; no assumed ADR plugin runtime."
+    },
+    {
+      "legacy_path": "references/migration.md",
+      "kind": "resource",
+      "target": "references/migration.md",
+      "source_sha256": "d1d74836a2aed309f58a11a435d1239433680159adb9bebf490274c161496f9d",
+      "source_git_blob": "290de4fdc172bfa1855d1824eb7d84c0ed7b2b48",
+      "preserved_capability": "Superseded skills and old invocation migrations",
+      "migration": "Canonical successor and explicit retired surfaces."
+    },
+    {
+      "legacy_path": "references/quality-gates-and-workflow.md",
+      "kind": "resource",
+      "target": "references/quality-gates.md",
+      "source_sha256": "6f875f71a4bd62259c0c9608ef20b6ff1eb87931f9d016559dd90b05f7ec55ec",
+      "source_git_blob": "3aebeb122e7f90c5646ef2293ff86cd6599e8c92",
+      "preserved_capability": "Gate catalogue, findings intake, Sealmap receipts, Rust lens, advisor and phase flow",
+      "migration": "Six check families and lifecycle retained with project-specific applicability and honest outcomes."
+    },
+    {
+      "legacy_path": "references/review-evidence.md",
+      "kind": "resource",
+      "target": "references/review-evidence.md",
+      "source_sha256": "d88fa12e3a91df6dba9975c6753e1594ddaf0a95e8f124163efbb6a3909c136d",
+      "source_git_blob": "4e3c4991f11faacd9defe1500893c617538891ab",
+      "preserved_capability": "Estate lessons: cause/version/effects, consolidation, gate semantics, delivery, release",
+      "migration": "All audit lesson families rewritten around cause, consumed version, authority, effects, gate completion and delivery."
+    },
+    {
+      "legacy_path": "references/rust/NOTICE.md",
+      "kind": "resource",
+      "target": "references/rust/NOTICE.md",
+      "source_sha256": "c206613705f463853e862d7d966c30abc9df73f46ece83c486a2ae5c0d8f4ef2",
+      "source_git_blob": "73afec5870db4463c1964b0ea06da1dde321ad01",
+      "preserved_capability": "Vendored source pin, file coverage and complete MIT notice",
+      "migration": "MIT BeautifulRust resource retained; estate overlays replaced where noted in provenance."
+    },
+    {
+      "legacy_path": "references/rust/steering.md",
+      "kind": "resource",
+      "target": "references/rust/steering.md",
+      "source_sha256": "d3bb15d912ff61d78482d9f776f68368d5299f09166518bd1c6c6be8f4368ced",
+      "source_git_blob": "b9138f355a09234b1bc3a67af7e8f225926a6ece",
+      "preserved_capability": "Rust ownership/API/errors/async/unsafe/docs/tests/performance plus estate overlay",
+      "migration": "MIT BeautifulRust resource retained; estate overlays replaced where noted in provenance."
+    },
+    {
+      "legacy_path": "references/rust/review.md",
+      "kind": "resource",
+      "target": "references/rust/review.md",
+      "source_sha256": "8803404fbe00f2d6bdaa8c00555a2b37a4ad8f5570157bae94af8c7d5dfec29f",
+      "source_git_blob": "f7239c2a5adb5335be5423b921d31be07d934ce7",
+      "preserved_capability": "Risk-ordered Rust review and report format, lint/profile handoff",
+      "migration": "MIT BeautifulRust resource retained; estate overlays replaced where noted in provenance."
+    },
+    {
+      "legacy_path": "references/rust/port.md",
+      "kind": "resource",
+      "target": "references/rust/port.md",
+      "source_sha256": "33bd11deee4e0baf3c34a0059c48267684763631770847004c5dbd3a8362b1fd",
+      "source_git_blob": "ae04924c8b64b2289501343e169f23be80550b91",
+      "preserved_capability": "Whether to port, preserve behaviour/tests, per-language semantics, proportionality",
+      "migration": "MIT BeautifulRust resource retained; estate overlays replaced where noted in provenance."
+    },
+    {
+      "legacy_path": "references/rust/lints/clippy.toml",
+      "kind": "resource",
+      "target": "references/rust/lints/clippy.toml",
+      "source_sha256": "012446990fbaa1b4705319c7cf95ed59ffbd14ac7ca9ec4b907f27a0ead82c42",
+      "source_git_blob": "6365ddc2d8a444665f434fda23bfaaf8fbde6952",
+      "preserved_capability": "Clippy bool parameter and test allowances",
+      "migration": "MIT BeautifulRust resource retained; estate overlays replaced where noted in provenance."
+    },
+    {
+      "legacy_path": "references/rust/lints/lints.toml",
+      "kind": "resource",
+      "target": "references/rust/lints/lints.toml",
+      "source_sha256": "4dbf3367ff178738f248543e9ae298ad57c8de3fb797823e756b5edf3f7f9588",
+      "source_git_blob": "17047b82672ec487e0e32f97a00cc1ff9d89f52e",
+      "preserved_capability": "Cargo lint table with public API/unsafe/docs/error/cast policies",
+      "migration": "MIT BeautifulRust resource retained; estate overlays replaced where noted in provenance."
+    },
+    {
+      "legacy_path": "references/rust/sources/effective-rust.md",
+      "kind": "resource",
+      "target": "references/rust/sources/effective-rust.md",
+      "source_sha256": "c0fe4ea29d2601224ac68b307d8c6137dd932b2565c141c1527c88ba1c5d5415",
+      "source_git_blob": "2990d3efea1912e6a3aa893d8484b244f9e12c3d",
+      "preserved_capability": "Effective Rust digest,35 items",
+      "migration": "MIT BeautifulRust resource retained; estate overlays replaced where noted in provenance."
+    },
+    {
+      "legacy_path": "references/rust/sources/google-rust-style-guide.md",
+      "kind": "resource",
+      "target": "references/rust/sources/google-rust-style-guide.md",
+      "source_sha256": "cfe61cd554c9dc32b412bb22dec7bd58e9eb4b3931db79124a61b8c2f573542c",
+      "source_git_blob": "e408370dd7d3e721710273a40f672c147cc69c61",
+      "preserved_capability": "Google Rust style digest",
+      "migration": "MIT BeautifulRust resource retained; estate overlays replaced where noted in provenance."
+    },
+    {
+      "legacy_path": "references/rust/sources/microsoft-rust-guidelines.md",
+      "kind": "resource",
+      "target": "references/rust/sources/microsoft-rust-guidelines.md",
+      "source_sha256": "648cfee06cea304e3d9c525e6de9047c296ce353e156a8117111094418ccc4b8",
+      "source_git_blob": "d4ecd16408d49a0dd06f25c56ca075ce5515a731",
+      "preserved_capability": "Microsoft pragmatic Rust digest, including AI provenance guidance",
+      "migration": "MIT BeautifulRust resource retained; estate overlays replaced where noted in provenance."
+    },
+    {
+      "legacy_path": "references/rust/sources/rust-api-guidelines.md",
+      "kind": "resource",
+      "target": "references/rust/sources/rust-api-guidelines.md",
+      "source_sha256": "392a94ed5151a7eeaf6f0d0f0cbd29904fa41ae4c4ae5ae98d79e7da3ba2a8af",
+      "source_git_blob": "72c927784a610c999e390d378dd036b35d335b24",
+      "preserved_capability": "Official Rust API guidelines digest",
+      "migration": "MIT BeautifulRust resource retained; estate overlays replaced where noted in provenance."
+    },
+    {
+      "legacy_path": "references/rust/sources/rust-design-patterns.md",
+      "kind": "resource",
+      "target": "references/rust/sources/rust-design-patterns.md",
+      "source_sha256": "3102f45153ac7c75179ee43b12d143b33e4aaba9b2209c454dd4f0542cae7ae7",
+      "source_git_blob": "e92dfa31aa584dc0bfd76525b6a6f0edf58bc200",
+      "preserved_capability": "Rust idioms/patterns/anti-patterns/functional digest",
+      "migration": "MIT BeautifulRust resource retained; estate overlays replaced where noted in provenance."
+    }
+  ]
+}

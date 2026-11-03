@@ -30,8 +30,8 @@ Full Rust development environment with stable toolchain, formatters, linters, an
 ## Style and review rules
 
 This skill covers the toolchain. For how to write idiomatic Rust, how to review it and
-how to port to it, read `build-with-quality`'s
-[references/rust/steering.md](../build-with-quality/references/rust/steering.md) and its
+how to port to it, read `visioncraft`'s
+[references/rust/steering.md](../visioncraft/references/rust/steering.md) and its
 review and port siblings.
 
 ## When Not To Use
