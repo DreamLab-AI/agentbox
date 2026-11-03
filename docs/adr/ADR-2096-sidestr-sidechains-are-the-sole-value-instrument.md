@@ -19,6 +19,14 @@ domain: BASELINE-container
 
 ## Context
 
+Scoped source adoption, 2026-11-03: `lib/sidestr-agent.nix` now fetches
+`7f04644411220ba0d3b9c7bdba58bbf56be790fa` with a verified Nix unpack hash and
+that revision's exact Cargo.lock. This carries core 0.4.3's header-failure
+mempool repair; the same upstream source also contains the private EVM payout
+and snapshot repairs. The `sidestr-agent` package tests and Nix parsing pass.
+This prepares the next image build and does not change a running chain, fund a
+wallet or relax ADR-2100's real-value settlement gate.
+
 The estate has a working HTTP 402 economy (sell side `payment-gate.js`, buy side `pay402.js`,
 `spend-policy.js`, `consumer-payer.js`, `receipt-minter.js`) whose balance is a JSON Web Ledger
 in solid-pod-rs, plus two more unsynced ledgers (host `pay_handler.rs`, forum D1). No rail moves

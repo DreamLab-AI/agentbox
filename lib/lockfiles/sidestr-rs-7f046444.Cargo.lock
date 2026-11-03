@@ -4865,7 +4865,7 @@ dependencies = [
 
 [[package]]
 name = "sidestr-core"
-version = "0.4.2"
+version = "0.4.3"
 dependencies = [
  "bech32 0.11.1",
  "bitcoin",
