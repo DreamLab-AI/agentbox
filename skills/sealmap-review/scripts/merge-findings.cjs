@@ -15,13 +15,15 @@
  *
  *   node merge-findings.cjs glm.json gemini.json [--out merged.json]
  *
- * The family of each file is its `reviewer`/`family` field per finding, else the file name
- * (a name containing "gemini" is `gemini`, "glm" is `glm`, otherwise the basename).
+ * Agreement requires completed origin metadata for identical pack bytes, scope and register
+ * mode. Model family is derived from the recorded model; filename labels carry no authority.
+ * Legacy reviews remain readable, with unknown provenance and no corroboration credit.
  */
 'use strict';
 
 const fs = require('node:fs');
 const path = require('node:path');
+const { modelFamily, comparable } = require('./review-context.cjs');
 
 const MIN_SHARED = 3;
 const MIN_OVERLAP = 0.3;
@@ -74,23 +76,20 @@ function familyOf(file) {
  * by two or more families come first; ties keep input order, so the output is deterministic.
  */
 function mergeFindings(groups) {
-  const all = [];
-  for (const g of groups) for (const f of g.findings) all.push({ ...f, family: f.family ?? f.reviewer ?? g.family });
-  const parent = all.map((_, i) => i);
-  const find = (i) => { while (parent[i] !== i) { parent[i] = parent[parent[i]]; i = parent[i]; } return i; };
+  const all = groups.flatMap((g) => g.findings.map((f) => ({ ...f,
+    family: modelFamily(f.origin?.reviewer?.model), source_family_label: f.family ?? f.reviewer ?? g.family ?? null })));
   const links = all.map(() => new Set());
   for (let i = 0; i < all.length; i++) {
     for (let j = i + 1; j < all.length; j++) {
-      if (all[i].family === all[j].family || !agree(all[i], all[j])) continue;
-      parent[find(i)] = find(j);
-      links[i].add(all[j].id); links[j].add(all[i].id);
+      if (!comparable(all[i].origin, all[j].origin) || !agree(all[i], all[j])) continue;
+      links[i].add(j); links[j].add(i);
     }
   }
-  const clusterFamilies = new Map();
-  all.forEach((f, i) => { const r = find(i); (clusterFamilies.get(r) ?? clusterFamilies.set(r, new Set()).get(r)).add(f.family); });
+  // Count only direct matches: A~B and B~C does not establish that C endorses A.
   const out = all.map((f, i) => {
-    const families = [...clusterFamilies.get(find(i))].sort();
-    return { ...f, families, agreement: families.length, corroborated_by: [...links[i]] };
+    const families = [...new Set([f.family, ...[...links[i]].map((j) => all[j].family)].filter(Boolean))].sort();
+    return { ...f, families, agreement: families.length, corroborated_by: [...links[i]].map((j) => `${all[j].origin.run_id}:${all[j].id}`),
+      comparison_status: f.origin ? (f.family ? 'provenance-present' : 'unknown-model-family') : 'legacy-no-provenance' };
   });
   return out.map((f, i) => ({ f, i })).sort((x, y) => y.f.agreement - x.f.agreement || x.i - y.i).map((x) => x.f);
 }
@@ -99,12 +98,12 @@ function mergeFindings(groups) {
 function renderMarkdown(merged) {
   const both = merged.filter((f) => f.agreement >= 2);
   const rest = merged.filter((f) => f.agreement < 2);
-  const line = (f) => `- **${f.id}** (${f.families.join(' + ')}) ${f.title}${f.topics ? ` [${f.topics}]` : ''}${f.corroborated_by.length ? ` — also ${f.corroborated_by.join(', ')}` : ''}`;
+  const line = (f) => `- **${f.id}** (${f.families.join(' + ') || 'family unverified'}) ${f.title}${f.topics ? ` [${f.topics}]` : ''}${f.corroborated_by.length ? ` — also ${f.corroborated_by.join(', ')}` : ''}`;
   return [
-    `# Merged review: ${both.length} finding(s) raised independently by two or more model families, ${rest.length} by one`, '',
-    'Agreement ranks findings; it does not verify them. Reproduce each (build-with-quality) before acting.', '',
+    `# Merged review: ${both.length} finding(s) raised independently by two or more model families, ${rest.length} without cross-family corroboration`, '',
+    'Only matching pack bytes, scope and register mode with known distinct model families count as agreement. Agreement ranks; it does not verify. Missing provenance earns no independent-review credit.', '',
     '## Raised by two or more families', '', ...(both.length ? both.map(line) : ['None.']), '',
-    '## Raised by one family', '', ...(rest.length ? rest.map(line) : ['None.']), '',
+    '## Uncorroborated or provenance unknown', '', ...(rest.length ? rest.map(line) : ['None.']), '',
   ].join('\n');
 }
 

@@ -48,6 +48,13 @@ only faults, each as:
 - Class: wrong-callee | missing-call | invented-edge | stale-claim |
   adr-contradiction | unsupported-claim | code-defect
 
+Resolve each citation in its owning repository, then trace the actual entry
+point and consumed lockfile/vendor/package version. A newer producer HEAD is a
+separate observation. State missing source or runtime as inconclusive; do not
+call it a rejected finding. For stateful flows, check writes, secondary indexes,
+response/delivery, restart/retry and rejected-object reads where relevant.
+Rendering and citation existence prove neither semantics nor runtime activation.
+
 Use class code-defect when the topic is accurate and the code itself is wrong.
 End with one line: "checked N citations, M faults".
 ```

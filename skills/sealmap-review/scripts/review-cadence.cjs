@@ -61,6 +61,7 @@ const crypto = require('node:crypto');
 const { execFileSync } = require('node:child_process');
 const ER = require('./external-review.cjs');
 const MF = require('./merge-findings.cjs');
+const { reviewContext } = require('./review-context.cjs');
 
 // ── Pricing (USD per million tokens). Gemini 3.8 Flash list price as of 2026-10-06, taken from
 //    the operator's brief; check ai.google.dev/pricing before trusting the budget to the cent.
@@ -278,24 +279,34 @@ function ledgerPath(repo) { return path.join(repo, LEDGER_REL); }
 
 function readLedger(repo) {
   let text = '';
-  try { text = fs.readFileSync(ledgerPath(repo), 'utf8'); } catch { return []; }
+  try { text = fs.readFileSync(ledgerPath(repo), 'utf8'); } catch (err) {
+    if (err.code === 'ENOENT') return [];
+    throw new Error(`cannot read review ledger ${ledgerPath(repo)}: ${err.code}`);
+  }
   const out = [];
-  for (const line of text.split('\n')) {
+  for (const [i, line] of text.split('\n').entries()) {
     if (!line.trim()) continue;
-    try { out.push(JSON.parse(line)); } catch { /* a torn line is skipped, never fatal */ }
+    try {
+      const row = JSON.parse(line);
+      if (!row || typeof row !== 'object' || Array.isArray(row)) throw new Error('not an object');
+      out.push(row);
+    } catch { throw new Error(`invalid review ledger ${ledgerPath(repo)}:${i + 1}; preserve and repair before continuing`); }
   }
   return out;
 }
 
 /** Append one run to the ledger. Append-only: the file is never rewritten. */
 function appendLedger(repo, entry) {
+  readLedger(repo); // Refuse to append after a torn row: it would conceal the next reservation too.
   const full = {
     ts: new Date().toISOString(), kind: null, reviewer: null, shard: null, commit: null, commits: null,
     pack_sha256: null, tokens: null, est_usd: 0, findings: null, high_severity: 0, changed_topics: null, skipped: null,
     ...entry,
   };
   fs.mkdirSync(path.dirname(ledgerPath(repo)), { recursive: true });
-  fs.appendFileSync(ledgerPath(repo), `${JSON.stringify(full)}\n`);
+  let separator = '';
+  try { const bytes = fs.readFileSync(ledgerPath(repo)); if (bytes.length && bytes.at(-1) !== 10) separator = '\n'; } catch (err) { if (err.code !== 'ENOENT') throw err; }
+  fs.appendFileSync(ledgerPath(repo), `${separator}${JSON.stringify(full)}\n`);
   return full;
 }
 
@@ -317,6 +328,7 @@ function monthToDateUsd(ledgers, now) {
   const month = new Date(now).toISOString().slice(0, 7);
   let total = 0;
   for (const ledger of ledgers) {
+    for (const e of ledger) if (e.reviewer === 'gemini' && (!Number.isFinite(e.est_usd) || e.est_usd < 0 || !Number.isFinite(Date.parse(e.ts)))) throw new Error('invalid Gemini spend record; accounting is inconclusive');
     // A reservation survives termination, lost replies and output-processing errors.
     // A settlement replaces it, rather than counting the same call twice.
     const settled = new Set(ledger.filter((e) => e.reservation_at).map((e) => `${e.reservation_at}:${e.shard}:${e.pack_sha256}`));
@@ -423,11 +435,12 @@ function loadTopics(repo, resolver = createResolver()) {
   return ER.listTopics(corpus, { skipDirs: cfg.skipDirs }).map((rel) => {
     const srcs = new Map();
     const skips = [];
-    for (const s of parseSources(fs.readFileSync(path.join(corpus, rel), 'utf8'))) {
+    const text = fs.readFileSync(path.join(corpus, rel), 'utf8');
+    for (const s of parseSources(text)) {
       const r = resolver.resolve(repo, s);
       if (r.skip) skips.push(r); else srcs.set(`${r.top}\0${r.rel}`, r);
     }
-    return { rel, area: rel.split('/')[0], srcs: [...srcs.values()], skips };
+    return { rel, area: rel.split('/')[0], srcs: [...srcs.values()], skips, topic_sha256: sha256(text) };
   });
 }
 
@@ -614,6 +627,7 @@ async function glm({ model, system, user, maxTokens, thinkingBudget, timeoutMs, 
   }
   const text = (res.json.content ?? []).filter((b) => b.type === 'text').map((b) => b.text).join('');
   if (!text) throw new Error(`glm: empty reply (stop_reason ${res.json.stop_reason ?? 'none'})`);
+  if (res.json.stop_reason !== 'end_turn') { const error = new Error(`glm: inconclusive stop_reason ${res.json.stop_reason ?? 'missing'}`); error.rawReply = text; throw error; }
   return { text, input_tokens: res.json.usage?.input_tokens ?? 0, output_tokens: res.json.usage?.output_tokens ?? 0 };
 }
 
@@ -624,8 +638,9 @@ const TRIAGE_SYSTEM = 'You check whether a documentation topic still tells the t
 
 /** Read a triage reply. Anything but an unambiguous NO is a YES. */
 function parseVerdict(text) {
-  const m = text.match(/VERDICT:\s*(YES|NO)\b/i);
-  return !(m && m[1].toUpperCase() === 'NO');
+  const m = /^VERDICT: (YES|NO)\s*$/i.exec(text.trim().split(/\r?\n/)[0]);
+  const all = [...text.matchAll(/VERDICT:\s*(YES|NO)\b/gi)];
+  return !(m && m[1].toUpperCase() === 'NO' && all.length === 1);
 }
 
 function clip(s, max) {
@@ -634,15 +649,23 @@ function clip(s, max) {
 
 /** The topic text and the combined diff of its changed sources, each repository diffed from its
  *  own recorded commit. */
-function triagePrompt(repo, topic, since) {
+function triagePrompt(repo, topic, since, heads) {
   const text = clip(fs.readFileSync(path.join(repo, CORPUS_REL, topic.rel), 'utf8'), MAX_TOPIC_BYTES);
   const byTop = new Map();
   for (const s of topic.changedSources) { if (!byTop.has(s.top)) byTop.set(s.top, []); byTop.get(s.top).push(s.rel); }
   let diff = '';
   for (const [top, files] of byTop) {
     let d;
-    try { d = git(top, ['diff', '--unified=2', since[top], 'HEAD', '--', ...files]); } catch { d = '(diff unavailable)'; }
+    try { d = git(top, ['diff', '--unified=2', since[top], heads[top], '--', ...files]); } catch { d = '(diff unavailable)'; }
     diff += `--- repository ${path.basename(top)} since ${since[top].slice(0, 12)}\n${d}\n`;
+  }
+  if (topic.previousFinding) {
+    diff = `Previous open finding: ${topic.previousFinding}\nCurrent cited source snapshots (a topic edit alone does not prove a repair):\n`;
+    for (const source of topic.srcs) {
+      diff += `--- ${path.basename(source.top)}/${source.rel} @ ${heads[source.top]}\n`;
+      try { diff += git(source.top, ['show', `${heads[source.top]}:${source.rel}`]); } catch { throw new Error('source snapshot unavailable for open finding'); }
+    }
+    if (topic.skips.length) throw new Error('some cited sources remain unresolved for open finding');
   }
   const names = topic.changedSources.map((s) => `${path.basename(s.top)}/${s.rel}`).join(', ');
   return `Topic file ${topic.rel}:\n\n${text}\n\n=== Changes to the sources it cites ===\nChanged files: ${names}\n\n${clip(diff, MAX_DIFF_BYTES)}\n\nIs this topic now wrong?`;
@@ -672,6 +695,28 @@ function skipSummary(topics) {
 const REVIEW_EXTRA = '\n\nAdd one more line to every finding, after Confidence: "- Severity: high, medium or low", '
   + 'where high means it would cause a security, custody, data-loss or correctness incident in production.';
 
+/** Reconstruct the open queue from the existing append-only ledger and legacy triage reports.
+ * A topic edit is a reason to recheck, not proof that the issue disappeared. */
+function outstandingTriage(repo, topics, ledger) {
+  const states = new Map();
+  for (const row of ledger) {
+    if (row.kind !== 'triage') continue;
+    if (Array.isArray(row.results)) {
+      for (const result of row.results) states.set(result.topic, result);
+    } else if (row.findings) {
+      const file = path.resolve(repo, row.findings);
+      if (!file.startsWith(path.resolve(repo) + path.sep)) throw new Error('triage report escapes repository');
+      let md;
+      try { md = fs.readFileSync(file, 'utf8'); } catch (err) { throw new Error(`triage evidence unavailable ${row.findings}: ${err.code}; queue is inconclusive`); }
+      // Historical reports are raw hypotheses. Import the queue, never a closure verdict.
+      const section = md.split('## Re-author\n')[1]?.split(/\n## /)[0] ?? '';
+      for (const match of section.matchAll(/^- `([^`]+)`: (.+)$/gm)) states.set(match[1], { topic: match[1], yes: true, reason: match[2], topic_sha256: null, imported: true });
+    }
+  }
+  const current = new Set(topics.map((t) => t.rel));
+  return [...states.values()].filter((r) => r.yes && current.has(r.topic));
+}
+
 async function triage(repo, ctx) {
   const { now, cfg, dryRun } = ctx;
   const resolver = createResolver();
@@ -682,6 +727,7 @@ async function triage(repo, ctx) {
   const heads = headsOf(tops);
   const skips = skipSummary(topics);
   const ledger = readLedger(repo);
+  const pending = outstandingTriage(repo, topics, ledger);
   const last = [...ledger].reverse().find((e) => e.kind === 'triage' && (e.commits || e.commit) && !e.error);
   const since = last ? (last.commits ?? { [repoTop]: last.commit }) : {};
   const { changed, baseline } = changedByRepo(tops, since);
@@ -694,26 +740,39 @@ async function triage(repo, ctx) {
   // Per-file flagging is the single path: every narrower rule measured (symbol, region, call-flow,
   // line-overlap) lost real changes; only per-file keeps recall 1.0 (references/evidence.md).
   candidates = triageCandidates(topics, changed);
+  for (const old of pending) {
+    const t = topics.find((x) => x.rel === old.topic);
+    if (t && (!old.topic_sha256 || t.topic_sha256 !== old.topic_sha256) && !candidates.some((x) => x.rel === t.rel)) candidates.push({ ...t, changedSources: [], previousFinding: old.reason });
+  }
   candidates.sort((a, b) => b.changedSources.length - a.changedSources.length || (a.rel < b.rel ? -1 : 1));
   if (candidates.length === 0) {
     if (!dryRun) appendLedger(repo, { ts: stamp, kind: 'triage', reviewer: 'glm', commit: heads[repoTop] ?? null, commits: heads, changed_topics: 0, skipped: 'no topic sources changed', unresolved: skips });
-    return { skipped: 'no topic sources changed' };
+    return { skipped: 'no topic sources changed', outstanding: pending.length };
   }
   if (dryRun) return { candidates: candidates.map((t) => t.rel), baseline: baseline.map((b) => path.basename(b)) };
 
+  const run = runDirectory(repo, 'triage', now);
   const results = [];
   let inTok = 0, outTok = 0;
   for (const [i, t] of candidates.entries()) {
     if (i >= MAX_TRIAGE_TOPICS) { results.push({ topic: t.rel, yes: true, reason: 'not checked: per-run cap reached, so it is listed' }); continue; }
+    const rawFile = path.join(run.dir, `${encodeURIComponent(t.rel)}.reply.txt`);
     try {
-      const r = await glm({ model: cfg.glm_model, system: TRIAGE_SYSTEM, user: triagePrompt(repo, t, since), maxTokens: GLM_TRIAGE_MAX_OUTPUT_TOKENS, env: ctx.env, post: ctx.post });
+      const prompt = triagePrompt(repo, t, since, heads);
+      fs.writeFileSync(path.join(run.dir, `${encodeURIComponent(t.rel)}.prompt.txt`), prompt);
+      if (prompt.includes('[... truncated at ')) throw new Error('triage context was truncated; scoped verification required');
+      const r = await glm({ model: cfg.glm_model, system: TRIAGE_SYSTEM, user: prompt, maxTokens: GLM_TRIAGE_MAX_OUTPUT_TOKENS, env: ctx.env, post: ctx.post });
+      fs.writeFileSync(rawFile, r.text);
       inTok += r.input_tokens; outTok += r.output_tokens;
-      results.push({ topic: t.rel, yes: parseVerdict(r.text), reason: (r.text.match(/REASON:\s*(.+)/i) || [])[1]?.trim() ?? '' });
+      results.push({ artefact: rel(repo, rawFile), topic: t.rel, yes: parseVerdict(r.text), reason: (r.text.match(/REASON:\s*(.+)/i) || [])[1]?.trim() ?? '' });
     } catch (err) {
-      results.push({ topic: t.rel, yes: true, reason: `GLM call failed (${err.message.slice(0, 120)}); unsure means yes` });
+      fs.writeFileSync(rawFile, err.rawReply ?? err.message);
+      results.push({ artefact: rel(repo, rawFile), topic: t.rel, yes: true, reason: `GLM call failed (${err.message.slice(0, 120)}); unsure means yes` });
     }
   }
+  for (const result of results) result.topic_sha256 = topics.find((t) => t.rel === result.topic).topic_sha256;
   const flagged = results.filter((r) => r.yes);
+  const outstanding = outstandingTriage(repo, topics, [...ledger, { kind: 'triage', results }]);
   const out = uniquePath(path.join(repo, REVIEW_REL), `${utcDate(now)}-triage`, '.md');
   const md = [
     `# Triage ${utcDate(now)}: ${flagged.length} of ${results.length} topics to re-author`, '',
@@ -722,15 +781,23 @@ async function triage(repo, ctx) {
     + `${skips.count ? `${skips.count} cited paths could not be attributed (${Object.entries(skips.reasons).map(([k, v]) => `${v} ${k}`).join(', ')}). ` : ''}`
     + 'Topics are never edited here; re-author each with diagrams-as-code and re-stamp.', '',
     '## Re-author', '', ...(flagged.length ? flagged.map((r) => `- \`${r.topic}\`: ${r.reason || 'no reason given'}`) : ['(none)']), '',
+    '## Outstanding queue', '', ...outstanding.map((r) => `- \`${r.topic}\`: ${r.reason || 'needs verification'}`), '',
     '## Still accurate', '', ...(results.filter((r) => !r.yes).map((r) => `- \`${r.topic}\`: ${r.reason}`)), '',
   ].join('\n');
   fs.writeFileSync(out, md);
   appendLedger(repo, {
     ts: stamp, kind: 'triage', reviewer: 'glm', commit: heads[repoTop] ?? null, commits: heads, tokens: { input: inTok, output: outTok },
     est_usd: (inTok * GLM_USD_PER_M.input + outTok * GLM_USD_PER_M.output) / 1e6, findings: rel(repo, out),
-    changed_topics: results.length, flagged: flagged.length, unresolved: skips,
+    changed_topics: results.length, flagged: flagged.length, unresolved: skips, results, outstanding: outstanding.length,
   });
   return { findings: rel(repo, out), flagged: flagged.length, checked: results.length };
+}
+
+function runDirectory(repo, kind, now) {
+  const runId = crypto.randomUUID();
+  const dir = path.join(repo, REVIEW_REL, 'runs', `${new Date(now).toISOString().replace(/[:.]/g, '-')}-${kind}-${runId}`);
+  fs.mkdirSync(dir, { recursive: true });
+  return { dir, runId };
 }
 
 async function reviewGlm(repo, ctx) {
@@ -750,6 +817,8 @@ async function reviewGlm(repo, ctx) {
   if (dryRun) return { would_review: todo.map((s) => s.name), unchanged: skipped.map((s) => s.name) };
   if (todo.length === 0) return { skipped: 'pack unchanged', shards: shards.length };
 
+  const run = runDirectory(repo, 'glm', now);
+  const dirty = ER.gitDirty(repo);
   const lenses = ['critical', 'premortem'].map((name) => ({ name, text: ER.loadLens(name, 15) + REVIEW_EXTRA }));
   const findings = [], docs = [], failures = [];
   let inTok = 0, outTok = 0;
@@ -757,18 +826,33 @@ async function reviewGlm(repo, ctx) {
   for (const shard of todo) {
     let sIn = 0, sOut = 0;
     const sFindings = [], sDocs = [];
+    const shardDir = path.join(run.dir, encodeURIComponent(shard.name));
+    fs.mkdirSync(shardDir, { recursive: true });
+    fs.writeFileSync(path.join(shardDir, 'pack.txt'), shard.pack);
+    const manifest = { schema: 1, run_id: run.runId, revision: head, dirty, pack_sha256: shard.sha, topics: shard.files, model: cfg.glm_model, complete: false, lenses: [] };
+    fs.writeFileSync(path.join(shardDir, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n');
     try {
       for (const lens of lenses) {
         const r = await glm({ model: cfg.glm_model, user: `${shard.pack}\n\n${lens.text}`, maxTokens: GLM_MAX_OUTPUT_TOKENS, thinkingBudget: 8000, env: ctx.env, post: ctx.post });
         sIn += r.input_tokens; sOut += r.output_tokens;
         sDocs.push(`## ${shard.name} / ${lens.name}\n\n${r.text.trim()}\n`);
-        for (const f of ER.parseFindings(r.text, lens.name)) sFindings.push({ ...f, id: `${shard.name}:${f.id}`, shard: shard.name, high: isHighSeverity(f) });
+        fs.writeFileSync(path.join(shardDir, `${lens.name}.md`), r.text);
+        const origin = reviewContext({ pack: shard.pack, files: shard.files, model: cfg.glm_model, provider: 'zai', revision: head, dirty, lens: lens.name, prompt: lens.text, runId: run.runId, reviewedAt: stamp });
+        origin.source_fidelity = 'not-verified';
+        for (const f of ER.checkedFindings(r.text, lens.name)) sFindings.push({ ...f, id: `${shard.name}:${f.id}`, shard: shard.name, origin, high: isHighSeverity(f) });
+        manifest.lenses.push({ name: lens.name, prompt_sha256: origin.prompt_sha256, input_tokens: r.input_tokens, output_tokens: r.output_tokens });
+        fs.writeFileSync(path.join(shardDir, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n');
       }
     } catch (err) {
+      if (err.rawReply) fs.writeFileSync(path.join(shardDir, 'incomplete-reply.md'), err.rawReply);
+      manifest.error = err.message; fs.writeFileSync(path.join(shardDir, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n');
       failures.push(`${shard.name}: ${err.message.slice(0, 160)}`);
       appendLedger(repo, { ts: stamp, kind: 'review', reviewer: 'glm', shard: shard.name, commit: head, pack_sha256: shard.sha, tokens: { input: sIn, output: sOut }, error: err.message.slice(0, 300), skipped: `error: ${err.message.slice(0, 160)}` });
       continue;
     }
+    manifest.complete = true;
+    fs.writeFileSync(path.join(shardDir, 'findings.json'), JSON.stringify(sFindings, null, 2) + '\n');
+    fs.writeFileSync(path.join(shardDir, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n');
     inTok += sIn; outTok += sOut;
     findings.push(...sFindings); docs.push(...sDocs);
     done.push({ shard, sIn, sOut, high: sFindings.filter((f) => f.high).length });
@@ -783,7 +867,7 @@ async function reviewGlm(repo, ctx) {
     for (const d of done) {
       appendLedger(repo, {
         ts: stamp, kind: 'review', reviewer: 'glm', shard: d.shard.name, commit: head, pack_sha256: d.shard.sha, tokens: { input: d.sIn, output: d.sOut },
-        est_usd: (d.sIn * GLM_USD_PER_M.input + d.sOut * GLM_USD_PER_M.output) / 1e6, findings: rel(repo, out), high_severity: d.high,
+        est_usd: (d.sIn * GLM_USD_PER_M.input + d.sOut * GLM_USD_PER_M.output) / 1e6, findings: rel(repo, out), high_severity: d.high, artefacts: rel(repo, path.join(run.dir, encodeURIComponent(d.shard.name))), run_id: run.runId,
       });
     }
   }
@@ -799,6 +883,7 @@ async function auditGemini(repo, ctx) {
   const resolver = createResolver();
   const topics = loadTopics(repo, resolver);
   const shards = buildShards(repo, ctx.shardTokens ?? shardBudget(ctx.env));
+  const pending = outstandingTriage(repo, topics, ledger);
   const key = process.env.GEMINI_API_KEY || process.env.GOOGLE_GEMINI_API_KEY;
   const log = (shard, reason, extra = {}) => {
     if (!dryRun && !repeatsLastSkip(ledger, 'audit', 'gemini', shard?.name ?? null, reason)) appendLedger(repo, { ts: stamp, kind: 'audit', reviewer: 'gemini', shard: shard?.name ?? null, commit: head, pack_sha256: shard?.sha ?? null, skipped: reason, ...extra });
@@ -811,6 +896,8 @@ async function auditGemini(repo, ctx) {
   for (const shard of shards) {
     const inShard = new Set(shard.files);
     const shardTopics = topics.filter((t) => inShard.has(t.rel));
+    const open = pending.filter((t) => inShard.has(t.topic));
+    if (open.length) { refused.push({ shard, reason: `freshness: ${open.length} outstanding triage topic(s) require verification`, changed: 0 }); continue; }
     const lastAudit = lastOf(ledger, 'audit', 'gemini', shard.name);
     const lastGlm = lastOf(ledger, 'review', 'glm', shard.name);
     // A high-severity GLM finding escalates once: it counts only if it is newer than the last audit.
@@ -827,6 +914,7 @@ async function auditGemini(repo, ctx) {
     return { would_consider: eligible.map((e) => ({ shard: e.shard.name, changed: e.changed, high: e.high, est_usd: estimateGeminiUsd(e.shard.tokens) })), refused: refused.map((r) => ({ shard: r.shard.name, reason: r.reason })) };
   }
 
+  const run = runDirectory(repo, 'gemini', now);
   const ran = [], findings = [], docs = [];
   const errors = [];
   for (const e of eligible) {
@@ -844,7 +932,9 @@ async function auditGemini(repo, ctx) {
     const decision = decideGemini({ cfg, lastAudit: e.lastAudit, changedTopics: e.changed, glmHighSeverity: e.high, mtdUsd: mtd, estUsd, now });
     if (!decision.run) { log(shard, decision.reason, { tokens: { input: packTokens }, changed_topics: e.changed }); continue; }
 
-    const outDir = fs.mkdtempSync(path.join(os.tmpdir(), 'diagram-audit-'));
+    const outDir = path.join(run.dir, encodeURIComponent(shard.name));
+    fs.mkdirSync(outDir, { recursive: true });
+    const reviewedCommits = headsOf(reposOf(e.shardTopics));
     appendLedger(repo, { ts: stamp, kind: 'audit-reservation', reviewer: 'gemini', shard: shard.name,
       pack_sha256: shard.sha, est_usd: estUsd, skipped: 'reserved before generation; charged until settled' });
     mtd += estUsd;
@@ -857,6 +947,7 @@ async function auditGemini(repo, ctx) {
       continue;
     }
     const manifest = JSON.parse(fs.readFileSync(path.join(outDir, 'manifest.json'), 'utf8'));
+    if (manifest.complete !== true || manifest.pack_sha256 !== shard.sha) throw new Error(`inconclusive audit ${shard.name}: incomplete result or pack changed during review; reservation retained`);
     const sFindings = JSON.parse(fs.readFileSync(path.join(outDir, 'findings.json'), 'utf8')).map((f) => ({ ...f, id: `${shard.name}:${f.id}`, shard: shard.name }));
     findings.push(...sFindings);
     for (const l of manifest.lenses ?? []) docs.push(`## ${shard.name} / ${l.name}\n\n${fs.readFileSync(path.join(outDir, `${l.name}.md`), 'utf8').trim()}\n`);
@@ -865,7 +956,7 @@ async function auditGemini(repo, ctx) {
     const sum = (k) => (manifest.lenses ?? []).reduce((a, l) => a + (l[k] ?? 0), 0);
     ran.push({ shard, usd, changed: e.changed, model: manifest.model,
       tokens: { input: sum('prompt_tokens'), cached: sum('cached_tokens'), output: sum('thinking_tokens') + sum('output_tokens') },
-      commits: headsOf(reposOf(e.shardTopics)) });
+      commits: reviewedCommits, artefacts: rel(repo, outDir) });
   }
   let out = null;
   if (ran.length) {
@@ -874,7 +965,7 @@ async function auditGemini(repo, ctx) {
       `Revision ${head ? head.slice(0, 12) : 'unknown'}. Shards: ${ran.map((r) => r.shard.name).join(', ')}. Unverified hypotheses: reproduce each with a failing test or check (build-with-quality) before acting.`, '', ...docs].join('\n'));
     fs.writeFileSync(out.replace(/\.md$/, '.json'), `${JSON.stringify(findings, null, 2)}\n`);
     for (const r of ran) {
-      appendLedger(repo, { ts: stamp, reservation_at: stamp, kind: 'audit', reviewer: 'gemini', shard: r.shard.name, commit: head, commits: r.commits, pack_sha256: r.shard.sha, tokens: r.tokens, est_usd: r.usd, findings: rel(repo, out), changed_topics: r.changed });
+      appendLedger(repo, { ts: stamp, reservation_at: stamp, kind: 'audit', reviewer: 'gemini', shard: r.shard.name, commit: head, commits: r.commits, pack_sha256: r.shard.sha, tokens: r.tokens, est_usd: r.usd, findings: rel(repo, out), changed_topics: r.changed, artefacts: r.artefacts, run_id: run.runId });
     }
   }
   if (errors.length) throw new Error(`${errors.length} shard(s) failed: ${errors.join('; ')}`);
@@ -887,7 +978,7 @@ async function auditGemini(repo, ctx) {
  *  families raised independently first (merge-findings.cjs). Writes `<date>-merged.{md,json}`. */
 function mergeReviews(repo, ctx) {
   const dir = path.join(repo, REVIEW_REL);
-  const newest = (suffix) => (fs.existsSync(dir) ? fs.readdirSync(dir).filter((f) => f.endsWith(`-${suffix}.json`)).sort().pop() : null);
+  const newest = (suffix) => (fs.existsSync(dir) ? fs.readdirSync(dir).filter((f) => new RegExp(`-${suffix}(?:-\\d+)?\\.json$`).test(f)).sort((a, b) => { const key = (f) => { const m = /^(.*)-(?:glm|gemini)(?:-(\d+))?\.json$/.exec(f); return [m[1], Number(m[2] ?? 1)]; }; const x = key(a), y = key(b); return x[0].localeCompare(y[0]) || x[1] - y[1]; }).pop() : null);
   const picked = ['glm', 'gemini'].map((k) => ({ family: k, file: newest(k) }));
   const missing = picked.filter((p) => !p.file).map((p) => p.family);
   if (missing.length) return { skipped: `need findings from two families; no ${missing.join(' or ')} findings file in ${REVIEW_REL}` };
@@ -914,9 +1005,10 @@ function statusOf(repos, now, info = {}) {
   const lines = [];
   lines.push(`Repos (${info.source ?? 'given'}${info.added ? `, +${info.added} from the local file` : ''}${info.excluded ? `, ${info.excluded} excluded` : ''}): ${repos.length}`);
   for (const r of repos) lines.push(`  ${r}`);
-  const ledgers = repos.map((r) => ({ repo: r, ledger: readLedger(r) }));
+  const ledgers = repos.map((repo) => { try { return { repo, ledger: readLedger(repo) }; } catch (err) { return { repo, ledger: [], error: err.message }; } });
   const resolver = createResolver();
-  for (const { repo, ledger } of ledgers) {
+  for (const { repo, ledger, error } of ledgers) {
+    if (error) { lines.push(`${repo}: INCONCLUSIVE — ${error}`); continue; }
     lines.push(`${repo}: ${ledger.length} ledger lines`);
     for (const [kind, reviewer] of [['triage', 'glm'], ['review', 'glm'], ['audit', 'gemini']]) {
       const ran = lastOf(ledger, kind, reviewer);
@@ -926,6 +1018,7 @@ function statusOf(repos, now, info = {}) {
     }
     try {
       const topics = loadTopics(repo, resolver);
+      lines.push(`  outstanding triage: ${outstandingTriage(repo, topics, ledger).length} topic(s); empty queue is not source verification`);
       const cited = reposOf(topics).filter((t) => t !== resolver.toplevel(repo));
       if (cited.length) {
         const own = new Set(repos.map((r) => real(r)));
@@ -933,10 +1026,11 @@ function statusOf(repos, now, info = {}) {
       }
       const sk = skipSummary(topics);
       if (sk.count) lines.push(`  ${sk.count} cited path(s) not attributable: ${Object.entries(sk.reasons).map(([k, v]) => `${v} ${k}`).join(', ')}`);
-    } catch { /* status never fails on a bad corpus */ }
+    } catch (err) { lines.push(`  freshness INCONCLUSIVE: ${err.message}`); }
   }
-  const mtd = monthToDateUsd(ledgers.map((l) => l.ledger), now);
-  lines.push(`Gemini spend ${new Date(now).toISOString().slice(0, 7)}: $${mtd.toFixed(2)}`);
+  let mtd = null;
+  try { if (ledgers.some((l) => l.error)) throw new Error('unreadable ledger'); mtd = monthToDateUsd(ledgers.map((l) => l.ledger), now); } catch (err) { lines.push(`Gemini accounting INCONCLUSIVE: ${err.message}; paid audits refuse to run`); }
+  if (mtd !== null) lines.push(`Gemini spend ${new Date(now).toISOString().slice(0, 7)}: $${mtd.toFixed(2)}`);
   return { text: lines.join('\n'), mtd };
 }
 
@@ -962,7 +1056,19 @@ function parseArgs(argv) {
   return opts;
 }
 
+/** Delegate evidence validation to the canonical Rust contract, without a second validator. */
+function receiptCommand(argv, spawn = require('node:child_process').spawnSync) {
+  if (!['init', 'check', 'summary'].includes(argv[0])) throw new Error('usage: review-cadence.cjs receipts <init|check|summary> <file> [sealmap options]');
+  const result = spawn('sealmap', ['review', ...argv], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: 16 * 1024 * 1024 });
+  if (result.error) throw new Error(`sealmap review unavailable: ${result.error.message}; install the pinned Sealmap release, no fallback validation was performed`);
+  if (result.stdout) process.stdout.write(result.stdout);
+  if (result.stderr) process.stderr.write(result.stderr);
+  if (!Number.isInteger(result.status)) throw new Error(`sealmap review interrupted (${result.signal ?? 'unknown'}); no validation result`);
+  return result.status;
+}
+
 async function main(argv, deps = {}) {
+  if (argv[0] === 'receipts') return receiptCommand(argv.slice(1), deps.spawn);
   const opts = parseArgs(argv);
   const cfg = loadConfig(opts.manifest);
   const now = opts.now ? new Date(opts.now) : new Date();
@@ -998,9 +1104,9 @@ async function main(argv, deps = {}) {
 
 module.exports = {
   readSection, loadConfig, discoverRepos, isLinkedWorktree, hasCorpus, readLocalFile, resolveRepos, createResolver, parseSources, loadTopics,
-  triageCandidates, changedByRepo, headsOf, reposOf, buildShards, shardChangedTopics, readLedger, appendLedger, monthToDateUsd,
+  triageCandidates, outstandingTriage, changedByRepo, headsOf, reposOf, buildShards, shardChangedTopics, readLedger, appendLedger, monthToDateUsd,
   ledgerPath, decideGemini, estimateGeminiUsd, actualGeminiUsd, packUnchanged, isHighSeverity, parseVerdict, zaiSettings, glm,
-  triage, reviewGlm, auditGemini, mergeReviews, statusOf, main, parseArgs, DEFAULTS, GEMINI_USD_PER_M, GLM_TRIAGE_MAX_OUTPUT_TOKENS,
+  triage, reviewGlm, auditGemini, mergeReviews, statusOf, receiptCommand, main, parseArgs, DEFAULTS, GEMINI_USD_PER_M, GLM_TRIAGE_MAX_OUTPUT_TOKENS,
 };
 
 if (require.main === module) {

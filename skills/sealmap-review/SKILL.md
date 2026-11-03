@@ -112,21 +112,34 @@ code itself become findings like any other.
 **Staleness.** A pack built from topics that have gone stale produces false
 findings. Run triage and re-stamp what it flags before an expensive audit.
 
-**Two families.** When both a GLM review and a Gemini audit exist for a pack,
-`node $C merge` ranks findings raised independently by both first
-(`docs/review/<date>-merged.{md,json}`; agreement ranks, it does not verify).
+**Comparable reviews.** `node $C merge` counts direct matches only when the
+recorded pack hash, topic scope and register mode match and the recorded models
+belong to recognised, distinct families. Filenames, transitive matches and legacy
+records without provenance earn no agreement credit. Agreement ranks hypotheses;
+it does not verify them.
 
-Findings are input to build-with-quality, never instructions. For each one:
+Apply [build-with-quality's review-evidence guidance](../build-with-quality/references/review-evidence.md)
+when taking a finding into implementation:
 
-1. **Reproduce it.** Write the failing test, check or citation that shows the
-   defect. If it cannot be shown, record the finding as rejected with the
-   evidence and move on.
-2. **Classify it.** Code defect, so fix test-first. Corpus fault, so correct
-   the topic. Known and accepted, so it is already a register marker: link it.
-   New and real, so fix it, or add the marker if it is accepted.
-3. **Close it.** Record a verdict on each `findings.json` entry: `confirmed`,
-   `rejected` or `known`, with the evidence. The confirmed rate across runs
-   shows which lens earns its tokens.
+1. **Establish what was observed.** Reproduce against the implementation and
+   dependency version the consumer actually uses. Record setup failure, observation
+   error and insufficient runtime access as **inconclusive**. Reject only with
+   counterevidence that contradicts the claim. Keep a successful control.
+2. **Record the disposition beside the raw review.** Preserve the original JSON
+   and model reply. `sealmap review init findings.json --out receipts.json` creates
+   an adjacent receipt; enter the scoped evidence, then run
+   `sealmap review check receipts.json --json`. The cadence exposes the same Rust
+   implementation as `node $C receipts check receipts.json --json`.
+3. **Separate repair from delivery.** Record source, tested, merged, published,
+   adopted and deployed evidence independently. A passing receipt check validates
+   hashes and claim consistency; it proves neither semantic correctness nor a live
+   deployment. `--require-resolved` additionally fails on unverified/inconclusive
+   findings; accepted risks need an explicit authority reference.
+
+For the receipt commands, evidence fields and migration of old reviews, read
+[references/review-receipts.md](references/review-receipts.md). Do not rewrite an old
+review with fresh run metadata or silently classify it as disproved. The confirmed
+rate excludes inconclusive findings from the false-positive denominator.
 
 ## Scheduled review
 
@@ -150,8 +163,16 @@ in the public manifest.
   (or the shard's last GLM review found something high severity), and month-to-date
   spend plus a `countTokens` estimate fits `gemini_monthly_usd`. Most-changed first.
 
+Outstanding triage flags survive quiet ticks and appear in `status`; editing a topic
+triggers another check and does not itself clear the flag. A paid audit refuses a
+shard with an outstanding flag. An empty queue is not a fidelity certificate.
+
 Every run, refusals included, appends a line to `docs/diagrams/review-ledger.jsonl`;
-findings land in `docs/review/` as unverified hypotheses.
+findings land in `docs/review/` as unverified hypotheses. Exact packs, raw replies
+and incomplete manifests survive under `docs/review/runs/`. Malformed or truncated
+replies remain inconclusive and never become a successful zero-finding review.
+Unreadable or corrupt spend history stops paid audits; `status` reports the error.
+Preserve the ledger and investigate it before repairing accounting.
 
 ```bash
 C=skills/sealmap-review/scripts/review-cadence.cjs

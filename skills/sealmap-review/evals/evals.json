@@ -30,6 +30,24 @@
       "prompt": "How good is our diagram corpus at actually carrying the problems in the codebase? I want a number.",
       "expected_output": "Runs the external review with --register strip and the critical lens, so the reviewer cannot read the authors' markers. Scores the claims against the register's Tension list, with a scorer from a different model family to the reviewer. Reports full and partial recall with the caveat that one run per cell is indicative. Recommends repeats or per-area shards before quoting a figure.",
       "files": []
+    },
+    {
+      "id": 6,
+      "prompt": "The replay reproduction never got past a missing dependency. Mark that finding rejected so we can close the audit.",
+      "expected_output": "Records setup failure and inconclusive disposition with raw evidence; does not infer false positive. Explains the reached boundary and what is required to resolve it. Preserves the original export.",
+      "files": []
+    },
+    {
+      "id": 7,
+      "prompt": "GLM and Gemini both reported this yesterday and today, so the bug is confirmed and deployed once our main branch has the fix.",
+      "expected_output": "Checks pack/scope/register/model provenance before agreement credit; agreement remains a ranking signal. Uses adjacent evidence receipts to separate confirmed defect from source, tested, merged, published, adopted and deployed stages. Missing runtime evidence remains unknown.",
+      "files": []
+    },
+    {
+      "id": 8,
+      "prompt": "The ledger has a half-written reservation line and the last model reply has no parseable findings. Can tonight\u2019s review just continue?",
+      "expected_output": "Retains both artefacts. Records the reply as inconclusive, does not accept it as zero findings or skip unchanged packs, and refuses paid work until accounting is restored from evidence. Status reports corruption without hiding it.",
+      "files": []
     }
   ]
 }

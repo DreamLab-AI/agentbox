@@ -222,3 +222,35 @@ only appends.
 - Logs: `/var/log/diagram-review-cron.log` and `.error.log`.
 - Findings are input to build-with-quality like any others; see "After the review"
   in SKILL.md.
+
+
+## Evidence integrity and outstanding work (2026-11-03)
+
+Triage ledger rows now include the per-topic result and topic hash. The open queue
+is reconstructed from those rows; older `## Re-author` lists are imported as open
+hypotheses. A quiet tick retains the queue without another model call. An edited
+flagged topic gets a new check; only its later unambiguous `VERDICT: NO` closes the
+flag. Ambiguous, quoted, contradictory and failed replies remain flagged.
+Paid Gemini audits refuse shards with pending flags. This is a freshness guard,
+not proof that other topics are correct or that all sources were available.
+
+Review output records a run identifier, full corpus revision, tracked dirty state,
+exact pack and scope hashes, register mode, model/provider and lens prompt hash.
+GLM and Gemini keep packs, raw replies and manifests in `docs/review/runs/`;
+partial output is retained there even when a lens fails. Successful transport
+completion and complete finding fields (or explicit `NO_FINDINGS`) are required
+before a run can suppress another review of the same pack. Snapshot changes
+between paid preflight and review leave the reservation charged and result
+inconclusive. Source commit maps describe the pre-call observation.
+
+Merge reads numbered reruns in date/sequence order. Only directly matching claims
+with comparable origin metadata receive cross-family agreement credit. Unknown
+models or historical exports without provenance are retained, uncorroborated.
+Each raw export remains immutable; [review receipts](review-receipts.md) carry
+subsequent dispositions and delivery evidence through the Sealmap Rust validator.
+
+A missing ledger means no history. Read errors, malformed/torn rows and invalid
+Gemini costs do not: paid work refuses them. `status` remains diagnostic and says
+accounting is inconclusive. Preserve the raw ledger and restore accounting from
+verified run/reservation evidence; do not delete a damaged history to reopen the
+budget. A complete last row without a newline is preserved before appending.

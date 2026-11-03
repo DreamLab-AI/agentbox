@@ -7,7 +7,8 @@ const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 const M = require('./merge-findings.cjs');
 
-const f = (id, family, topics, title, evidence, extra = {}) => ({ id, family, topics, title, evidence, failure: extra.failure ?? '', status: 'unverified' });
+const origin = (family) => ({ schema: 1, run_id: family, pack_sha256: 'a'.repeat(64), scope_sha256: 'b'.repeat(64), register: 'include', complete: true, reviewer: { model: ({ glm: 'glm-5.3', gemini: 'gemini-3.8-flash', other: 'claude-sonnet-5-5' })[family] } });
+const f = (id, family, topics, title, evidence, extra = {}) => ({ id, family, topics, title, evidence, failure: extra.failure ?? '', status: 'unverified', origin: origin(family), ...extra });
 
 const glmA = f('glm:critical:F-01', 'glm', 'CP-03.2', 'Session token never expires after logout', 'logout handler clears the cookie but the session token store keeps the token valid, src/auth/session.rs:44');
 const gemA = f('gem:critical:F-04', 'gemini', 'CP-03', 'Logout leaves session token valid in the store', 'the cookie is cleared yet the session token remains valid in the token store src/auth/session.rs:44');
@@ -39,7 +40,7 @@ test('agreed findings rank first, order is otherwise stable', () => {
   assert.deepStrictEqual(merged.map((x) => x.id), ['glm:critical:F-01', 'gem:critical:F-04', 'glm:critical:F-02', 'gem:critical:F-01']);
   assert.deepStrictEqual(merged[0].families, ['gemini', 'glm']);
   assert.strictEqual(merged[0].agreement, 2);
-  assert.deepStrictEqual(merged[0].corroborated_by, ['gem:critical:F-04']);
+  assert.deepStrictEqual(merged[0].corroborated_by, ['gemini:gem:critical:F-04']);
   assert.strictEqual(merged[2].agreement, 1);
 });
 
@@ -49,7 +50,7 @@ test('one family never corroborates itself', () => {
   assert.ok(merged.every((x) => x.agreement === 1 && x.corroborated_by.length === 0));
 });
 
-test('a third family joins the cluster transitively', () => {
+test('three families count when each directly matches the claim', () => {
   const third = f('o:1', 'other', 'CP-03.1', 'Token store keeps session token valid after logout', 'logout clears cookie, token remains valid in session token store');
   const merged = M.mergeFindings([{ family: 'glm', findings: [glmA] }, { family: 'gemini', findings: [gemA] }, { family: 'other', findings: [third] }]);
   assert.ok(merged.every((x) => x.agreement === 3));

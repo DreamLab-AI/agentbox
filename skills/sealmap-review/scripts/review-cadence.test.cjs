@@ -182,7 +182,7 @@ test('ledger is append-only: lines accumulate in order and earlier lines are unt
   assert.deepEqual(rows.map((r) => r.kind), ['triage', 'review']);
   for (const k of ['ts', 'kind', 'reviewer', 'shard', 'commits', 'pack_sha256', 'tokens', 'est_usd', 'findings', 'skipped']) assert.ok(k in rows[1], k);
   fs.appendFileSync(C.ledgerPath(est), 'not json\n');
-  assert.equal(C.readLedger(est).length, 2, 'a torn line is skipped');
+  assert.throws(() => C.readLedger(est), /invalid review ledger/, 'a torn line stops accounting without discarding history');
 });
 
 test('month-to-date counts only Gemini spend in the same UTC month, across ledgers', () => {
@@ -352,7 +352,7 @@ test('shards are per area; an area over the token budget splits in path order; e
 function fakePost(reply, seen = []) {
   return async (url, headers, body) => {
     seen.push({ url, headers, body });
-    return { status: 200, json: { content: [{ type: 'text', text: reply(body) }], usage: { input_tokens: 100, output_tokens: 20 } } };
+    return { status: 200, json: { stop_reason: 'end_turn', content: [{ type: 'text', text: reply(body) }], usage: { input_tokens: 100, output_tokens: 20 } } };
   };
 }
 const ctxFor = (extra = {}) => ({ now: NOW, cfg: CFG, dryRun: false, env: { ZAI_API_KEY: 'secret-key-value' }, mtd: 0, model: 'gemini-test', ...extra });
@@ -389,7 +389,7 @@ test('triage: the first run baselines every repository and spends nothing; the n
   assert.equal(row.findings, res.findings);
 
   const before = seen.length;
-  assert.deepEqual(await C.triage(e.est, ctxFor({ post })), { skipped: 'no topic sources changed' });
+  assert.deepEqual(await C.triage(e.est, ctxFor({ post })), { skipped: 'no topic sources changed', outstanding: 1 });
   assert.equal(seen.length, before);
 });
 
@@ -399,7 +399,7 @@ test('triage: unsure means yes — an unparseable reply and a failed call both l
   change(e.alpha, 'src/a.rs', 'fn a() { 9 }\n');
   change(e.beta, 'src/b.rs', 'fn b() { 9 }\n');
   let n = 0;
-  const post = async () => { if (n++ === 0) return { status: 200, json: { content: [{ type: 'text', text: 'It depends.' }], usage: {} } }; throw new Error('socket hang up'); };
+  const post = async () => { if (n++ === 0) return { status: 200, json: { stop_reason: 'end_turn', content: [{ type: 'text', text: 'It depends.' }], usage: {} } }; throw new Error('socket hang up'); };
   const res = await C.triage(e.est, ctxFor({ post }));
   assert.equal(res.flagged, 2);
   assert.match(fs.readFileSync(path.join(e.est, res.findings), 'utf8'), /GLM call failed/);
@@ -430,7 +430,7 @@ test('review-glm: reviews each shard, records high severity per shard, skips unc
   const e = estate();
   const seen = [];
   const reply = () => ['### F-01 — a contradiction', '- Topics: CO-01', '- Evidence: x', '- Failure: y', '- Confidence: high', '- Severity: high', '- Marked by authors: no',
-    '', '### F-02 — a smell', '- Topics: CO-02', '- Confidence: low', '- Severity: low', '- Marked by authors: no'].join('\n');
+    '', '### F-02 — a smell', '- Topics: CO-02', '- Evidence: a fixture observation', '- Failure: a fixture failure', '- Confidence: low', '- Severity: low', '- Marked by authors: no'].join('\n');
   const post = fakePost(reply, seen);
   const res = await C.reviewGlm(e.est, ctxFor({ post }));
   assert.equal(seen.length, 4, 'two shards x critical and premortem');
@@ -459,7 +459,7 @@ test('review-glm: reviews each shard, records high severity per shard, skips unc
 
 test('nightly ticks do not repeat themselves: an identical skip is ledgered once, a changed reason is ledgered again', async () => {
   const e = estate();
-  const post = fakePost(() => '### F-01 — t\n- Confidence: low\n- Marked by authors: no');
+  const post = fakePost(() => '### F-01 — t\n- Topics: CO-01\n- Evidence: fixture observation\n- Failure: fixture failure\n- Confidence: low\n- Marked by authors: no');
   await C.reviewGlm(e.est, ctxFor({ post }));
   for (let i = 0; i < 3; i++) await C.reviewGlm(e.est, ctxFor({ post }));
   assert.equal(C.readLedger(e.est).filter((r) => r.kind === 'review' && r.skipped).length, 2, 'one "unchanged" line per shard, not one per night');
@@ -484,7 +484,7 @@ test('review-glm: a failing shard is recorded and the others still complete', as
   const post = async (url, h, body) => {
     if (body.messages[0].content.includes('edge/01-c.md')) throw new Error('glm 500: boom');
     n++;
-    return { status: 200, json: { content: [{ type: 'text', text: '### F-01 — t\n- Confidence: low\n- Marked by authors: no' }], usage: {} } };
+    return { status: 200, json: { stop_reason: 'end_turn', content: [{ type: 'text', text: '### F-01 — t\n- Topics: CO-01\n- Evidence: fixture observation\n- Failure: fixture failure\n- Confidence: low\n- Marked by authors: no' }], usage: {} } };
   };
   await assert.rejects(C.reviewGlm(e.est, ctxFor({ post })), /1 shard\(s\) failed: edge/);
   assert.equal(n, 2);
@@ -500,7 +500,7 @@ function fakeExternal(calls) {
     fs.writeFileSync(path.join(out, 'critical.md'), '### F-01 — t\n- Confidence: high\n');
     fs.writeFileSync(path.join(out, 'premortem.md'), '### R-1 — t\n');
     fs.writeFileSync(path.join(out, 'findings.json'), JSON.stringify([{ id: 'critical:F-01', status: 'unverified' }]));
-    fs.writeFileSync(path.join(out, 'manifest.json'), JSON.stringify({ model: 'gemini-test', lenses: [
+    fs.writeFileSync(path.join(out, 'manifest.json'), JSON.stringify({ model: 'gemini-test', complete: true, pack_sha256: require('node:crypto').createHash('sha256').update(ER.buildPack(corpus, files)).digest('hex'), lenses: [
       { name: 'critical', prompt_tokens: 100000, cached_tokens: 0, thinking_tokens: 10000, output_tokens: 2000 },
       { name: 'premortem', prompt_tokens: 100000, cached_tokens: 100000, thinking_tokens: 10000, output_tokens: 2000 }] }));
   };
@@ -659,7 +659,7 @@ test('the GLM key never appears in a ledger line or findings file', async () => 
   change(e.alpha, 'src/a.rs', 'fn a() { 7 }\n');
   await C.triage(e.est, ctxFor({ post: async () => { throw new Error('glm 401: bad'); } }));
   const all = [fs.readFileSync(C.ledgerPath(e.est), 'utf8'),
-    ...fs.readdirSync(path.join(e.est, 'docs/review')).map((f) => fs.readFileSync(path.join(e.est, 'docs/review', f), 'utf8'))].join('\n');
+    ...fs.readdirSync(path.join(e.est, 'docs/review')).filter((f) => fs.statSync(path.join(e.est, 'docs/review', f)).isFile()).map((f) => fs.readFileSync(path.join(e.est, 'docs/review', f), 'utf8'))].join('\n');
   assert.doesNotMatch(all, /secret-key-value/);
 });
 
@@ -685,7 +685,7 @@ test('merge: ranks findings two families raised first, and skips with a reason w
   const e = estate();
   const dir = path.join(e.est, 'docs/review');
   fs.mkdirSync(dir, { recursive: true });
-  const mk = (id, topics, title, evidence) => ({ id, topics, title, evidence, failure: '', status: 'unverified' });
+  const mk = (id, topics, title, evidence, model = 'glm-test') => ({ id, topics, title, evidence, failure: '', status: 'unverified', origin: { schema: 1, run_id: model, pack_sha256: 'a'.repeat(64), scope_sha256: 'b'.repeat(64), register: 'include', complete: true, reviewer: { model } } });
   assert.match(C.mergeReviews(e.est, { now: Date.parse('2026-10-06T00:00:00Z') }).skipped, /no glm or gemini/);
   fs.writeFileSync(path.join(dir, '2026-10-05-glm.json'), JSON.stringify([
     mk('s:critical:F-01', 'AA-01', 'Queue drops jobs on restart', 'worker queue is in memory so pending jobs vanish on restart src/q.rs:9'),
@@ -693,7 +693,7 @@ test('merge: ranks findings two families raised first, and skips with a reason w
   ]));
   assert.match(C.mergeReviews(e.est, { now: Date.parse('2026-10-06T00:00:00Z') }).skipped, /no gemini/);
   fs.writeFileSync(path.join(dir, '2026-10-05-gemini.json'), JSON.stringify([
-    mk('s:critical:F-07', 'AA-01', 'Pending jobs are lost when the worker restarts', 'the in memory worker queue loses pending jobs on restart src/q.rs:9'),
+    mk('s:critical:F-07', 'AA-01', 'Pending jobs are lost when the worker restarts', 'the in memory worker queue loses pending jobs on restart src/q.rs:9', 'gemini-test'),
   ]));
   const dry = C.mergeReviews(e.est, { now: Date.parse('2026-10-06T00:00:00Z'), dryRun: true });
   assert.equal(dry.agreed, 2);
@@ -704,4 +704,42 @@ test('merge: ranks findings two families raised first, and skips with a reason w
   assert.deepEqual(merged.slice(0, 2).map((f) => f.agreement), [2, 2]);
   assert.equal(merged[2].agreement, 1);
   assert.ok(fs.existsSync(path.join(dir, '2026-10-06-merged.md')));
+});
+
+test('outstanding triage survives an unchanged tick, blocks paid audit and clears only on a new NO', async () => {
+  const e = estate();
+  const yes = fakePost(() => 'VERDICT: YES\nREASON: claim lost its check');
+  await C.triage(e.est, ctxFor({ post: yes }));
+  change(e.beta, 'src/b.rs', 'fn b() { changed(); }\n');
+  await C.triage(e.est, ctxFor({ post: yes }));
+  const quiet = await C.triage(e.est, ctxFor({ post: async () => { throw new Error('must not spend'); } }));
+  assert.equal(quiet.outstanding, 1);
+  assert.match(C.statusOf([e.est], NOW).text, /outstanding triage: 1/);
+  const paid = await C.auditGemini(e.est, ctxFor({ dryRun: true }));
+  assert.ok(paid.refused.some((r) => r.shard === 'core' && r.reason.startsWith('freshness:')));
+  fs.appendFileSync(path.join(e.est, 'docs/diagrams/core/02-b.md'), '\nUpdated explanation.\n');
+  assert.equal(C.outstandingTriage(e.est, C.loadTopics(e.est), C.readLedger(e.est)).length, 1, 'editing prose alone does not close a flag');
+  await C.triage(e.est, ctxFor({ post: fakePost(() => 'VERDICT: NO\nREASON: explanation now matches') }));
+  assert.equal(C.outstandingTriage(e.est, C.loadTopics(e.est), C.readLedger(e.est)).length, 0);
+});
+
+test('merge selects numbered reruns numerically without inventing provenance for historical files', () => {
+  const e = estate();
+  for (const n of ['', '-2', '-10']) put(e.est, `docs/review/2026-11-03-glm${n}.json`, JSON.stringify([{ id: n || 'first', title: 'historic', status: 'unverified' }]));
+  put(e.est, 'docs/review/2026-11-03-gemini.json', '[]');
+  const result = C.mergeReviews(e.est, { now: NOW, dryRun: true });
+  assert.ok(result.would_merge.includes('2026-11-03-glm-10.json'));
+  assert.equal(result.agreed, 0);
+});
+
+test('malformed GLM output persists raw evidence and does not cause an unchanged-pack skip', async () => {
+  const e = estate();
+  await assert.rejects(C.reviewGlm(e.est, ctxFor({ post: fakePost(() => '## F-01 — not parseable') })), /inconclusive response/);
+  assert.equal(C.readLedger(e.est).filter((r) => r.error).length, 2);
+  const runs = path.join(e.est, 'docs/review/runs');
+  const run = path.join(runs, fs.readdirSync(runs)[0]);
+  assert.equal(fs.readFileSync(path.join(run, 'core/critical.md'), 'utf8'), '## F-01 — not parseable');
+  const repaired = await C.reviewGlm(e.est, ctxFor({ post: fakePost(() => 'NO_FINDINGS') }));
+  assert.equal(repaired.shards, 2);
+  assert.equal(repaired.count, 0);
 });

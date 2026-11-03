@@ -19,3 +19,17 @@ Rules:
 - Marked by authors: yes (which marker) or no
 
 7. Finish with a section headed "## Not judgeable from this material": up to five things you would need to see before signing off.
+
+
+Evidence limits: distinguish a claim about source from a published package,
+consumer adoption and a running deployment. Name the consumed version if the
+material supplies it; a newer sibling repository is not that evidence. Separate
+severity category from demonstrated reachability and authority. For stateful
+failures, name the durable/secondary effect, retry or restart boundary that could
+falsify the claim. Do not infer rollback from an error response or settlement from
+success. Where the required source, configuration or runtime is absent, put the
+question under "## Not judgeable from this material".
+
+If no supported findings can be stated, output the exact line `NO_FINDINGS`,
+followed by that limitations section. Never omit fields or change finding heading
+levels: malformed or incomplete responses are retained as inconclusive.

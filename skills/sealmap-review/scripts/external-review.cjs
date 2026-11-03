@@ -29,6 +29,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
+const { reviewContext } = require('./review-context.cjs');
 const http = require('node:http');
 const https = require('node:https');
 const { execFileSync } = require('node:child_process');
@@ -120,6 +121,20 @@ function parseFindings(markdown, lens) {
       status: 'unverified',
     });
   });
+  return findings;
+}
+
+/** A malformed response is inconclusive, never a clean zero-finding review. */
+function checkedFindings(markdown, lens) {
+  const findings = parseFindings(markdown, lens);
+  const heads = [...markdown.matchAll(/^#{1,6}\s+[FR]-\d+\b/gm)];
+  const trimmed = markdown.trim();
+  const explicitEmpty = /^NO_FINDINGS(?:\r?\n\s*## Not judgeable from this material(?:\r?\n|$)[\s\S]*)?$/.test(trimmed);
+  if ((!findings.length && !explicitEmpty) || (findings.length && explicitEmpty) || heads.length !== findings.length
+      || new Set(findings.map((f) => f.id)).size !== findings.length
+      || findings.some((f) => !f.topics || !f.evidence || !f.failure)) {
+    throw new Error(`lens ${lens}: inconclusive response; expected complete findings or explicit NO_FINDINGS`);
+  }
   return findings;
 }
 
@@ -215,7 +230,12 @@ async function gemini(method, model, key, body, opts = {}) {
 }
 
 function gitRev(dir) {
-  try { return execFileSync('git', ['-C', dir, 'rev-parse', '--short', 'HEAD'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim(); }
+  try { return execFileSync('git', ['-C', dir, 'rev-parse', 'HEAD'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim(); }
+  catch { return null; }
+}
+
+function gitDirty(dir) {
+  try { return Boolean(execFileSync('git', ['-C', dir, 'status', '--porcelain', '--untracked-files=no'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim()); }
   catch { return null; }
 }
 
@@ -236,10 +256,12 @@ async function main(argv) {
   fs.mkdirSync(out, { recursive: true });
   fs.writeFileSync(path.join(out, 'pack.txt'), pack);
   const manifest = {
-    corpus: opts.corpus, revision: gitRev(opts.corpus), topics: files.length, only: opts.only ?? null,
+    schema: 1, run_id: crypto.randomUUID(), reviewed_at: new Date().toISOString(), complete: false,
+    corpus: opts.corpus, revision: gitRev(opts.corpus), dirty: gitDirty(opts.corpus), topics: files.length, only: opts.only ?? null,
     register: opts.register, pack_bytes: Buffer.byteLength(pack),
     pack_sha256: crypto.createHash('sha256').update(pack).digest('hex'), lenses: [],
   };
+  fs.writeFileSync(path.join(out, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n');
   console.log(`packed ${files.length} topics, ${manifest.pack_bytes} bytes (register ${opts.register}) -> ${out}`);
 
   if (opts.dryRun) {
@@ -253,6 +275,7 @@ async function main(argv) {
   const timeoutMs = timeoutFromEnv();
   manifest.model = model;
   manifest.timeout_ms = timeoutMs;
+  fs.writeFileSync(path.join(out, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n');
 
   const contentsFor = (lensText) => [{ role: 'user', parts: [{ text: pack }, { text: lensText }] }];
   const { totalTokens } = await gemini('countTokens', model, key, { contents: contentsFor(lenses[0].text) }, { timeoutMs });
@@ -274,16 +297,21 @@ async function main(argv) {
     const text = res.candidates?.[0]?.content?.parts?.filter((p) => p.text && !p.thought).map((p) => p.text).join('') ?? '';
     if (!text) throw new Error(`lens ${lens.name}: empty reply (finishReason ${res.candidates?.[0]?.finishReason ?? 'none'})`);
     fs.writeFileSync(path.join(out, `${lens.name}.md`), text.endsWith('\n') ? text : `${text}\n`);
-    const parsed = parseFindings(text, lens.name);
-    findings.push(...parsed);
+    fs.writeFileSync(path.join(out, `${lens.name}.completion.json`), JSON.stringify({ finish_reason: res.candidates?.[0]?.finishReason ?? null, usage: res.usageMetadata ?? null }, null, 2) + '\n');
+    if (res.candidates?.[0]?.finishReason !== 'STOP') throw new Error(`lens ${lens.name}: inconclusive finishReason ${res.candidates?.[0]?.finishReason ?? 'missing'}`);
+    const origin = reviewContext({ pack, files, model, provider: 'gemini', revision: manifest.revision, dirty: manifest.dirty, register: opts.register, lens: lens.name, prompt: lens.text, runId: manifest.run_id, reviewedAt: manifest.reviewed_at });
+    const parsed = checkedFindings(text, lens.name);
+    findings.push(...parsed.map((f) => ({ ...f, origin })));
     const u = res.usageMetadata || {};
     manifest.lenses.push({
       name: lens.name, seconds: Math.round((Date.now() - started) / 100) / 10, findings: parsed.length,
       prompt_tokens: u.promptTokenCount, cached_tokens: u.cachedContentTokenCount ?? 0,
       thinking_tokens: u.thoughtsTokenCount, output_tokens: u.candidatesTokenCount,
     });
+    fs.writeFileSync(path.join(out, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n');
     console.log(`${lens.name}: ${parsed.length} findings, ${manifest.lenses.at(-1).seconds} s, ${u.cachedContentTokenCount ?? 0} tokens from cache`);
   }
+  manifest.complete = true;
   fs.writeFileSync(path.join(out, 'findings.json'), JSON.stringify(findings, null, 2) + '\n');
   fs.writeFileSync(path.join(out, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n');
   console.log(`wrote ${findings.length} unverified findings to ${path.join(out, 'findings.json')}`);
@@ -291,7 +319,7 @@ async function main(argv) {
 }
 
 module.exports = {
-  listTopics, stripRegister, buildPack, loadLens, parseFindings, parseArgs, gemini, postJson, timeoutFromEnv, DEFAULT_TIMEOUT_MS, MAX_OUTPUT_TOKENS,
+  listTopics, stripRegister, buildPack, loadLens, parseFindings, checkedFindings, gitRev, gitDirty, parseArgs, gemini, postJson, timeoutFromEnv, DEFAULT_TIMEOUT_MS, MAX_OUTPUT_TOKENS,
 };
 
 if (require.main === module) {
