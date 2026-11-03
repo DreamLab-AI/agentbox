@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 7bfaa18a2
+verified_commit: becd1f77c2c6f6aa72c90914bcfff45988ca63d8
 verified_paths: [skills/sealmap-review/scripts/review-cadence.cjs, skills/sealmap-review/scripts/external-review.cjs, skills/sealmap-review/scripts/review-context.cjs, skills/sealmap-review/scripts/merge-findings.cjs, skills/sealmap-review/run-cron.sh, skills/sealmap-review/crontab, schema/agentbox.toml.schema.json]
 owner: jjohare
 review_trigger: the first month of real Gemini spend (compare ledger cost with the estimate); a change to Gemini or Z.AI pricing; a GLM model change behind [consultants.zai]; a second corpus joining repos
@@ -17,6 +17,48 @@ lineage: ADR-2130 (external review is a transport outside [model_routing]; seal 
 ---
 
 # ADR-2131 — Diagram review runs on a ledgered cadence with a gated Gemini audit
+
+## Amendment — budget scope and interrupted shard processing, 2026-11-03
+
+Verified in source and offline tests at `becd1f77c2c6f6aa72c90914bcfff45988ca63d8`.
+Two external-review hypotheses reproduced as failing regressions: an explicit
+`--repo` omitted other repositories' spend, and malformed output from a later
+shard prevented earlier successful shards from settling. Both are repaired.
+Activation remains staged; these checks do not establish live deployment.
+
+1. `--repo` selects work, while Gemini's monthly cap uses all resolved configured
+   or discovered repositories plus explicit invocation repositories, deduplicated
+   by canonical path. Previously observed repositories stay in scope even after
+   exclusion, corpus disappearance or checkout removal.
+2. A monthly private witness outside the reviewed working trees records canonical
+   repository paths and ledger prefix lengths/SHA-256 hashes under
+   `$XDG_STATE_HOME/sealmap-review/` (default `~/.local/state/sealmap-review/`).
+   The append-only JSONL ledgers remain the only spend records. A valid append can
+   settle a reservation for less than its estimate; ledger rewinds, rewrites,
+   disappearance and unreadable/corrupt witness state make accounting inconclusive
+   and stop paid work. A 0600 file is atomically persisted in a 0700 directory
+   after each reservation, before generation, and after settlement. Status and
+   dry runs read without updating the witness. Preserve this state across rebuilds.
+3. Per-shard generation and all manifest, findings, lens and usage processing
+   share the failure boundary. Successful shards settle against their retained
+   per-shard evidence before subsequent calls. A later shard failure retains its
+   estimated charge and error; it cannot cause a completed shard to be purchased
+   again merely because the combined report failed. Witness persistence failure
+   after a success stops further calls without charging a second settlement.
+
+The witness detects ordinary Git rollback after observation. It cannot reconstruct
+history already missing at first adoption or constrain an operator able to alter
+both the ledger and private state. This is local conservative accounting, not
+provider invoice reconciliation. Recovery preserves evidence and restores the
+observed prefix; deleting history or the witness is not a supported reset.
+
+Validation: all 89 `skills/sealmap-review/scripts/*.test.cjs` checks passed,
+including later malformed manifest and usage results, configured/discovered scope,
+alias deduplication, actual Git checkout rollback, equal-length rewrite, missing
+remembered checkout, settlement refunds and failed witness persistence. The six
+witness controls passed again after adding the symlink-parent containment guard.
+The cron configuration suite passed 21 checks; syntax and whitespace checks passed.
+All provider responses were offline fakes; no paid model calls were made.
 
 ## Amendment — review evidence and unresolved work, 2026-11-03
 

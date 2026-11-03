@@ -612,6 +612,72 @@ test('budget counts interrupted reservations and replaces only their matching se
   assert.equal(C.monthToDateUsd([[reservation, { ...settlement, shard: 'other' }]], NOW), 0.7);
 });
 
+for (const badOutput of ['manifest', 'usage']) test(`audit-gemini: a later malformed ${badOutput} cannot erase an earlier successful settlement or rebuy it`, async () => {
+  const e = estate();
+  const cfg = { ...CFG, gemini_min_changed_topics: 1 };
+  const calls = [];
+  const valid = fakeExternal(calls);
+  await assert.rejects(withGemini(() => C.auditGemini(e.est, ctxFor({ cfg, runExternal: async (...args) => {
+    await valid(...args);
+    if (args[2][0].startsWith('edge/')) {
+      const output = path.join(args[1], 'manifest.json');
+      if (badOutput === 'manifest') fs.writeFileSync(output, '{broken');
+      else { const manifest = JSON.parse(fs.readFileSync(output)); delete manifest.lenses[0].prompt_tokens; fs.writeFileSync(output, JSON.stringify(manifest)); }
+    }
+  } }))), /JSON|shard|usage/);
+  const settled = C.readLedger(e.est).filter((r) => r.kind === 'audit' && !r.error && !r.skipped);
+  assert.deepEqual(settled.map((r) => r.shard), ['core']);
+  assert.ok(fs.existsSync(path.join(e.est, settled[0].findings)), 'settled evidence exists before another shard is tried');
+  assert.ok(C.readLedger(e.est).some((r) => r.shard === 'edge' && r.error && r.est_usd > 0));
+  calls.length = 0;
+  await withGemini(() => C.auditGemini(e.est, ctxFor({ cfg, now: new Date(NOW.getTime() + 60000), runExternal: valid })));
+  assert.deepEqual(calls.map((files) => files[0].split('/')[0]), ['edge'], 'successful core shard is not bought again');
+});
+
+for (const source of ['configured', 'discovered']) test(`main: an explicit repo subset still accounts for spend in every ${source} repo`, async () => {
+  const e = estate();
+  if (source === 'discovered') put(e.alpha, 'docs/diagrams/alpha/01-t.md', topic('AL-01', ['src/a.rs']));
+  C.appendLedger(e.alpha, { ts: NOW.toISOString(), kind: 'audit', reviewer: 'gemini', est_usd: 0.9 });
+  const manifest = path.join(e.ws, 'budget.toml');
+  fs.writeFileSync(manifest, `[diagram_review]\nenabled = true\ngemini_min_changed_topics = 1\ngemini_monthly_usd = 1\nrepos = ${JSON.stringify(source === 'configured' ? [e.alpha] : [])}\n`);
+  const calls = [];
+  const result = await withGemini(() => C.main(['audit-gemini', '--repo', e.est, '--workspace', e.ws,
+    '--manifest', manifest, '--now', NOW.toISOString()], {
+    localFile: path.join(e.ws, 'none.local'), budgetStateDir: path.join(e.ws, 'state'), runExternal: fakeExternal(calls),
+  }));
+  assert.equal(result, 0);
+  assert.equal(calls.length, 0, 'spend outside --repo still consumes the global cap');
+  assert.ok(C.readLedger(e.est).some((r) => /^budget/.test(r.skipped)));
+});
+
+test('main: witness persistence failure stops subsequent paid shards without duplicating a successful settlement', async () => {
+  const e = estate(), calls = [], valid = fakeExternal(calls);
+  const stateDir = path.join(e.ws, 'state'), manifest = path.join(e.ws, 'budget.toml');
+  const witness = path.join(stateDir, 'gemini-budget-2026-10.json');
+  fs.writeFileSync(manifest, '[diagram_review]\nenabled = true\ngemini_min_changed_topics = 1\ngemini_monthly_usd = 10\nrepos = []\n');
+  const argv = ['audit-gemini', '--repo', e.est, '--workspace', e.ws, '--manifest', manifest, '--now', NOW.toISOString()];
+  let beforeCall;
+  const result = await withGemini(() => C.main(argv, {
+    localFile: path.join(e.ws, 'none.local'), budgetStateDir: stateDir,
+    runExternal: async (...args) => {
+      beforeCall = fs.readFileSync(witness);
+      assert.equal(JSON.parse(beforeCall).ledgers[e.est].bytes, fs.statSync(C.ledgerPath(e.est)).size, 'reservation is witnessed before generation');
+      await valid(...args);
+      fs.writeFileSync(witness, '{broken');
+    },
+  }));
+  assert.equal(result, 1);
+  assert.equal(calls.length, 1, 'no second paid shard follows inconclusive witness persistence');
+  assert.equal(C.readLedger(e.est).filter((r) => r.kind === 'audit' && !r.skipped).length, 1);
+  assert.equal(C.readLedger(e.est).filter((r) => r.error).length, 0, 'a completed settlement is not charged a second time');
+  fs.writeFileSync(witness, beforeCall); // Restore observed bytes; append-only settlement is valid.
+  calls.length = 0;
+  argv[argv.length - 1] = new Date(NOW.getTime() + 60000).toISOString();
+  assert.equal(await withGemini(() => C.main(argv, { localFile: path.join(e.ws, 'none.local'), budgetStateDir: stateDir, runExternal: valid })), 0);
+  assert.deepEqual(calls.map((files) => files[0].split('/')[0]), ['edge']);
+  assert.equal(C.budgetLedgers([], NOW, { stateDir, persist: false }).mtd, ACTUAL_ONE_SHARD * 2);
+});
+
 test('missing usage never settles potentially billed generation as free', () => {
   assert.throws(() => C.actualGeminiUsd([]), /incomplete Gemini usage/);
   assert.throws(() => C.actualGeminiUsd([{}, {}]), /invalid Gemini usage/);
