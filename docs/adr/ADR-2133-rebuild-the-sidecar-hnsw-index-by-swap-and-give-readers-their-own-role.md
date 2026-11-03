@@ -7,8 +7,8 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 4f3bd5325eb56b582d1220bc9b0a0b79e918fdae
-verified_paths: [scripts/ruvector-sidecar-update.sh, tests/config/ruvector-sidecar-ops.test.sh]
+verified_commit: d099266974930d37caac2ab7bcd8799b8877e7ba
+verified_paths: [scripts/ruvector-sidecar-update.sh, tests/config/ruvector-sidecar-ops.test.sh, tests/config/reindex-screen.test.sh]
 owner: jjohare
 review_trigger: a ruvector extension or image bump; a new read-only consumer or readable table; any pg_hba change; `ruvector reader-role --yes` and `hba-harden --yes` run on the live sidecar (activation → live)
 repo: agentbox
@@ -30,6 +30,7 @@ Provenance: the image entrypoint writes pg_hba only on first initdb (`docker-ent
   1. Record a recall run. It refuses to rebuild without one.
   2. Check that the opclass is `ruvector_cosine_ops`.
   3. Build `idx_memory_embedding_hnsw_rebuild` non-concurrently, with `SET max_parallel_maintenance_workers = 0`, `m=16` and `ef_construction=128`, beside the live index.
+  3a. Screen before the swap (amendment 2026-11-03): score each index alone and swap only if the new build is no worse. If it loses, drop it and rebuild once. If it loses again, keep the current index and exit non-zero (`reindex.phase=kept-old`).
   4. Swap with `BEGIN; SET LOCAL lock_timeout='60s'; DROP INDEX …; ALTER INDEX … RENAME …; COMMIT`.
   5. Verify the definition, the planner's choice and a duplicate-free top-20.
   6. Rerun recall. It fails non-zero below self 175/200 or true 102/120, or on a FAIL verdict.
@@ -69,3 +70,23 @@ Nothing this record decides is changed; its status axes are unchanged. Re-run: `
 ## Re-verification — 2026-11-01 (`4f3bd5325`)
 
 Governed-path delta since `cc949bb79`: `scripts/ruvector-sidecar-update.sh`: `owner_client_passwords` reads the client password file in the agentbox container (new `CLIENT_CONTAINER`), not the postgres one, so the pre-upgrade SCRAM check covers that client (ADR-2164 amendment 4); `tests/config/ruvector-sidecar-ops.test.sh`: a stub branch and one case proving the password file is read in the agentbox container (ADR-2164 amendment 4). This record's `hba-harden` SCRAM pre-check reads the client password file; it now reads it in the agentbox container where it lives (the postgres container never held it), so the check covers that client instead of silently dropping it. The decision is unchanged. Decision unchanged; `verified_commit` bumped. Re-run: `git diff cc949bb79..4f3bd5325 -- scripts/ruvector-sidecar-update.sh tests/config/ruvector-sidecar-ops.test.sh`.
+
+## Amendment — 2026-11-03: pre-swap screen (`d09926697`)
+
+**Why.** On 2026-10-31, two serial index-law builds on identical data scored 168/200 and 183/200 self-recall. A valid build is therefore not necessarily a good one, and the swap in step 4 dropped the old index with no way back.
+
+**Decision change (step 3a).** After the build, `cmd_reindex` scores each index alone:
+- **Scoring.** Inside a transaction it runs `DROP INDEX` on the other index, then a SQL self-recall (`hnsw_screen_sql`: unfiltered top-10 on each fixture row's own vector, `enable_seqscan = off`), then `ROLLBACK`. DROP INDEX is transactional. A scratch table on 2026-10-31 showed that the ruvector hnsw AM brings both indexes back valid and maintained.
+- **Lock bound.** Each probe holds ACCESS EXCLUSIVE on `memory_entries` (~7 s at 266k rows). It is bounded by `lock_timeout = '60s'` and `statement_timeout = REINDEX_SCREEN_TIMEOUT_S` (default 30 s).
+- **Outcomes.**
+  - `screen_verdict`: new ≥ current → swap.
+  - Otherwise drop the new build and rebuild once. A second loss keeps the current index and exits non-zero (`kept-old`).
+  - A probe that cannot score either index refuses the swap (`screen-failed`) and leaves the valid rebuild in place for a manual swap.
+- **State.** Scores are recorded as `reindex.screen_{new,old}_<attempt>`.
+- **Gate.** The post-swap recall harness (step 6) is still the gate. Its failure text no longer claims the index cannot be the cause.
+
+**Verification.** `bash tests/config/ruvector-sidecar-ops.test.sh`: 46/46 (40 existing + 6 screen cases: ordering between build and swap, no COMMIT, scores recorded, retry-then-swap, kept-old, screen-failed). `bash tests/config/reindex-screen.test.sh`: 14/14 (SQL shape and verdict). Both suites use the stub docker. The screen has **not** completed a live `reindex --yes`. Activation stays `staged`.
+
+**Open live state (2026-11-03).** A worktree run of this code on 2026-10-31 15:41 stopped at `reindex.phase=building` (attempt 1). The sidecar still carries `idx_memory_embedding_hnsw_rebuild`, valid and ready, 4771 MB, beside the live `idx_memory_embedding_hnsw` (4771 MB), so every write maintains two HNSW indexes. The next `reindex --yes` drops the leftover before it builds. Until then, the operator can drop it by hand (`DROP INDEX public.idx_memory_embedding_hnsw_rebuild;`). That run's state and recall artefact are preserved under the VisionFlow estate-review evidence for 2026-11-03 (lane-agentbox/reindex-screen).
+
+Re-run: `git diff 4f3bd5325..d09926697 -- scripts/ruvector-sidecar-update.sh tests/config/ruvector-sidecar-ops.test.sh`.
