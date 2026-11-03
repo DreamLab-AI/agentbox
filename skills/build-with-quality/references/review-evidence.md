@@ -117,6 +117,14 @@ category the threshold does not count. Triage every material finding, separating
 pre-existing defects, regressions, accepted risks and unverified hypotheses;
 do not silently change the gate threshold to obtain a green result.
 
+A resumed review can export historical findings with refreshed run metadata.
+Compare the per-run narrative/comment and the actual source with the aggregate,
+rather than treating a new run ID as proof that every item was revalidated.
+Keep the raw export and record reproduced, repaired, contradicted and remaining
+items separately. A small changed hunk can also cause a reviewer to inspect an
+entire file: distinguish an unrelated existing issue from a regression before
+expanding the repair scope.
+
 Separate a severity category from demonstrated exposure. Record whether the
 path is reachable in the selected build, which authority reaches it, and what
 the observed failure permits. A cryptography label or unsafe helper alone does
@@ -148,6 +156,14 @@ A producer fix remains distinct from a released package, a consumer lockfile
 update and a running deployment. For a contract change, check minting helpers,
 examples and downstream callers as well as the verifier; a stale example can
 leave the supported user journey broken after the library tests pass.
+
+Verify release stages independently: build, immutable artefact upload, registry
+publication and consumer lock resolution can succeed or fail separately. A
+retry should reuse an already released, checksum-verified bundle where that is
+the repository's release contract. Do not substitute locally built bytes from
+a different compiler for a reviewed toolchain pin. After local path-patched
+integration tests, remove the patch and run the real registry consumer before
+claiming adoption; its lockfile must contain the released source and checksum.
 
 Correcting discovery or storage naming does not migrate existing data. Identify
 records written under the old convention and define conflict handling and
