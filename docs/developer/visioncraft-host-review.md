@@ -1,7 +1,7 @@
 # VisionCraft host review dispositions — 3 November 2026
 
 The independent Claude/Deepsec review examined the Agentbox host policy adapter,
-release snapshot checker, MCP projector, CLI dispatch and boot wrapper. Its
+release snapshot checker, MCP projector, CLI dispatch and host wrapper. Its
 model analyses emitted three findings. The encompassing adapter receipt was
 `ERROR` because descendants remained after the review command; these findings
 are useful review evidence, not a successful overall gate receipt.
@@ -25,7 +25,9 @@ this private-writer contract.
 
 The consumer worktree retains `host-findings-red.log` (four failing reproduction
 checks, with the failed-replacement control already passing) and
-`host-findings-green.log` (the complete manifest suite after repair). These and
+`host-findings-green.log` (229 passing manifest tests after repair). Clippy with
+warnings denied and all three boot projection controls also pass at source
+commit `75bd6c7e77fad41b72c8b78703cd7751a0a0d07c`. These and
 the original frozen-input hashes are archived with the consumer evidence before
 worktree removal. Subsequent independent revalidation and release activation
 must have their own receipts; this disposition does not claim either occurred.
