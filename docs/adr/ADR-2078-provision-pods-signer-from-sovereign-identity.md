@@ -178,3 +178,15 @@ Governed path `management-api/adapters/index.js` changed since `cc949bb79` by AD
 ## Re-verification — 2026-11-01 (`4f3bd5325`)
 
 Governed-path delta since `3d717c40f`: `management-api/adapters/index.js`: `slotConfig` passes `baseUrl` (was `externalUrl`) and a config-failed slot records the configured file at fault (ADR-2164 amendment 4). This record's decision does not concern these changes. Decision unchanged; `verified_commit` bumped. Re-run: `git diff 3d717c40f..4f3bd5325 -- management-api/adapters/index.js`.
+
+## Identity-port URL parsing repair — 2026-11-03
+
+The identity port now refuses backslashes and ASCII control bytes before parsing
+a NIP-98 request URL for its signing allowlist. WHATWG parsing repairs these
+bytes, whereas the signed URL tag retains the original path spelling; allowing
+both interpretations could sign a target outside the intended authority.
+The existing valid-request contract (original URL bytes without query/fragment)
+is retained. The regression first demonstrated signing of the ambiguous input,
+then passed for backslash and embedded tab/CR/LF refusals alongside the valid
+allowlisted signing control. This is a source repair, not a live custody or
+signed-pods activation claim.

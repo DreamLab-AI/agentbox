@@ -518,7 +518,6 @@ dependencies = [
  "ff 0.13.1",
  "generic-array",
  "group 0.13.0",
- "hkdf",
  "pkcs8 0.10.2",
  "rand_core 0.6.4",
  "sec1 0.7.3",
@@ -538,6 +537,7 @@ dependencies = [
  "digest 0.11.3",
  "ff 0.14.0",
  "group 0.14.0",
+ "hkdf 0.13.0",
  "hybrid-array",
  "pkcs8 0.11.0",
  "rand_core 0.10.1",
@@ -752,6 +752,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7b5f8eb2ad728638ea2c7d47a21db23b7b58a72ed6a38256b8a1849f15fbbdf7"
 dependencies = [
  "hmac 0.12.1",
+]
+
+[[package]]
+name = "hkdf"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4aaa26c720c68b866f2c96ef5c1264b3e6f473fe5d4ce61cd44bbe913e553018"
+dependencies = [
+ "hmac 0.13.0",
 ]
 
 [[package]]
@@ -1199,7 +1208,7 @@ dependencies = [
 
 [[package]]
 name = "nostr-bbs-core"
-version = "1.0.0-beta.11"
+version = "1.0.0-beta.19"
 dependencies = [
  "aes",
  "async-trait",
@@ -1208,17 +1217,17 @@ dependencies = [
  "cbc",
  "chacha20poly1305",
  "getrandom 0.2.17",
+ "getrandom 0.4.3",
  "hex",
- "hkdf",
+ "hkdf 0.12.4",
  "hmac 0.12.1",
  "js-sys",
- "k256 0.13.4",
+ "k256 0.14.0",
  "nostr",
  "serde",
  "serde-wasm-bindgen",
  "serde_json",
  "sha2 0.10.9",
- "solid-pod-rs 0.5.0-alpha.7",
  "thiserror 2.0.21",
  "wasm-bindgen",
  "zeroize",
@@ -2017,31 +2026,7 @@ dependencies = [
 
 [[package]]
 name = "solid-pod-rs"
-version = "0.5.0-alpha.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "615d04af22c42d2a20e9695e779b99c432e0781dc6816a0e1aeb0881c7453aa8"
-dependencies = [
- "async-trait",
- "base64 0.22.1",
- "bytes",
- "chrono",
- "getrandom 0.2.17",
- "hex",
- "js-sys",
- "mime_guess",
- "serde",
- "serde_json",
- "sha2 0.10.9",
- "spargebra",
- "thiserror 1.0.69",
- "tracing",
- "url",
- "uuid",
-]
-
-[[package]]
-name = "solid-pod-rs"
-version = "0.5.0-alpha.18"
+version = "0.5.0-alpha.19"
 dependencies = [
  "async-trait",
  "base64 0.22.1",
@@ -2070,7 +2055,7 @@ dependencies = [
 
 [[package]]
 name = "solid-pod-rs-nostr"
-version = "0.5.0-alpha.18"
+version = "0.5.0-alpha.19"
 dependencies = [
  "async-trait",
  "futures-util",
@@ -2080,7 +2065,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2 0.10.9",
- "solid-pod-rs 0.5.0-alpha.18",
+ "solid-pod-rs",
  "thiserror 1.0.69",
  "tokio",
  "tokio-tungstenite 0.24.0",

@@ -9,8 +9,9 @@
 # buffer — so there is no SQLite/WAL on this path.
 #
 # The crate source is in-repo (services/nostr-pod-bridge) but it path-deps two
-# sibling DreamLab-AI repos that are NOT published to crates.io (deliberately —
-# we consume the crates locally, we do not publish). To build hermetically in
+# sibling DreamLab-AI repos consumed by exact source revision. The Solid
+# crates are also published to crates.io; this derivation uses a shared source
+# snapshot for its path dependencies. To build hermetically in
 # the Nix sandbox we fetch those two repos as fixed-output derivations and
 # reassemble the on-disk workspace layout the crate's relative path-deps expect
 # (../../../../<repo>), so cargo resolves them without us editing Cargo.toml.
@@ -40,27 +41,27 @@
 let
   version = "0.1.0";
 
-  # ── Sibling crate sources (consumed via path-deps, never published) ────────
+  # ── Sibling crate sources (consumed via pinned path dependencies) ────────
   # nostr-rust-forum → crates/nostr-bbs-core (NIP-44/59 crypto, NIP-98).
   # Upstream commit 5bfd9815 (2026-06-11) removed NIP-26 delegation in favour
   # of the ADR-099 device-key registry. The bridge tracked that removal — its
   # authorize() is now allowlist-only. Same rev as lib/colloquy.nix (forum
-  # HEAD fe36bf36, 2026-09-30); the two pins move together.
-  forumRev  = "fe36bf365b7027337dde03368f8a52e1218c2f6c";
-  forumHash = "sha256-9HooIa4vyu0Iw47VPr7RkMDyKrEazcElR2xPIe0njvE=";
+  # HEAD a3812b8e, 2026-11-03); the two pins move together.
+  forumRev  = "a3812b8e79846b569c1f19054f0774e94fed1248";
+  forumHash = "sha256-W4+4Xs2OCesHZyBFCAxnZhKE746cK+FFGUmxMS54G20=";
 
   # solid-pod-rs → crates/solid-pod-rs-nostr (relay substrate) + crates/solid-pod-rs
-  # (the [patch.crates-io] target). Pinned to 76ab7aab (alpha.18, 2026-10-30:
-  # RustCrypto 0.14, SOLID_POD_JEV_ALLOW_CLOUD), the same revision lib/solid-pod-rs.nix builds the
+  # (the [patch.crates-io] target). Pinned to c27cdfed (alpha.19, 2026-11-03:
+  # external-review WAC/payment/provenance repairs), the same revision lib/solid-pod-rs.nix builds the
   # standalone server from, so the bridge and the server compile one upstream
   # snapshot (register G-20 closed). services/nostr-pod-bridge/Cargo.lock
-  # resolves the local solid-pod-rs and solid-pod-rs-nostr at alpha.18.
-  # The older forum dependency retains its exact core-only registry library;
-  # it does not compile the affected server or Git service.
+  # resolves the local solid-pod-rs and solid-pod-rs-nostr at alpha.19.
+  # The paired forum pin contains the typed gift-wrap operation used by the
+  # custody callers; both bridge and Colloquy must compile against that tree.
   # Bump both files together; the hash is the SRI of the pinned commit archive
   # (procedure above / lib/solid-pod-rs.nix).
-  solidRev  = "76ab7aab3e882f32508b2461b3f51e4c09bdcfa1";
-  solidHash = "sha256-hzorf46t+nqBS4T8uNrmkwlStQjrt/MKrFtGED5/qNQ="; # v0.5.0-alpha.18
+  solidRev  = "c27cdfed1d96fc12dc2c7db5df866e9bed75524a";
+  solidHash = "sha256-c2G9FVeYYsg5t4SuTRQ3c8lG1jtIu/IPtiWxI1Tjea4="; # v0.5.0-alpha.19
 
   forumSrc = pkgs.fetchFromGitHub {
     owner = "DreamLab-AI";

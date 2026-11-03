@@ -137,3 +137,26 @@ Governed-path delta since `2f15c531b` is the RuVector Postgres credential custod
 - `flake.nix`: removes the claude-flow config template (`claudeFlowConfigJson` and its `cp`) and the baked `RUVECTOR_PG_CONNINFO` image Env entry, and rewords one dream-engine supervisor comment.
 
 Nothing this record decides is changed; its status axes are unchanged. Re-run: `git diff 2f15c531b..cc949bb79 -- agentbox.toml flake.nix`.
+
+## Scoped dependency acceptance — 2026-11-03
+
+The server and bridge now fetch product commit
+`c27cdfed1d96fc12dc2c7db5df866e9bed75524a` (Solid alpha.19) with the same
+Nix-computed archive hash. All eight alpha.19 crates are published; the server
+archive additionally includes test-only commit `7718095`. The shared source
+contains the external-review WAC, provenance, whole-history Git and canonical
+payment repairs. Whole-history Git export requires the cryptographic pod owner;
+delegated root Read does not imply permission to export private child history.
+
+The selected Nix regression gate now includes the repaired Git, provenance and
+payment routes plus the core WAC parser. The shipped feature combination passes
+these native route tests with the actual Git HTTP backend. The historical
+`pods/` provenance-path shim still has one matching source location. Server/bridge
+source and lock parity tests pass. Nix parsing and hash computation are evidence
+for the recipe; this update does not claim a new image build or live activation.
+
+Both bridge and Colloquy fetch forum
+`a3812b8e79846b569c1f19054f0774e94fed1248`; this revision provides the typed
+gift-wrap API required by ADR-2122 W3b. Colloquy's internal transport now matches
+that signer's RustCrypto k256 0.14 type. Exact archive layouts with the committed
+locks are tested independently of mutable sibling working trees.

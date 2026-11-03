@@ -33,6 +33,13 @@ Compare the consumer lockfile, vendored source or package cache before using a
 sibling repository's HEAD. Before declaring upstream unreviewable, check those
 local sources. Record the consumed version separately from a newer producer.
 
+For a packaged source dependency, reconstruct the recipe's exact archive layout
+and run with its committed lockfile. Test all consumers whose source pins move
+together. One successful workspace build can conceal a stale fetch revision or
+a second consumer's incompatible public dependency type. Confirm scanner claims
+about third-party helpers against the installed, lock-pinned implementation;
+stale local comments are not evidence of that dependency's current behaviour.
+
 Reusing the shared implementation reduces divergence, but does not prove its
 entire contract is correct. Inspect relevant policies, such as URL aliases,
 raw versus reserialised bodies, optional binding, clock windows, cache scope
@@ -139,6 +146,12 @@ real dependency with a stub to get an authentication or persistence test green.
 For failures outside the change, retain diagnostics and verify the affected
 files are unchanged before calling them baseline failures. Report full-gate
 failure separately from passing checks on the changed behaviour.
+
+Budget disk as well as CPU when several Rust workspaces build concurrently.
+After an out-of-space error, inspect interrupted source writes and receipts for
+truncation before retrying. Recover from the known reviewed content, then rerun
+affected gates. Preserve evidence before reclaiming only task-owned caches;
+another worker's build tree is not available cleanup space.
 
 ## Keep the evidence boundary when reporting progress
 

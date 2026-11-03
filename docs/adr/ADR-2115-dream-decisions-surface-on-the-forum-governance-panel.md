@@ -16,6 +16,10 @@ repo: agentbox
 
 # ADR-2115 — Dream-machine decisions surface on the forum governance panel
 
+## Scoped ledger reader repair — 2026-11-03
+
+The digest and governance case now share the escaping-aware ledger cell parser: a finding containing `\\|` retains its verdict and witness columns. Governance context also resolves the ledger through the same validated/defaulted `dream.config.json` loader as digest collection, rather than a hardcoded path. Invalid or absent configuration leaves ledger context empty; independently recorded night metadata remains available. Regressions cover a non-default ledger with a conflicting default-path decoy, escaped finding pipes, and malformed configuration. These are source and native-test checks, with no forum publication or live activation claim; the historical `verified_commit` is unchanged.
+
 ## Context
 
 The dream engine queues human decisions (report "Human action recommended" items, night-health alerts) in `workspace/.agentbox/dream-inbox.json`. The only route to the operator was `dream-inbox-surface.cjs`, which injected two item bodies into whatever Claude session came next. The operator did not know the queue existed; it reached 59 open items between 7 and 25 September 2026. The forum digest (`scripts/dream-night-digest.mjs`) counted only ACCEPT/REJECT/INCONCLUSIVE ledger rows and never read the inbox. From 14 to 25 September it posted "No dream cycles ran tonight" while repos were failing dispatch, running without a patch, or all parked. The forum already has a decision mechanism, the Agent Control Surface Protocol: panels (31400), requests (31402) and signed admin decisions (31403), with broker-case projection, receipts, risk tiers and ageing. The dream engine never used it.

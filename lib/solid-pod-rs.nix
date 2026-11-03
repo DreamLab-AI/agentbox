@@ -35,7 +35,8 @@
 
 let
 
-  # Pin: 76ab7aab (v0.5.0-alpha.18 workspace, 2026-10-30; alpha.17 tag 2026-10-20). JSS 0.0.221 and plugins/forge parity,
+  # Pin: c27cdfed (v0.5.0-alpha.19 workspace, 2026-11-03). WAC/payment/provenance
+  # and owner-only Git export repairs, with JSS 0.0.221 and plugins/forge parity,
   # the forge and kind-30618 mirror compiled in (ADR-2145), the ER-22 hardening
   # carried forward. Keep the relay substrate pin in lib/nostr-pod-bridge.nix and
   # the checked-in lockfiles in step with this source. The existing /pods/{pod}/
@@ -51,13 +52,12 @@ let
   #   3. Lockfile: `git -C ../solid-pod-rs show <tag>:Cargo.lock > lib/solid-pod-rs.cargo-lock`
   #      (upstream ships its Cargo.lock since 0.5.0; the vendored copy keeps the
   #      Nix build hermetic and byte-identical to the tag).
-  version = "0.5.0-alpha.18";
+  version = "0.5.0-alpha.19";
 
-  # alpha.18: RustCrypto 0.14 (RUSTSEC advisories cleared), dream-cycle hardening, and
-  # SOLID_POD_JEV_ALLOW_CLOUD (proxy and TypeSafe admitted unless local-only, ADR-2139).
-  rev     = "76ab7aab3e882f32508b2461b3f51e4c09bdcfa1";
+  # Includes the full external-review follow-up and retains the existing Jev gate.
+  rev     = "c27cdfed1d96fc12dc2c7db5df866e9bed75524a";
 
-  srcHash = "sha256-hzorf46t+nqBS4T8uNrmkwlStQjrt/MKrFtGED5/qNQ=";
+  srcHash = "sha256-c2G9FVeYYsg5t4SuTRQ3c8lG1jtIu/IPtiWxI1Tjea4=";
 
   cargoLockFile = ./solid-pod-rs.cargo-lock;
 
@@ -155,15 +155,25 @@ in
       # requests, so they run hermetically against the exact shipped features.
       nativeCheckInputs = [ pkgs.git ];
       doCheck = true;
+      preCheck = ''
+        export GIT_HTTP_BACKEND_PATH="$(git --exec-path)/git-http-backend"
+      '';
       cargoTestFlags = [
         "--test" "er22_acl_copy_glob"
         "--test" "er22_path_clean"
         "--test" "er22_ledger_guard"
         "--test" "er22_mcp_dotfiles"
         "--test" "container_index_acl"
+        "--test" "git_wac_gating"
+        "--test" "prov_phase5_routes"
+        "--test" "payment_read_failure"
+        "--test" "pay_routes"
+        "--test" "pay_mrc20_routes"
+        "--test" "pay_phase4_routes"
       ];
       postCheck = ''
         cargo test --release --offline --locked -p solid-pod-rs-git --test push_guard
+        cargo test --release --offline --locked -p solid-pod-rs --lib wac::parser
       '';
 
       # Preserve the AGPL-3.0-only LICENCE in the derivation output so the

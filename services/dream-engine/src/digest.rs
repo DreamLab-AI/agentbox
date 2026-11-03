@@ -118,12 +118,12 @@ pub fn ledger_rows_for(ledger_text: &str, date: &str) -> Vec<LedgerLine> {
         .lines()
         .filter(|l| l.trim_start().starts_with('|'))
         .filter_map(|l| {
-            let cells: Vec<&str> = l.split('|').map(str::trim).collect();
-            (cells.get(1) == Some(&date)).then(|| LedgerLine {
-                deep: cells.get(2).unwrap_or(&"").to_string(),
-                finding: cells.get(3).unwrap_or(&"").to_string(),
-                verdict: cells.get(7).unwrap_or(&"").to_string(),
-                witness: cells.get(9).unwrap_or(&"").to_string(),
+            let cells = governance::ledger_cells(l);
+            (cells.first().map(String::as_str) == Some(date)).then(|| LedgerLine {
+                deep: cells.get(1).cloned().unwrap_or_default(),
+                finding: cells.get(2).cloned().unwrap_or_default(),
+                verdict: cells.get(6).cloned().unwrap_or_default(),
+                witness: cells.get(8).cloned().unwrap_or_default(),
             })
         })
         .collect()
@@ -525,6 +525,20 @@ mod tests {
         assert_eq!(rows[0].deep, "ops");
         assert_eq!(rows[0].verdict, "REJECT");
         assert_eq!(rows[0].witness, "w2");
+    }
+
+    #[test]
+    fn ledger_contract_escaped_finding_keeps_verdict_and_witness_columns() {
+        let rows = ledger_rows_for("| 2026-11-03 | parser | parity a \\| b and c \\| d | NONE | https://example.test/pr/1 | yes | ACCEPT | improved | sha256-abc |", "2026-11-03");
+        assert_eq!(
+            rows,
+            vec![LedgerLine {
+                deep: "parser".into(),
+                finding: "parity a | b and c | d".into(),
+                verdict: "ACCEPT".into(),
+                witness: "sha256-abc".into(),
+            }]
+        );
     }
 
     #[test]

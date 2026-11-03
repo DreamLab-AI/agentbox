@@ -13,6 +13,7 @@ const field = (text, name) => {
 };
 const server = read('lib/solid-pod-rs.nix');
 const bridge = read('lib/nostr-pod-bridge.nix');
+const colloquy = read('lib/colloquy.nix');
 const version = field(server, 'version');
 
 function assertSecurityFloor(candidate) {
@@ -30,6 +31,17 @@ test('the server and bridge fetch the same immutable upstream snapshot', () => {
   assert.match(field(server, 'rev'), /^[a-f0-9]{40}$/);
   assert.equal(field(server, 'rev'), field(bridge, 'solidRev'));
   assert.equal(field(server, 'srcHash'), field(bridge, 'solidHash'));
+});
+
+test('bridge and Colloquy consume the same forum source and core version', () => {
+  assert.match(field(bridge, 'forumRev'), /^[a-f0-9]{40}$/);
+  assert.equal(field(bridge, 'forumRev'), field(colloquy, 'forumRev'));
+  assert.equal(field(bridge, 'forumHash'), field(colloquy, 'forumHash'));
+  const core = path => toml(path).package.find(p => p.name === 'nostr-bbs-core' && !p.source);
+  const bridgeCore = core('services/nostr-pod-bridge/Cargo.lock');
+  const colloquyCore = core('crates/colloquy/Cargo.lock');
+  assert.ok(bridgeCore && colloquyCore, 'both consumers must resolve the pinned path source');
+  assert.equal(bridgeCore.version, colloquyCore.version);
 });
 
 test('vendored and bridge path packages resolve the server release', () => {

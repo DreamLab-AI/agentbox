@@ -67,10 +67,9 @@ tempfile = "3"
 # for the migration tests. Production encoding goes through nostr-bbs-core.
 bech32 = "0.12"
 
-# Unify solid-pod-rs to the single local source. nostr-bbs-core pulls it from
-# crates.io (0.4.0-alpha.15); solid-pod-rs-nostr path-deps the local copy. The
-# patch redirects the registry reference to that same local crate so both
-# resolve to one solid-pod-rs (no duplicate-source conflict, shared features).
+# Keep registry consumers of solid-pod-rs on the same pinned local source as
+# solid-pod-rs-nostr. The Nix derivation supplies this exact sibling revision;
+# the committed lockfile must pass against that reconstructed layout.
 [patch.crates-io]
 solid-pod-rs = { path = "../../../../solid-pod-rs/crates/solid-pod-rs" }
 
