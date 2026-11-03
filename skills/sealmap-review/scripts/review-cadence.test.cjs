@@ -743,3 +743,37 @@ test('malformed GLM output persists raw evidence and does not cause an unchanged
   assert.equal(repaired.shards, 2);
   assert.equal(repaired.count, 0);
 });
+
+test('source-bearing triage evidence is retained privately and excluded from git publication candidates', async () => {
+  const e = estate();
+  const post = fakePost(() => 'VERDICT: YES\nREASON: implementation changed');
+  await C.triage(e.est, ctxFor({ post }));
+  change(e.beta, 'src/b.rs', 'fn b() { PRIVATE_SIBLING_SOURCE_SENTINEL(); }\n');
+  const result = await C.triage(e.est, ctxFor({ post }));
+  const row = C.readLedger(e.est).at(-1);
+  const observation = row.results[0];
+  assert.match(row.artefacts, /^\.diagram-review\/triage\//);
+  const prompt = path.join(e.est, observation.prompt.path);
+  const bytes = fs.readFileSync(prompt);
+  assert.match(bytes.toString(), /PRIVATE_SIBLING_SOURCE_SENTINEL/);
+  assert.equal(observation.prompt.sha256, require('node:crypto').createHash('sha256').update(bytes).digest('hex'));
+  assert.equal(observation.artefact_sha256, require('node:crypto').createHash('sha256').update(fs.readFileSync(path.join(e.est, observation.artefact))).digest('hex'));
+  assert.equal(fs.statSync(prompt).mode & 0o777, 0o600);
+  assert.equal(fs.statSync(path.dirname(prompt)).mode & 0o777, 0o700);
+  assert.equal(sh(e.est, 'check-ignore', observation.prompt.path), observation.prompt.path);
+  assert.doesNotMatch(sh(e.est, 'status', '--porcelain', '--untracked-files=all'), /\.diagram-review/);
+  assert.doesNotMatch(fs.readFileSync(path.join(e.est, result.findings), 'utf8'), /PRIVATE_SIBLING_SOURCE_SENTINEL/);
+  assert.doesNotMatch(fs.readFileSync(C.ledgerPath(e.est), 'utf8'), /PRIVATE_SIBLING_SOURCE_SENTINEL/);
+  assert.match(C.statusOf([e.est], NOW).text, /private triage evidence: \.diagram-review\/triage/);
+});
+
+test('a conflicting private ignore rule refuses before a source prompt or model call', async () => {
+  const e = estate();
+  await C.triage(e.est, ctxFor({ post: fakePost(() => 'VERDICT: NO') }));
+  change(e.beta, 'src/b.rs', 'fn b() { PRIVATE_SOURCE(); }\n');
+  put(e.est, '.diagram-review/triage/.gitignore', '!**\n');
+  let calls = 0;
+  await assert.rejects(C.triage(e.est, ctxFor({ post: async () => { calls++; throw new Error('must not call'); } })), /not gitignored/);
+  assert.equal(calls, 0);
+  assert.deepEqual(fs.readdirSync(path.join(e.est, '.diagram-review/triage')), ['.gitignore']);
+});

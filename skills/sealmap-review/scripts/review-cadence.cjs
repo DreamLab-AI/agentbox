@@ -759,18 +759,23 @@ async function triage(repo, ctx) {
     const rawFile = path.join(run.dir, `${encodeURIComponent(t.rel)}.reply.txt`);
     try {
       const prompt = triagePrompt(repo, t, since, heads);
-      fs.writeFileSync(path.join(run.dir, `${encodeURIComponent(t.rel)}.prompt.txt`), prompt);
+      fs.writeFileSync(path.join(run.dir, `${encodeURIComponent(t.rel)}.prompt.txt`), prompt, { mode: 0o600 });
       if (prompt.includes('[... truncated at ')) throw new Error('triage context was truncated; scoped verification required');
       const r = await glm({ model: cfg.glm_model, system: TRIAGE_SYSTEM, user: prompt, maxTokens: GLM_TRIAGE_MAX_OUTPUT_TOKENS, env: ctx.env, post: ctx.post });
-      fs.writeFileSync(rawFile, r.text);
+      fs.writeFileSync(rawFile, r.text, { mode: 0o600 });
       inTok += r.input_tokens; outTok += r.output_tokens;
       results.push({ artefact: rel(repo, rawFile), topic: t.rel, yes: parseVerdict(r.text), reason: (r.text.match(/REASON:\s*(.+)/i) || [])[1]?.trim() ?? '' });
     } catch (err) {
-      fs.writeFileSync(rawFile, err.rawReply ?? err.message);
+      fs.writeFileSync(rawFile, err.rawReply ?? err.message, { mode: 0o600 });
       results.push({ artefact: rel(repo, rawFile), topic: t.rel, yes: true, reason: `GLM call failed (${err.message.slice(0, 120)}); unsure means yes` });
     }
   }
-  for (const result of results) result.topic_sha256 = topics.find((t) => t.rel === result.topic).topic_sha256;
+  for (const result of results) {
+    result.topic_sha256 = topics.find((t) => t.rel === result.topic).topic_sha256;
+    if (result.artefact) result.artefact_sha256 = sha256(fs.readFileSync(path.join(repo, result.artefact)));
+    const prompt = path.join(run.dir, `${encodeURIComponent(result.topic)}.prompt.txt`);
+    if (fs.existsSync(prompt)) result.prompt = { path: rel(repo, prompt), sha256: sha256(fs.readFileSync(prompt)) };
+  }
   const flagged = results.filter((r) => r.yes);
   const outstanding = outstandingTriage(repo, topics, [...ledger, { kind: 'triage', results }]);
   const out = uniquePath(path.join(repo, REVIEW_REL), `${utcDate(now)}-triage`, '.md');
@@ -788,15 +793,27 @@ async function triage(repo, ctx) {
   appendLedger(repo, {
     ts: stamp, kind: 'triage', reviewer: 'glm', commit: heads[repoTop] ?? null, commits: heads, tokens: { input: inTok, output: outTok },
     est_usd: (inTok * GLM_USD_PER_M.input + outTok * GLM_USD_PER_M.output) / 1e6, findings: rel(repo, out),
-    changed_topics: results.length, flagged: flagged.length, unresolved: skips, results, outstanding: outstanding.length,
+    changed_topics: results.length, flagged: flagged.length, unresolved: skips, results, outstanding: outstanding.length, artefacts: rel(repo, run.dir),
   });
   return { findings: rel(repo, out), flagged: flagged.length, checked: results.length };
 }
 
 function runDirectory(repo, kind, now) {
   const runId = crypto.randomUUID();
-  const dir = path.join(repo, REVIEW_REL, 'runs', `${new Date(now).toISOString().replace(/[:.]/g, '-')}-${kind}-${runId}`);
-  fs.mkdirSync(dir, { recursive: true });
+  const base = kind === 'triage' ? path.join(repo, '.diagram-review', 'triage') : path.join(repo, REVIEW_REL, 'runs');
+  fs.mkdirSync(base, { recursive: true, mode: 0o700 });
+  const dir = path.join(base, `${new Date(now).toISOString().replace(/[:.]/g, '-')}-${kind}-${runId}`);
+  if (kind === 'triage') {
+    // Triage prompts contain cited source, potentially from private sibling repos.
+    // Keep this raw evidence outside the report tree, and refuse any unignored path.
+    const ignore = path.join(base, '.gitignore');
+    try { fs.writeFileSync(ignore, '*\n', { flag: 'wx', mode: 0o600 }); }
+    catch (err) { if (err.code !== 'EEXIST') throw err; }
+    try { git(repo, ['check-ignore', '--quiet', '--', rel(repo, path.join(dir, 'prompt.txt'))]); }
+    catch { throw new Error('private triage evidence path is not gitignored; no source prompt was written'); }
+    fs.chmodSync(base, 0o700);
+  }
+  fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
   return { dir, runId };
 }
 
@@ -1014,6 +1031,7 @@ function statusOf(repos, now, info = {}) {
       const ran = lastOf(ledger, kind, reviewer);
       const last = [...ledger].reverse().find((e) => e.kind === kind && e.reviewer === reviewer);
       const skipNote = last && last.skipped && last !== ran ? `; latest skip: ${last.skipped}` : '';
+      if (kind === 'triage' && ran?.artefacts) lines.push(`  private triage evidence: ${ran.artefacts} (hashes in ledger results)`);
       lines.push(`  ${kind}/${reviewer}: ${ran ? `last run ${ran.ts}${ran.shard ? ` (${ran.shard})` : ''}${ran.findings ? ` -> ${ran.findings}` : ''}${ran.high_severity ? ` (${ran.high_severity} high severity)` : ''}` : 'never run'}${skipNote}`);
     }
     try {

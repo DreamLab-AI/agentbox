@@ -169,7 +169,9 @@ shard with an outstanding flag. An empty queue is not a fidelity certificate.
 
 Every run, refusals included, appends a line to `docs/diagrams/review-ledger.jsonl`;
 findings land in `docs/review/` as unverified hypotheses. Exact packs, raw replies
-and incomplete manifests survive under `docs/review/runs/`. Malformed or truncated
+and incomplete manifests for diagrams-only reviews survive under `docs/review/runs/`.
+Source-bearing triage prompts/replies stay in gitignored `.diagram-review/triage/`,
+with hashes and paths in the ledger; keep that private evidence out of publication. Malformed or truncated
 replies remain inconclusive and never become a successful zero-finding review.
 Unreadable or corrupt spend history stops paid audits; `status` reports the error.
 Preserve the ledger and investigate it before repairing accounting.

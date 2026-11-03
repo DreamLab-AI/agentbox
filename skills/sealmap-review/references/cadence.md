@@ -236,7 +236,7 @@ not proof that other topics are correct or that all sources were available.
 
 Review output records a run identifier, full corpus revision, tracked dirty state,
 exact pack and scope hashes, register mode, model/provider and lens prompt hash.
-GLM and Gemini keep packs, raw replies and manifests in `docs/review/runs/`;
+Diagram-review GLM and Gemini keep packs, raw replies and manifests in `docs/review/runs/`;
 partial output is retained there even when a lens fails. Successful transport
 completion and complete finding fields (or explicit `NO_FINDINGS`) are required
 before a run can suppress another review of the same pack. Snapshot changes
@@ -254,3 +254,14 @@ Gemini costs do not: paid work refuses them. `status` remains diagnostic and say
 accounting is inconclusive. Preserve the raw ledger and restore accounting from
 verified run/reservation evidence; do not delete a damaged history to reopen the
 budget. A complete last row without a newline is preserved before appending.
+
+
+Triage prompts can contain source from private sibling repositories. Their exact
+prompts and replies are retained under `.diagram-review/triage/<run>/`, outside
+the report tree, with 0700 run directories and 0600 files. A local `*` ignore rule
+and `git check-ignore` preflight are required before a source prompt is written.
+The ledger carries their relative paths and SHA-256 hashes; `status` locates the
+private run. Preserve these bytes privately for investigation and handoff; do not
+force-add or include the scratch tree in a published corpus. Diagrams-only review
+packs remain in `docs/review/runs/`. No redaction substitutes for the original
+private evidence.

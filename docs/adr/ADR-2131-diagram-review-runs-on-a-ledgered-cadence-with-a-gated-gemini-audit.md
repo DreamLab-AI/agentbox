@@ -30,8 +30,12 @@ Activation remains staged until the rebuilt image is observed running this code.
    are inconclusive. An empty review requires an explicit first-line
    `NO_FINDINGS` response and successful transport completion; quoted examples
    cannot satisfy it. Rejection requires counterevidence, not a failed setup.
-2. **Preserve the observation.** Exact packs, prompts/replies and manifests are
-   retained under `docs/review/runs/`, including partial runs. New finding origins
+2. **Preserve the observation.** Exact diagrams-only packs, replies and manifests are
+   retained under `docs/review/runs/`, including partial runs. Source-bearing
+   triage prompts/replies stay in gitignored `.diagram-review/triage/` with
+   0700 directories, 0600 files and a checked ignore rule before source writes.
+   The ledger carries path/hash references; these bytes are private evidence,
+   not part of the publishable report corpus. New finding origins
    record full corpus revision, tracked dirty state, pack/scope hashes, register
    mode, model/provider, run identifier and prompt hash. Pre-call source snapshots
    remain distinct from later repository changes. A changed paid-review pack
