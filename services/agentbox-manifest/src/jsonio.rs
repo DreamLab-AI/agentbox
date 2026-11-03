@@ -45,7 +45,7 @@ pub fn ensure_ascii(rendered: &str) -> String {
 
 /// Render `value` exactly as `json.dumps(value, indent=2)` would.
 pub fn dumps(value: &Value) -> String {
-    ensure_ascii(&serde_json::to_string_pretty(value).unwrap_or_else(|_| "{}".into()))
+    ensure_ascii(&serde_json::to_string_pretty(value).expect("serde_json::Value always serialises"))
 }
 
 /// Read a JSON document, or `None` when it is absent or unparseable.

@@ -45,14 +45,25 @@ fn inventory(
             inventory(root, &entry.path(), files)?;
         } else if kind.is_file() {
             let path = entry.path();
-            let name = path
+            let relative = path
                 .strip_prefix(root)
-                .map_err(|_| "VisionCraft path escaped root")?
-                .to_str()
-                .ok_or("VisionCraft path is not UTF-8")?
-                .replace('\\', "/");
+                .map_err(|_| "VisionCraft path escaped root")?;
+            let mut components = Vec::new();
+            for component in relative.components() {
+                let Component::Normal(name) = component else {
+                    return Err("VisionCraft path is not relative and portable".into());
+                };
+                let name = name.to_str().ok_or("VisionCraft path is not UTF-8")?;
+                if name.contains('\\') {
+                    return Err("VisionCraft path contains an unportable backslash".into());
+                }
+                components.push(name);
+            }
+            let name = components.join("/");
             let data = std::fs::read(&path).map_err(|e| format!("VisionCraft file read: {e}"))?;
-            files.insert(name, hex(&data));
+            if files.insert(name, hex(&data)).is_some() {
+                return Err("VisionCraft inventory contains a duplicate path key".into());
+            }
         } else {
             return Err("VisionCraft snapshot contains a symlink or special file".into());
         }
@@ -181,5 +192,26 @@ mod tests {
             assert!(check(&root).is_err());
         }
         std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn backslash_aliases_cannot_collapse_two_files_into_one_inventory_key() {
+        let scratch = tempfile::tempdir().unwrap();
+        let root = scratch.path();
+        std::fs::create_dir(root.join("sub")).unwrap();
+        std::fs::write(root.join("sub/x"), "tampered").unwrap();
+        std::fs::write(root.join(r"sub\x"), "canonical").unwrap();
+        assert!(inventory(root, root, &mut BTreeMap::new()).is_err());
+    }
+
+    #[test]
+    fn duplicate_inventory_keys_are_an_error_even_when_bytes_match() {
+        let scratch = tempfile::tempdir().unwrap();
+        let root = scratch.path();
+        std::fs::write(root.join("file"), "canonical").unwrap();
+        let mut files = BTreeMap::new();
+        inventory(root, root, &mut files).unwrap();
+        assert!(inventory(root, root, &mut files).is_err());
     }
 }

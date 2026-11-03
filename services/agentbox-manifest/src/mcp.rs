@@ -27,7 +27,22 @@ use crate::jsonio;
 /// the Python's uncaught `json.JSONDecodeError` did.
 fn load_strict(path: &Path) -> Result<Value, String> {
     let text = std::fs::read_to_string(path).map_err(|e| format!("{}: {e}", path.display()))?;
-    serde_json::from_str(&text).map_err(|e| format!("{}: {e}", path.display()))
+    let value = serde_json::from_str(&text).map_err(|e| format!("{}: {e}", path.display()))?;
+    validate_server_map(&value)?;
+    Ok(value)
+}
+
+fn validate_server_map(value: &Value) -> Result<(), String> {
+    if !value.is_object()
+        || value
+            .get("mcpServers")
+            .is_some_and(|servers| !servers.is_object())
+    {
+        return Err(
+            "MCP configuration must contain an object server map; preserved unchanged".into(),
+        );
+    }
+    Ok(())
 }
 
 /// `cfg.setdefault('mcpServers', {})[name] = <spec>` — the shape shared by
@@ -103,15 +118,6 @@ fn expand_env_placeholders(text: &str) -> String {
 /// routing back off without leaving a stale key behind.
 pub fn reconcile_aqe(file: &Path, provider: Option<&str>, disabled: bool) -> Result<(), String> {
     let mut cfg = load_strict(file)?;
-    if !cfg.is_object()
-        || cfg
-            .get("mcpServers")
-            .is_some_and(|servers| !servers.is_object())
-    {
-        return Err(
-            "AQE MCP configuration must contain an object server map; preserved unchanged".into(),
-        );
-    }
     let servers = jsonio::mcp_servers_mut(&mut cfg);
     if disabled {
         servers.shift_remove("agentic-qe");
@@ -175,31 +181,53 @@ pub fn reconcile_aqe_codex(
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => String::new(),
         Err(_) => return Err("AQE Codex configuration is unreadable".into()),
     };
-    let mut cfg: toml::Value = toml::from_str(&text)
+    let mut cfg: toml_edit::DocumentMut = text
+        .parse()
         .map_err(|_| "AQE Codex configuration is malformed; preserved unchanged")?;
-    let table = cfg
-        .as_table_mut()
-        .ok_or("AQE Codex configuration must be a table")?;
-    let servers = table
-        .entry("mcp_servers".to_owned())
-        .or_insert_with(|| toml::Value::Table(Default::default()))
-        .as_table_mut()
-        .ok_or("Codex mcp_servers must be a table")?;
+    let servers = edit_table(cfg.as_table_mut(), "mcp_servers")?;
     if disabled {
         servers.remove("agentic-qe");
     } else {
-        let mut entry = Value::Null;
-        aqe_entry(&mut entry, provider)?;
-        let object = entry.as_object_mut().expect("AQE object");
-        object.shift_remove("type");
-        object.insert("startup_timeout_sec".into(), Value::from(30));
-        object.insert("required".into(), Value::Bool(false));
-        servers.insert(
-            "agentic-qe".into(),
-            toml::Value::try_from(entry).map_err(|_| "cannot encode AQE Codex entry")?,
+        let entry = edit_table(servers, "agentic-qe")?;
+        // Derive owned fields from the same policy as the JSON projection.
+        // All unrelated operator values and formatting stay in the document.
+        let mut managed = Value::Null;
+        aqe_entry(&mut managed, provider)?;
+        edit_value(
+            entry,
+            "command",
+            toml_edit::Value::from(managed["command"].as_str().expect("AQE command")),
         );
+        let args = managed["args"]
+            .as_array()
+            .expect("AQE args")
+            .iter()
+            .map(|value| value.as_str().expect("AQE argument"));
+        edit_value(entry, "args", toml_edit::Value::Array(args.collect()));
+        for stale in ["type", "url", "headers"] {
+            entry.remove(stale);
+        }
+        // These are defaults for a newly registered entry, never overrides of
+        // operator deadlines or required-server policy.
+        if entry.get("startup_timeout_sec").is_none() {
+            entry.insert("startup_timeout_sec", toml_edit::value(30));
+        }
+        if entry.get("required").is_none() {
+            entry.insert("required", toml_edit::value(false));
+        }
+        let env = edit_table(entry, "env")?;
+        for (key, value) in managed["env"].as_object().expect("AQE environment") {
+            edit_value(
+                env,
+                key,
+                toml_edit::Value::from(value.as_str().expect("AQE environment value")),
+            );
+        }
+        if managed["env"].get("AQE_LLM_PROVIDER").is_none() {
+            env.remove("AQE_LLM_PROVIDER");
+        }
     }
-    let output = toml::to_string_pretty(&cfg).map_err(|_| "cannot encode Codex config")?;
+    let output = cfg.to_string();
     let parent = file.parent().unwrap_or_else(|| Path::new("."));
     std::fs::create_dir_all(parent).map_err(|_| "cannot create Codex config directory")?;
     let mut temporary =
@@ -212,6 +240,24 @@ pub fn reconcile_aqe_codex(
         .persist(file)
         .map_err(|_| "cannot replace Codex config")?;
     Ok(())
+}
+
+fn edit_table<'a>(
+    parent: &'a mut dyn toml_edit::TableLike,
+    key: &str,
+) -> Result<&'a mut dyn toml_edit::TableLike, String> {
+    parent
+        .entry(key)
+        .or_insert(toml_edit::Item::Table(toml_edit::Table::new()))
+        .as_table_like_mut()
+        .ok_or_else(|| format!("AQE Codex {key} must be a table; preserved unchanged"))
+}
+
+fn edit_value(table: &mut dyn toml_edit::TableLike, key: &str, mut value: toml_edit::Value) {
+    if let Some(previous) = table.get(key).and_then(toml_edit::Item::as_value) {
+        *value.decor_mut() = previous.decor().clone();
+    }
+    *table.entry(key).or_insert(toml_edit::Item::None) = toml_edit::Item::Value(value);
 }
 
 /// Mirror one server from `from` (the workspace `.mcp.json`) into `to` (the
@@ -237,6 +283,7 @@ pub fn mirror_server(from: &Path, to: &Path, name: &str) -> Result<(), String> {
     } else {
         Value::Object(Map::new())
     };
+    validate_server_map(&dst)?;
     let servers = jsonio::mcp_servers_mut(&mut dst);
     if servers.get(name) == Some(spec) {
         #[cfg(unix)]

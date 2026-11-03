@@ -96,3 +96,11 @@ ASCII variable names; unsupported shell syntax remains literal, while a valid
 unset name retains the documented empty-string behaviour. The red/green controls
 and trust-boundary disposition are recorded in
 [the host review](../developer/visioncraft-host-review.md).
+
+
+A second independent review added source-inventory collision and configuration
+preservation controls. Backslashes and duplicate inventory keys now refuse the
+snapshot; Codex uses a formatting-preserving TOML editor and keeps unmanaged AQE
+settings; malformed MCP object shapes are preserved rather than replaced.
+Remaining baseline hub findings and the strict review's ERROR receipt are retained
+in the host review, separately from this per-session AQE adoption.

@@ -66,6 +66,11 @@ node scripts/skill-count-check.js
 node scripts/ci/env-secret-inventory.js --check
 ```
 
+Codex AQE projection edits TOML in place structurally, retaining comments and
+unmanaged timeout/tool/env settings. It refuses malformed table shapes. The
+snapshot checker rejects ambiguous Unix backslash names and duplicate inventory
+keys instead of normalising them into a valid released path.
+
 The executable integration tests require the newly built `agentbox-manifest` and
 pinned `visioncraft` on PATH. Their reviewer and AQE doubles do not call models.
 The Deepsec cases retain the disabled/unavailable, policy, credential-name,
