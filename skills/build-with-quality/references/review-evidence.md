@@ -118,6 +118,23 @@ replay admission.
 
 ## Read gates as policies, not verdicts about the system
 
+Require a completed response before interpreting an empty finding list. A
+parser that recognises no headings has not established a clean review. Reject
+ambiguous verdicts and quoted success markers, preserve incomplete replies, and
+keep their findings unverified. Corrupt or unreadable spend records must not
+become an empty ledger that opens a paid review gate.
+
+Compare reviewer agreement only for equivalent input snapshots, scope and
+register visibility, using the recorded models' recognised families. File names,
+provider aliases and transitive similarity clusters do not establish independent
+corroboration. Even a valid comparison ranks hypotheses; it does not verify them.
+
+Keep successful evidence and its subject together. A successful unrelated probe
+cannot support adoption when the observation of the actual consumer failed.
+Bind parsed finding IDs and the original export hash to the same byte snapshot.
+Preserve source-bearing prompts and logs outside publication directories; an
+authorised model call does not authorise publishing its input in a public repo.
+
 Inspect the effective threshold, severity categories, skipped checks, selected
 features and tested revision. A PASS can coexist with serious findings in a
 category the threshold does not count. Triage every material finding, separating

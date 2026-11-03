@@ -37,6 +37,30 @@ failure cause and effects before choosing a disposition.
 - A clean review is not evidence of correctness, and is never cited as such
   in an EXP or a gate receipt.
 
+### Sealmap evidence receipts
+
+For a substantial imported review or a handoff across repairs, retain the
+original findings JSON and initialise adjacent dispositions with the standalone
+Sealmap CLI (0.4.0 or later):
+
+```sh
+sealmap review init docs/review/findings.json --out docs/review/receipts.json
+sealmap review check docs/review/receipts.json --json
+sealmap review summary docs/review/receipts.json
+```
+
+Record actual commands, artefacts and observations in the receipt before
+checking it. Keep setup failures inconclusive and source/test/merge/publication/
+adoption/deployment evidence separate. `--require-resolved` is appropriate when
+the task requires every finding resolved; it must not force an unsupported
+rejection. Missing tooling is an unavailable check, never a pass.
+
+The Rust checker verifies contracts and artefact bytes; an independent reviewer
+still judges their meaning. Use the existing review archive, not a new issue
+database. The [receipt guide](../../sealmap-review/references/review-receipts.md)
+documents the schema, privacy boundary and Agentbox wrapper. Ordinary small
+changes do not need a review ledger merely because this tool is available.
+
 ## Rust code lens
 
 Writing, reviewing and porting rules live in [rust/steering.md](./rust/steering.md),

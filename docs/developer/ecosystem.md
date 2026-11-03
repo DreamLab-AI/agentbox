@@ -320,6 +320,23 @@ The adapter contract (ADR-005) guarantees that every feature works in both modes
 
 ## Further reading
 
+### Standalone review tooling: Sealmap
+
+Sealmap is an independent Rust library and CLI for deterministic code views,
+bounded review packs and evidence-backed finding dispositions. Agentbox is one
+consumer: `lib/sealmap.nix` pins its release, and the `sealmap-review` skill owns
+the scheduled transports, budget policy and estate discovery. The Rust receipt
+contract owns disposition and delivery validation; the cadence wrapper delegates
+to `sealmap review` instead of reimplementing it.
+
+The review workflow retains raw findings, distinguishes inconclusive checks from
+counterevidence, and records source repair, publication, consumer adoption and
+runtime activation independently. Model agreement is comparable-input ranking,
+not verification. See the [receipt workflow](../../skills/sealmap-review/references/review-receipts.md)
+and [standalone Sealmap](https://github.com/DreamLab-AI/sealmap). Package and skill
+source changes reach the running image through the normal rebuild; source
+integration does not by itself establish runtime activation.
+
 - [Sovereign mesh internals](sovereign-mesh.md)
 - [Adapter pattern](adapters.md)
 - [Identity and tracing mesh](identity-mesh.md)
