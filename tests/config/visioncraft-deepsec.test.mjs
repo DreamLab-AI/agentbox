@@ -61,7 +61,7 @@ if (args[0] === 'process') {
   write(path.join(data, 'runs', runId+'.json'), {runId,projectId:project,rootPath:root,type:'process',phase:'done',completedAt:'2026-11-03T00:00:00Z',stats:{filesProcessed:files.length}});
   for (const file of files) write(path.join(data, 'files', file+'.json'), {
     filePath:file,projectId:project,fileHash:crypto.createHash('sha256').update(fs.readFileSync(path.join(root,file))).digest('hex'),status:'analyzed',
-    analysisHistory:[{runId,model:'fixture-model',agentType:'fixture-agent',refusal:{refused:false},usage:{outputTokens:42}}],
+    analysisHistory:[{runId,model:'fixture-model',agentType:'fixture-agent',refusal:{refused:false,skipped:[]},usage:{outputTokens:42}}],
   });
   if (settings.FAKE_DEEPSEC_FINDINGS && settings.FAKE_DEEPSEC_FINDINGS !== '[]') fs.writeFileSync(option('--comment-out'), 'fresh findings');
   process.exit(Number(settings.FAKE_DEEPSEC_RC || 0));
