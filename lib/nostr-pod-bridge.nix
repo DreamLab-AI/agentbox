@@ -51,17 +51,17 @@ let
   forumHash = "sha256-W4+4Xs2OCesHZyBFCAxnZhKE746cK+FFGUmxMS54G20=";
 
   # solid-pod-rs → crates/solid-pod-rs-nostr (relay substrate) + crates/solid-pod-rs
-  # (the [patch.crates-io] target). Pinned to c27cdfed (alpha.19, 2026-11-03:
-  # external-review WAC/payment/provenance repairs), the same revision lib/solid-pod-rs.nix builds the
+  # (the [patch.crates-io] target). Pinned to d4910c0 (alpha.20, 2026-11-03:
+  # write lock, strong If-Match, N3 Patch, on top of the alpha.19 repairs), the same revision lib/solid-pod-rs.nix builds the
   # standalone server from, so the bridge and the server compile one upstream
   # snapshot (register G-20 closed). services/nostr-pod-bridge/Cargo.lock
-  # resolves the local solid-pod-rs and solid-pod-rs-nostr at alpha.19.
+  # resolves the local solid-pod-rs and solid-pod-rs-nostr at alpha.20.
   # The paired forum pin contains the typed gift-wrap operation used by the
   # custody callers; both bridge and Colloquy must compile against that tree.
   # Bump both files together; the hash is the SRI of the pinned commit archive
   # (procedure above / lib/solid-pod-rs.nix).
-  solidRev  = "c27cdfed1d96fc12dc2c7db5df866e9bed75524a";
-  solidHash = "sha256-c2G9FVeYYsg5t4SuTRQ3c8lG1jtIu/IPtiWxI1Tjea4="; # v0.5.0-alpha.19
+  solidRev  = "d4910c0a6cf47a1d0e58f62530b13b7deeb33872";
+  solidHash = "sha256-u9H48lLWtkU8xIFkS1yw0S3zHFDM1HejcpsyWrWPxTA="; # v0.5.0-alpha.20
 
   forumSrc = pkgs.fetchFromGitHub {
     owner = "DreamLab-AI";

@@ -35,7 +35,9 @@
 
 let
 
-  # Pin: c27cdfed (v0.5.0-alpha.19 workspace, 2026-11-03). WAC/payment/provenance
+  # Pin: d4910c0 (v0.5.0-alpha.20 workspace, 2026-11-03). Per-resource write lock
+  # across LDP/MCP writes, strong If-Match, N3 Patch, ACL PATCH no longer 409,
+  # repeated ACL predicates kept; on top of alpha.19's WAC/payment/provenance
   # and owner-only Git export repairs, with JSS 0.0.221 and plugins/forge parity,
   # the forge and kind-30618 mirror compiled in (ADR-2145), the ER-22 hardening
   # carried forward. Keep the relay substrate pin in lib/nostr-pod-bridge.nix and
@@ -52,12 +54,12 @@ let
   #   3. Lockfile: `git -C ../solid-pod-rs show <tag>:Cargo.lock > lib/solid-pod-rs.cargo-lock`
   #      (upstream ships its Cargo.lock since 0.5.0; the vendored copy keeps the
   #      Nix build hermetic and byte-identical to the tag).
-  version = "0.5.0-alpha.19";
+  version = "0.5.0-alpha.20";
 
   # Includes the full external-review follow-up and retains the existing Jev gate.
-  rev     = "c27cdfed1d96fc12dc2c7db5df866e9bed75524a";
+  rev     = "d4910c0a6cf47a1d0e58f62530b13b7deeb33872";
 
-  srcHash = "sha256-c2G9FVeYYsg5t4SuTRQ3c8lG1jtIu/IPtiWxI1Tjea4=";
+  srcHash = "sha256-u9H48lLWtkU8xIFkS1yw0S3zHFDM1HejcpsyWrWPxTA=";
 
   cargoLockFile = ./solid-pod-rs.cargo-lock;
 
