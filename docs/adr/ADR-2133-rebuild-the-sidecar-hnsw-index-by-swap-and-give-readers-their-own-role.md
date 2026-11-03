@@ -8,7 +8,7 @@ activation_status: staged
 supersedes: []
 superseded_by: []
 verified_commit: d099266974930d37caac2ab7bcd8799b8877e7ba
-verified_paths: [scripts/ruvector-sidecar-update.sh, tests/config/ruvector-sidecar-ops.test.sh]
+verified_paths: [scripts/ruvector-sidecar-update.sh, tests/config/ruvector-sidecar-ops.test.sh, tests/config/reindex-screen.test.sh]
 owner: jjohare
 review_trigger: a ruvector extension or image bump; a new read-only consumer or readable table; any pg_hba change; `ruvector reader-role --yes` and `hba-harden --yes` run on the live sidecar (activation → live)
 repo: agentbox
