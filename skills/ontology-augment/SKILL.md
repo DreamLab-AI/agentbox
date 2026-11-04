@@ -162,6 +162,36 @@ ontomark tree "Knowledge Graph" --depth 2 --json
 ontomark validate --vault all --json
 ```
 
+## Can the corpus answer this? Check before you answer
+
+Pull the names a question mentions (the entities, not the verbs), then grade them
+in one call:
+
+```bash
+ontomark --json ground "fungible token" "liquidity pool" "ad spend"
+```
+
+```json
+{"coverage":0.6667,
+ "grounded":[{"name":"fungible token","iri":"urn:ngm:class:fungible-token","label":"Fungible Token","tier":"exact"}, …],
+ "unclear":[],
+ "uncovered":[{"name":"ad spend","suggestions":[{"label":"Amd Sev", …}]}]}
+```
+
+- **Every name grounded:** answer from the corpus and cite the IRIs.
+- **`unclear`:** the name matches several pages. Ask the user which one, and give
+  them the candidates. Do not pick one yourself.
+- **`uncovered`:** the corpus has nothing on that name. Say so, and offer what *is*
+  covered. Do not fill the gap from memory as if the corpus said it. Suggestions
+  are near-miss spellings, not answers.
+- **`coverage: null`:** you passed no names. That is not the same as `0`.
+
+Grading is lexical and deterministic: labels, aliases and note names, then the
+lexical tiers ingest uses. It reads the knowledge vault only. One cold call costs
+about 4 s over visionGraph, so pass every name in a single call. Ontomark builds
+before ADR-OM-012 have no `ground` subcommand; when it is missing, say that the
+check was unavailable and continue (fail-open, ADR-112).
+
 ## Tool surface — what each retired MCP tool became
 
 | Retired MCP tool | Now |
