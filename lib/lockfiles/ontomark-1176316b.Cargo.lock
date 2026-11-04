@@ -979,7 +979,7 @@ checksum = "384b8ab6d37215f3c5301a95a4accb5d64aa607f1fcb26a11b5303878451b4fe"
 
 [[package]]
 name = "ontomark"
-version = "0.7.3"
+version = "0.8.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -997,7 +997,7 @@ dependencies = [
 
 [[package]]
 name = "ontomark-compile"
-version = "0.6.4"
+version = "0.7.0"
 dependencies = [
  "anyhow",
  "hex",
@@ -1027,7 +1027,7 @@ dependencies = [
 
 [[package]]
 name = "ontomark-ingest"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "criterion",
  "indexmap 2.14.2",
@@ -1080,7 +1080,7 @@ dependencies = [
 
 [[package]]
 name = "ontomark-profile-estate"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "ontomark-compile",
 ]

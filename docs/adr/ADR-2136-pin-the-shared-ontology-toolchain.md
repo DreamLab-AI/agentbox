@@ -28,12 +28,14 @@ acceptance. Decision, implementation and activation statuses are unchanged.
 
 ## Released producer adoption — 2026-11-03
 
-`lib/ontomark.nix` now pins v0.7.3. The binary's SHA-256 is
-`01af8c5a24bb83451eabed1e48baa7efc0230cf673a2427899dbf8d81bb74053`;
+`lib/ontomark.nix` now pins v0.8.0 (2026-11-04, ontomark ADR-OM-012). The
+binary's SHA-256 is
+`a1dfb1e913d5fe38b7b694dac82c8e2b44b00699382999a08cf56933c6c10d64`;
 the release workflow passed, the downloaded bytes pass that checksum, and the
-binary reports `ontomark 0.7.3`. The Jev variant uses the same release's source
-`6c3f693b36301ee95c8b684a000b5aeec3ac9bbd` with its checked-in Cargo.lock and
-an independently fetched Nix unpack hash. Nix parsing passes. These are package
+binary reports `ontomark 0.8.0`. The Jev variant uses the same release's source
+`1176316b055b4eea5e7aa0b1ffb8e73a00415f73` with its checked-in Cargo.lock and a
+Nix unpack hash computed by a NAR serialiser that reproduces the previous v0.7.3
+hash exactly. Nix was not available to parse the file in the container. These are package
 inputs prepared for a rebuild, not evidence that the running image has changed.
 
 ## Context
