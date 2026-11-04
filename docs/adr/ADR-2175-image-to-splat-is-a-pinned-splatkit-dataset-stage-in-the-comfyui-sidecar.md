@@ -7,8 +7,8 @@ implementation_status: partial
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit:
-verified_paths: []   # arm at the commit that lands this: [comfyui-sidecar/Dockerfile, comfyui-sidecar/nodes/agentbox_video/splat_export.py, skills/comfyui/scripts/splat_pipeline.py, skills/comfyui/scripts/ui_to_api.py, skills/comfyui/scripts/download_video_models.py, skills/comfyui/manifests/splatkit.json]
+verified_commit: 65778e973db5587ec1c9bfe13ad3b46f44a523d7
+verified_paths: [comfyui-sidecar/Dockerfile, comfyui-sidecar/nodes/agentbox_video/splat_export.py, skills/comfyui/scripts/splat_pipeline.py, skills/comfyui/scripts/ui_to_api.py, skills/comfyui/scripts/download_video_models.py, skills/comfyui/manifests/splatkit.json]
 owner: jjohare
 review_trigger: SplatKit or Mickmumpitz-Nodes pin bump; Krea 2 Community Licence change; Matrix-3D gate or file change; any proposal to install SplatKit's managed training venv, 4DAnyone, ultralytics or an attention patch in the sidecar; LichtFeld gate change; ADR-2148 control-plane change
 repo: agentbox
@@ -43,6 +43,7 @@ acceptance_boundary: image rebuilt from the host with SPLATKIT=1, verify-splatki
 
 ## Verification
 Partial, staged. Established in this change:
+- Rebuilt `agentbox-comfyui:local` from the implementation commit: in-build SplatKit assertions passed (COLMAP 3.8 runs, filtered requirements absent, torch unchanged); `verify-splatkit.sh` and `verify-spede.sh` ALL PASS on the recreated sidecar; live `geometry` on the production `:8188` returned four suggested paths.
 - `agentbox_video` suite in the sidecar: 98 tests OK (5 new export tests). Script suites: `test_comfy_client.py` 33, `test_download_video_models.py` 13, `test_splat_pipeline.py` 18, `test_ui_to_api.py` 5, all OK. `skills/lint-skills.sh` clean.
 - A throwaway ComfyUI on :8189 inside the running sidecar (the four packs at these pins under `/tmp`, removed afterwards) registered every graph node, and all five graphs validated against its `/object_info` apart from files still provisioning. The SphereSfM bundle's sha256 matched and `colmap_sphere help` ran.
 - Live on that server with the CC0 Poly Haven `aerodynamics_workshop` 8K pano and verified MoGe/RAFT weights: `geometry` completed in 56 s and `suggest_paths` returned four paths (push-in, arc sweep, crane rise, pull-back); `preview` completed in 81 s with path plots and start/middle/end depth-mesh views for every path; rerunning `preview` after a graph change was refused by the receipt guard. The `pano` and `dataset` graphs have not run yet (Krea and Wan weights were still downloading; Matrix-3D gated).
