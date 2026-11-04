@@ -77,6 +77,11 @@ Per-phase mechanics — swarm topology, report directory layout, chart style,
 diagram commands, reviewer roles, the final clean-build script, and quality gates —
 are in [`references/pipeline.md`](references/pipeline.md).
 
+When Loom is the chosen drafter, read the shared
+[Loom narrative-authoring guide](../explainer/references/loom-authoring.md)
+before preparing section packets. It covers source boundaries, completion and
+word-count checks, bounded retries and recording lessons from the run.
+
 ## Quality Gates
 
 - 0 LaTeX errors

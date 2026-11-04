@@ -60,6 +60,11 @@ Posture 3 is posture 1 plus a named exception list, so it inherits the same gate
 controller answers packets and does not take over the run. `evals/handup-budget.py` bounds how
 much of it may be escalated before the posture has stopped being true.
 
+For Loom drafting in any delivery, read
+[Loom narrative authoring](references/loom-authoring.md) when preparing the first
+section: scoped source packets, response checks, bounded retries and the evidence
+needed to claim a prompting improvement.
+
 ## Orient before you write (an hour, not a day)
 
 Read the root README, the docs index, and any handoff or status document, and

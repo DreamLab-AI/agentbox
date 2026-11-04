@@ -4,6 +4,9 @@ Use this scaffold for the model calls that draft microsite sections (`explainer-
 context discipline to the model; it does not replace repository discovery, runtime
 tools or independent review. Keep the enclosing session's model and repair authority
 unchanged. Read hp-qwen-direct.md for transport, multimodal qualification and cleanup.
+Read [Loom narrative authoring](../loom-authoring.md) for the shared completion,
+length and factual checks and bounded retry policy. Keep this microsite's JSON
+contract when applying that guide.
 
 ## Assemble context before asking for prose
 
@@ -92,9 +95,11 @@ images as task data after the stable prefix. Qualify the actual message arrangem
 model metadata does not prove that a template follows the requested format.
 
 Budget for the packet, image tokens and complete JSON output. The old 650-token
-trial budget suited a short paragraph, not an expanded claims ledger. Start around
-900–1400 output tokens for this contract, then measure and reduce unnecessary fields
-or section scope. Do not truncate evidence silently to fit. Keep calls sequential on
+trial budget suited a short paragraph, not an expanded claims ledger. A qualified
+final-only call may start around 900–1400 output tokens for this contract; with
+reasoning enabled use at least 1,536 and allow room for the final JSON as well.
+Measure the response and reduce unnecessary fields or section scope. Do not
+truncate evidence silently to fit. Keep calls sequential on
 a shared small local service; reuse a warm process and stable prefixes. An unfinished
 response is not a draft. Preserve the same running request across transport timeouts.
 
