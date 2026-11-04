@@ -9,7 +9,7 @@ class PackageTests(unittest.TestCase):
         self.assertEqual(set(cm), set(dm))
         for name in ("AgentboxSaveLatentVerified", "AgentboxLoadImageVerified", "AgentboxRelayPrepare",
                      "AgentboxTrackMask", "AgentboxRetakePrep",
-                     "AgentboxIdentityScore", "AgentboxOpeningFrameChooser"):
+                     "AgentboxIdentityScore", "AgentboxOpeningFrameChooser", "AgentboxSplatDatasetExport"):
             self.assertIn(name, cm)
 
 

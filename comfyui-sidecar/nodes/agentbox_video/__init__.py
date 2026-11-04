@@ -1,4 +1,4 @@
-"""agentbox_video: ComfyUI custom-node pack (identity, staging, relay, masks, retake).
+"""agentbox_video: ComfyUI custom-node pack (identity, staging, relay, masks, retake, splat export).
 
 ComfyUI imports this package from ``custom_nodes/`` and reads
 ``NODE_CLASS_MAPPINGS`` / ``NODE_DISPLAY_NAME_MAPPINGS``. Each submodule owns
@@ -9,7 +9,7 @@ import importlib
 import logging
 
 _log = logging.getLogger("agentbox_video")
-_MODULES = ("identity", "staging", "relay", "masks", "retake")
+_MODULES = ("identity", "staging", "relay", "masks", "retake", "splat_export")
 
 NODE_CLASS_MAPPINGS = {}
 NODE_DISPLAY_NAME_MAPPINGS = {}

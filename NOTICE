@@ -73,6 +73,27 @@ Headline third-party / vendored components
       The Qwen-Image 2.1 weights it uses are non-commercial (Qwen-Image 2.1
       Research License); weights are fetched at runtime, not redistributed.
 
+  • Image-to-splat node packs (ADR-2175)         MIT / GPL-3.0
+      Installed unmodified into the ComfyUI sidecar image as separate runtime
+      components; no agentbox code imports them.
+        ComfyUI-SplatKit (MIT; vendored MoGe and Matrix-3D code, MIT)
+          47c93ee95c345314b0b3b0a998a80788fc984207
+        ComfyUI-Mickmumpitz-Nodes (MIT)
+          270afbd7659aec81ba40cd54c65cd4d872394ee4
+        ComfyUI-Krea2-Ostris-Edit (MIT)
+          7756566160c4a1b24bb1bd9f0ff3ced1a83d7547
+        ComfyUI_UltimateSDUpscale (GPL-3.0, with its pinned submodule)
+          627c871f14532b164331f08d0eebfbf7404161ee
+      skills/comfyui/workflows/splat-*.api.json are API-format adaptations of
+      ComfyUI-SplatKit's workflows (MIT, Copyright (c) 2026 mickmumpitz) at the
+      SplatKit revision above, including 0_generate_360_panorama-upscale.json.
+      The SphereSfM executable bundle (json87/SphereSfM 6b40b2d, COLMAP 3.8,
+      BSD-3-Clause; its bundled lib/ includes LGPL/GPL SuiteSparse and FreeImage
+      modules, notices in the bundle's COPYING.txt) runs as a separate program.
+      Krea 2 is licensed under the Krea 2 Community License Agreement. For more
+      information, visit https://krea.ai/krea-2-licensing. The Krea 2 and ERP
+      LoRA weights are fetched at runtime, not redistributed.
+
   • Skills directory (skills/*)                 Various third-party
       Each skill in `skills/` is a third-party SDK or template authored
       upstream. Their licenses are retained as published; consult each

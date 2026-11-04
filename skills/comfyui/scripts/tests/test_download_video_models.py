@@ -99,5 +99,80 @@ class SpedeProfileTests(unittest.TestCase):
         self.assertNotIn("spede-replace", dvm.CAMPAIGN.get("profiles", {}))
 
 
+
+class DeriveTests(unittest.TestCase):
+    """A derived model: pinned source -> baked converter -> pinned output hash."""
+
+    def setUp(self):
+        import hashlib
+        import sys
+        import tempfile
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.root = Path(self.tmp.name)
+        source_bytes = b"peft lora weights"
+        self.source = {"repo": "example/src", "revision": "0" * 40, "file": "checkpoints/src.bin",
+                       "directory": "loras", "size": len(source_bytes),
+                       "sha256": hashlib.sha256(source_bytes).hexdigest()}
+        kept = self.root / ".sources" / "loras" / "src.bin"
+        kept.parent.mkdir(parents=True)
+        kept.write_bytes(source_bytes)  # already verified source: no network in tests
+        converted = source_bytes.upper()
+        self.model = {"repo": "example/src", "revision": "0" * 40, "file": "out.bin", "directory": "loras",
+                      "size": len(converted), "sha256": hashlib.sha256(converted).hexdigest(),
+                      "derive": {"converter": "upper", "source": self.source}}
+        upper = "import sys; open(sys.argv[2], 'wb').write(open(sys.argv[1], 'rb').read().upper())"
+        self.converters = {"upper": [sys.executable, "-c", upper], "same": [sys.executable, "-c",
+                           "import shutil, sys; shutil.copyfile(sys.argv[1], sys.argv[2])"]}
+
+    def test_derives_verifies_and_publishes(self):
+        target = dvm.derive(self.model, self.root, converters=self.converters)
+        self.assertEqual(target.read_bytes(), b"PEFT LORA WEIGHTS")
+        self.assertFalse(list(target.parent.glob("*.part*")))
+        self.assertEqual(dvm.derive(self.model, self.root, converters=self.converters), target)
+
+    def test_hash_mismatch_publishes_nothing(self):
+        wrong = {**self.model, "derive": {**self.model["derive"], "converter": "same"}}
+        with self.assertRaisesRegex(RuntimeError, "pinned sha256"):
+            dvm.derive(wrong, self.root, converters=self.converters)
+        self.assertFalse((self.root / "loras" / "out.bin").exists())
+        self.assertFalse(list((self.root / "loras").glob("*.part*")))
+
+    def test_plan_counts_the_source_download(self):
+        (self.root / ".sources" / "loras" / "src.bin").unlink()
+        dvm.PROFILES["_derive_test"] = [self.model]
+        self.addCleanup(dvm.PROFILES.pop, "_derive_test")
+        plan = dvm.provision_plan(["_derive_test"], self.root)
+        self.assertEqual(plan["download_bytes_remaining_by_size"], self.model["size"] + self.source["size"])
+
+
+    def test_safetensors_header_is_canonicalised(self):
+        import struct
+        data = b"\x00" * 8
+
+        def write(path, header):
+            raw = header.encode()
+            path.write_bytes(struct.pack("<Q", len(raw)) + raw + data)
+        tensor = '"w":{"dtype":"F32","shape":[2],"data_offsets":[0,8]}'
+        a, b = self.root / "a.safetensors", self.root / "b.safetensors"
+        write(a, '{"__metadata__":{"format":"pt","source":"x"},' + tensor + '}')
+        write(b, '{' + tensor + ',"__metadata__":{"source":"x","format":"pt"}}  ')
+        dvm.canonicalise_safetensors(a)
+        dvm.canonicalise_safetensors(b)
+        self.assertEqual(a.read_bytes(), b.read_bytes())
+        self.assertEqual(a.read_bytes()[-8:], data)
+        self.assertEqual(struct.unpack("<Q", a.read_bytes()[:8])[0] % 8, 0)
+
+class SplatProfileTests(unittest.TestCase):
+    """Every file the splat graphs load is provisioned by splat-pano or splat-dataset."""
+
+    def test_graph_files_are_provisioned(self):
+        manifest = json.loads((Path(__file__).parents[2] / "manifests" / "splatkit.json").read_text())
+        provisioned = {Path(m["file"]).name for name in ("splat-pano", "splat-dataset") for m in dvm.PROFILES[name]}
+        provisioned |= {Path(m["file"]).name for m in dvm.PROFILES.get("splat-matrix3d", [])}
+        wanted = {f for files in manifest["required_models"].values() for f in files}
+        self.assertEqual(wanted - provisioned, set())
+
+
 if __name__ == "__main__":
     unittest.main()

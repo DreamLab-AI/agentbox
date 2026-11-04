@@ -6,6 +6,7 @@ import hashlib
 import json
 import os
 import shutil
+import struct
 from pathlib import Path
 import time
 import urllib.request
@@ -156,6 +157,85 @@ SPEDE_REPLACE_MODELS = [
 PROFILES["spede"] = SPEDE_MODELS
 # Self-sufficient superset (like h3-reference): Replace also runs SAM, Qwen and the text encoder.
 PROFILES["spede-replace"] = SPEDE_MODELS + SPEDE_REPLACE_MODELS
+# Image-to-splat (ADR-2175): SplatKit panorama and dataset stages. Revision, size and sha256 come
+# from the Hugging Face paths-info API at the pinned revision; file names are the ones the
+# skills/comfyui/workflows/splat-*.api.json graphs load. See manifests/splatkit.json.
+WAN21_REV = "123acf1cc74bccbb9bfff8ac1ee72edc08c2341d"
+REALESRGAN_REV = "8110204ebf8d25c031b66c26c2d1098aa831157e"
+WAN21_VAE = dict(repo="Comfy-Org/Wan-2.1", revision=WAN21_REV,
+                 file="split_files/vae/wan_2.1_vae.safetensors", directory="vae",
+                 size=253815318, sha256="2fc39d31359a4b0a64f55876d8ff7fa8d780956ae2cb13463b0223e15148976b")
+SPLAT_PANO_MODELS = [
+    # Licence: Krea 2 Community License v1 (commercial use only below USD 1M trailing annual
+    # revenue; content-filter duty §4.2; AI-disclosure duty §4.3). Applies to the two ERP LoRAs too.
+    dict(repo="Comfy-Org/Krea-2", revision="588feaf955b08b9ac4723eeb751752ab045dba71",
+         file="diffusion_models/krea2_turbo_fp8_scaled.safetensors", directory="diffusion_models",
+         size=13141730784, sha256="eb4dd8c612cfd10f64f25b057e6e6bbcb5737c94a7372177e456dbf7579502f1"),
+    dict(repo="Comfy-Org/Krea-2", revision="588feaf955b08b9ac4723eeb751752ab045dba71",
+         file="text_encoders/qwen3vl_4b_fp8_scaled.safetensors", directory="text_encoders",
+         size=5242467968, sha256="54bd5144df0bbc25dd6ccadfcb826b521445a1b06ae5a42570bdd2974ca87094"),
+    dict(repo="mickmumpitz/Krea2-360-ERP-LoRAs", revision="45b20236e1a2b98342f7db9f3a55f46b989425b2",
+         file="krea2_t2i_360_erp_lora_v1.safetensors", directory="loras",
+         size=228587744, sha256="46587da116a8cdd9ab8fa8850b06effd49970929d071294018d33cdfaa2a6bda"),
+    dict(repo="mickmumpitz/Krea2-360-ERP-LoRAs", revision="45b20236e1a2b98342f7db9f3a55f46b989425b2",
+         file="krea2_oedit_360_erp_outpaint_lora_v1.safetensors", directory="loras",
+         size=228587600, sha256="8e0cb98ffbfb8c363050ad0216a951009e8df07fb651e2a8932e24974ddc98e7"),
+    # Licence: Apache-2.0 (Wan 2.1 VAE; Krea 2 uses it as-is).
+    WAN21_VAE,
+    # Licence: BSD-3-Clause (Real-ESRGAN).
+    dict(repo="ai-forever/Real-ESRGAN", revision=REALESRGAN_REV,
+         file="RealESRGAN_x2.pth", directory="upscale_models",
+         size=67061725, sha256="c830d067d54fc767b9543a8432f36d91bc2de313584e8bbfe4ac26a47339e899"),
+]
+SPLAT_DATASET_MODELS = [
+    # Licence: Apache-2.0 (Wan 2.1 I2V 14B 720P, umt5-xxl, clip_vision_h, VAE).
+    dict(repo="Comfy-Org/Wan-2.1", revision=WAN21_REV,
+         file="split_files/diffusion_models/wan2.1_i2v_720p_14B_fp8_e4m3fn.safetensors",
+         directory="diffusion_models", size=16397245448,
+         sha256="b2051cd29d6b2f0c924fa7a3e78a4772f0134d7b059f21590dcce416f4f6cbe8"),
+    dict(repo="Comfy-Org/Wan-2.1", revision=WAN21_REV,
+         file="split_files/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors", directory="text_encoders",
+         size=6735906897, sha256="c3355d30191f1f066b26d93fba017ae9809dce6c627dda5f6a66eaa651204f68"),
+    dict(repo="Comfy-Org/Wan-2.1", revision=WAN21_REV,
+         file="split_files/clip_vision/clip_vision_h.safetensors", directory="clip_vision",
+         size=1264219396, sha256="64a7ef761bfccbadbaa3da77366aac4185a6c58fa5de5f589b42a65bcc21f161"),
+    WAN21_VAE,
+    # Licence: Apache-2.0 (LightX2V step/CFG distill LoRA, Kijai repackage).
+    dict(repo="Kijai/WanVideo_comfy", revision="8260d429d19fd7a72304cad059160b95d843913f",
+         file="Lightx2v/lightx2v_T2V_14B_cfg_step_distill_v2_lora_rank64_bf16.safetensors", directory="loras",
+         size=630697104, sha256="37d49218544b9e0bfb8e831d1399f451fbc5068aff6474f42a90c928363c3573"),
+    # Licence: BSD-3-Clause. Replaces SplatKit's default 4x-UltraSharp (CC BY-NC-SA 4.0) for the
+    # HiRes Composite hole-fill upscale.
+    dict(repo="ai-forever/Real-ESRGAN", revision=REALESRGAN_REV,
+         file="RealESRGAN_x4.pth", directory="upscale_models",
+         size=67040989, sha256="aa00f09ad753d88576b21ed977e97d634976377031b178acc3b5b238df463400"),
+    # Licence: MIT (MoGe ViT-L). SplatKit reads models/MoGe/<name>; the graphs name model.pt so its
+    # first-use hf_hub_download never runs.
+    dict(repo="Ruicheng/moge-vitl", revision="ad326bfb61facd6c52b5a825bc1e34d7c97d9672",
+         file="model.pt", directory="MoGe",
+         size=1256823446, sha256="da96b09a0485a3c45a5aa455e67743c8b4efc4dd8437c1f2aa93c2b4303d957f"),
+    # Licence: BSD-3-Clause (torchvision RAFT-Large). HiRes Composite loads Raft_Large_Weights.DEFAULT
+    # through torch.hub; the image sets TORCH_HOME=/opt/ComfyUI/models/torch_hub so this is the cache hit.
+    dict(repo="pytorch/vision", revision="Raft_Large_Weights.C_T_SKHT_V2",
+         file="raft_large_C_T_SKHT_V2-ff5fadd5.pth", directory="torch_hub/hub/checkpoints",
+         url="https://download.pytorch.org/models/raft_large_C_T_SKHT_V2-ff5fadd5.pth",
+         size=21106607, sha256="ff5fadd56d26b40647388883af1547351ea17868b765c05b27231e72dd16a322"),
+]
+# Licence: MIT (Skywork Matrix-3D). Gated on Hugging Face: the HF_TOKEN account must accept the
+# repository terms. Derived with SplatKit's tools/convert_pano_lora.py (a pure key rename to
+# ComfyUI's Wan LoRA convention, bf16); the output hash is of the canonicalised safetensors and
+# was reproduced by two independent conversions.
+SPLAT_MATRIX3D_LORA = dict(
+    repo="Skywork/Matrix-3D", revision="9f23eda5300f2a44d1256ecaf54a7808e69d7daa",
+    file="pano_video_gen_720p_comfy.safetensors", directory="loras",
+    size=306809616, sha256="e50beda5e29eb15c655e9738da238c0ebc84d8ef2dd0041fc95c36d359fe7d15",
+    derive=dict(converter="splatkit-pano-lora", source=dict(
+        repo="Skywork/Matrix-3D", revision="9f23eda5300f2a44d1256ecaf54a7808e69d7daa",
+        file="checkpoints/pano_video_gen_720p.bin", directory="loras",
+        size=613679690, sha256="a511537e2607c0184f5000fe5e435e7d78cacf341b0ef9c75de6dba2afe81dd7")))
+PROFILES["splat-pano"] = SPLAT_PANO_MODELS
+PROFILES["splat-matrix3d"] = [SPLAT_MATRIX3D_LORA]
+PROFILES["splat-dataset"] = SPLAT_DATASET_MODELS + [SPLAT_MATRIX3D_LORA]
 CAMPAIGN_PATH = Path(os.environ.get("COMFY_MODEL_MANIFEST", str(Path(__file__).resolve().parents[1] / "models" / "stopmotion-candidates.json")))
 CAMPAIGN = json.loads(CAMPAIGN_PATH.read_text()) if CAMPAIGN_PATH.is_file() else {}
 for profile_name, record in CAMPAIGN.get("profiles", {}).items():
@@ -186,6 +266,11 @@ def provision_plan(names, root, url=None):
         resumable = partial.stat().st_size if partial.is_file() else 0
         if not size_matches:
             missing += max(0, model["size"] - min(resumable, model["size"]))
+            if "derive" in model:
+                source = model["derive"]["source"]
+                kept = root / ".sources" / source["directory"] / Path(source["file"]).name
+                if not (kept.is_file() and kept.stat().st_size == source["size"]):
+                    missing += source["size"]
         files.append({"path": str(target), "bytes": model["size"],
                       "state": "size_match_unverified" if size_matches else "partial" if resumable else "missing",
                       "partial_bytes": resumable, "sha256": model["sha256"]})
@@ -295,6 +380,78 @@ def download(model, root, retries=5, reserve_bytes=0):
                 time.sleep(min(2 ** attempt, 16))
 
 
+# Converters a derived model may name. Each is a command baked into the sidecar image, called as
+# ``<argv...> <source> <output>``; the output must then match the profile's pinned sha256.
+CONVERTERS = {
+    "splatkit-pano-lora": ["python", "/opt/ComfyUI/custom_nodes/ComfyUI-SplatKit/tools/convert_pano_lora.py"],
+}
+
+
+def canonicalise_safetensors(path):
+    """Rewrite a safetensors header with sorted keys and 8-byte space padding, in place.
+
+    safetensors serialises a multi-key ``__metadata__`` map in nondeterministic order, so two
+    conversions of the same input differ only in header bytes. Tensor offsets are relative to
+    the data section, so re-serialising the header leaves the data untouched.
+    """
+    with open(path, "rb") as stream:
+        length = struct.unpack("<Q", stream.read(8))[0]
+        header = json.loads(stream.read(length))
+        data = stream.read()
+    encoded = json.dumps(header, sort_keys=True, separators=(",", ":")).encode()
+    encoded += b" " * (-len(encoded) % 8)
+    with open(path, "wb") as stream:
+        stream.write(struct.pack("<Q", len(encoded)) + encoded + data)
+
+
+def derive(model, root, reserve_bytes=0, converters=None):
+    """Provision a derived file: download its pinned source, convert, verify, publish atomically.
+
+    The source lands in ``<root>/.sources/`` (verified like any download) and is kept so a
+    re-derivation never re-downloads. The converter writes ``<target>.part``; a safetensors
+    output has its header canonicalised; only an output with the pinned size and sha256
+    replaces the target.
+    """
+    import subprocess
+
+    target = root / model["directory"] / Path(model["file"]).name
+    if verified(target, model):
+        print(f"Verified existing {target}", flush=True)
+        return target
+    recipe = model["derive"]
+    command = (converters or CONVERTERS).get(recipe["converter"])
+    if command is None:
+        raise RuntimeError(f"Unknown converter {recipe['converter']!r} for {target.name}")
+    source = download(recipe["source"], root / ".sources", reserve_bytes=reserve_bytes)
+    partial = target.with_suffix(target.suffix + ".part")
+    target.parent.mkdir(parents=True, exist_ok=True)
+    with target.with_suffix(".lock").open("a") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        if partial.exists():
+            partial.unlink()
+        # The converter infers the output format from the suffix, so give it a real one.
+        staging = partial.with_name(partial.name + Path(model["file"]).suffix)
+        try:
+            subprocess.run([*command, str(source), str(staging), *recipe.get("args", [])], check=True)
+            if staging.suffix == ".safetensors":
+                canonicalise_safetensors(staging)
+            os.replace(staging, partial)
+        finally:
+            if staging.exists():
+                staging.unlink()
+        if not verified(partial, model):
+            got = hashlib.sha256(partial.read_bytes()).hexdigest() if partial.is_file() else None
+            partial.unlink(missing_ok=True)
+            raise RuntimeError(f"Derived {target.name} does not match the pinned sha256 (got {got})")
+        os.replace(partial, target)
+    print(f"Derived and verified {target}", flush=True)
+    return target
+
+
+def provision(model, root, reserve_bytes=0):
+    return derive(model, root, reserve_bytes) if "derive" in model else download(model, root, reserve_bytes=reserve_bytes)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--profile", choices=tuple(PROFILES), action="append")
@@ -326,7 +483,7 @@ def main():
                 parser.exit(1, f"Missing or invalid model: {path}\n")
             print(f"Verified {path}")
         else:
-            download(model, args.models_dir, reserve_bytes=CAMPAIGN.get("reserve_bytes", 20 * 1024**3))
+            provision(model, args.models_dir, reserve_bytes=CAMPAIGN.get("reserve_bytes", 20 * 1024**3))
 
 
 if __name__ == "__main__":

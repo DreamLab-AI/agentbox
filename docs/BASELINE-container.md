@@ -1,10 +1,11 @@
 ---
 title: Agentbox Container Baseline
 doc_id: AB-BASELINE
-version: 0.5.13
+version: 0.5.14
 status: draft-for-ratification
 verified_commit: 
 changelog:
+  - "0.5.14 (2026-11-04): ADR-2175 (accepted, partial, staged). Image-to-splat adds a pinned SplatKit dataset stage to the ComfyUI sidecar (build arg SPLATKIT=1): splat_pipeline.py drives pano, geometry, preview and dataset jobs from pinned API graphs; an agentbox_video export node lets the client fetch the hash-checked COLMAP dataset over /view; weights come only from the splat-pano and splat-dataset profiles; training stays in LichtFeld behind its existing gate. No new port, mount or adapter."
   - "0.5.13 (2026-10-29): ADR-2153 is live: owned session daemon replaces AoE, :9095 and the board; profile volume retained unused for recovery. Cold boot and provider limits are recorded in the ADR."
   - "0.5.12 (2026-10-29): ADR-2154 (accepted, partial, staged; supersedes ADR-2152). Mermaid renders in the image with a pinned Pele 1.12.0 (`pele-render`, with `mmdc` kept as a compatibility shim); browsercontainer no longer carries mermaid-cli or `/render-mermaid`. No new port, adapter or sidecar; browsercontainer change lands at its next rebuild."
   - "0.5.11 (2026-10-28): ADR-2153 (proposed, none, inactive). Agent of Empires (aoe-serve, the aoe flake input, the aoe-profiles volume, scripts/aoe-*) is to be replaced by services/agentbox-sessions: a tmux-backed daemon that reconciles [[interaction_plane.session_seeds]] at boot and on a timer, recreates dead, blocked or drifted sessions unless their worktree is dirty, keeps worktrees under ~/workspace/wt/aoe-<slug>, and serves list/create/send/status on a unix socket. The launch contract (config/session-plane/launch.json) is verified by tests/cli/session-launch-contract.test.mjs. Scaffolded `loom` seed dropped. Services table and invariants unchanged until cut-over."
@@ -71,6 +72,14 @@ builtin ComfyUI or an enabled external ComfyUI integration. Image builds carry
 pinned code and model manifests; model provisioning runs independently into the
 retained model volume with runtime credentials, resumable transfers and hash
 verification. See [media preparation](developer/media-model-preparation.md).
+
+Image-to-splat (ADR-2175, staged until the host rebuild): the ComfyUI sidecar
+bakes a pinned SplatKit dataset stage (`SPLATKIT=1`). `splat_pipeline.py` drives
+pano, geometry, preview and dataset jobs from pinned API graphs, and an
+`agentbox_video` export node lets the client fetch the hash-checked COLMAP
+dataset over `/view` with no new mounts. Weights come only from the
+`splat-pano` and `splat-dataset` profiles, and training stays in LichtFeld
+behind its existing gate.
 
 ### Supervised services (real `[program:*]` blocks in flake.nix)
 

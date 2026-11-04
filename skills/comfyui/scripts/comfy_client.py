@@ -396,40 +396,55 @@ class Client:
                 raise TimeoutError(f"Observation timed out; job {receipt['prompt_id']} preserved in {receipt_path}; resume that receipt")
             time.sleep(min(max(poll, 0.01), max(0, deadline - time.monotonic())))
 
+    def fetch_view(self, item, destination, expected_sha256=None):
+        """Fetch one ``/view`` output atomically into ``destination``; returns ``(query, sha256, bytes)``.
+
+        ``expected_sha256`` (from a node that reports hashes) turns a mismatch into an error.
+        """
+        filename = item.get("filename", "")
+        if not filename or Path(filename).name != filename or "\\" in filename or filename in (".", ".."):
+            raise ComfyError(f"Unsafe output filename: {filename!r}")
+        query = {"filename": filename, "subfolder": item.get("subfolder", ""), "type": item.get("type", "output")}
+        destination = Path(destination)
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        fd, temporary = tempfile.mkstemp(prefix=".download-", dir=destination.parent)
+        digest, size = hashlib.sha256(), 0
+        try:
+            with os.fdopen(fd, "wb") as stream, urllib.request.urlopen(self.url + "/view?" + urllib.parse.urlencode(query), timeout=max(120, self.request_timeout)) as response:
+                while chunk := response.read(1024 * 1024):
+                    stream.write(chunk)
+                    digest.update(chunk)
+                    size += len(chunk)
+                stream.flush()
+                os.fsync(stream.fileno())
+            if size == 0:
+                raise ComfyError(f"Empty output: {filename}")
+            if expected_sha256 and digest.hexdigest() != expected_sha256:
+                raise ComfyError(f"SHA-256 mismatch for {query['subfolder']}/{filename}")
+            os.replace(temporary, destination)
+        finally:
+            if os.path.exists(temporary):
+                os.unlink(temporary)
+        return query, digest.hexdigest(), size
+
     def download_outputs(self, history, outdir):
         root = Path(outdir)
         root.mkdir(parents=True, exist_ok=True)
         saved, seen = [], set()
         for node_id, output in history.get("outputs", {}).items():
-            for kind in ("images", "gifs", "videos"):
+            # ``files`` comes from nodes that expose arbitrary files with a sha256
+            # (agentbox_video's AgentboxSplatDatasetExport); the hash is enforced.
+            for kind in ("images", "gifs", "videos", "files"):
                 for item in output.get(kind, []):
-                    filename = item.get("filename", "")
-                    if not filename or Path(filename).name != filename or "\\" in filename or filename in (".", ".."):
-                        raise ComfyError(f"Unsafe output filename: {filename!r}")
-                    query = {"filename": filename, "subfolder": item.get("subfolder", ""), "type": item.get("type", "output")}
-                    identity = json.dumps(query, sort_keys=True)
+                    identity = json.dumps({"filename": item.get("filename", ""), "subfolder": item.get("subfolder", ""),
+                                           "type": item.get("type", "output")}, sort_keys=True)
                     if identity in seen:
                         continue
                     seen.add(identity)
                     # Different nodes/subfolders can share a basename.
-                    destination = root / (hashlib.sha256(identity.encode()).hexdigest()[:12] + "-" + filename)
-                    fd, temporary = tempfile.mkstemp(prefix=".download-", dir=root)
-                    digest, size = hashlib.sha256(), 0
-                    try:
-                        with os.fdopen(fd, "wb") as stream, urllib.request.urlopen(self.url + "/view?" + urllib.parse.urlencode(query), timeout=max(120, self.request_timeout)) as response:
-                            while chunk := response.read(1024 * 1024):
-                                stream.write(chunk)
-                                digest.update(chunk)
-                                size += len(chunk)
-                            stream.flush()
-                            os.fsync(stream.fileno())
-                        if os.path.getsize(temporary) == 0:
-                            raise ComfyError(f"Empty output: {filename}")
-                        os.replace(temporary, destination)
-                    finally:
-                        if os.path.exists(temporary):
-                            os.unlink(temporary)
-                    saved.append({"node_id": node_id, "kind": kind, "path": str(destination.resolve()), "sha256": digest.hexdigest(), "bytes": size, **query})
+                    destination = root / (hashlib.sha256(identity.encode()).hexdigest()[:12] + "-" + Path(item.get("filename", "")).name)
+                    query, digest, size = self.fetch_view(item, destination, item.get("sha256"))
+                    saved.append({"node_id": node_id, "kind": kind, "path": str(destination.resolve()), "sha256": digest, "bytes": size, **query})
         return saved
 
 

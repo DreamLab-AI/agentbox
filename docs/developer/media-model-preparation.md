@@ -137,3 +137,28 @@ gsplat 1.5.3 built ahead of time (`--build-arg SPEDE=0` skips both). The `spede`
 weights to the models volume. Run `docker exec -i comfyui bash -s < comfyui-sidecar/verify-spede.sh`
 after the host rebuild. Details, the probe manifest and the untested points are in
 `skills/comfyui/references/spede.md`.
+
+## Optional image-to-splat dataset stage (ADR-2175)
+
+The ComfyUI image bakes the SplatKit dataset stage behind `--build-arg SPLATKIT=1` (the
+default; `SPLATKIT=0` skips it): ComfyUI-SplatKit, ComfyUI-Mickmumpitz-Nodes,
+ComfyUI-Krea2-Ostris-Edit and ComfyUI_UltimateSDUpscale at pinned revisions, unmodified, plus
+the SphereSfM executable bundle installed from a sha256-pinned archive. Their `opencv-python`
+and `ultralytics` requirement lines are filtered, so the single headless OpenCV build stays.
+The image sets `TORCH_HOME=/opt/ComfyUI/models/torch_hub` so torchvision's RAFT weights load
+from the models volume. Rebuild and recreate as in [Rebuild order](#rebuild-order), then:
+
+```bash
+docker exec -i comfyui bash -s < comfyui-sidecar/verify-splatkit.sh
+docker exec -i comfyui bash -s < comfyui-sidecar/verify-spede.sh
+docker exec comfyui python /opt/agentbox-media/scripts/download_video_models.py --profile splat-pano --profile splat-dataset --plan
+docker exec comfyui python /opt/agentbox-media/scripts/download_video_models.py --profile splat-pano --profile splat-dataset
+```
+
+The profiles total about 46.4 GB (plus the 614 MB Matrix-3D source kept under
+`models/.sources/`). The Matrix-3D pano LoRA is gated on Hugging Face: the account behind
+`HF_TOKEN` must accept its terms; provisioning derives the ComfyUI LoRA from it and verifies
+the pinned hash.
+The Krea 2 front end is under the Krea 2 Community License (commercial use only below
+USD 1M trailing annual revenue). Running the stages, judging camera paths and handing the
+dataset to LichtFeld are in `skills/comfyui/references/splatkit.md`.

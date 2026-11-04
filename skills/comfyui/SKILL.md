@@ -1,6 +1,6 @@
 ---
 name: comfyui
-description: "Generate AI images and video with ComfyUI's node-based workflows (FLUX, Stable Diffusion, video models) on a local GPU or distributed Salad Cloud compute. Use when a task needs text-to-image, image-to-image, or text/image-to-video generation, ComfyUI workflow authoring, or scaling generation across GPUs."
+description: "Generate AI images and video with ComfyUI's node-based workflows (FLUX, Stable Diffusion, video models) on a local GPU or distributed Salad Cloud compute. Use when a task needs text-to-image, image-to-image, or text/image-to-video generation, an image or 360 panorama turned into a Gaussian-splat training dataset, ComfyUI workflow authoring, or scaling generation across GPUs."
 depends_on_mcps:
   - comfyui
 ---
@@ -67,6 +67,12 @@ submission receipts. Local video model setup and workflows are documented in
 [`references/video-models.md`](references/video-models.md). For a complete explainer
 of the current repository, start with `codebase-video`.
 
+To turn a photo, a prompt or a 360° image into a Gaussian-splat dataset, use
+`scripts/splat_pipeline.py` (pano → geometry → preview → dataset) and read
+[`references/splatkit.md`](references/splatkit.md) first. To adapt a downloaded UI-format
+workflow to the API, convert it with `scripts/ui_to_api.py --url <comfy>` and `validate` the
+result before submitting.
+
 For a new task, inspect live `/system_stats`, `/queue` and the relevant
 `/object_info/<node>` schemas. Installed weights are discovered from loader
 choices, never from a static table in this skill. The bundled FLUX example
@@ -92,6 +98,7 @@ for rebuilds and independent CPU-only provisioning.
 - Video generation (AnimateDiff, CogVideoX, HunyuanVideo, LTX, Mochi, WAN, Cosmos)
 - Manage models, LoRAs, checkpoints, VAEs
 - Upscaling and post-processing
+- Image or 360° panorama → COLMAP dataset for Gaussian-splat training (SplatKit, Wan 2.1 + Matrix-3D)
 - Deploy to Salad Cloud for distributed GPU compute at scale
 
 ## When to use this skill
@@ -101,6 +108,7 @@ for rebuilds and independent CPU-only provisioning.
 - Batch-process generation tasks
 - Use or fine-tune LoRA models with FLUX/SD
 - Generate AI video from text or images
+- Build a Gaussian-splat training dataset (a navigable 3D world) from one image
 - Deploy image generation at scale across distributed GPUs
 
 ## When not to use
@@ -124,6 +132,9 @@ Detail lives in `references/` — pull the file that matches the task:
   JSON structures, supported image/video models, batch-generation Python.
 - [`references/salad-cloud.md`](references/salad-cloud.md) — Salad SDK deployment, the full
   recipe catalog (image/video/LLM), hardware recommendations, benchmarks, performance notes.
+- [`references/splatkit.md`](references/splatkit.md) — image/text/360° → splat dataset:
+  `splat_pipeline.py` stages, camera-path judging, `splat-pano`/`splat-dataset` profiles,
+  probe manifest, licences (ADR-2175).
 - [`references/spede.md`](references/spede.md) — ComfyUI-SpEdE node pack (Gaussian-splat
   object remove/extract/replace): build gate, `spede`/`spede-replace` profiles, probe manifest,
   untested points.
@@ -140,6 +151,7 @@ Bundled runnable assets in this directory:
 - **imagemagick** — post-process generated images
 - **ffmpeg-processing** — assemble/transcode generated video
 - **blender** — 3D-to-2D workflows
+- **lichtfeld-studio** — train the splat dataset this skill builds; **spark-scene** — view it
 - **pytorch-ml** — custom model training
 
 ## Related skills

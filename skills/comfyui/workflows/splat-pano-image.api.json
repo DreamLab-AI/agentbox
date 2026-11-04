@@ -1,0 +1,698 @@
+{
+  "unet": {
+    "class_type": "UNETLoader",
+    "inputs": {
+      "unet_name": "krea2_turbo_fp8_scaled.safetensors",
+      "weight_dtype": "default"
+    },
+    "_meta": {
+      "title": "Krea 2 Turbo"
+    }
+  },
+  "clip": {
+    "class_type": "CLIPLoader",
+    "inputs": {
+      "clip_name": "qwen3vl_4b_fp8_scaled.safetensors",
+      "type": "krea2",
+      "device": "default"
+    },
+    "_meta": {
+      "title": "Qwen3-VL 4B (krea2)"
+    }
+  },
+  "vae": {
+    "class_type": "VAELoader",
+    "inputs": {
+      "vae_name": "wan_2.1_vae.safetensors"
+    },
+    "_meta": {
+      "title": "Wan 2.1 VAE (Krea 2)"
+    }
+  },
+  "ostris_patch": {
+    "class_type": "Krea2OstrisEditModelPatch",
+    "inputs": {
+      "model": [
+        "unet",
+        0
+      ],
+      "kv_cache": true
+    },
+    "_meta": {
+      "title": "Ostris Edit patch"
+    }
+  },
+  "erp_lora": {
+    "class_type": "LoraLoaderModelOnly",
+    "inputs": {
+      "model": [
+        "ostris_patch",
+        0
+      ],
+      "lora_name": "krea2_oedit_360_erp_outpaint_lora_v1.safetensors",
+      "strength_model": 1.0
+    },
+    "_meta": {
+      "title": "ERP OUTPAINT LoRA"
+    }
+  },
+  "edit_model": {
+    "class_type": "ModelSamplingFlux",
+    "inputs": {
+      "model": [
+        "erp_lora",
+        0
+      ],
+      "max_shift": 0.90625,
+      "base_shift": 0.5,
+      "width": 2048,
+      "height": 1024
+    },
+    "_meta": {
+      "title": "Krea timestep curve (do not touch)"
+    }
+  },
+  "photo": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "splat_input.png"
+    },
+    "_meta": {
+      "title": "INPUT IMAGE"
+    }
+  },
+  "warp": {
+    "class_type": "MickmumpitzPanoWarp",
+    "inputs": {
+      "image": [
+        "photo",
+        0
+      ],
+      "width": 2048,
+      "height": 1024,
+      "length": 1,
+      "h_fov_deg": 70.0,
+      "yaw_deg": 0.0,
+      "pitch_deg": 0.0,
+      "mask_feather": 0,
+      "supersample": 2.0,
+      "grid_spacing_deg": 10,
+      "guide_opacity": 0.55,
+      "fill_color": "#000000"
+    },
+    "_meta": {
+      "title": "Photo on ERP canvas"
+    }
+  },
+  "photo_mask": {
+    "class_type": "InvertMask",
+    "inputs": {
+      "mask": [
+        "warp",
+        2
+      ]
+    },
+    "_meta": {
+      "title": "Photo mask"
+    }
+  },
+  "green": {
+    "class_type": "EmptyImage",
+    "inputs": {
+      "width": 2048,
+      "height": 1024,
+      "batch_size": 1,
+      "color": 65280
+    },
+    "_meta": {
+      "title": "Green canvas (#00ff00)"
+    }
+  },
+  "canvas": {
+    "class_type": "ImageCompositeMasked",
+    "inputs": {
+      "destination": [
+        "green",
+        0
+      ],
+      "source": [
+        "warp",
+        0
+      ],
+      "x": 0,
+      "y": 0,
+      "resize_source": false,
+      "mask": [
+        "photo_mask",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "Control canvas (photo on green)"
+    }
+  },
+  "positive_text": {
+    "class_type": "TextEncodeKrea2OstrisEdit",
+    "inputs": {
+      "clip": [
+        "clip",
+        0
+      ],
+      "prompt": "Fill the green spaces according to the image. Outpaint as a seamless 360 equirectangular panorama (2:1). Keep the horizon level. Match left and right edges. Professional photography of a living room.",
+      "image1": [
+        "canvas",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "Positive (instruction + scene)"
+    }
+  },
+  "negative_text": {
+    "class_type": "TextEncodeKrea2OstrisEdit",
+    "inputs": {
+      "clip": [
+        "clip",
+        0
+      ],
+      "prompt": "ugly, low quality",
+      "image1": [
+        "canvas",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "Negative"
+    }
+  },
+  "positive_ref": {
+    "class_type": "MickmumpitzPanoKrea2Reference",
+    "inputs": {
+      "conditioning": [
+        "positive_text",
+        0
+      ],
+      "vae": [
+        "vae",
+        0
+      ],
+      "image": [
+        "canvas",
+        0
+      ],
+      "max_megapixels": 8.0
+    },
+    "_meta": {
+      "title": "Full-res reference (positive)"
+    }
+  },
+  "positive": {
+    "class_type": "FluxKontextMultiReferenceLatentMethod",
+    "inputs": {
+      "conditioning": [
+        "positive_ref",
+        0
+      ],
+      "reference_latents_method": "index_timestep_zero"
+    },
+    "_meta": {
+      "title": "Reference method (positive)"
+    }
+  },
+  "negative_ref": {
+    "class_type": "MickmumpitzPanoKrea2Reference",
+    "inputs": {
+      "conditioning": [
+        "negative_text",
+        0
+      ],
+      "vae": [
+        "vae",
+        0
+      ],
+      "image": [
+        "canvas",
+        0
+      ],
+      "max_megapixels": 8.0
+    },
+    "_meta": {
+      "title": "Full-res reference (negative)"
+    }
+  },
+  "negative": {
+    "class_type": "FluxKontextMultiReferenceLatentMethod",
+    "inputs": {
+      "conditioning": [
+        "negative_ref",
+        0
+      ],
+      "reference_latents_method": "index_timestep_zero"
+    },
+    "_meta": {
+      "title": "Reference method (negative)"
+    }
+  },
+  "latent": {
+    "class_type": "EmptyLatentImage",
+    "inputs": {
+      "width": 2048,
+      "height": 1024,
+      "batch_size": 1
+    },
+    "_meta": {
+      "title": "Empty latent (pano)"
+    }
+  },
+  "sample": {
+    "class_type": "KSampler",
+    "inputs": {
+      "model": [
+        "edit_model",
+        0
+      ],
+      "positive": [
+        "positive",
+        0
+      ],
+      "negative": [
+        "negative",
+        0
+      ],
+      "latent_image": [
+        "latent",
+        0
+      ],
+      "seed": 12345,
+      "steps": 10,
+      "cfg": 1.0,
+      "sampler_name": "er_sde",
+      "scheduler": "simple",
+      "denoise": 1.0
+    },
+    "_meta": {
+      "title": "IMAGE->PANO (Krea 2 + Ostris Edit)"
+    }
+  },
+  "decode": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": [
+        "sample",
+        0
+      ],
+      "vae": [
+        "vae",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "Decode pano"
+    }
+  },
+  "harmonize": {
+    "class_type": "MickmumpitzPanoHarmonizeBoundary",
+    "inputs": {
+      "image": [
+        "decode",
+        0
+      ],
+      "plate": [
+        "canvas",
+        0
+      ],
+      "inpaint_mask": [
+        "warp",
+        2
+      ],
+      "strength": 1.0,
+      "solve_scale": 8,
+      "iterations": 800,
+      "wrap_horizontal": true
+    },
+    "_meta": {
+      "title": "Harmonize boundary"
+    }
+  },
+  "restore_photo": {
+    "class_type": "ImageCompositeMasked",
+    "inputs": {
+      "destination": [
+        "harmonize",
+        0
+      ],
+      "source": [
+        "warp",
+        0
+      ],
+      "x": 0,
+      "y": 0,
+      "resize_source": false,
+      "mask": [
+        "photo_mask",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "Put original photo back"
+    }
+  },
+  "reference_roll": {
+    "class_type": "MickmumpitzPanoRollHorizontal",
+    "inputs": {
+      "image": [
+        "canvas",
+        0
+      ],
+      "fraction": 0.5
+    },
+    "_meta": {
+      "title": "Roll reference 50%"
+    }
+  },
+  "positive_rolled": {
+    "class_type": "MickmumpitzPanoKrea2Reference",
+    "inputs": {
+      "conditioning": [
+        "positive",
+        0
+      ],
+      "vae": [
+        "vae",
+        0
+      ],
+      "image": [
+        "reference_roll",
+        0
+      ],
+      "max_megapixels": 8.0
+    },
+    "_meta": {
+      "title": "Rolled reference (positive)"
+    }
+  },
+  "negative_rolled": {
+    "class_type": "MickmumpitzPanoKrea2Reference",
+    "inputs": {
+      "conditioning": [
+        "negative",
+        0
+      ],
+      "vae": [
+        "vae",
+        0
+      ],
+      "image": [
+        "reference_roll",
+        0
+      ],
+      "max_megapixels": 8.0
+    },
+    "_meta": {
+      "title": "Rolled reference (negative)"
+    }
+  },
+  "seam_roll": {
+    "class_type": "MickmumpitzPanoRollHorizontal",
+    "inputs": {
+      "image": [
+        "restore_photo",
+        0
+      ],
+      "fraction": 0.5
+    },
+    "_meta": {
+      "title": "Roll 50% (seam -> centre)"
+    }
+  },
+  "seam_encode": {
+    "class_type": "VAEEncode",
+    "inputs": {
+      "pixels": [
+        "seam_roll",
+        0
+      ],
+      "vae": [
+        "vae",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "Encode rolled pano"
+    }
+  },
+  "seam_mask": {
+    "class_type": "MickmumpitzPanoSeamMask",
+    "inputs": {
+      "width": 2048,
+      "height": 1024,
+      "seam_width": 96,
+      "feather": 24
+    },
+    "_meta": {
+      "title": "Seam strip mask"
+    }
+  },
+  "seam_latent": {
+    "class_type": "SetLatentNoiseMask",
+    "inputs": {
+      "samples": [
+        "seam_encode",
+        0
+      ],
+      "mask": [
+        "seam_mask",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "Mask seam strip"
+    }
+  },
+  "seam_sample": {
+    "class_type": "KSampler",
+    "inputs": {
+      "model": [
+        "edit_model",
+        0
+      ],
+      "positive": [
+        "positive_rolled",
+        0
+      ],
+      "negative": [
+        "negative_rolled",
+        0
+      ],
+      "latent_image": [
+        "seam_latent",
+        0
+      ],
+      "seed": 12345,
+      "steps": 10,
+      "cfg": 4.0,
+      "sampler_name": "euler",
+      "scheduler": "simple",
+      "denoise": 0.45
+    },
+    "_meta": {
+      "title": "SEAM INPAINT"
+    }
+  },
+  "seam_decode": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": [
+        "seam_sample",
+        0
+      ],
+      "vae": [
+        "vae",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "Decode seam fix"
+    }
+  },
+  "pano_2k": {
+    "class_type": "MickmumpitzPanoRollHorizontal",
+    "inputs": {
+      "image": [
+        "seam_decode",
+        0
+      ],
+      "fraction": 0.5
+    },
+    "_meta": {
+      "title": "Roll back"
+    }
+  },
+  "save_2k": {
+    "class_type": "SaveImage",
+    "inputs": {
+      "images": [
+        "pano_2k",
+        0
+      ],
+      "filename_prefix": "splat/scene/pano_2k"
+    },
+    "_meta": {
+      "title": "SELECTED PANO (2K)"
+    }
+  },
+  "esrgan": {
+    "class_type": "UpscaleModelLoader",
+    "inputs": {
+      "model_name": "RealESRGAN_x2.pth"
+    },
+    "_meta": {
+      "title": "RealESRGAN x2"
+    }
+  },
+  "esrgan_up": {
+    "class_type": "ImageUpscaleWithModel",
+    "inputs": {
+      "upscale_model": [
+        "esrgan",
+        0
+      ],
+      "image": [
+        "pano_2k",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "Upscale x2"
+    }
+  },
+  "scale_8k": {
+    "class_type": "ImageScale",
+    "inputs": {
+      "image": [
+        "esrgan_up",
+        0
+      ],
+      "upscale_method": "lanczos",
+      "width": 8192,
+      "height": 4096,
+      "crop": "disabled"
+    },
+    "_meta": {
+      "title": "Scale to 8192x4096"
+    }
+  },
+  "sharpen": {
+    "class_type": "ImageSharpen",
+    "inputs": {
+      "image": [
+        "scale_8k",
+        0
+      ],
+      "sharpen_radius": 1,
+      "sigma": 1.0,
+      "alpha": 0.5
+    },
+    "_meta": {
+      "title": "Pre-sharpen"
+    }
+  },
+  "noise": {
+    "class_type": "ImageAddNoise",
+    "inputs": {
+      "image": [
+        "sharpen",
+        0
+      ],
+      "seed": 0,
+      "strength": 0.01
+    },
+    "_meta": {
+      "title": "Grain for the refine"
+    }
+  },
+  "upscale_prompt": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "clip": [
+        "clip",
+        0
+      ],
+      "text": "High resolution photography"
+    },
+    "_meta": {
+      "title": "Prompt for upscaler"
+    }
+  },
+  "upscale_negative": {
+    "class_type": "ConditioningZeroOut",
+    "inputs": {
+      "conditioning": [
+        "upscale_prompt",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "Negative (empty, cfg 1)"
+    }
+  },
+  "usdu": {
+    "class_type": "UltimateSDUpscaleNoUpscale",
+    "inputs": {
+      "upscaled_image": [
+        "noise",
+        0
+      ],
+      "model": [
+        "unet",
+        0
+      ],
+      "positive": [
+        "upscale_prompt",
+        0
+      ],
+      "negative": [
+        "upscale_negative",
+        0
+      ],
+      "vae": [
+        "vae",
+        0
+      ],
+      "seed": 0,
+      "steps": 2,
+      "cfg": 1.0,
+      "sampler_name": "er_sde",
+      "scheduler": "simple",
+      "denoise": 0.15,
+      "mode_type": "Linear",
+      "tile_width": 1024,
+      "tile_height": 1024,
+      "mask_blur": 32,
+      "tile_padding": 64,
+      "seam_fix_mode": "None",
+      "seam_fix_denoise": 1.0,
+      "seam_fix_width": 64,
+      "seam_fix_mask_blur": 8,
+      "seam_fix_padding": 16,
+      "force_uniform_tiles": true,
+      "tiled_decode": false
+    },
+    "_meta": {
+      "title": "Tiled Krea refine (8K)"
+    }
+  },
+  "save_8k": {
+    "class_type": "SaveImage",
+    "inputs": {
+      "images": [
+        "usdu",
+        0
+      ],
+      "filename_prefix": "splat/scene/pano_8k"
+    },
+    "_meta": {
+      "title": "FINAL 360 PANO (8K)"
+    }
+  }
+}

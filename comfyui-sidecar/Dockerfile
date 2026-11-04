@@ -111,6 +111,63 @@ RUN if [ "$SPEDE" = "1" ]; then \
       rm -f /tmp/pipcheck.txt; \
       python -c "import torch, gsplat, scipy, plyfile, numpy, PIL, cv2; from importlib.metadata import version; assert torch.__version__ == '2.14.0+cu130', torch.__version__; print('torch', torch.__version__, 'gsplat', gsplat.__version__, 'scipy', scipy.__version__, 'plyfile', version('plyfile'), 'numpy', numpy.__version__, 'Pillow', PIL.__version__, 'cv2', cv2.__version__)"; \
     fi
+# Image-to-splat dataset stage (ADR-2175). Four node packs at pinned revisions, unmodified:
+# SplatKit (MIT; MoGe/Matrix-3D vendored, MIT), Mickmumpitz-Nodes (MIT; ERP pano nodes, Bundle),
+# Krea2-Ostris-Edit (MIT) and UltimateSDUpscale (GPL-3.0, with its pinned ultimate-upscale
+# submodule). `--build-arg SPLATKIT=0` skips all of it. Not installed: SplatKit's managed training
+# venv and 4DAnyone (LichtFeld trains), ComfyUI_essentials (the graphs use core ImageSharpen),
+# the LatLong preview node and Sage Attention. Both packs' requirements name the GUI
+# `opencv-python`; the line is filtered so the single headless cv2 above stays the only build.
+# Mickmumpitz-Nodes also lists `ultralytics` (AGPL-3.0, pulls GUI cv2): only its face-crop node
+# imports it, lazily, and no splat graph uses that node, so it is filtered too.
+# numpy and torch are held by constraint so the packs' dependencies cannot move them.
+ARG SPLATKIT=1
+ARG SPLATKIT_REV=47c93ee95c345314b0b3b0a998a80788fc984207
+# 270afbd is the first pin with nodes/panorama_tools (the Pano* ERP nodes); the operator workflow's
+# e3df7e11 stamp predates them.
+ARG MICKMUMPITZ_NODES_REV=270afbd7659aec81ba40cd54c65cd4d872394ee4
+ARG KREA2_OSTRIS_REV=7756566160c4a1b24bb1bd9f0ff3ced1a83d7547
+ARG USDU_REV=627c871f14532b164331f08d0eebfbf7404161ee
+# SphereSfM linux-x64 bundle (json87/SphereSfM 6b40b2d, COLMAP 3.8, BSD-3-Clause; bundled lib/
+# includes LGPL/GPL SuiteSparse and FreeImage modules, run as a separate executable). The sha256 is
+# the one SplatKit pins in core/spheresfm_colmap.py; installing it here means the node never takes
+# its first-use download path.
+ARG SPHERESFM_URL=https://github.com/mickmumpitz/ComfyUI-SplatKit/releases/download/spheresfm-bin-v1/colmap_sphere_cuda_linux64.tar.gz
+ARG SPHERESFM_SHA256=df072aabf23731615367be220e590cc5d8324038c9eafe77f9552e2b075b7540
+RUN --mount=type=cache,target=/root/.cache/pip if [ "$SPLATKIT" = "1" ]; then \
+      set -eux; \
+      clone() { git init "/opt/ComfyUI/custom_nodes/$1" && cd "/opt/ComfyUI/custom_nodes/$1" \
+        && git remote add origin "https://github.com/$2.git" \
+        && git fetch --depth 1 origin "$3" && git checkout --detach FETCH_HEAD; }; \
+      clone ComfyUI-SplatKit mickmumpitz/ComfyUI-SplatKit "$SPLATKIT_REV"; \
+      clone ComfyUI-Mickmumpitz-Nodes mickmumpitz/ComfyUI-Mickmumpitz-Nodes "$MICKMUMPITZ_NODES_REV"; \
+      clone ComfyUI-Krea2-Ostris-Edit ostris/ComfyUI-Krea2-Ostris-Edit "$KREA2_OSTRIS_REV"; \
+      clone ComfyUI_UltimateSDUpscale ssitu/ComfyUI_UltimateSDUpscale "$USDU_REV"; \
+      git submodule update --init --depth 1; \
+      test -f repositories/ultimate_sd_upscale/scripts/ultimate-upscale.py; \
+      cd /opt/ComfyUI/custom_nodes; \
+      grep -q '^opencv-python' ComfyUI-SplatKit/requirements.txt; \
+      grep -q '^opencv-python' ComfyUI-Mickmumpitz-Nodes/requirements.txt; \
+      grep -q '^ultralytics' ComfyUI-Mickmumpitz-Nodes/requirements.txt; \
+      cat ComfyUI-SplatKit/requirements.txt ComfyUI-Mickmumpitz-Nodes/requirements.txt \
+        | sed 's/#.*//' | grep -v '^[[:space:]]*$' | grep -viE '^(opencv|ultralytics)' > /tmp/splatkit-requirements.txt; \
+      if grep -qiE 'opencv|ultralytics' /tmp/splatkit-requirements.txt; then echo 'filtered line survived' >&2; exit 1; fi; \
+      python -c "import numpy, torch; print(f'numpy=={numpy.__version__}'); print('torch==2.14.0')" > /tmp/splatkit-constraints.txt; \
+      printf 'trimesh==5.2.0\nscikit-image==0.26.0\nmatplotlib==3.11.2\n' >> /tmp/splatkit-constraints.txt; \
+      pip install --timeout 180 --retries 10 -r /tmp/splatkit-requirements.txt -c /tmp/splatkit-constraints.txt; \
+      rm -f /tmp/splatkit-requirements.txt /tmp/splatkit-constraints.txt; \
+      python -c "import sys, urllib.request; urllib.request.urlretrieve(sys.argv[1], '/tmp/spheresfm.tar.gz')" "$SPHERESFM_URL"; \
+      echo "$SPHERESFM_SHA256  /tmp/spheresfm.tar.gz" | sha256sum -c -; \
+      python ComfyUI-SplatKit/tools/install_spheresfm.py --archive /tmp/spheresfm.tar.gz; \
+      rm -f /tmp/spheresfm.tar.gz; \
+      test -x ComfyUI-SplatKit/bin/colmap_sphere; \
+      ComfyUI-SplatKit/bin/colmap_sphere help | head -3; \
+      pip list 2>/dev/null | grep -ci '^opencv' | grep -qx 1; \
+      python -c "import cv2, numpy, torch, trimesh, skimage, matplotlib; from importlib.metadata import version; assert torch.__version__ == '2.14.0+cu130', torch.__version__; version('opencv-python-headless'); print('splatkit deps: cv2', cv2.__version__, 'numpy', numpy.__version__, 'trimesh', trimesh.__version__, 'skimage', skimage.__version__)"; \
+    fi
+# HiRes Composite loads torchvision RAFT weights through torch.hub; the splat-dataset profile
+# provisions them into the models volume, so the hub cache lives there too.
+ENV TORCH_HOME=/opt/ComfyUI/models/torch_hub
 COPY comfyui-sidecar/nodes/agentbox_video /opt/ComfyUI/custom_nodes/agentbox_video
 COPY skills/comfyui/scripts/download_video_models.py /opt/agentbox-media/scripts/download_video_models.py
 COPY skills/comfyui/models/stopmotion-candidates.json /opt/agentbox-media/models/stopmotion-candidates.json

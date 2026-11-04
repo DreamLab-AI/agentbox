@@ -1,0 +1,1108 @@
+{
+  "lightx2v_lora": {
+    "class_type": "LoraLoaderModelOnly",
+    "inputs": {
+      "lora_name": "lightx2v_T2V_14B_cfg_step_distill_v2_lora_rank64_bf16.safetensors",
+      "strength_model": 1,
+      "model": [
+        "pano_lora",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "lightx2v_lora"
+    }
+  },
+  "p1_wan_video": {
+    "class_type": "CreateVideo",
+    "inputs": {
+      "fps": 16,
+      "bit_depth": 8,
+      "images": [
+        "p1_wan_decode",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "p1_wan_video"
+    }
+  },
+  "wan_model": {
+    "class_type": "ModelSamplingSD3",
+    "inputs": {
+      "shift": 5,
+      "model": [
+        "lightx2v_lora",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "wan_model"
+    }
+  },
+  "pano_lora": {
+    "class_type": "LoraLoaderModelOnly",
+    "inputs": {
+      "lora_name": "pano_video_gen_720p_comfy.safetensors",
+      "strength_model": 0.98,
+      "model": [
+        "wan_unet",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "pano_lora"
+    }
+  },
+  "wan_unet": {
+    "class_type": "UNETLoader",
+    "inputs": {
+      "unet_name": "wan2.1_i2v_720p_14B_fp8_e4m3fn.safetensors",
+      "weight_dtype": "default"
+    },
+    "_meta": {
+      "title": "wan_unet"
+    }
+  },
+  "negative": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "text": "The video is not of a high quality, it has a low resolution. Distortion. strange artifacts.",
+      "clip": [
+        "umt5",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "negative"
+    }
+  },
+  "positive": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "text": "A high quality panoramic video of the scene, photorealistic, very clear, smooth camera movement, ultra-detailed, high resolution. Panorama.",
+      "clip": [
+        "umt5",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "positive"
+    }
+  },
+  "umt5": {
+    "class_type": "CLIPLoader",
+    "inputs": {
+      "clip_name": "umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+      "type": "wan",
+      "device": "default"
+    },
+    "_meta": {
+      "title": "umt5"
+    }
+  },
+  "p1_control_video": {
+    "class_type": "CreateVideo",
+    "inputs": {
+      "fps": 16,
+      "bit_depth": 8,
+      "images": [
+        "p1_control",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "p1_control_video"
+    }
+  },
+  "p1_wan_cond": {
+    "class_type": "SplatKit_WanI2VMaskedConditioning",
+    "inputs": {
+      "width": 1440,
+      "height": 720,
+      "length": 81,
+      "hole_fill": "black",
+      "invert_mask": false,
+      "positive": [
+        "positive",
+        0
+      ],
+      "negative": [
+        "negative",
+        0
+      ],
+      "vae": [
+        "wan_vae",
+        0
+      ],
+      "control_video": [
+        "p1_control",
+        0
+      ],
+      "control_mask": [
+        "p1_control",
+        1
+      ],
+      "clip_vision_output": [
+        "clip_vision_encode",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "Wan Conditioning"
+    }
+  },
+  "p1_wan_decode": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": [
+        "p1_wan_sample",
+        0
+      ],
+      "vae": [
+        "wan_vae",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "p1_wan_decode"
+    }
+  },
+  "p1_wan_sample": {
+    "class_type": "KSampler",
+    "inputs": {
+      "seed": 0,
+      "steps": [
+        "steps",
+        0
+      ],
+      "cfg": 1,
+      "sampler_name": "euler",
+      "scheduler": "normal",
+      "denoise": 1,
+      "model": [
+        "wan_model",
+        0
+      ],
+      "positive": [
+        "p1_wan_cond",
+        0
+      ],
+      "negative": [
+        "p1_wan_cond",
+        1
+      ],
+      "latent_image": [
+        "p1_wan_cond",
+        2
+      ]
+    },
+    "_meta": {
+      "title": "p1_wan_sample"
+    }
+  },
+  "p1_save_wan": {
+    "class_type": "SaveVideo",
+    "inputs": {
+      "filename_prefix": [
+        "project",
+        1
+      ],
+      "format": "auto",
+      "format.codec": "auto",
+      "video": [
+        "p1_wan_video",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "p1_save_wan"
+    }
+  },
+  "p1_hires": {
+    "class_type": "SplatKit_HiResComposite",
+    "inputs": {
+      "rail": [
+        "p1_control",
+        4
+      ],
+      "set_name": [
+        "project",
+        0
+      ],
+      "traj_index": 0,
+      "output_width": 8192,
+      "base_mode": "geometry",
+      "frames": "0-80/2",
+      "proxy_width": 2048,
+      "geom_scale": 2,
+      "moge_level": 6,
+      "merge_long": 1440,
+      "depth_grid": "geometry_res",
+      "moge_ckpt": "model.pt",
+      "rho_hi": 4,
+      "tone_work": 1024,
+      "prefetch": true,
+      "save_video": false,
+      "debug_save": "all",
+      "gate_mode": "hard_soft_edge",
+      "tone_mode": "off",
+      "auto_name": false,
+      "panorama": [
+        "pano",
+        0
+      ],
+      "wan_frames": [
+        "p1_wan_decode",
+        0
+      ],
+      "upscale_model": [
+        "hole_fill_upscaler",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "p1_hires"
+    }
+  },
+  "p2_control_video": {
+    "class_type": "CreateVideo",
+    "inputs": {
+      "fps": 16,
+      "bit_depth": 8,
+      "images": [
+        "p2_control",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "p2_control_video"
+    }
+  },
+  "p2_wan_cond": {
+    "class_type": "SplatKit_WanI2VMaskedConditioning",
+    "inputs": {
+      "width": 1440,
+      "height": 720,
+      "length": 81,
+      "hole_fill": "black",
+      "invert_mask": false,
+      "positive": [
+        "positive",
+        0
+      ],
+      "negative": [
+        "negative",
+        0
+      ],
+      "vae": [
+        "wan_vae",
+        0
+      ],
+      "control_video": [
+        "p2_control",
+        0
+      ],
+      "control_mask": [
+        "p2_control",
+        1
+      ],
+      "clip_vision_output": [
+        "clip_vision_encode",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "Wan Conditioning"
+    }
+  },
+  "p2_wan_sample": {
+    "class_type": "KSampler",
+    "inputs": {
+      "seed": 0,
+      "steps": [
+        "steps",
+        0
+      ],
+      "cfg": 1,
+      "sampler_name": "euler",
+      "scheduler": "normal",
+      "denoise": 1,
+      "model": [
+        "wan_model",
+        0
+      ],
+      "positive": [
+        "p2_wan_cond",
+        0
+      ],
+      "negative": [
+        "p2_wan_cond",
+        1
+      ],
+      "latent_image": [
+        "p2_wan_cond",
+        2
+      ]
+    },
+    "_meta": {
+      "title": "p2_wan_sample"
+    }
+  },
+  "p2_wan_video": {
+    "class_type": "CreateVideo",
+    "inputs": {
+      "fps": 16,
+      "bit_depth": 8,
+      "images": [
+        "p2_wan_decode",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "p2_wan_video"
+    }
+  },
+  "p2_wan_decode": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": [
+        "p2_wan_sample",
+        0
+      ],
+      "vae": [
+        "wan_vae",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "p2_wan_decode"
+    }
+  },
+  "p2_save_wan": {
+    "class_type": "SaveVideo",
+    "inputs": {
+      "filename_prefix": [
+        "project",
+        1
+      ],
+      "format": "auto",
+      "format.codec": "auto",
+      "video": [
+        "p2_wan_video",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "p2_save_wan"
+    }
+  },
+  "p3_control_video": {
+    "class_type": "CreateVideo",
+    "inputs": {
+      "fps": 16,
+      "bit_depth": 8,
+      "images": [
+        "p3_control",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "p3_control_video"
+    }
+  },
+  "p3_wan_cond": {
+    "class_type": "SplatKit_WanI2VMaskedConditioning",
+    "inputs": {
+      "width": 1440,
+      "height": 720,
+      "length": 81,
+      "hole_fill": "black",
+      "invert_mask": false,
+      "positive": [
+        "positive",
+        0
+      ],
+      "negative": [
+        "negative",
+        0
+      ],
+      "vae": [
+        "wan_vae",
+        0
+      ],
+      "control_video": [
+        "p3_control",
+        0
+      ],
+      "control_mask": [
+        "p3_control",
+        1
+      ],
+      "clip_vision_output": [
+        "clip_vision_encode",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "Wan Conditioning"
+    }
+  },
+  "p3_wan_sample": {
+    "class_type": "KSampler",
+    "inputs": {
+      "seed": 0,
+      "steps": [
+        "steps",
+        0
+      ],
+      "cfg": 1,
+      "sampler_name": "euler",
+      "scheduler": "normal",
+      "denoise": 1,
+      "model": [
+        "wan_model",
+        0
+      ],
+      "positive": [
+        "p3_wan_cond",
+        0
+      ],
+      "negative": [
+        "p3_wan_cond",
+        1
+      ],
+      "latent_image": [
+        "p3_wan_cond",
+        2
+      ]
+    },
+    "_meta": {
+      "title": "p3_wan_sample"
+    }
+  },
+  "p3_wan_video": {
+    "class_type": "CreateVideo",
+    "inputs": {
+      "fps": 16,
+      "bit_depth": 8,
+      "images": [
+        "p3_wan_decode",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "p3_wan_video"
+    }
+  },
+  "p3_wan_decode": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": [
+        "p3_wan_sample",
+        0
+      ],
+      "vae": [
+        "wan_vae",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "p3_wan_decode"
+    }
+  },
+  "p3_save_wan": {
+    "class_type": "SaveVideo",
+    "inputs": {
+      "filename_prefix": [
+        "project",
+        1
+      ],
+      "format": "auto",
+      "format.codec": "auto",
+      "video": [
+        "p3_wan_video",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "p3_save_wan"
+    }
+  },
+  "p4_control_video": {
+    "class_type": "CreateVideo",
+    "inputs": {
+      "fps": 16,
+      "bit_depth": 8,
+      "images": [
+        "p4_control",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "p4_control_video"
+    }
+  },
+  "p4_wan_cond": {
+    "class_type": "SplatKit_WanI2VMaskedConditioning",
+    "inputs": {
+      "width": 1440,
+      "height": 720,
+      "length": 81,
+      "hole_fill": "black",
+      "invert_mask": false,
+      "positive": [
+        "positive",
+        0
+      ],
+      "negative": [
+        "negative",
+        0
+      ],
+      "vae": [
+        "wan_vae",
+        0
+      ],
+      "control_video": [
+        "p4_control",
+        0
+      ],
+      "control_mask": [
+        "p4_control",
+        1
+      ],
+      "clip_vision_output": [
+        "clip_vision_encode",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "Wan Conditioning"
+    }
+  },
+  "p4_wan_sample": {
+    "class_type": "KSampler",
+    "inputs": {
+      "seed": 0,
+      "steps": [
+        "steps",
+        0
+      ],
+      "cfg": 1,
+      "sampler_name": "euler",
+      "scheduler": "normal",
+      "denoise": 1,
+      "model": [
+        "wan_model",
+        0
+      ],
+      "positive": [
+        "p4_wan_cond",
+        0
+      ],
+      "negative": [
+        "p4_wan_cond",
+        1
+      ],
+      "latent_image": [
+        "p4_wan_cond",
+        2
+      ]
+    },
+    "_meta": {
+      "title": "p4_wan_sample"
+    }
+  },
+  "p4_wan_video": {
+    "class_type": "CreateVideo",
+    "inputs": {
+      "fps": 16,
+      "bit_depth": 8,
+      "images": [
+        "p4_wan_decode",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "p4_wan_video"
+    }
+  },
+  "p4_wan_decode": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": [
+        "p4_wan_sample",
+        0
+      ],
+      "vae": [
+        "wan_vae",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "p4_wan_decode"
+    }
+  },
+  "p4_save_wan": {
+    "class_type": "SaveVideo",
+    "inputs": {
+      "filename_prefix": [
+        "project",
+        1
+      ],
+      "format": "auto",
+      "format.codec": "auto",
+      "video": [
+        "p4_wan_video",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "p4_save_wan"
+    }
+  },
+  "pano": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "splat_pano.png"
+    },
+    "_meta": {
+      "title": "pano"
+    }
+  },
+  "p2_hires": {
+    "class_type": "SplatKit_HiResComposite",
+    "inputs": {
+      "rail": [
+        "p2_control",
+        4
+      ],
+      "set_name": [
+        "project",
+        0
+      ],
+      "traj_index": 1,
+      "output_width": 8192,
+      "base_mode": "geometry",
+      "frames": "0-80/2",
+      "proxy_width": 2048,
+      "geom_scale": 2,
+      "moge_level": 6,
+      "merge_long": 1440,
+      "depth_grid": "geometry_res",
+      "moge_ckpt": "model.pt",
+      "rho_hi": 4,
+      "tone_work": 1024,
+      "prefetch": true,
+      "save_video": false,
+      "debug_save": "all",
+      "gate_mode": "hard_soft_edge",
+      "tone_mode": "off",
+      "auto_name": false,
+      "panorama": [
+        "pano",
+        0
+      ],
+      "wan_frames": [
+        "p2_wan_decode",
+        0
+      ],
+      "upscale_model": [
+        "hole_fill_upscaler",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "p2_hires"
+    }
+  },
+  "p3_hires": {
+    "class_type": "SplatKit_HiResComposite",
+    "inputs": {
+      "rail": [
+        "p3_control",
+        4
+      ],
+      "set_name": [
+        "project",
+        0
+      ],
+      "traj_index": 2,
+      "output_width": 8192,
+      "base_mode": "geometry",
+      "frames": "0-80/2",
+      "proxy_width": 2048,
+      "geom_scale": 2,
+      "moge_level": 6,
+      "merge_long": 1440,
+      "depth_grid": "geometry_res",
+      "moge_ckpt": "model.pt",
+      "rho_hi": 4,
+      "tone_work": 1024,
+      "prefetch": true,
+      "save_video": false,
+      "debug_save": "all",
+      "gate_mode": "hard_soft_edge",
+      "tone_mode": "off",
+      "auto_name": false,
+      "panorama": [
+        "pano",
+        0
+      ],
+      "wan_frames": [
+        "p3_wan_decode",
+        0
+      ],
+      "upscale_model": [
+        "hole_fill_upscaler",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "p3_hires"
+    }
+  },
+  "p4_hires": {
+    "class_type": "SplatKit_HiResComposite",
+    "inputs": {
+      "rail": [
+        "p4_control",
+        4
+      ],
+      "set_name": [
+        "project",
+        0
+      ],
+      "traj_index": 3,
+      "output_width": 8192,
+      "base_mode": "geometry",
+      "frames": "0-80/2",
+      "proxy_width": 2048,
+      "geom_scale": 2,
+      "moge_level": 6,
+      "merge_long": 1440,
+      "depth_grid": "geometry_res",
+      "moge_ckpt": "model.pt",
+      "rho_hi": 4,
+      "tone_work": 1024,
+      "prefetch": true,
+      "save_video": false,
+      "debug_save": "all",
+      "gate_mode": "hard_soft_edge",
+      "tone_mode": "off",
+      "auto_name": false,
+      "panorama": [
+        "pano",
+        0
+      ],
+      "wan_frames": [
+        "p4_wan_decode",
+        0
+      ],
+      "upscale_model": [
+        "hole_fill_upscaler",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "p4_hires"
+    }
+  },
+  "project": {
+    "class_type": "SplatKit_DatasetProject",
+    "inputs": {
+      "dataset_name": "scene",
+      "reset": false
+    },
+    "_meta": {
+      "title": "project"
+    }
+  },
+  "p2_save_control": {
+    "class_type": "SaveVideo",
+    "inputs": {
+      "filename_prefix": [
+        "project",
+        1
+      ],
+      "format": "auto",
+      "format.codec": "auto",
+      "video": [
+        "p2_control_video",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "p2_save_control"
+    }
+  },
+  "p1_save_control": {
+    "class_type": "SaveVideo",
+    "inputs": {
+      "filename_prefix": [
+        "project",
+        1
+      ],
+      "format": "auto",
+      "format.codec": "auto",
+      "video": [
+        "p1_control_video",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "p1_save_control"
+    }
+  },
+  "p4_save_control": {
+    "class_type": "SaveVideo",
+    "inputs": {
+      "filename_prefix": [
+        "project",
+        1
+      ],
+      "format": "auto",
+      "format.codec": "auto",
+      "video": [
+        "p4_control_video",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "p4_save_control"
+    }
+  },
+  "p3_save_control": {
+    "class_type": "SaveVideo",
+    "inputs": {
+      "filename_prefix": [
+        "project",
+        1
+      ],
+      "format": "auto",
+      "format.codec": "auto",
+      "video": [
+        "p3_control_video",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "p3_save_control"
+    }
+  },
+  "sfm": {
+    "class_type": "SplatKit_SphereSfMDatasetDualRes",
+    "inputs": {
+      "hires_dir": "",
+      "output_name": [
+        "project",
+        0
+      ],
+      "matcher_type": "exhaustive",
+      "on_split": "stop",
+      "face_size": 0,
+      "max_num_features": 8192,
+      "peak_threshold": 0.0066,
+      "edge_threshold": 10,
+      "max_num_matches": 32768,
+      "filter_max_reproj_error": 4,
+      "filter_min_tri_angle": 1.5,
+      "init_min_tri_angle": 4,
+      "init_min_num_inliers": 30,
+      "init_max_forward_motion": 1,
+      "image_order": "camera_major",
+      "hires_glob": "*.png",
+      "frame_stride": 1,
+      "max_frames": 0,
+      "pano_frames_1": [
+        "p1_hires",
+        1
+      ],
+      "pano_frames_2": [
+        "p2_hires",
+        1
+      ],
+      "pano_frames_3": [
+        "p3_hires",
+        1
+      ],
+      "pano_frames_4": [
+        "p4_hires",
+        1
+      ],
+      "hires_1": [
+        "p1_hires",
+        5
+      ],
+      "hires_2": [
+        "p2_hires",
+        5
+      ],
+      "hires_3": [
+        "p3_hires",
+        5
+      ],
+      "hires_4": [
+        "p4_hires",
+        5
+      ]
+    },
+    "_meta": {
+      "title": "Build the COLMAP dataset from the composites (dual-res)"
+    }
+  },
+  "wan_vae": {
+    "class_type": "VAELoader",
+    "inputs": {
+      "vae_name": "wan_2.1_vae.safetensors"
+    },
+    "_meta": {
+      "title": "wan_vae"
+    }
+  },
+  "clip_vision": {
+    "class_type": "CLIPVisionLoader",
+    "inputs": {
+      "clip_name": "clip_vision_h.safetensors"
+    },
+    "_meta": {
+      "title": "clip_vision"
+    }
+  },
+  "clip_vision_encode": {
+    "class_type": "CLIPVisionEncode",
+    "inputs": {
+      "crop": "center",
+      "clip_vision": [
+        "clip_vision",
+        0
+      ],
+      "image": [
+        "pano",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "clip_vision_encode"
+    }
+  },
+  "steps": {
+    "class_type": "PrimitiveInt",
+    "inputs": {
+      "value": 8
+    },
+    "_meta": {
+      "title": "STEPS"
+    }
+  },
+  "hole_fill_upscaler": {
+    "class_type": "UpscaleModelLoader",
+    "inputs": {
+      "model_name": "RealESRGAN_x4.pth"
+    },
+    "_meta": {
+      "title": "Upscaler for the WAN hole-fill"
+    }
+  },
+  "p1_control": {
+    "class_type": "SplatKit_CameraPlotRenderControlGeo",
+    "inputs": {
+      "anchors": "0.000, 0.000, 0.000\n0.199, 0.021, 0.482\n-0.184, 0.043, 0.864\n-0.006, 0.032, 1.477",
+      "orientation": "look_forward",
+      "length": 81,
+      "moge_level": 9,
+      "dataset_dir": [
+        "project",
+        0
+      ],
+      "moge_ckpt": "model.pt",
+      "look_at_target": "",
+      "panorama": [
+        "pano",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "p1_control"
+    }
+  },
+  "p2_control": {
+    "class_type": "SplatKit_CameraPlotRenderControlGeo",
+    "inputs": {
+      "anchors": "0.000, 0.000, 0.000\n0.883, 0.021, -0.444\n1.452, 0.043, -1.157\n2.444, 0.032, -1.653",
+      "orientation": "look_forward",
+      "length": 81,
+      "moge_level": 9,
+      "dataset_dir": [
+        "project",
+        0
+      ],
+      "moge_ckpt": "model.pt",
+      "look_at_target": "",
+      "panorama": [
+        "pano",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "p2_control"
+    }
+  },
+  "p3_control": {
+    "class_type": "SplatKit_CameraPlotRenderControlGeo",
+    "inputs": {
+      "anchors": "0.000, 0.000, 0.000\n-1.047, 0.019, -0.617\n-2.269, 0.031, -1.282",
+      "orientation": "look_forward",
+      "length": 81,
+      "moge_level": 9,
+      "dataset_dir": [
+        "project",
+        0
+      ],
+      "moge_ckpt": "model.pt",
+      "look_at_target": "",
+      "panorama": [
+        "pano",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "p3_control"
+    }
+  },
+  "p4_control": {
+    "class_type": "SplatKit_CameraPlotRenderControlGeo",
+    "inputs": {
+      "anchors": "0.000, 0.000, 0.000, 1.515, 0.000, -0.036\n0.005, 0.025, 0.585, -0.309, 0.000, 2.087\n-0.555, 0.050, -0.138, -2.099, 0.000, -1.005\n0.572, 0.075, -0.254, 1.618, 0.000, -1.196",
+      "orientation": "per_point_look",
+      "length": 81,
+      "moge_level": 9,
+      "dataset_dir": [
+        "project",
+        0
+      ],
+      "moge_ckpt": "model.pt",
+      "look_at_target": "",
+      "panorama": [
+        "pano",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "p4_control"
+    }
+  },
+  "export": {
+    "class_type": "AgentboxSplatDatasetExport",
+    "inputs": {
+      "model_dir": [
+        "sfm",
+        0
+      ],
+      "include": "images,sparse"
+    },
+    "_meta": {
+      "title": "Export dataset files (sha256)"
+    }
+  }
+}

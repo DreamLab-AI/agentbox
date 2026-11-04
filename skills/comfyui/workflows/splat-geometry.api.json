@@ -1,0 +1,26 @@
+{
+  "pano": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "splat_pano.png"
+    },
+    "_meta": {
+      "title": "8K PANO"
+    }
+  },
+  "scene_reference": {
+    "class_type": "SplatKit_CameraPlotSceneReference",
+    "inputs": {
+      "panorama": [
+        "pano",
+        0
+      ],
+      "ref_name": "scene",
+      "point_budget": 4000,
+      "moge_ckpt": "model.pt"
+    },
+    "_meta": {
+      "title": "Compute geometry"
+    }
+  }
+}

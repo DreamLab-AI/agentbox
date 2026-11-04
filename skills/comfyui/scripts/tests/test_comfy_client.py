@@ -173,6 +173,18 @@ class HarnessTest(unittest.TestCase):
         self.assertTrue(all(x["bytes"] == len(b"render bytes") for x in saved))
         self.assertIn("subfolder=two+%26+three", self.download_queries[1])
 
+    def test_download_files_kind_enforces_reported_sha256(self):
+        import hashlib
+        good = hashlib.sha256(b"render bytes").hexdigest()
+        history = {"outputs": {"9": {"files": [{"filename": "cameras.bin", "subfolder": "scene/sparse/0", "type": "output", "sha256": good}]}}}
+        saved = self.client.download_outputs(history, Path(self.tmp.name) / "ok")
+        self.assertEqual([x["kind"] for x in saved], ["files"])
+        self.assertEqual(saved[0]["sha256"], good)
+        bad = {"outputs": {"9": {"files": [{"filename": "cameras.bin", "subfolder": "scene/sparse/0", "sha256": "0" * 64}]}}}
+        with self.assertRaisesRegex(comfy.ComfyError, "SHA-256 mismatch"):
+            self.client.download_outputs(bad, Path(self.tmp.name) / "bad")
+        self.assertEqual([p.name for p in (Path(self.tmp.name) / "bad").iterdir()], [])
+
     def test_download_rejects_path_traversal(self):
         history = {"outputs": {"1": {"videos": [{"filename": "../escape.mp4"}]}}}
         with self.assertRaisesRegex(comfy.ComfyError, "Unsafe"):

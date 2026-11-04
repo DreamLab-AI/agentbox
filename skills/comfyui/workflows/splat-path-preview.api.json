@@ -1,0 +1,42 @@
+{
+  "pano": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "splat_pano.png"
+    },
+    "_meta": {
+      "title": "8K PANO"
+    }
+  },
+  "p1_control": {
+    "class_type": "SplatKit_CameraPlotRenderControlGeo",
+    "inputs": {
+      "panorama": [
+        "pano",
+        0
+      ],
+      "anchors": "0, 0, 0\n0.6, 0.1, 1.5",
+      "orientation": "look_forward",
+      "length": 81,
+      "moge_level": 9,
+      "moge_ckpt": "model.pt",
+      "look_at_target": "0, 0, 3"
+    },
+    "_meta": {
+      "title": "Plot Camera (path 1)"
+    }
+  },
+  "p1_preview": {
+    "class_type": "SaveImage",
+    "inputs": {
+      "images": [
+        "p1_control",
+        3
+      ],
+      "filename_prefix": "splat/scene/preview_p1"
+    },
+    "_meta": {
+      "title": "Camera preview (path 1)"
+    }
+  }
+}

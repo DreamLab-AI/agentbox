@@ -1,0 +1,84 @@
+{
+  "_comment": "comfy_client.py probe --manifest for ADR-2175 image-to-splat (generated from skills/comfyui/workflows/splat-*.api.json). BLOCKED is correct until the sidecar is rebuilt with SPLATKIT=1 and the splat-pano and splat-dataset profiles are provisioned. pano_video_gen_720p_comfy.safetensors is derived from the gated Skywork/Matrix-3D LoRA (splat-matrix3d, inside splat-dataset).",
+  "required_nodes": [
+    "AgentboxSplatDatasetExport",
+    "CLIPLoader",
+    "CLIPTextEncode",
+    "CLIPVisionEncode",
+    "CLIPVisionLoader",
+    "ConditioningZeroOut",
+    "CreateVideo",
+    "EmptyImage",
+    "EmptyLatentImage",
+    "FluxKontextMultiReferenceLatentMethod",
+    "ImageAddNoise",
+    "ImageCompositeMasked",
+    "ImageScale",
+    "ImageSharpen",
+    "ImageUpscaleWithModel",
+    "InvertMask",
+    "KSampler",
+    "Krea2OstrisEditModelPatch",
+    "LoadImage",
+    "LoraLoaderModelOnly",
+    "MickmumpitzPanoHarmonizeBoundary",
+    "MickmumpitzPanoKrea2Reference",
+    "MickmumpitzPanoRollHorizontal",
+    "MickmumpitzPanoSeamMask",
+    "MickmumpitzPanoWarp",
+    "ModelSamplingFlux",
+    "ModelSamplingSD3",
+    "PrimitiveInt",
+    "SaveImage",
+    "SaveVideo",
+    "SetLatentNoiseMask",
+    "SplatKit_CameraPlotRenderControlGeo",
+    "SplatKit_CameraPlotSceneReference",
+    "SplatKit_DatasetProject",
+    "SplatKit_HiResComposite",
+    "SplatKit_SphereSfMDatasetDualRes",
+    "SplatKit_WanI2VMaskedConditioning",
+    "TextEncodeKrea2OstrisEdit",
+    "UNETLoader",
+    "UltimateSDUpscaleNoUpscale",
+    "UpscaleModelLoader",
+    "VAEDecode",
+    "VAEEncode",
+    "VAELoader"
+  ],
+  "required_models": {
+    "CLIPLoader.clip_name": [
+      "qwen3vl_4b_fp8_scaled.safetensors",
+      "umt5_xxl_fp8_e4m3fn_scaled.safetensors"
+    ],
+    "CLIPVisionLoader.clip_name": [
+      "clip_vision_h.safetensors"
+    ],
+    "LoraLoaderModelOnly.lora_name": [
+      "krea2_oedit_360_erp_outpaint_lora_v1.safetensors",
+      "krea2_t2i_360_erp_lora_v1.safetensors",
+      "lightx2v_T2V_14B_cfg_step_distill_v2_lora_rank64_bf16.safetensors",
+      "pano_video_gen_720p_comfy.safetensors"
+    ],
+    "SplatKit_CameraPlotRenderControlGeo.moge_ckpt": [
+      "model.pt"
+    ],
+    "SplatKit_CameraPlotSceneReference.moge_ckpt": [
+      "model.pt"
+    ],
+    "SplatKit_HiResComposite.moge_ckpt": [
+      "model.pt"
+    ],
+    "UNETLoader.unet_name": [
+      "krea2_turbo_fp8_scaled.safetensors",
+      "wan2.1_i2v_720p_14B_fp8_e4m3fn.safetensors"
+    ],
+    "UpscaleModelLoader.model_name": [
+      "RealESRGAN_x2.pth",
+      "RealESRGAN_x4.pth"
+    ],
+    "VAELoader.vae_name": [
+      "wan_2.1_vae.safetensors"
+    ]
+  }
+}
