@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: c1b0c700c42596d35a1faba3074b667c1928d8fb
+verified_commit: 83637b7c361520a42b330ec1d6ed32b4efff4e93
 verified_paths: [services/agentbox-manifest/src/deepsec_gate.rs, services/agentbox-manifest/src/visioncraft_source.rs, services/agentbox-manifest/src/jsonio.rs, services/agentbox-manifest/src/mcp.rs, services/agentbox-manifest/src/mcp_hub.rs, services/agentbox-manifest/tests/deepsec_gate.rs, services/agentbox-manifest/tests/aqe.rs, tests/config/visioncraft-deepsec.test.mjs, tests/config/visioncraft-aqe.test.mjs, tests/system-one/visioncraft-picker.test.mjs, config/visioncraft-source.json, lib/lockfiles/visioncraft-0.2.0.Cargo.lock, lib/visioncraft.nix, lib/agentbox-manifest.nix, flake.nix, skills/visioncraft, skills/registered-skills.txt, skills/codex-registered-skills.txt, scripts/reconcile-skills.sh, services/agentbox-manifest/src/main.rs, tests/config/visioncraft-cutover.test.mjs]
 owner: jjohare
 review_trigger: a VisionCraft release, a Deepsec protocol change, or discovery of a second active quality implementation
@@ -97,6 +97,7 @@ full image evaluation, rebuild and runtime activation remain outstanding.
 browser-target (Rust to WebAssembly) reference. All 35 payload files and
 Cargo.lock match that archive; `lib/lockfiles/visioncraft-0.2.0.Cargo.lock`
 replaces the 0.1.0 lockfile.
+Re-verified at `83637b7c3615`: `visioncraft-source-check` passes (35 files), agentbox-manifest 235 tests, VisionCraft Deepsec/cutover/AQE/picker fixtures 26/26, skill lint and routing table current. **Decision unaffected.** `verified_commit` moved to the landing commit.
 
 The independent host review also reproduced two existing projector faults.
 Private JSON writes now use exclusive, unpredictable, owner-only staging files

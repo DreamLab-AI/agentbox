@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: c1b0c700c42596d35a1faba3074b667c1928d8fb
+verified_commit: 83637b7c361520a42b330ec1d6ed32b4efff4e93
 verified_paths: [config/hooks/lib/skill-route.cjs, config/hooks/skill-route.cjs, skills/skill-router/scripts/route.mjs, config/entrypoint-unified.sh, tests/config/skill-route.test.js, skills/visioncraft/SKILL.md, skills/registered-skills.txt, skills/codex-registered-skills.txt, tests/system-one/visioncraft-picker.test.mjs]
 owner: jjohare
 review_trigger: the first project that needs a per-project routing bypass (ADR-2090), a Jev model change, or a measured runtime-path accuracy below 85% on the 40-item set
@@ -301,3 +301,5 @@ Governed-path delta since `09067b095`: `config/entrypoint-unified.sh`: the crede
 Verified source commit `c1b0c700c42596d35a1faba3074b667c1928d8fb`.
 
 The previous-to-current governed delta includes the earlier DREAM_GOVERNANCE_PRIVKEY_HEX role classification and the new boot call projecting AQE into Codex TOML. Neither changes the picker algorithm, per-request candidate loading or typed Choice contract. The active candidate comes from the newly pinned 34-file VisionCraft snapshot and both registries; no persistent Jev cache requires migration. All 71 existing Jev router tests and the focused candidate/mock-wire cases pass. Existing live-router status describes the mechanism; the VisionCraft candidate is source-complete and pending rebuild, not yet live.
+
+Re-verified at `83637b7c3615`. The governed change is the VisionCraft 0.2.0 `SKILL.md` description adding browser-targeted code (Rust compiled to WebAssembly) as a trigger. The candidate map, wire shape and typed Choice contract are unchanged; the picker fixture (2/2) selects VisionCraft from the new description. **Decision unaffected.** `verified_commit` moved to the landing commit.
