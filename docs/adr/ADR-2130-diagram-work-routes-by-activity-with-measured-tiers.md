@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: c1b0c700c42596d35a1faba3074b667c1928d8fb
+verified_commit: 3beca506c1d44122bf2e14ed935d590b9d020233
 verified_paths: [services/agentbox-manifest/src/routing.rs, agentbox.toml, schema/agentbox.toml.schema.json]
 owner: jjohare
 review_trigger: the sealmap skill landing (DESIGN §10 step 5) with the four routes and two hosts; a Loom model swap; a change of the GLM model behind [consultants.zai]; a seal review whose author and reviewer share a family; ADR-2079's router consolidating [model_routing.routes]
@@ -137,3 +137,5 @@ The source pin to 0.4 is a rebuild input, not evidence of live 0.4 activation.
 Verified source commit `c1b0c700c42596d35a1faba3074b667c1928d8fb`.
 
 The governed deltas are AQE enablement, quality-method naming, Deepsec duration documentation and an optional Deepsec subprocess-output cap. No model_routing activity, route parser, tier or model-family rule changes. The 235-test manifest suite includes the existing routing tests; configuration/catalogue checks pass. Diagram activity activation remains inactive and no measured tier descent or paid review is asserted.
+
+Re-verified 2026-11-05 at `3beca506c` for ADR-2177: the only change to this record's governed paths since its last stamp is ADR-2177's additive SuperSplat hunk (a gated package set and supervisor block, one toml/schema key, a skill registration); this record's decision is unaffected.

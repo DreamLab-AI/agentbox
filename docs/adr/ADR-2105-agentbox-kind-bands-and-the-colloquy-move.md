@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: c1b0c700c42596d35a1faba3074b667c1928d8fb
+verified_commit: 3beca506c1d44122bf2e14ed935d590b9d020233
 verified_paths: [crates/colloquy/colloquy-nostr/src/kinds.rs, docs/PROTOCOL-registry.md, services/nostr-pod-bridge/src/colloquy_publish.rs, agentbox.toml]
 owner: jjohare
 review_trigger: the next agentbox Nostr kind allocation, or any change to the band table in docs/PROTOCOL-registry.md
@@ -358,3 +358,5 @@ Nothing this record decides is changed; its status axes are unchanged. Re-run: `
 Verified source commit `c1b0c700c42596d35a1faba3074b667c1928d8fb`.
 
 Only agentbox.toml changed: AQE is enabled and Deepsec comments name VisionCraft. Nostr kind allocations, the relay allowlist, protocol registry, colloquy kinds and publisher are byte-identical to the previous verification. The manifest validator passes. No relay publication or new federation acceptance is asserted.
+
+Re-verified 2026-11-05 at `3beca506c` for ADR-2177: the only change to this record's governed paths since its last stamp is ADR-2177's additive SuperSplat hunk (a gated package set and supervisor block, one toml/schema key, a skill registration); this record's decision is unaffected.

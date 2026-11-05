@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: c1b0c700c42596d35a1faba3074b667c1928d8fb
+verified_commit: 3beca506c1d44122bf2e14ed935d590b9d020233
 verified_paths: [skills/sealmap-review/scripts/review-cadence.cjs, skills/sealmap-review/scripts/external-review.cjs, skills/sealmap-review/scripts/review-context.cjs, skills/sealmap-review/scripts/merge-findings.cjs, skills/sealmap-review/run-cron.sh, skills/sealmap-review/crontab, schema/agentbox.toml.schema.json]
 owner: jjohare
 review_trigger: the first month of real Gemini spend (compare ledger cost with the estimate); a change to Gemini or Z.AI pricing; a GLM model change behind [consultants.zai]; a second corpus joining repos
@@ -275,3 +275,5 @@ Re-verified 2026-10-31 at `2f15c531b02b8f8393d68d29ce3491712bdd862c` (W7 and W8 
 Verified source commit `c1b0c700c42596d35a1faba3074b667c1928d8fb`.
 
 The cadence and merge scripts change only explanatory/report text from build-with-quality to VisionCraft. Selection, paid requests, reservations, settlement and integrity-witness logic are unchanged. The schema changes only AQE/Deepsec descriptions and the optional Deepsec output cap, outside the cadence configuration. All 89 cadence/context/merge tests pass. The previous budget repairs and staged activation remain as recorded; no paid cadence run occurred.
+
+Re-verified 2026-11-05 at `3beca506c` for ADR-2177: the only change to this record's governed paths since its last stamp is ADR-2177's additive SuperSplat hunk (a gated package set and supervisor block, one toml/schema key, a skill registration); this record's decision is unaffected.

@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: c7c2f76b93bfe81dadd8e3bb8c3104cda6b57bec
+verified_commit: 3beca506c1d44122bf2e14ed935d590b9d020233
 verified_paths: [scripts/ci/check-ports-loopback.sh, .github/workflows/invariants.yml, flake.nix, docker-compose.yml]
 owner: jjohare
 review_trigger: Any new entry on the SANCTIONED list, or a new compose overlay file
@@ -489,3 +489,5 @@ Governed-path delta since `3d27cc11e` is the RuVector Postgres credential custod
 - `flake.nix`: removes the claude-flow config template (`claudeFlowConfigJson` and its `cp`) and the baked `RUVECTOR_PG_CONNINFO` image Env entry, and rewords one dream-engine supervisor comment.
 
 Nothing this record decides is changed; its status axes are unchanged. Re-run: `git diff 3d27cc11e..cc949bb79 -- flake.nix`.
+
+Re-verified 2026-11-05 at `3beca506c` for ADR-2177: `[program:supersplat]` binds 0.0.0.0:8795 on the docker network and publishes no compose port, so the `SANCTIONED` publish inventory is unchanged; its in-container listener is sanctioned separately under ADR-2062's `LISTENER_SANCTIONED`.

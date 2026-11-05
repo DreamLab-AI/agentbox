@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: inactive
 supersedes: []
 superseded_by: [ADR-2153]
-verified_commit: c7c2f76b93bfe81dadd8e3bb8c3104cda6b57bec
+verified_commit: 3beca506c1d44122bf2e14ed935d590b9d020233
 verified_paths: [config/nip98-proxy/proxy.mjs, flake.nix]
 owner: jjohare
 review_trigger: next image rebuild (activation), or any new consumer of :9095, or per-process isolation becoming available
@@ -406,3 +406,5 @@ Governed-path delta since `753788564` is the RuVector Postgres credential custod
 - `flake.nix`: removes the claude-flow config template (`claudeFlowConfigJson` and its `cp`) and the baked `RUVECTOR_PG_CONNINFO` image Env entry, and rewords one dream-engine supervisor comment.
 
 Nothing this record decides is changed; its status axes are unchanged. Re-run: `git diff 753788564..cc949bb79 -- flake.nix`.
+
+Re-verified 2026-11-05 at `3beca506c` for ADR-2177: the new `[program:supersplat]` is a static file server with no AoE route, token or bearer; the token boundary is untouched.

@@ -7,7 +7,7 @@ implementation_status: none
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: c1b0c700c42596d35a1faba3074b667c1928d8fb
+verified_commit: 3beca506c1d44122bf2e14ed935d590b9d020233
 verified_paths: [mcp/servers/lib/aggregate-effectiveness.js, scripts/ruvector-sona-feeder.mjs, agentbox.toml]
 owner: jjohare
 review_trigger: A SONA binary with configurable embedding_dim (384-capable) ships, or a dimension migration is planned
@@ -344,3 +344,5 @@ Nothing this record decides is changed; its status axes are unchanged. Re-run: `
 Verified source commit `c1b0c700c42596d35a1faba3074b667c1928d8fb`.
 
 Only agentbox.toml changed: AQE is enabled and Deepsec comments name VisionCraft. The shared bge model, dimensionality, SONA and reranking configuration are unchanged. AQE receives ephemeral memory, disabled periodic workers and no configured embedder endpoint/token; it is not pointed at the incompatible bge service. The image rejects its optional local transformer dependency. Memory mode alone does not disable upstream embedding attempts. Three enabled/disabled/malformed AQE projection cases and the environment inventory pass; no model-lifecycle activation is claimed.
+
+Re-verified 2026-11-05 at `3beca506c` for ADR-2177: the only change to this record's governed paths since its last stamp is ADR-2177's additive SuperSplat hunk (a gated package set and supervisor block, one toml/schema key, a skill registration); this record's decision is unaffected.

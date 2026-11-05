@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 65778e973db5587ec1c9bfe13ad3b46f44a523d7
+verified_commit: 3beca506c1d44122bf2e14ed935d590b9d020233
 verified_paths: [docs/BASELINE-container.md]
 owner: jjohare
 review_trigger: a change to [privacy_filter].port, to the [program:opf-router] supervisor block, or to the BASELINE-container supervised-program table
@@ -107,3 +107,5 @@ The routed BASELINE edit has landed (`f8e61efac`, 2026-09-05, re-checked at `e78
 - Live: `ss -ltnp` → `127.0.0.1:9092` held by `python3.12` pid 922 (`opf-router`), and nothing listening on `:8084`.
 
 Re-verified 2026-10-31 at `b65c3d4ed`. Governed paths changed: `docs/BASELINE-container.md`: vault section wording: `pages` defaults to `.`, corpus verbs use `ontomark`, the `ONTOLOGY_PAGES_DIR` override is recorded as removed (`f4beec643`, `7aa9365d4`); the supervised-program table is unchanged. No section this record governs changed; the decision holds. Re-verified by `git diff e786197cc..b65c3d4ed -- <verified_paths>`; no re-implementation was needed. The image carries it at the next rebuild.
+
+Re-verified 2026-11-05 at `3beca506c` for ADR-2177: the BASELINE gains an ADR-2177 paragraph, a services-table row and a changelog entry; the privacy-filter and Loom distinction this record guards is untouched.

@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: c1b0c700c42596d35a1faba3074b667c1928d8fb
+verified_commit: 3beca506c1d44122bf2e14ed935d590b9d020233
 verified_paths: [agentbox.toml, mcp/servers/lib/ontology-retrieval.js]
 owner: jjohare
 review_trigger: model swap behind the Loom, or ADR-051 deferred-distillation MCP tools becoming a discrete server
@@ -413,3 +413,5 @@ Nothing this record decides is changed; its status axes are unchanged. Re-run: `
 Verified source commit `c1b0c700c42596d35a1faba3074b667c1928d8fb`.
 
 Only agentbox.toml changed: AQE is enabled and Deepsec comments name VisionCraft. No Loom URL, port, model or ontology-retrieval code changes. AQE is not configured to use the Loom or bge embedding endpoint. Manifest validation passes. This is source-delta verification, not a new live Loom probe; existing status axes retain their prior scope.
+
+Re-verified 2026-11-05 at `3beca506c` for ADR-2177: the only change to this record's governed paths since its last stamp is ADR-2177's additive SuperSplat hunk (a gated package set and supervisor block, one toml/schema key, a skill registration); this record's decision is unaffected.

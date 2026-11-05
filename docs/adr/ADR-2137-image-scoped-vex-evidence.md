@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: c7c2f76b93bfe81dadd8e3bb8c3104cda6b57bec
+verified_commit: 3beca506c1d44122bf2e14ed935d590b9d020233
 verified_paths: [flake.nix, lib/sbomnix.nix, lib/sbomnix-python.nix, lib/agentbox-vex.nix, lib/vex-evidence.nix, services/agentbox-vex, scripts/security-scan.sh, scripts/runtime-delivery.cjs, agentbox.sh, tests/security, tests/config/runtime-delivery.test.cjs, .github/workflows/build-multi-arch.yml, .github/workflows/image-scan.yml, .github/workflows/release.yml, .github/workflows/security-vex.yml, .github/workflows/flake-check.yml]
 owner: jjohare
 review_trigger: image inventory, VEX predicates, scanner matching or release artefact selection changes; a host preparation bundle that carries raw and VEX-filtered Grype reports, or a release with matching-commit scan artefacts (activation → live)
@@ -216,3 +216,5 @@ Governed-path delta since `753788564` is the RuVector Postgres credential custod
 - `tests/security/zai-launch-env.test.cjs`: the test variable `RUVECTOR_PG_CONNINFO` is swapped for `RUVECTOR_PG_HOST`.
 
 Nothing this record decides is changed; its status axes are unchanged. Re-run: `git diff 753788564..cc949bb79 -- agentbox.sh flake.nix tests/security/zai-launch-env.test.cjs`.
+
+Re-verified 2026-11-05 at `3beca506c` for ADR-2177: SuperSplat adds image store paths and no daemon, adapter or gate to the VEX method; evidence generation is unchanged.

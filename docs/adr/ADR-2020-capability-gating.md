@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: c1b0c700c42596d35a1faba3074b667c1928d8fb
+verified_commit: 3beca506c1d44122bf2e14ed935d590b9d020233
 verified_paths: [agentbox.toml, skills/tree-search-coder/SKILL.md, services/agentbox-ops/src/bin/tree-search-cap.rs]
 owner: jjohare
 review_trigger: any new optional skill/feature block added to agentbox.toml, or any change to the tree-search-coder spend/route posture
@@ -355,3 +355,5 @@ Nothing this record decides is changed; its status axes are unchanged. Re-run: `
 Verified source commit `c1b0c700c42596d35a1faba3074b667c1928d8fb`.
 
 The optional agentic_qe gate changes false to true; both Claude and Codex projection retain disabled/missing-binary removal and preserve unrelated settings. Its existing rebuild-class catalogue contract remains. Tree-search skill references change the neighbouring quality method to VisionCraft without altering explicit opt-in, spend limits or never-auto-route rules; tree-search-cap.rs is unchanged. Three AQE boot cases, the manifest validator and all 118 catalogue paths pass. The running image has not yet enabled AQE.
+
+Re-verified 2026-11-05 at `3beca506c` for ADR-2177: ADR-2177 follows this record: `[skills.spatial_and_3d].supersplat` gates both the Nix package set (`spatialPackages`) and the supervisor block, with a `rebuild` apply class in `system-manifest.js`.

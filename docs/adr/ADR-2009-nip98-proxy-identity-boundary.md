@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: c7c2f76b93bfe81dadd8e3bb8c3104cda6b57bec
+verified_commit: 3beca506c1d44122bf2e14ed935d590b9d020233
 verified_paths: [config/nip98-proxy/proxy.mjs, flake.nix, docs/INGRESS-identity.md]
 owner: jjohare
 review_trigger: A second operator identity ingress is proposed, or named-route authentication changes
@@ -430,3 +430,5 @@ Nothing this record decides is changed; its status axes are unchanged. Re-run: `
 ## Re-verification — 2026-11-01 (`4f3bd5325`)
 
 Governed-path delta since `3d717c40f`: `docs/INGRESS-identity.md`: version 0.2.9, one changelog line, and the Invariant 12 credential sentences (what the scrub removes, and the post-deploy password rotation) (ADR-2164 amendment 4). This record's decision does not concern these changes. Decision unchanged; `verified_commit` bumped. Re-run: `git diff 3d717c40f..4f3bd5325 -- docs/INGRESS-identity.md`.
+
+Re-verified 2026-11-05 at `3beca506c` for ADR-2177: SuperSplat is not an identity ingress: it verifies no pubkey and sits outside the nip98-proxy, which this record allows for services with their own boundary (here none, scoped by ADR-2177's listener sanction).

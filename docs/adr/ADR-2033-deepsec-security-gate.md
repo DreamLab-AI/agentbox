@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 83637b7c361520a42b330ec1d6ed32b4efff4e93
+verified_commit: 3beca506c1d44122bf2e14ed935d590b9d020233
 verified_paths: [flake.nix, agentbox.toml, schema/agentbox.toml.schema.json, scripts/agentbox-config-validate.js, management-api/lib/system-manifest.js, scripts/visioncraft-deepsec-gate.sh, services/agentbox-manifest/src/deepsec_gate.rs, skills/visioncraft/references/deepsec.md, .github/workflows/deepsec.yml, lib/visioncraft.nix, config/visioncraft-source.json, lib/lockfiles/visioncraft-0.2.0.Cargo.lock, tests/config/visioncraft-deepsec.test.mjs]
 owner: jjohare
 review_trigger: a deepsec major version, a change to its CLI exit-code contract or model-route schema, any new model route, or the first paid full-repo run
@@ -522,3 +522,5 @@ Governed-path delta since `cc949bb79` is three documentation commits to `skills/
 Verified source commit `c1b0c700c42596d35a1faba3074b667c1928d8fb`.
 
 The current paths now bind the thin host wrapper, typed Rust policy projector, published VisionCraft payload, source pin and released lockfile. Since the previous verification, pre-existing shared-file deltas were the Deepsec CI pin correction to 2.3.10 and removal of retired precedent-bridge from a default hub list; neither weakens this policy boundary. The owned changes replace shell execution/receipt interpretation with the single published VisionCraft implementation and preserve names-only credentials and explicit caller overrides. All 18 protocol cases pass against the actual crates.io-installed 0.1.0 binary, with unchanged SHA-256 ae5d7568af0a56e46cb134d93391d2ede856544bbead6a0d68a43d5f510dce17; 235 Rust tests, Clippy, policy/catalogue checks and Nix parsing pass. The independent production review receipts remain ERROR; the separate one-file real-provider PASS proves only the adapter path. A full production review, labelled-PR CI execution and rebuilt-image acceptance remain unverified, so partial/staged is retained.
+
+Re-verified 2026-11-05 at `3beca506c` for ADR-2177: the only change to this record's governed paths since its last stamp is ADR-2177's additive SuperSplat hunk (a gated package set and supervisor block, one toml/schema key, a skill registration); this record's decision is unaffected.
