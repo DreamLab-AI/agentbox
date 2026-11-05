@@ -62,6 +62,9 @@ services:
       # Chrome profile (W9): Podkey's chrome.storage.local (encrypted key vault,
       # public key, consent grants) must survive container recreation.
       - browsercontainer-profile:/home/devuser/chrome-profile
+      # Compatibility with retained images whose Chrome still uses /tmp.
+      # Both paths share one durable profile; remove after all images migrate.
+      - browsercontainer-profile:/tmp/chrome-profile
 
 networks:
   visionclaw:
