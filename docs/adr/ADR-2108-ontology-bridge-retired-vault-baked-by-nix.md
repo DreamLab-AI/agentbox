@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: [ADR-2022, ADR-2054]
 superseded_by: []
-verified_commit: 3beca506c1d44122bf2e14ed935d590b9d020233
+verified_commit: 18b79218d81b0ddea7840aca11a50ee829068bb9
 verified_paths: [lib/vault.nix, flake.nix, agentbox.toml, schema/agentbox.toml.schema.json, config/entrypoint-unified.sh, mcp/mcp.json, services/agentbox-manifest/tests/golden, management-api/lib/ontology-propose.js]
 owner: jjohare
 review_trigger: a `vault --version` gate failure at boot; a request to re-register any deleted server; ontology-monitor, typed-spawn and ontology-workingset re-pointed off mcp/servers/lib/ontology-local.js (vault shipped, so this is now due; ADR-2136); a vaultSrc bump that changes the vault verb set
@@ -17,6 +17,15 @@ lineage: ADR-2107 (no MCP for the corpus), ADR-2029 (rune, the gated-binary patt
 ---
 
 # ADR-2108 — ontology-bridge is retired; the vault binary is baked by Nix
+
+## Scoped source check — 2026-11-05
+
+The only new shared-flake delta since the previous verification pins OpenSSH
+10.6p2 and its upstream SHA-256 together, without changing listeners, mounts,
+role mappings or this record's own feature gate. Upstream's 2026-11-05 release
+adds the Linux musl/PAM-disabled password-auth workaround. This is a custom
+package override: image VEX must not claim a stock nixpkgs OpenSSH build.
+Runtime acceptance and all existing status limitations remain separate.
 
 ## Scoped source re-verification — 2026-11-03
 

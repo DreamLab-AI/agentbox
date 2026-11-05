@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: inactive
 supersedes: []
 superseded_by: [ADR-2153]
-verified_commit: 3beca506c1d44122bf2e14ed935d590b9d020233
+verified_commit: 18b79218d81b0ddea7840aca11a50ee829068bb9
 verified_paths: [config/nip98-proxy/proxy.mjs, flake.nix]
 owner: jjohare
 review_trigger: next image rebuild (activation), or any new consumer of :9095, or per-process isolation becoming available
@@ -15,6 +15,15 @@ repo: agentbox
 ---
 
 # ADR-2002 — AoE interaction plane requires token auth — loopback is not a boundary
+
+## Scoped source check — 2026-11-05
+
+The only new shared-flake delta since the previous verification pins OpenSSH
+10.6p2 and its upstream SHA-256 together, without changing listeners, mounts,
+role mappings or this record's own feature gate. Upstream's 2026-11-05 release
+adds the Linux musl/PAM-disabled password-auth workaround. This is a custom
+package override: image VEX must not claim a stock nixpkgs OpenSSH build.
+Runtime acceptance and all existing status limitations remain separate.
 
 ## Scoped source re-verification — 2026-11-03
 

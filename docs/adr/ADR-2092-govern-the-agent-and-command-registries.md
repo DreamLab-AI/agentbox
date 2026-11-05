@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 3beca506c1d44122bf2e14ed935d590b9d020233
+verified_commit: 18b79218d81b0ddea7840aca11a50ee829068bb9
 verified_paths: [agents/registered-agents.txt, scripts/reconcile-agents.sh, scripts/reconcile-commands.sh, scripts/project-skill-roots.mjs, config/registered-commands.txt, config/entrypoint-unified.sh, flake.nix, tests/config/agent-reconcile.test.sh, scripts/reconcile-skills.sh, skills/registered-skills.txt, skills/codex-registered-skills.txt, tests/config/visioncraft-cutover.test.mjs]
 owner: jjohare
 review_trigger: a new subagent worth always-loading, or evidence the router surfaces baked-but-unregistered skills too slowly; a reconcile audit on the running image showing ~/.claude/agents matches agents/registered-agents.txt (activation → live)
@@ -15,6 +15,15 @@ repo: agentbox
 ---
 
 # ADR-2092 — Agents and slash-commands get the same manifest governance skills already have
+
+## Scoped source check — 2026-11-05
+
+The only new shared-flake delta since the previous verification pins OpenSSH
+10.6p2 and its upstream SHA-256 together, without changing listeners, mounts,
+role mappings or this record's own feature gate. Upstream's 2026-11-05 release
+adds the Linux musl/PAM-disabled password-auth workaround. This is a custom
+package override: image VEX must not claim a stock nixpkgs OpenSSH build.
+Runtime acceptance and all existing status limitations remain separate.
 
 ## Amendment — one quality skill registration, 2026-11-03
 

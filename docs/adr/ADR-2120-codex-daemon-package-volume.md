@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 3beca506c1d44122bf2e14ed935d590b9d020233
+verified_commit: 18b79218d81b0ddea7840aca11a50ee829068bb9
 verified_paths: [agentbox.sh, config/entrypoint-unified.sh, flake.nix, docker-compose.yml, scripts/refresh-compose.sh, tests/config/compose-persistence.test.cjs, tests/config/refresh-compose.test.cjs]
 owner: jjohare
 review_trigger: commit verification and rebuild; or change Codex daemon packaging
@@ -16,6 +16,15 @@ domain: BASELINE-container
 ---
 
 # ADR-2120 — Give Codex daemon packages executable persistent storage
+
+## Scoped source check — 2026-11-05
+
+The only new shared-flake delta since the previous verification pins OpenSSH
+10.6p2 and its upstream SHA-256 together, without changing listeners, mounts,
+role mappings or this record's own feature gate. Upstream's 2026-11-05 release
+adds the Linux musl/PAM-disabled password-auth workaround. This is a custom
+package override: image VEX must not claim a stock nixpkgs OpenSSH build.
+Runtime acceptance and all existing status limitations remain separate.
 
 ## Scoped source re-verification — 2026-11-03
 

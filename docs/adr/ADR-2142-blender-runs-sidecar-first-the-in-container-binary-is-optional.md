@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 3beca506c1d44122bf2e14ed935d590b9d020233
+verified_commit: 18b79218d81b0ddea7840aca11a50ee829068bb9
 verified_paths: [agentbox.toml, flake.nix, skills/blender/tools/blender-job.js, skills/blender/tools/blender-introspect.js, skills/blender/tools/blender-batch.sh, skills/blender/SKILL.md, skills/uk-solar-planner/SKILL.md, skills/game-dev/tools/engine-check.sh, tests/toolchains/blender-present.sh]
 owner: jjohare
 review_trigger: the image rebuild activates the change, the GPU sidecar (gui-tools-service) or its shared volume changes, a local-Blender consumer is added, or `blender_local` is flipped in the shipped manifest
@@ -15,6 +15,15 @@ repo: agentbox
 ---
 
 # ADR-2142 — Blender runs sidecar-first; the in-container binary is optional
+
+## Scoped source check — 2026-11-05
+
+The only new shared-flake delta since the previous verification pins OpenSSH
+10.6p2 and its upstream SHA-256 together, without changing listeners, mounts,
+role mappings or this record's own feature gate. Upstream's 2026-11-05 release
+adds the Linux musl/PAM-disabled password-auth workaround. This is a custom
+package override: image VEX must not claim a stock nixpkgs OpenSSH build.
+Runtime acceptance and all existing status limitations remain separate.
 
 ## Scoped source re-verification — 2026-11-03
 

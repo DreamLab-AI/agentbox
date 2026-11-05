@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 9dadda3ed7ad1ff2546d4d81077a93e2b46d100f
+verified_commit: 18b79218d81b0ddea7840aca11a50ee829068bb9
 verified_paths: [skills/ontology-augment/scripts/ontology-augment.sh, skills/ontology-augment/SKILL.md, skills/ontology-augment/references/REFERENCE.md, skills/ontology-augment/references/EXAMPLES.md, tests/skills/ontology-augment-grounding.test.sh]
 owner: jjohare
 review_trigger: VisionClaw ADR-2128 (versionIRI) or ADR-2127 (tri-valued answers) landing; an agent decision traced to an empty Loom or vault result; the ontology-augment skill's output format changing; the first session on a booted image whose ontology-augment output cites its generation (activation → live)
@@ -16,6 +16,15 @@ domain: GOVERNANCE-capabilities
 ---
 
 # ADR-2129 — Ontology grounding treats silence as unknown and cites its generation
+
+## Scoped source check — 2026-11-05
+
+The ontology skill adds deterministic lexical `ontomark ground` guidance: unknown
+is not false, ambiguous terms require clarification, and a missing command is
+reported unavailable. It reads only the knowledge vault; governed writes and
+generation-aware ontology-augment output remain unchanged. Grounding tests:
+125 pass. Shared manifest additions gate SuperSplat; corpus paths are unchanged.
+Runtime acceptance and all existing status limitations remain separate.
 
 ## Context
 

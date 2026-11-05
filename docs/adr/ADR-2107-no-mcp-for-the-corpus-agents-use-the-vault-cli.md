@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: c1b0c700c42596d35a1faba3074b667c1928d8fb
+verified_commit: 18b79218d81b0ddea7840aca11a50ee829068bb9
 verified_paths: [skills/ontology-augment, skills/podcast-knowledge-ingest, agents/ontology-curator.md, mcp/mcp.json, agentbox.toml, AGENTS.md]
 owner: jjohare
 review_trigger: a request to register any MCP server that reads or writes visionGraph, the ADR-140 /mcp plane reaching the deployed Loom, or the first `vault` subcommand an agent cannot express
@@ -19,6 +19,15 @@ acceptance_boundary: ontomark and vault --help verb checks at 3e3e09b1d, a grep 
 ---
 
 # ADR-2107 — No MCP inside the estate for the corpus; agents use the vault CLI
+
+## Scoped source check — 2026-11-05
+
+The ontology skill adds deterministic lexical `ontomark ground` guidance: unknown
+is not false, ambiguous terms require clarification, and a missing command is
+reported unavailable. It reads only the knowledge vault; governed writes and
+generation-aware ontology-augment output remain unchanged. Grounding tests:
+125 pass. Shared manifest additions gate SuperSplat; corpus paths are unchanged.
+Runtime acceptance and all existing status limitations remain separate.
 
 > Current amendment (2026-10-31, below): the corpus CLI is `ontomark`; `vault` keeps `propose` and `panel publish`.
 

@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: c7c2f76b93bfe81dadd8e3bb8c3104cda6b57bec
+verified_commit: 18b79218d81b0ddea7840aca11a50ee829068bb9
 verified_paths: [agentbox.toml, setup/agentbox.default.toml, schema/agentbox.toml.schema.json, config/entrypoint-unified.sh, mcp/servers/lib/ontology-local.js, mcp/servers/lib/ontology-index-build.js, scripts/ontology-condense-scheduler.mjs, scripts/ontology-condense-refresh.sh, skills/podcast-knowledge-ingest/SKILL.md, skills/ontology-core/SKILL.md, skills/ontology-enrich/SKILL.md, skills/ontology-augment/SKILL.md, skills/web-summary/SKILL.md]
 owner: jjohare
 review_trigger: any new skill, MCP server, or supervised program that reads or writes authored markdown
@@ -17,6 +17,15 @@ lineage: ADR-2003 (manifest-driven composition), ADR-2008 (single source of trut
 ---
 
 # ADR-2028 — `[vault]` is the single path authority for the authored corpus
+
+## Scoped source check — 2026-11-05
+
+The ontology skill adds deterministic lexical `ontomark ground` guidance: unknown
+is not false, ambiguous terms require clarification, and a missing command is
+reported unavailable. It reads only the knowledge vault; governed writes and
+generation-aware ontology-augment output remain unchanged. Grounding tests:
+125 pass. Shared manifest additions gate SuperSplat; corpus paths are unchanged.
+Runtime acceptance and all existing status limitations remain separate.
 
 ## Scoped source re-verification — 2026-11-03
 
