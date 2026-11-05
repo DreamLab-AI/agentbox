@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 65778e973db5587ec1c9bfe13ad3b46f44a523d7
+verified_commit: d402e991c1e8d31c75974f920574fb1a979ac072
 verified_paths: [comfyui-sidecar/Dockerfile, comfyui-sidecar/nodes/agentbox_video/splat_export.py, skills/comfyui/scripts/splat_pipeline.py, skills/comfyui/scripts/ui_to_api.py, skills/comfyui/scripts/download_video_models.py, skills/comfyui/manifests/splatkit.json]
 owner: jjohare
 review_trigger: SplatKit or Mickmumpitz-Nodes pin bump; Krea 2 Community Licence change; Matrix-3D gate or file change; any proposal to install SplatKit's managed training venv, 4DAnyone, ultralytics or an attention patch in the sidecar; LichtFeld gate change; ADR-2148 control-plane change
