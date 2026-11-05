@@ -14,7 +14,9 @@ do not require an AQE installation or an orchestration service.
 
 **Request.** Add creation, editing, completion, deletion, filtering and local
 persistence to a small browser app. Existing project conventions choose the UI
-framework; no agent fleet or full domain programme is needed.
+shell; the item model, state transitions, filtering and storage schema live in a
+Rust crate compiled to WebAssembly ([browser targets](rust/browser-wasm.md)).
+No agent fleet or full domain programme is needed.
 
 **Expectation.** A saved item survives reload with its stable identity and
 completion state. Editing its text preserves that identity. An empty title is
@@ -22,12 +24,13 @@ rejected without changing the previous item. Filtering changes the visible
 set without deleting hidden items. Storage failure is reported without claiming
 the edit was durably saved.
 
-**Implementation sequence.** Add a failing model test for state transitions,
-implement the smallest reducer/store change, then test persistence through the
-real browser storage boundary. Exercise create/edit/filter/reload in the browser.
+**Implementation sequence.** Add a failing native Rust test for state
+transitions, implement the smallest model change, export it through a thin
+`wasm-bindgen` API, then test persistence through the real browser storage
+boundary with the built module. Exercise create/edit/filter/reload in the browser.
 Keep a valid ordinary title control beside empty and markup-like input cases.
 
-**Applicable gates.** Unit and browser journey checks; visible error behaviour;
+**Applicable gates.** Native unit tests, the wasm target build and browser journey checks; visible error behaviour;
 keyboard operation, focus and appropriate labels; safe treatment of user text.
 A small prototype may defer multi-device sync explicitly. Do not claim sync or
 full accessibility conformance from these local checks.

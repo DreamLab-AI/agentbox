@@ -222,6 +222,12 @@
       }
     },
     {
+      "path": "references/rust/browser-wasm.md",
+      "licence": "MIT OR Apache-2.0",
+      "treatment": "newly written guidance: Rust-to-WebAssembly default for browser targets",
+      "behavioural_sources": []
+    },
+    {
       "path": "references/rust/port.md",
       "licence": "MIT; VisionCraft additions MIT OR Apache-2.0",
       "treatment": "MIT body retained; independently written portable overlay, links or migration notice replaces estate wording",

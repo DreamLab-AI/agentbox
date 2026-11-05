@@ -20,12 +20,15 @@ as evidence of the previous implementation. See [ADR-2165](../adr/ADR-2165-visio
 
 ## Published release and activation
 
-The pin consumes published VisionCraft 0.1.0 from upstream commit
-`9cf450c5fb82033139527ace29d5731a77d96fc7`. The source archive's official Nix hash is
-`sha256-810h+LaFM/Ly3GyXAFChh0g7GM3cY3c/G67sMHgOizk=`; the released lockfile's
-SHA-256 is `9cbb7bf2815ffcde944b4121935af59ca7e3fad481624754500e510c41341744`.
-All 34 skill files and that lockfile were compared byte-for-byte with the archive
-and committed upstream tree. Registry publication is confirmed. Source, parser
+The pin consumes published VisionCraft 0.2.0 from upstream commit
+`b7e579f99e4c431b34ca911b80980b18c2e948d9` (tag `v0.2.0`). 0.2.0 adds the
+skill's browser-target guidance (`references/rust/browser-wasm.md`): browser
+logic defaults to Rust compiled to WebAssembly; the library and CLI are
+unchanged from 0.1.0. The source archive's Nix hash is
+`sha256-W4z4jJrdpR+7E+SDQKR3jrttP5Ui2TAkCYLh5qyF4IM=`, computed without Nix by
+NAR-serialising the unpacked archive; the same method reproduces the 0.1.0 pin's
+official hash. All 35 skill files and the released lockfile were copied from that
+archive and verified with `visioncraft-source-check`. Registry publication is confirmed. Source, parser
 and consumer checks pass; the operator's image rebuild and runtime acceptance
 remain outstanding.
 

@@ -8,7 +8,7 @@ activation_status: staged
 supersedes: []
 superseded_by: []
 verified_commit: c1b0c700c42596d35a1faba3074b667c1928d8fb
-verified_paths: [services/agentbox-manifest/src/deepsec_gate.rs, services/agentbox-manifest/src/visioncraft_source.rs, services/agentbox-manifest/src/jsonio.rs, services/agentbox-manifest/src/mcp.rs, services/agentbox-manifest/src/mcp_hub.rs, services/agentbox-manifest/tests/deepsec_gate.rs, services/agentbox-manifest/tests/aqe.rs, tests/config/visioncraft-deepsec.test.mjs, tests/config/visioncraft-aqe.test.mjs, tests/system-one/visioncraft-picker.test.mjs, config/visioncraft-source.json, lib/lockfiles/visioncraft-0.1.0.Cargo.lock, lib/visioncraft.nix, lib/agentbox-manifest.nix, flake.nix, skills/visioncraft, skills/registered-skills.txt, skills/codex-registered-skills.txt, scripts/reconcile-skills.sh, services/agentbox-manifest/src/main.rs, tests/config/visioncraft-cutover.test.mjs]
+verified_paths: [services/agentbox-manifest/src/deepsec_gate.rs, services/agentbox-manifest/src/visioncraft_source.rs, services/agentbox-manifest/src/jsonio.rs, services/agentbox-manifest/src/mcp.rs, services/agentbox-manifest/src/mcp_hub.rs, services/agentbox-manifest/tests/deepsec_gate.rs, services/agentbox-manifest/tests/aqe.rs, tests/config/visioncraft-deepsec.test.mjs, tests/config/visioncraft-aqe.test.mjs, tests/system-one/visioncraft-picker.test.mjs, config/visioncraft-source.json, lib/lockfiles/visioncraft-0.2.0.Cargo.lock, lib/visioncraft.nix, lib/agentbox-manifest.nix, flake.nix, skills/visioncraft, skills/registered-skills.txt, skills/codex-registered-skills.txt, scripts/reconcile-skills.sh, services/agentbox-manifest/src/main.rs, tests/config/visioncraft-cutover.test.mjs]
 owner: jjohare
 review_trigger: a VisionCraft release, a Deepsec protocol change, or discovery of a second active quality implementation
 repo: agentbox
@@ -91,6 +91,12 @@ pin consumes published VisionCraft 0.1.0, upstream commit
 that commit and the official-Nix-hashed archive. Source integrity, affected Jev,
 skill, configuration/catalogue and environment checks pass. Nix parsing is verified;
 full image evaluation, rebuild and runtime activation remain outstanding.
+
+2026-11-05: the pin moves to VisionCraft 0.2.0, upstream commit
+`b7e579f99e4c431b34ca911b80980b18c2e948d9`, a skill-only release adding the
+browser-target (Rust to WebAssembly) reference. All 35 payload files and
+Cargo.lock match that archive; `lib/lockfiles/visioncraft-0.2.0.Cargo.lock`
+replaces the 0.1.0 lockfile.
 
 The independent host review also reproduced two existing projector faults.
 Private JSON writes now use exclusive, unpredictable, owner-only staging files

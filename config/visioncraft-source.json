@@ -1,16 +1,16 @@
 {
   "schema": 1,
-  "version": "0.1.0",
-  "revision": "9cf450c5fb82033139527ace29d5731a77d96fc7",
-  "source_hash": "sha256-810h+LaFM/Ly3GyXAFChh0g7GM3cY3c/G67sMHgOizk=",
+  "version": "0.2.0",
+  "revision": "b7e579f99e4c431b34ca911b80980b18c2e948d9",
+  "source_hash": "sha256-W4z4jJrdpR+7E+SDQKR3jrttP5Ui2TAkCYLh5qyF4IM=",
   "repository": "https://github.com/DreamLab-AI/visioncraft",
   "files": {
-    "SKILL.md": "d081596856e07cfb0a8648c72807b839c75c4f35d8e7609b2f33af1aa827d426",
+    "SKILL.md": "8d3c69e9b4b5bada48ef4103ef3cbb1f9580690142aaa8203056142f0370b3e8",
     "assets/activation.md": "c7e6a051725f8208debbb0dce0b19f60f2b770533f1fe9b0b90846b154417c6c",
     "assets/adr.md": "efc95318b63d7f485bd1926df4dd49c22e0a2415b3f540526514df63aac9e35e",
     "assets/expectation.md": "441dd1cbdb4b972584ec0412c5b1d52ee83d3130ba6637bc53c1b7f73c15df2e",
     "assets/legacy-paths.json": "1f81ded7da61613210344ffc4f97cb700bd4392d3128231d6eb3e58eeacaed6d",
-    "assets/provenance.json": "d1b42d769d0fe5ac8ec7ca3bd023c2904bf447e9929c506dfa17f697b28f6680",
+    "assets/provenance.json": "19a3380eb262748b643e9d8ea8bd0b0b5329c52ff9c30cf33845dbe257af8cc2",
     "assets/traceability.md": "e85a724de130d02084e337cdefbe3e57de7bda6b5b3f84cfc98448fb4839a40d",
     "assets/workshop.md": "3da73764972a6798a3739c656bc9dff027333b01a63beb241c344cfbde0f7c3e",
     "references/agentic-qe.md": "0bf64f3531235b427a127f8ed3b772e6d3d853b6f35f7a9aab0806075ce536f4",
@@ -27,6 +27,7 @@
     "references/review-evidence.md": "a9e93ccc4fcfd2145c26195e8a32c46487da6beef76b615147ac36a7afc68d84",
     "references/roles.md": "22a9cf8db8089500a23e20f3d302e5a55acba2f057d54db08ded87aa09abbefa",
     "references/rust/NOTICE.md": "6949905954458103b5489cc5ea4ac0f1dfd0004f83a6265c61356738beb11f34",
+    "references/rust/browser-wasm.md": "9b7ae711545e012f74d4998a3838f2c37c9441e54c522973540a7d31c0976a23",
     "references/rust/lints/clippy.toml": "012446990fbaa1b4705319c7cf95ed59ffbd14ac7ca9ec4b907f27a0ead82c42",
     "references/rust/lints/lints.toml": "4dbf3367ff178738f248543e9ae298ad57c8de3fb797823e756b5edf3f7f9588",
     "references/rust/port.md": "a01cd0a951ec4e58b924c3d7238c38bd1cd8fd026445364fb46c47664c0252ad",
@@ -36,9 +37,9 @@
     "references/rust/sources/microsoft-rust-guidelines.md": "648cfee06cea304e3d9c525e6de9047c296ce353e156a8117111094418ccc4b8",
     "references/rust/sources/rust-api-guidelines.md": "392a94ed5151a7eeaf6f0d0f0cbd29904fa41ae4c4ae5ae98d79e7da3ba2a8af",
     "references/rust/sources/rust-design-patterns.md": "3102f45153ac7c75179ee43b12d143b33e4aaba9b2209c454dd4f0542cae7ae7",
-    "references/rust/steering.md": "3c687e100b6d83c099e9825045a9466acae41a5261d45e52952188d5afeba94f",
+    "references/rust/steering.md": "1ad7ff814c33afa21740903d60f7507090d937eb4c4826f12f564f02027ed3b8",
     "references/traceability.md": "be204b105700a7de95c489beb329eab032138d08dc7786c4716b0e0e1c7915f2",
-    "references/worked-examples.md": "03fbbd807dd87e8112ccaa2c00ffba3de732eddaa3e75ebe4925fb4a1ee53b54"
+    "references/worked-examples.md": "c7659d7540f776c036a8e6e478b77f203538412b2111065bb7df4b68a2ad1ab8"
   },
-  "cargo_lock_sha256": "9cbb7bf2815ffcde944b4121935af59ca7e3fad481624754500e510c41341744"
+  "cargo_lock_sha256": "a3f6960bcec5574f8f4ac1d8bb2efa0734ffb84328e0e4cc802095b6508b0d22"
 }

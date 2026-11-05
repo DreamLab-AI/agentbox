@@ -48,7 +48,7 @@
 
 | Skill | MCP | Key Capability | When to Choose |
 |-------|-----|----------------|----------------|
-| `visioncraft` | No | Pinned portable quality method and Rust CLI: EDD, debugging, quality plans, traceability, evidence-bound reviews, evaluation, Rust rubrics and Deepsec execution. Agentbox supplies host policy and model routing. Replaces the retired build-with-quality skill. | Any multi-file feature, refactor, or project needing quality gates, coverage, and testing |
+| `visioncraft` | No | Pinned portable quality method and Rust CLI: EDD, debugging, quality plans, traceability, evidence-bound reviews, evaluation, Rust rubrics, browser targets as Rust compiled to WebAssembly, and Deepsec execution. Agentbox supplies host policy and model routing. Replaces the retired build-with-quality skill. | Any multi-file feature, refactor, or project needing quality gates, coverage, and testing |
 | `sparc-methodology` | No | SPARC 5-phase development (Specification, Pseudocode, Architecture, Refinement, Completion), 17 modes | Systematic multi-phase development from spec through deployment |
 | `prd2build` | No | PRD to complete documentation in a single command | Generating full project documentation from a product requirements document |
 | `bhil-methodology` | No | AI-first specification-driven methodology: PRD→SPEC→ADR→TASK traceability, AI-native ADRs (model/prompt/agent), eval suites, guardrails | Starting new features, architecture decisions, sprint planning, quality gates, artifact traceability |

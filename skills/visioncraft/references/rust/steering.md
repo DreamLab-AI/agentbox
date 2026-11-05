@@ -30,6 +30,9 @@ external projects.
 - Describe gates as executed only after reading their actual results. After
   repeated unsuccessful repairs, reconsider the cause. The [debugging guide](../debugging.md)
   and [diagram diagnosis](../diagram-diagnosis.md) provide the deeper path.
+- Browser-targeted logic defaults to Rust compiled to WebAssembly behind a thin
+  JavaScript host; see [browser-wasm.md](browser-wasm.md) for scope, crate shape
+  and the wasm-specific evidence gates.
 - These sections are a review rubric, not a demand for every possible tool on
   every edit. Scope tests and lint changes to meaningful risk; preserve existing
   compatibility and explain deliberate exceptions.
