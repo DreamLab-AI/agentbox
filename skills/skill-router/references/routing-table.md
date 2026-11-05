@@ -9,7 +9,7 @@
 > consultant-deepseek, consultant-perplexity, consultant-zai, consultant-antigravity) are
 > not skills; route to them directly via their `consult` tool when a second model opinion is wanted.
 
-Skills: 126 active, 5 deprecated redirects. Sections mirror SKILL-DIRECTORY.md Artefact 1.
+Skills: 127 active, 5 deprecated redirects. Sections mirror SKILL-DIRECTORY.md Artefact 1.
 
 ## How to route
 
@@ -28,6 +28,7 @@ Skills: 126 active, 5 deprecated redirects. Sections mirror SKILL-DIRECTORY.md A
 | `lichtfeld-studio` | Drive LichtFeld Studio (native C++/CUDA 3D Gaussian Splatting workstation) via its built-in MCP server. Use when training, rendering, editing, or exporting 3D Gaussian Splats, or converting video into a COLMAP dataset for splat training. |
 | `meta-xr-sdk` | Build VR/AR apps for Meta Quest (2/3/3S/Pro) — WebXR in the browser and Quest-native spatial apps. Use when building immersive WebXR with Three.js or React Three Fiber, mixed reality with passthrough, hand tracking, spatial anchors, plane/mesh detection, porting 2D apps to Quest, profiling or managing a Quest device, or emulating WebXR without a headset. Meta-ecosystem specific; not for generic non-Meta WebXR or plain 3D rendering. |
 | `spark-scene` | Integrate Spark Gaussian splats into a Three.js browser scene with spatial annotations, evidence links, or graph overlays. Use for viewing trained captures alongside data, splat picking, and scene registration; use lichtfeld-studio for reconstruction/training and blender for mesh authoring. |
+| `supersplat` | Inspect, clean, crop and convert Gaussian splats with the SuperSplat editor (served in-container, driven in the browser sidecar) and the splat-transform CLI. Use to open a trained .ply/.compressed.ply/.sog/.spz for review, delete floaters or crop a region, read splat counts, render a still, or convert/compress a splat for the web. Not for training (lichtfeld-studio or the comfyui splat pipeline) or for embedding a splat in a Three.js app (spark-scene). |
 | `terracraft` | Generate Minecraft Java Edition worlds from real-world geographic data. Converts OpenStreetMap buildings, roads, water, and terrain into playable Minecraft worlds using the arnis Rust engine. Integrates with QGIS for geospatial analysis, Blender for 3D terrain preview, ImageMagick for elevation processing, and perplexity-research for location enrichment. Use when converting a real place (city, landmark, campus) into a Minecraft world, geocoding a location to a bounding box, fetching OSM features for an area, or building test/educational voxel worlds from geography. Triggers: "make a Minecraft world of <place>", "OSM to Minecraft", … |
 | `unreal-engine` | Unreal Engine 5 automation via 60+ MCP tools. Spawn actors, edit Blueprints, inspect materials, run PIE sessions, capture screenshots, profile performance, manage StateTrees, widgets, and assets. Works with running UE5 editor or packaged builds. Use when the user says "unreal engine", "UE5", "spawn actor", "blueprint", "PIE session", "unreal project". Complements game-dev skill which covers Godot/Unity/Unreal at design level; this skill provides direct UE5 editor control. |
 

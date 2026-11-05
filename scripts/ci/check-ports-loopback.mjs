@@ -743,6 +743,11 @@ const LISTENER_SANCTIONED = [
   // published; it holds the vendor keys and refuses browser-shaped requests (ADR-2139
   // amendment 2026-10-30). The proxy and the projector refuse any non-private bind.
   { program: 'system-one-proxy', reason: 'ADR-2139 amendment 2026-10-30 — 0.0.0.0:8094 when [system_one].network = true; docker-network only, never published; refuses Origin-bearing and non-JSON requests' },
+  // supersplat serves the public SuperSplat web build and the splats an agent copies
+  // into $WORKSPACE/splats/share: GET-only static files, no directory listing, symlinks
+  // out of the root refused. The browser sidecar must reach it across the docker
+  // network, so loopback is not available; it holds no credential and writes nothing.
+  { program: 'supersplat', reason: 'ADR-2177 — 0.0.0.0:8795 on the docker network only, never published; read-only static-web-server, no listing, serves only $WORKSPACE/splats/share' },
 ];
 
 // Flags whose value is a bind address.

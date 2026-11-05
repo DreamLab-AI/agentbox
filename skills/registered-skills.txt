@@ -53,6 +53,8 @@ uk-solar-planner
 
 # Captured 3D scenes and registered data overlays
 spark-scene
+# Gaussian-splat inspection, cleanup and conversion (ADR-2177)
+supersplat
 
 # Codex (GPT-6 Astra) has its own manifest: codex-registered-skills.txt, reconciled into
 # ~/.codex/skills by the same reconciler. Keep the two in step deliberately, not by copy.

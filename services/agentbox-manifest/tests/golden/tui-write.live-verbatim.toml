@@ -210,6 +210,7 @@ blender            = true
 blender_local      = true
 qgis               = true
 gaussian_splatting = false
+supersplat         = false
 
 [skills.data_science]
 pytorch = true

@@ -67,6 +67,7 @@ const FIELDS: &[F] = &[
         D::B(false),
         false,
     ),
+    F("skills.spatial_and_3d.supersplat", D::B(false), false),
     F("skills.data_science.pytorch", D::B(false), false),
     F("skills.data_science.jupyter", D::B(false), false),
     F("skills.docs.latex", D::B(true), false),

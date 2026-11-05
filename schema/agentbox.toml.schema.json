@@ -380,6 +380,10 @@
             "gaussian_splatting": {
               "type": "boolean",
               "description": "Requires gpu.backend=local-cuda (E006)."
+            },
+            "supersplat": {
+              "type": "boolean",
+              "description": "ADR-2177: build the pinned SuperSplat editor (served by [program:supersplat] on 0.0.0.0:8795, docker network only) and put splat-transform on PATH. Default false when absent."
             }
           }
         },

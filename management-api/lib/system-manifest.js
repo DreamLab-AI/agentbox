@@ -418,6 +418,9 @@ const CATALOGUE = [
   { id: 'gaussian-splatting', name: '3DGS stack', layer: 'module', heavy: true,
     gate: 'skills.spatial_and_3d.gaussian_splatting', apply_class: 'rebuild',
     summary: 'Gaussian-splatting toolchain (E006), CUDA-gated.' },
+  { id: 'supersplat', name: 'SuperSplat editor + splat-transform', layer: 'module',
+    gate: 'skills.spatial_and_3d.supersplat', apply_class: 'rebuild',
+    summary: 'ADR-2177: the pinned SuperSplat static build served by [program:supersplat] (static-web-server, 0.0.0.0:8795 on the docker network only, never published, read-only) over $WORKSPACE/splats/share, plus the splat-transform CLI on PATH. Opened in the browser sidecar at http://agentbox:8795/editor/ (WebGPU only; the origin is on its TREAT_AS_SECURE list). REBUILD-class — package set and supervisor text are resolved at image composition.' },
   // ADR-2034 — resource topology. The envelope is BOOT-class (the generated
   // compose is re-read on `up`), the resident paths are REBUILD-class (they
   // add supervised programs and binaries to the image).

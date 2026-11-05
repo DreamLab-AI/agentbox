@@ -94,6 +94,25 @@ Headline third-party / vendored components
       information, visit https://krea.ai/krea-2-licensing. The Krea 2 and ERP
       LoRA weights are fetched at runtime, not redistributed.
 
+  • SuperSplat editor + splat-transform (ADR-2177)  MIT / MPL-2.0 / ISC
+      Built from source at pinned commits when [skills.spatial_and_3d]
+      supersplat is on (lib/supersplat.nix), unmodified. Both are
+      Copyright (c) 2011-2026 PlayCanvas Ltd., MIT:
+        playcanvas/supersplat v3.6.0
+          8c28d7219727c9e07be8ce8d818485e94d9206d5
+        playcanvas/splat-transform v3.10.3
+          4f90012be983078010d631fa0572baa99d5c1965
+      Bundled into the editor build: playcanvas 2.23.3, @playcanvas/pcui 6.1.4,
+      @playcanvas/observer 1.6.6, @playcanvas/splat-transform 3.10.2, i18next
+      26.5.4, i18next-browser-languagedetector 8.2.1, i18next-http-backend 4.0.4
+      (all MIT), and mediabunny 1.62.0 (MPL-2.0, unmodified; source at
+      github.com/Vanilagy/mediabunny). Shipped with splat-transform (its npm
+      tarball plus lib/splat-transform.package-lock.json): webgpu 0.6.2 (MIT;
+      prebuilt Dawn addon), @adobe/spz 0.2.3 (ISC), playcanvas 2.23.3, debug
+      4.4.3, ms 2.1.3, @types/webxr 0.5.24 (all MIT) and @webgpu/types 0.1.74
+      (BSD-3-Clause). Served by
+      static-web-server from nixpkgs (MIT OR Apache-2.0).
+
   • Skills directory (skills/*)                 Various third-party
       Each skill in `skills/` is a third-party SDK or template authored
       upstream. Their licenses are retained as published; consult each

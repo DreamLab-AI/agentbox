@@ -770,6 +770,9 @@
         gauss3dPackages = lib.optionals (spatialCfg.gaussian_splatting or false)
           (gs3dLib.makeGaussianSplattingPackages { inherit system; });
 
+        # SuperSplat editor + splat-transform CLI — gated by supersplat (ADR-2177).
+        supersplatLib = import ./lib/supersplat.nix { inherit lib pkgs; };
+
         # ---------------------------------------------------------------------------
         # PRD-002 §9 Phase 1 — local npm service derivations via buildNpmPackage.
         #
@@ -1482,7 +1485,9 @@
           # colmap (CUDA SfM/MVS) + lichtfeld (CUDA) need the wrapper; metis is
           # CPU-only but wrapping is inert for it. Bin names are upstream-versioned,
           # so wrap every executable (wrapGpuAll).
-          ++ map wrapGpuAll gauss3dPackages;
+          ++ map wrapGpuAll gauss3dPackages
+          # The editor itself is served by [program:supersplat]; only the CLI goes on PATH.
+          ++ lib.optionals (spatialCfg.supersplat or false) [ supersplatLib.splatTransform ];
 
         dataSciencePackages =
           lib.optionals (dataScienceCfg.pytorch or false) [
@@ -2362,6 +2367,28 @@ default_days = ${toString (relayCfg.retention_days or 30)}
         # GL context, the same constraint as Blender. qgis_mcp_standalone.py is now a thin
         # TCP proxy (localhost:9877 -> gui-tools-service:9877), not the old local stub;
         # set GUI_CONTAINER_HOST in the container env to retarget. See docs/user/blender.md.
+        # SuperSplat (ADR-2177): static-web-server over one root, $WORKSPACE/splats/share.
+        # rsync mirrors the image's editor build into <root>/editor at every start, so the
+        # served editor always matches the image (and stale hashed assets go); agents put
+        # splats in <root>/<name>/ and open /editor/?load=/<name>/<file>, same origin, no
+        # CORS. static-web-server refuses symlinks that leave the root, which is why the
+        # editor is mirrored, not linked. Binds 0.0.0.0 on the docker network only (never
+        # published), unauthenticated, read-only, no directory listing: a sanctioned
+        # listener in scripts/ci/check-ports-loopback.mjs.
+        supersplatRoot = "/home/devuser/workspace/splats/share";
+        supersplatServiceBlock = ''
+[program:supersplat]
+command=${pkgs.bash}/bin/bash -c 'set -e; ${pkgs.coreutils}/bin/mkdir -p ${supersplatRoot}/editor; ${pkgs.rsync}/bin/rsync -a --delete --chmod=Du+w,Fu+w ${supersplatLib.editor}/share/supersplat/ ${supersplatRoot}/editor/; exec ${bgNice}${pkgs.static-web-server}/bin/static-web-server --host 0.0.0.0 --port 8795 --root ${supersplatRoot} --directory-listing false --log-level warn'
+directory=/home/devuser
+user=devuser
+environment=HOME="/home/devuser"
+autostart=true
+autorestart=true
+priority=235
+stdout_logfile=/var/log/supersplat.log
+stderr_logfile=/var/log/supersplat.error.log
+        '';
+
         qgisServiceBlock = ''
 [program:qgis-mcp]
 command=${bgNice}${pkgs.python312}/bin/python3 -u /opt/agentbox/scripts/qgis_mcp_standalone.py
@@ -2732,6 +2759,7 @@ stdout_logfile=/var/log/imagemagick-mcp.log
 stderr_logfile=/var/log/imagemagick-mcp.error.log
 ''}
 ${lib.optionalString (spatialCfg.qgis or false) "\n${qgisServiceBlock}"}
+${lib.optionalString (spatialCfg.supersplat or false) "\n${supersplatServiceBlock}"}
 ${lib.optionalString (spatialCfg.blender or false) "\n${blenderServiceBlock}"}
 ${lib.optionalString (dataScienceCfg.jupyter or false) "\n${jupyterServiceBlock}"}
 ${lib.optionalString (desktopCfg.enabled or false) "\n${desktopBlocks}"}
@@ -4657,6 +4685,8 @@ ${ragflowNetworkDecl}
           agentbox-sessions = agentboxSessionsPkg;
           web-researcher-mcp = webResearcherMcpPkg;
           systemscape = systemscapePkg; # fast standalone verification before an image rebuild
+          supersplat = supersplatLib.editor; # ADR-2177; also resolves the pinned hashes
+          splat-transform = supersplatLib.splatTransform;
           runtime = mkImage { tag = "runtime-${system}"; };
           full = mkImage {
             tag = "full-${system}";

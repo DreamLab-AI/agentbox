@@ -251,6 +251,10 @@ pub fn providers_and_toolchains(s: &Value) -> Vec<String> {
             "gaussian_splatting = {}",
             b(s, "skills.spatial_and_3d.gaussian_splatting")
         ),
+        format!(
+            "supersplat         = {}",
+            b(s, "skills.spatial_and_3d.supersplat")
+        ),
         String::new(),
         "[skills.data_science]".into(),
         format!("pytorch = {}", b(s, "skills.data_science.pytorch")),

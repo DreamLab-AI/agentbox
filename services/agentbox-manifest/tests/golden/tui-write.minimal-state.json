@@ -31,6 +31,7 @@
   "skills.spatial_and_3d.blender_local": true,
   "skills.spatial_and_3d.qgis": false,
   "skills.spatial_and_3d.gaussian_splatting": false,
+  "skills.spatial_and_3d.supersplat": false,
   "skills.data_science.pytorch": false,
   "skills.data_science.jupyter": false,
   "skills.docs.latex": true,

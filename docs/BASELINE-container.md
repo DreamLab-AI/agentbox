@@ -1,10 +1,11 @@
 ---
 title: Agentbox Container Baseline
 doc_id: AB-BASELINE
-version: 0.5.14
+version: 0.5.15
 status: draft-for-ratification
 verified_commit: 
 changelog:
+  - "0.5.15 (2026-11-05): ADR-2177 (accepted, partial, staged). [skills.spatial_and_3d] supersplat (rebuild class, on) builds the pinned SuperSplat editor and splat-transform CLI; [program:supersplat] serves $WORKSPACE/splats/share read-only on 0.0.0.0:8795 (docker network only, sanctioned listener), and the browser sidecar treats http://agentbox:8795 as secure."
   - "0.5.14 (2026-11-04): ADR-2175 (accepted, partial, staged). Image-to-splat adds a pinned SplatKit dataset stage to the ComfyUI sidecar (build arg SPLATKIT=1): splat_pipeline.py drives pano, geometry, preview and dataset jobs from pinned API graphs; an agentbox_video export node lets the client fetch the hash-checked COLMAP dataset over /view; weights come only from the splat-pano and splat-dataset profiles; training stays in LichtFeld behind its existing gate. No new port, mount or adapter."
   - "0.5.13 (2026-10-29): ADR-2153 is live: owned session daemon replaces AoE, :9095 and the board; profile volume retained unused for recovery. Cold boot and provider limits are recorded in the ADR."
   - "0.5.12 (2026-10-29): ADR-2154 (accepted, partial, staged; supersedes ADR-2152). Mermaid renders in the image with a pinned Pele 1.12.0 (`pele-render`, with `mmdc` kept as a compatibility shim); browsercontainer no longer carries mermaid-cli or `/render-mermaid`. No new port, adapter or sidecar; browsercontainer change lands at its next rebuild."
@@ -81,6 +82,13 @@ dataset over `/view` with no new mounts. Weights come only from the
 `splat-pano` and `splat-dataset` profiles, and training stays in LichtFeld
 behind its existing gate.
 
+SuperSplat (ADR-2177, staged until the host rebuild): `[skills.spatial_and_3d]
+supersplat` builds the pinned SuperSplat editor and puts `splat-transform` on
+PATH. `[program:supersplat]` serves `$WORKSPACE/splats/share` read-only on
+`0.0.0.0:8795`, never published, and mirrors the editor into its `editor/`
+folder at start. Agents open `http://agentbox:8795/editor/?load=/<name>/<file>`
+in the browser sidecar (WebGPU only) and drive it through its event bus.
+
 ### Supervised services (real `[program:*]` blocks in flake.nix)
 
 Supervisord runs as PID 1 root; every long-running program drops to `user=devuser`, with one exception. Under `[security].role_isolation = true` (ADR-2122; boot-class, default off, staged until its rehearsal passes), the entrypoint execs `/etc/supervisord.roles.conf`. That config is derived from this one and differs only in `user=` and `environment=`. In it `nostr-relay` and `serve-identity` run as `ab-identity`, `nostr-gateway` as `ab-gateway`, `nip98-proxy` as `ab-ingress`, and each sidestr producer and faucet as its chain's role (`config/role-accounts.json`). Enumerated from the generated supervisor text:
@@ -108,6 +116,7 @@ Supervisord runs as PID 1 root; every long-running program drops to `user=devuse
 | `code-server` | web VS Code (gated) | `0.0.0.0:8080` |
 | `comfyui-builtin` | image workflows (gated) | `127.0.0.1:8188` |
 | `qgis-mcp` / `blender-mcp` / `imagemagick-mcp` | GPU/media MCP servers (gated) | `9877`, `9876`, — |
+| `supersplat` | SuperSplat editor + share, static-web-server (gated, ADR-2177; sanctioned docker-network listener) | `0.0.0.0:8795` |
 | `xvnc` / `x11vnc` / `wayvnc` / `xorg-nvidia` / `hyprland` / `i3wm` / `xwayland-session` | desktop stack (gated `desktop.enabled`) | `127.0.0.1:5901` |
 | `tailscaled` / `tailscale-up` | mesh networking (gated) | — |
 | `podcast-cron` / `forum-backup-cron` | scheduled jobs | — |

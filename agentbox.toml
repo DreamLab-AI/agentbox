@@ -633,6 +633,11 @@ blender = true
 # skills/blender/tools/blender-job.js. Set true to restore the local headless path.
 blender_local = false
 gaussian_splatting = false
+# SuperSplat Gaussian-splat editor (ADR-2177): the static build served by
+# [program:supersplat] on :8795 (docker network only) over $WORKSPACE/splats/share,
+# plus the splat-transform CLI on PATH. Open http://agentbox:8795/editor/ in the
+# browser sidecar; WebGPU only. Skill: supersplat. REBUILD-class.
+supersplat = true
 
 [skills.data_science]
 pytorch = true

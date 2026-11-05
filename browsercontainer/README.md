@@ -91,6 +91,12 @@ treat as secure contexts. Set in `docker-compose.browsercontainer.yml`:
 - TREAT_AS_SECURE=http://the model host:3001,http://the model host:3000
 ```
 
+The shipped list also carries `http://agentbox:8795`, the SuperSplat editor
+(ADR-2177), which creates a WebGPU device only and so needs a secure context.
+A changed list takes effect when this sidecar is recreated, which locks Podkey
+until the owner unlocks it again; until then, forward the port to `localhost`
+inside the sidecar (`socat TCP-LISTEN:8795,bind=127.0.0.1,fork TCP:agentbox:8795`).
+
 The `launch-chromium.sh` script expands these into individual
 `--unsafely-treat-insecure-origin-as-secure=<origin>` flags. Combined with
 `--test-type` to suppress the warning banner.
