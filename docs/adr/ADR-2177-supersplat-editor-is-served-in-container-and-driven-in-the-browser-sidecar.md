@@ -98,3 +98,21 @@ the image itself, and the `TREAT_AS_SECURE` origin after a sidecar recreate.
 
 - Host, after review: `nix build .#splat-transform` unchanged on x86_64 (`imzz86yr…`) with the Dawn addon now chosen per platform; `packages.aarch64-linux.splat-transform` evaluates (`hm1wy7zw…drv`). nixpkgs pins static-web-server 2.44.1, the version the symlink, MIME and listing checks ran against. The exact `[program:supersplat]` start line, run twice on the host against the store build: HTTP 200, `application/wasm`, 21 files all writable, and a stale file removed by `--delete`.
 - The new key is accepted by `schema/agentbox.toml.schema.json`, `agentbox-config-validate.js` (a string value is refused), the semantic-rules suite (83 pass) and the agentbox-manifest TUI field table, whose three goldens moved by exactly one line each; skill counts updated to 132.
+
+## Activation
+
+Which sidecars this change needs, from the host checkout:
+
+1. **Agentbox image: rebuild.** `./agentbox.sh prepare`, then `./agentbox.sh activate`
+   (or `./agentbox.sh rebuild`). Activation replaces the running agentbox container. Then
+   `supervisorctl status supersplat` is RUNNING and
+   `curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8795/editor/` returns 200.
+2. **Browser sidecar: recreate, no image rebuild.** Only its `TREAT_AS_SECURE` environment
+   changed (`docker-compose.browsercontainer.yml`). Recreate it, then unlock Podkey over VNC
+   (`./agentbox.sh browsercontainer podkey unlock`). Until then, `http://agentbox:8795` is
+   not a secure origin and SuperSplat gets no WebGPU device there.
+3. **ComfyUI sidecar: nothing.** None of its baked files (`comfyui-sidecar/nodes/agentbox_video`,
+   `download_video_models.py`, `stopmotion-candidates.json`) changed after the ADR-2175 build.
+
+Set `activation_status: active` once steps 1 and 2 are done and the editor loads a splat at
+`http://agentbox:8795/editor/?load=/…` in the browser sidecar.
