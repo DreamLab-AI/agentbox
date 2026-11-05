@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 18b79218d81b0ddea7840aca11a50ee829068bb9
+verified_commit: da086b1e1bdeca2ccd3fb54d4463dd19807f3219
 verified_paths: [lib/supersplat.nix, lib/splat-transform.package-lock.json, flake.nix, agentbox.toml, scripts/ci/check-ports-loopback.mjs, docker-compose.browsercontainer.yml, skills/supersplat/SKILL.md]
 owner: jjohare
 review_trigger: SuperSplat or splat-transform pin bump; any change to the supersplat listener's bind, root or authentication; the browser sidecar's TREAT_AS_SECURE list; a proposal to serve datasets or anything outside $WORKSPACE/splats/share
@@ -109,6 +109,14 @@ the image itself, and the `TREAT_AS_SECURE` origin after a sidecar recreate.
 - The new key is accepted by `schema/agentbox.toml.schema.json`, `agentbox-config-validate.js` (a string value is refused), the semantic-rules suite (83 pass) and the agentbox-manifest TUI field table, whose three goldens moved by exactly one line each; skill counts updated to 132.
 
 ## Activation
+
+2026-11-05 compatibility correction: the retained browser image still starts
+Chrome with `/tmp/chrome-profile`. Both that path and the intended
+`/home/devuser/chrome-profile` now mount the same persistent profile volume.
+The old profile was copied while the container was stopped, with a restricted
+host backup and recovery image retained. This changes no network exposure.
+Chrome now receives the SuperSplat secure origin. Podkey unlock and a live
+editor/WebGPU check remain owner/runtime acceptance, not inferred here.
 
 Which sidecars this change needs, from the host checkout:
 
