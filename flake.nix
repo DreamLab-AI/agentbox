@@ -82,6 +82,15 @@
             #    the openai/jupyter python chain. Skip its test suite only.
             # Drop both overrides on the next nixpkgs bump that builds clean.
             (final: prev: {
+              # 2026-11-05: upstream password-auth workaround (musl, PAM off).
+              # Keep source and version paired; avoid a fleet-wide nixpkgs bump.
+              openssh = prev.openssh.overrideAttrs (_old: {
+                version = "10.6p2";
+                src = prev.fetchurl {
+                  url = "https://cdn.openbsd.org/pub/OpenBSD/OpenSSH/portable/openssh-10.6p2.tar.gz";
+                  hash = "sha256-muRIcgkM8vBrPPn/FH5/FvMJZxNAdj7S+ZJIOYrinVs=";
+                };
+              });
               # CVE-009 / eMudhra trust incident: nixos-unstable still ships
               # nss-cacert 3.126, whose generated bundle trusts an affected
               # non-CT chain.  Keep the package shape and setup hook, but
