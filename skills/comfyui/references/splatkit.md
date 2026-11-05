@@ -8,7 +8,7 @@ it does not train. Everything runs through the sidecar's HTTP API with no browse
 
 | Stage | Command | GPU work | Output |
 |---|---|---|---|
-| pano | `splat_pipeline.py pano` | Krea 2 Turbo (2K pano, seam fix) + tiled 8K refine | `pano/…pano_8k_*.png` |
+| pano | `splat_pipeline.py pano` | Krea 2 Turbo (2K pano, seam fix) + tiled 8K refine + 8K wrap-seam blend | `pano/…pano_8k_*.png` |
 | geometry | `splat_pipeline.py geometry` | MoGe depth on the pano | `paths.json` (suggested camera paths) |
 | preview | `splat_pipeline.py preview` | depth-mesh fly-through per path | `preview/…preview_pN_*.png` |
 | dataset | `splat_pipeline.py dataset` | Wan 2.1 I2V 14B + Matrix-3D LoRA fill, HiRes Composite, SphereSfM | `dataset/images`, `dataset/sparse/0`, `dataset.json` |

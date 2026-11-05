@@ -413,11 +413,19 @@ def stage_dataset(client, args, workdir):
     record = {"stage": "dataset", "paths": len(paths), "free": free_vram(client)}
     receipt, result = run_stage(client, workdir, "dataset", graph, args.timeout)
     record.update(fetch_dataset(client, result["history"], workdir / "dataset"))
-    record.update(dataset_dir=str(workdir / "dataset"), files=len(record["files"]),
-                  bytes=sum(f["bytes"] for f in record["files"]))
-    comfy_client.atomic_json(workdir / "dataset.json", record)
-    record["files"] = [f["path"] for f in record["files"][:5]]  # full list: <workdir>/dataset.json
-    return record
+    record["dataset_dir"] = str(workdir / "dataset")
+    full, summary = summarise_dataset(record)
+    comfy_client.atomic_json(workdir / "dataset.json", full)
+    return summary
+
+
+def summarise_dataset(record):
+    """Return ``(full, summary)``: the full record keeps every file, the summary a 5-file sample."""
+    files = record["files"]
+    full = dict(record, file_count=len(files), bytes=sum(f["bytes"] for f in files))
+    summary = dict(full, files=[f["path"] for f in files[:5]],
+                   files_note="full list with sha256: <workdir>/dataset.json")
+    return full, summary
 
 
 STAGES = {"pano": stage_pano, "geometry": stage_geometry, "preview": stage_preview, "dataset": stage_dataset}

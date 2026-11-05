@@ -52,6 +52,23 @@ class GraphTests(unittest.TestCase):
         self.assertEqual(graph["scene_prompt"]["inputs"]["text"], splat.T2P_PREFIX + "a torchlit cavern")
         self.assertEqual(graph["sample"]["inputs"]["seed"], 7)
 
+    def test_pano_8k_wrap_seam_is_rebuilt_from_the_rolled_2k_pano(self):
+        # The tiled USDU refine breaks the 360 wrap; both modes must re-blend it before saving.
+        for graph in (splat.build_pano_graph("a", image_ref="splat/v.jpg", h_fov=70, scene="A room."),
+                      splat.build_pano_graph("b", text="a room")):
+            self.assertEqual(graph["save_8k"]["inputs"]["images"], ["pano_8k", 0])
+            self.assertEqual(graph["pano_8k"]["inputs"]["image"], ["wrap_blend", 0])
+            blend = graph["wrap_blend"]["inputs"]
+            self.assertEqual(blend["destination"], ["wrap_roll_usdu", 0])
+            self.assertEqual(graph["wrap_roll_usdu"]["inputs"]["image"], ["usdu", 0])
+            self.assertEqual(blend["source"], ["wrap_scale_8k", 0])
+            self.assertEqual(graph["wrap_roll_2k"]["inputs"]["image"], ["pano_2k", 0])
+            for roll in ("wrap_roll_2k", "wrap_roll_usdu", "pano_8k"):
+                self.assertEqual(graph[roll]["inputs"]["fraction"], 0.5)
+            mask = graph["wrap_mask"]["inputs"]
+            self.assertEqual((mask["width"], mask["height"]),
+                             (graph["scale_8k"]["inputs"]["width"], graph["scale_8k"]["inputs"]["height"]))
+
     def test_pano_mode_and_scene_are_required(self):
         with self.assertRaises(splat.PipelineError):
             splat.build_pano_graph("x")
@@ -86,6 +103,14 @@ class GraphTests(unittest.TestCase):
         self.assertEqual(graph["p1_save40"]["inputs"]["filename_prefix"], "splat/v/view_p1_f40")
         self.assertEqual(graph["p2_preview"]["inputs"]["images"], ["p2_control", 3])
         self.assertEqual(graph["p2_preview"]["inputs"]["filename_prefix"], "splat/v/preview_p2")
+
+    def test_dataset_summary_keeps_full_file_list_in_record(self):
+        files = [{"path": f"images/{i:03d}.jpg", "bytes": 10 + i, "sha256": "0" * 64} for i in range(7)]
+        full, summary = splat.summarise_dataset({"stage": "dataset", "files": files})
+        self.assertEqual(full["files"], files)
+        self.assertEqual((full["file_count"], full["bytes"]), (7, sum(10 + i for i in range(7))))
+        self.assertEqual(summary["files"], [f["path"] for f in files[:5]])
+        self.assertEqual(summary["file_count"], 7)
 
     def test_path_validation(self):
         for bad in ({"anchors": [[0, 0, 0]]}, {"anchors": "1,2\n3,4"}, {"anchors": [[0, 0, 0], [1, 1, 1]], "orientation": "spin"}):

@@ -399,13 +399,98 @@
     "class_type": "SaveImage",
     "inputs": {
       "images": [
-        "usdu",
+        "pano_8k",
         0
       ],
       "filename_prefix": "splat/scene/pano_8k"
     },
     "_meta": {
       "title": "FINAL 360 PANO (8K)"
+    }
+  },
+  "wrap_roll_2k": {
+    "class_type": "MickmumpitzPanoRollHorizontal",
+    "inputs": {
+      "image": [
+        "pano_2k",
+        0
+      ],
+      "fraction": 0.5
+    }
+  },
+  "wrap_esrgan": {
+    "class_type": "ImageUpscaleWithModel",
+    "inputs": {
+      "upscale_model": [
+        "esrgan",
+        0
+      ],
+      "image": [
+        "wrap_roll_2k",
+        0
+      ]
+    }
+  },
+  "wrap_scale_8k": {
+    "class_type": "ImageScale",
+    "inputs": {
+      "image": [
+        "wrap_esrgan",
+        0
+      ],
+      "upscale_method": "lanczos",
+      "width": 8192,
+      "height": 4096,
+      "crop": "disabled"
+    }
+  },
+  "wrap_roll_usdu": {
+    "class_type": "MickmumpitzPanoRollHorizontal",
+    "inputs": {
+      "image": [
+        "usdu",
+        0
+      ],
+      "fraction": 0.5
+    }
+  },
+  "wrap_mask": {
+    "class_type": "MickmumpitzPanoSeamMask",
+    "inputs": {
+      "width": 8192,
+      "height": 4096,
+      "seam_width": 512,
+      "feather": 192
+    }
+  },
+  "wrap_blend": {
+    "class_type": "ImageCompositeMasked",
+    "inputs": {
+      "destination": [
+        "wrap_roll_usdu",
+        0
+      ],
+      "source": [
+        "wrap_scale_8k",
+        0
+      ],
+      "x": 0,
+      "y": 0,
+      "resize_source": false,
+      "mask": [
+        "wrap_mask",
+        0
+      ]
+    }
+  },
+  "pano_8k": {
+    "class_type": "MickmumpitzPanoRollHorizontal",
+    "inputs": {
+      "image": [
+        "wrap_blend",
+        0
+      ],
+      "fraction": 0.5
     }
   }
 }
