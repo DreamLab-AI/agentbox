@@ -1,9 +1,9 @@
 ---
 name: visioncraft
-description: Builds features with proportionate tests and evidence, diagnoses persistent bugs, and checks engineering designs and release gates. Use for expectation-driven development, difficult debugging, imported review findings, Rust changes, browser-targeted code (Rust compiled to WebAssembly by default), or a requested quality review. Simple edits and standalone prose changes do not need the full workflow.
+description: Builds features with proportionate tests and evidence, diagnoses persistent bugs, and checks engineering designs and release gates. Use for expectation-driven development, difficult debugging, imported review findings, Rust changes, browser-targeted code (Rust compiled to WebAssembly by default), Rust-native desktop and web UI with the Rune GPU framework, or a requested quality review. Simple edits and standalone prose changes do not need the full workflow.
 license: MIT OR Apache-2.0
 metadata:
-  version: "0.2.0"
+  version: "0.3.0"
   category: "engineering-quality"
 ---
 
@@ -35,6 +35,7 @@ command surface.
 | Candidate tests, coverage gaps or measured quality tools would help | [Optional Agentic QE](references/agentic-qe.md) |
 | Rust is being written, reviewed or ported | [Steering](references/rust/steering.md), [review](references/rust/review.md), [port](references/rust/port.md) |
 | Code will run in a browser | [Browser targets: Rust to WebAssembly](references/rust/browser-wasm.md) |
+| The UI itself should be Rust, on desktop and web | [Rune UI](references/rust/rune.md), [Rune scaffold](assets/rune-web/) |
 | Several participants are actually available | [Logical roles](references/roles.md) |
 | A concrete project example helps scope the work | [Five worked examples](references/worked-examples.md) |
 

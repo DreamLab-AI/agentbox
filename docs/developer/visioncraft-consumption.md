@@ -20,15 +20,22 @@ as evidence of the previous implementation. See [ADR-2165](../adr/ADR-2165-visio
 
 ## Published release and activation
 
-The pin consumes published VisionCraft 0.2.0 from upstream commit
-`b7e579f99e4c431b34ca911b80980b18c2e948d9` (tag `v0.2.0`). 0.2.0 adds the
-skill's browser-target guidance (`references/rust/browser-wasm.md`): browser
-logic defaults to Rust compiled to WebAssembly; the library and CLI are
-unchanged from 0.1.0. The source archive's Nix hash is
-`sha256-W4z4jJrdpR+7E+SDQKR3jrttP5Ui2TAkCYLh5qyF4IM=`, computed without Nix by
-NAR-serialising the unpacked archive; the same method reproduces the 0.1.0 pin's
-official hash. All 35 skill files and the released lockfile were copied from that
-archive and verified with `visioncraft-source-check`. Registry publication is confirmed. Source, parser
+The pin consumes published VisionCraft 0.3.0 from upstream commit
+`2c6627ce01d0e68bb0f48fc55a209b2c674716f1` (tag `v0.3.0`). 0.3.0 adds Rune
+guidance (`references/rust/rune.md`): when the Rune GPU UI framework
+(github.com/anomalyco/rune) should be the Rust-native shell for desktop and web,
+how to pin it by git revision (the crates.io `rune` is an unrelated scripting
+language, as is the `rune` CLI baked into this image), its web-target limits and
+its headless evidence gates. It also adds `assets/rune-web/`, a scaffold built and
+tested against a pinned Rune revision. 0.2.0's browser-target guidance
+(`references/rust/browser-wasm.md`, browser logic in Rust compiled to
+WebAssembly) remains, now with a Rune toolchain row. The library and CLI are
+unchanged. The source archive's Nix hash is
+`sha256-Avi0R8gIu4ZiQBHnHQoP9ATHoXi3lHIxYd4bIyvn/iU=`, computed without Nix by
+NAR-serialising the unpacked archive; the same method reproduces the 0.2.0 pin's
+`sha256-W4z4jJrdpR+7E+SDQKR3jrttP5Ui2TAkCYLh5qyF4IM=`. All 40 skill files and the
+released lockfile were copied from that archive and verified with
+`visioncraft-source-check`. Registry publication is confirmed. Source, parser
 and consumer checks pass; the operator's image rebuild and runtime acceptance
 remain outstanding.
 

@@ -60,6 +60,7 @@ Use what the project already ships. Common pairings:
 |---|---|---|
 | Vite/React or another JS framework | `wasm-pack build --target web` or `wasm-bindgen` CLI, then `vite-plugin-wasm` | A small typed bridge module owns `init()` and re-exports the API |
 | Rust-only front end | `trunk` with Leptos, Yew, Dioxus or plain `web-sys` | Suitable when there is no existing JS shell to keep |
+| Rust-native GPU UI, desktop and web from one crate | Rune's `scripts/web-build.sh` (git-pinned `rev`) | Canvas and WebGPU only; see [rune.md](rune.md) for when it fits and its evidence gates |
 | Worker or WebGPU compute | `wasm-bindgen` with `--target web`, or `wgpu` | Keep GPU resource ownership on one side of the boundary |
 
 Pin `wasm-bindgen` to the same version as the CLI that generates the bindings;

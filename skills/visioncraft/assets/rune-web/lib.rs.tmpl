@@ -1,0 +1,209 @@
+//! A Rune app that builds for the desktop, headless tooling and the browser from one crate.
+//!
+//! `core` holds the behaviour and has no Rune types, so plain `cargo test` covers it.
+//! `view` renders it; `start` is the browser entrypoint and `spec` feeds the native binary.
+
+pub mod core {
+    /// Which tasks the list shows.
+    #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+    pub enum Filter {
+        #[default]
+        All,
+        Open,
+        Done,
+    }
+
+    #[derive(Clone, Debug, PartialEq, Eq)]
+    pub struct Task {
+        pub id: u32,
+        pub title: String,
+        pub done: bool,
+    }
+
+    #[derive(Debug, PartialEq, Eq)]
+    pub enum AddError {
+        EmptyTitle,
+    }
+
+    #[derive(Debug, Default)]
+    pub struct Tasks {
+        items: Vec<Task>,
+        next_id: u32,
+        pub filter: Filter,
+    }
+
+    impl Tasks {
+        /// Adds a task with a trimmed title; an empty title leaves the list unchanged.
+        pub fn add(&mut self, title: &str) -> Result<u32, AddError> {
+            let title = title.trim();
+            if title.is_empty() {
+                return Err(AddError::EmptyTitle);
+            }
+            let id = self.next_id;
+            self.next_id += 1;
+            self.items.push(Task { id, title: title.to_owned(), done: false });
+            Ok(id)
+        }
+
+        pub fn toggle(&mut self, id: u32) {
+            if let Some(task) = self.items.iter_mut().find(|t| t.id == id) {
+                task.done = !task.done;
+            }
+        }
+
+        /// Filtering hides tasks; it never removes them.
+        pub fn visible(&self) -> impl Iterator<Item = &Task> {
+            self.items.iter().filter(move |t| match self.filter {
+                Filter::All => true,
+                Filter::Open => !t.done,
+                Filter::Done => t.done,
+            })
+        }
+
+        pub fn len(&self) -> usize {
+            self.items.len()
+        }
+
+        pub fn is_empty(&self) -> bool {
+            self.items.is_empty()
+        }
+    }
+}
+
+use core::{Filter, Tasks};
+use rune::tok::{self, type_};
+use rune::{AppSpec, Cx, El, ScrollSpec, TextEdit, col, el, row, text, text_input};
+
+pub struct App {
+    pub tasks: Tasks,
+    pub draft: TextEdit,
+}
+
+impl Default for App {
+    fn default() -> Self {
+        let mut tasks = Tasks::default();
+        for title in ["Read the Rune README", "Render a headless PNG", "Ship the wasm bundle"] {
+            tasks.add(title).expect("seed titles are not empty");
+        }
+        Self { tasks, draft: TextEdit::new("") }
+    }
+}
+
+fn submit(app: &mut App, _: &mut rune::Tx) {
+    if app.tasks.add(&app.draft.text).is_ok() {
+        app.draft.clear();
+    }
+}
+
+fn chip(label: &'static str, key: &'static str, filter: Filter, current: Filter, dark: bool) -> El {
+    let t = tok::theme(dark);
+    let on = filter == current;
+    el().key(key).role("button").label(label).focusable(true)
+        .h(32.0).px(12.0).center().radius(16.0)
+        .fill(if on { tok::accent(0, dark) } else { t.control_off })
+        .child(text(label).font(type_::LABEL).color(t.text))
+        .on_press(move |app: &mut App| app.tasks.filter = filter)
+}
+
+pub fn view(app: &App, cx: &mut Cx<App>) -> El {
+    let dark = cx.system_dark();
+    let t = tok::theme(dark);
+    let [top, right, bottom, left] = cx.safe_area();
+
+    let mut list = col().w_full().gap(8.0);
+    for task in app.tasks.visible() {
+        let id = task.id;
+        let mark = if task.done { "Done" } else { "Open" };
+        list = list.child(
+            row().key(format!("task-{id}")).role("checkbox").label(task.title.clone())
+                .checked(task.done).focusable(true)
+                .w_full().gap(12.0).padding(12.0).radius(10.0).fill(t.card)
+                .child(text(task.title.clone()).font(type_::BODY).color(t.text).grow(1.0))
+                .child(text(mark).font(type_::LABEL).color(t.text_secondary))
+                .on_press(move |app: &mut App| app.tasks.toggle(id)),
+        );
+    }
+
+    let input = text_input(&app.draft, type_::BODY).key("draft")
+        .placeholder("New task", t.text_secondary).color(t.text)
+        .grow(1.0).h(44.0).padding(12.0).radius(10.0).fill(t.card)
+        .on_edit(|app: &mut App| &mut app.draft).on_submit(submit);
+    let filters = row().gap(8.0)
+        .child(chip("All", "filter-all", Filter::All, app.tasks.filter, dark))
+        .child(chip("Open", "filter-open", Filter::Open, app.tasks.filter, dark))
+        .child(chip("Done", "filter-done", Filter::Done, app.tasks.filter, dark));
+
+    col().w_full().h_full().gap(12.0).fill(t.bg)
+        .pt(16.0 + top).pr(16.0 + right).pb(16.0 + bottom).pl(16.0 + left)
+        .child(text("Tasks").font(type_::TITLE).color(t.text))
+        .child(input)
+        .child(filters)
+        .child(col().key("tasks").w_full().grow(1.0).shrink()
+            .scroll(ScrollSpec { stick_bottom: false }).child(list))
+}
+
+/// One spec for every host. Scenes name states that headless `--snap --scene` renders.
+pub fn spec() -> AppSpec<App> {
+    AppSpec::<App> {
+        scenes: &[
+            ("first-done", |app| app.tasks.toggle(0)),
+            ("done-only", |app| {
+                app.tasks.toggle(0);
+                app.tasks.filter = Filter::Done;
+            }),
+        ],
+        ..AppSpec::new("Tasks", (390.0, 640.0), App::default, view)
+    }
+}
+
+/// Browser entrypoint; on native the binary calls it.
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen::prelude::wasm_bindgen(start))]
+pub fn start() {
+    rune::run(spec());
+}
+
+#[cfg(test)]
+mod tests {
+    use super::core::{AddError, Filter, Tasks};
+    use super::*;
+    use rune::{Env, Runtime};
+
+    #[test]
+    fn an_empty_title_is_rejected_without_changing_the_list() {
+        let mut tasks = Tasks::default();
+        tasks.add("one").unwrap();
+        assert_eq!(tasks.add("   "), Err(AddError::EmptyTitle));
+        assert_eq!(tasks.len(), 1);
+    }
+
+    #[test]
+    fn filtering_hides_tasks_but_keeps_them() {
+        let mut tasks = Tasks::default();
+        let a = tasks.add("a").unwrap();
+        tasks.add("b").unwrap();
+        tasks.toggle(a);
+        tasks.filter = Filter::Done;
+        assert_eq!(tasks.visible().count(), 1);
+        tasks.filter = Filter::All;
+        assert_eq!(tasks.visible().count(), 2);
+    }
+
+    #[test]
+    fn tapping_a_task_marks_it_done_through_the_real_view() {
+        let env = Env { system_dark: true, scale: 2.0 };
+        let mut rt = Runtime::new(App::default(), view, (390.0, 640.0), env);
+        rt.frame(0.0);
+        let (x, y) = rt.find("task-1").expect("the second task is mounted");
+        rt.pointer_down(x, y);
+        rt.pointer_up(x, y);
+        rt.frame(1.0 / 60.0);
+        assert!(rt.state.tasks.visible().any(|t| t.id == 1 && t.done));
+
+        let (x, y) = rt.find("filter-open").expect("the Open chip is mounted");
+        rt.pointer_down(x, y);
+        rt.pointer_up(x, y);
+        rt.frame(1.0 / 60.0);
+        assert!(rt.find("task-1").is_none(), "a done task leaves the Open view");
+        assert!(rt.find("task-0").is_some());
+    }
+}

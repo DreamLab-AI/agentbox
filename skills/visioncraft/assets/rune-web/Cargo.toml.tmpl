@@ -1,0 +1,19 @@
+# Copy to Cargo.toml in a new crate, rename the package, and bump `rev` deliberately.
+[package]
+name = "rune_web_app"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[lib]
+# cdylib for the browser bundle, rlib so native tests and the binary share the code.
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+# Rune is pre-release and not on crates.io; the registry's `rune` is an unrelated
+# scripting language. Pin one revision of its fast-forward-only `dev` branch.
+rune = { git = "https://github.com/anomalyco/rune", rev = "781e2b6d87cd5f32d6f4365956fad4baaf24ee50" }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+# Must equal the installed wasm-bindgen CLI; a mismatch fails when the page loads.
+wasm-bindgen = "=0.2.129"

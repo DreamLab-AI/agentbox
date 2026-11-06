@@ -33,6 +33,8 @@ external projects.
 - Browser-targeted logic defaults to Rust compiled to WebAssembly behind a thin
   JavaScript host; see [browser-wasm.md](browser-wasm.md) for scope, crate shape
   and the wasm-specific evidence gates.
+- When the UI itself should be Rust across desktop and web, [rune.md](rune.md)
+  covers the Rune framework, its scaffold and its headless evidence.
 - These sections are a review rubric, not a demand for every possible tool on
   every edit. Scope tests and lint changes to meaningful risk; preserve existing
   compatibility and explain deliberate exceptions.

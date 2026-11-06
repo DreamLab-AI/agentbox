@@ -8,7 +8,7 @@ activation_status: staged
 supersedes: []
 superseded_by: []
 verified_commit: 18b79218d81b0ddea7840aca11a50ee829068bb9
-verified_paths: [services/agentbox-manifest/src/deepsec_gate.rs, services/agentbox-manifest/src/visioncraft_source.rs, services/agentbox-manifest/src/jsonio.rs, services/agentbox-manifest/src/mcp.rs, services/agentbox-manifest/src/mcp_hub.rs, services/agentbox-manifest/tests/deepsec_gate.rs, services/agentbox-manifest/tests/aqe.rs, tests/config/visioncraft-deepsec.test.mjs, tests/config/visioncraft-aqe.test.mjs, tests/system-one/visioncraft-picker.test.mjs, config/visioncraft-source.json, lib/lockfiles/visioncraft-0.2.0.Cargo.lock, lib/visioncraft.nix, lib/agentbox-manifest.nix, flake.nix, skills/visioncraft, skills/registered-skills.txt, skills/codex-registered-skills.txt, scripts/reconcile-skills.sh, services/agentbox-manifest/src/main.rs, tests/config/visioncraft-cutover.test.mjs]
+verified_paths: [services/agentbox-manifest/src/deepsec_gate.rs, services/agentbox-manifest/src/visioncraft_source.rs, services/agentbox-manifest/src/jsonio.rs, services/agentbox-manifest/src/mcp.rs, services/agentbox-manifest/src/mcp_hub.rs, services/agentbox-manifest/tests/deepsec_gate.rs, services/agentbox-manifest/tests/aqe.rs, tests/config/visioncraft-deepsec.test.mjs, tests/config/visioncraft-aqe.test.mjs, tests/system-one/visioncraft-picker.test.mjs, config/visioncraft-source.json, lib/lockfiles/visioncraft-0.3.0.Cargo.lock, lib/visioncraft.nix, lib/agentbox-manifest.nix, flake.nix, skills/visioncraft, skills/registered-skills.txt, skills/codex-registered-skills.txt, scripts/reconcile-skills.sh, services/agentbox-manifest/src/main.rs, tests/config/visioncraft-cutover.test.mjs]
 owner: jjohare
 review_trigger: a VisionCraft release, a Deepsec protocol change, or discovery of a second active quality implementation
 repo: agentbox
@@ -107,6 +107,13 @@ browser-target (Rust to WebAssembly) reference. All 35 payload files and
 Cargo.lock match that archive; `lib/lockfiles/visioncraft-0.2.0.Cargo.lock`
 replaces the 0.1.0 lockfile.
 Re-verified at `83637b7c3615`: `visioncraft-source-check` passes (35 files), agentbox-manifest 235 tests, VisionCraft Deepsec/cutover/AQE/picker fixtures 26/26, skill lint and routing table current. **Decision unaffected.** `verified_commit` moved to the landing commit.
+
+2026-11-06: the pin moves to VisionCraft 0.3.0, upstream commit
+`2c6627ce01d0e68bb0f48fc55a209b2c674716f1` (tag `v0.3.0`), a skill-only release
+adding Rune Rust-native UI guidance (`references/rust/rune.md`) and a verified
+`assets/rune-web/` scaffold. All 40 payload files and Cargo.lock match that
+archive; `lib/lockfiles/visioncraft-0.3.0.Cargo.lock` replaces the 0.2.0
+lockfile. **Decision unaffected.**
 
 The independent host review also reproduced two existing projector faults.
 Private JSON writes now use exclusive, unpredictable, owner-only staging files

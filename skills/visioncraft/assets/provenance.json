@@ -47,6 +47,30 @@
       "behavioural_sources": []
     },
     {
+      "path": "assets/rune-web/Cargo.toml.tmpl",
+      "licence": "MIT OR Apache-2.0",
+      "treatment": "newly written verified scaffold: Rune desktop and web app crate",
+      "behavioural_sources": []
+    },
+    {
+      "path": "assets/rune-web/lib.rs.tmpl",
+      "licence": "MIT OR Apache-2.0",
+      "treatment": "newly written verified scaffold: Rune desktop and web app crate",
+      "behavioural_sources": []
+    },
+    {
+      "path": "assets/rune-web/main.rs.tmpl",
+      "licence": "MIT OR Apache-2.0",
+      "treatment": "newly written verified scaffold: Rune desktop and web app crate",
+      "behavioural_sources": []
+    },
+    {
+      "path": "assets/rune-web/smoke.json",
+      "licence": "MIT OR Apache-2.0",
+      "treatment": "newly written verified scaffold: Rune desktop and web app crate",
+      "behavioural_sources": []
+    },
+    {
       "path": "assets/traceability.md",
       "licence": "MIT OR Apache-2.0",
       "treatment": "newly written guidance or migration data from the behavioural inventory",
@@ -268,6 +292,12 @@
         "path": "skills/build-with-quality/references/rust/review.md",
         "sha256": "8803404fbe00f2d6bdaa8c00555a2b37a4ad8f5570157bae94af8c7d5dfec29f"
       }
+    },
+    {
+      "path": "references/rust/rune.md",
+      "licence": "MIT OR Apache-2.0",
+      "treatment": "newly written guidance: Rune Rust-native UI selection, crate shape and evidence",
+      "behavioural_sources": []
     },
     {
       "path": "references/rust/sources/effective-rust.md",

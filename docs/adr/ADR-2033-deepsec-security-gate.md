@@ -8,7 +8,7 @@ activation_status: staged
 supersedes: []
 superseded_by: []
 verified_commit: 18b79218d81b0ddea7840aca11a50ee829068bb9
-verified_paths: [flake.nix, agentbox.toml, schema/agentbox.toml.schema.json, scripts/agentbox-config-validate.js, management-api/lib/system-manifest.js, scripts/visioncraft-deepsec-gate.sh, services/agentbox-manifest/src/deepsec_gate.rs, skills/visioncraft/references/deepsec.md, .github/workflows/deepsec.yml, lib/visioncraft.nix, config/visioncraft-source.json, lib/lockfiles/visioncraft-0.2.0.Cargo.lock, tests/config/visioncraft-deepsec.test.mjs]
+verified_paths: [flake.nix, agentbox.toml, schema/agentbox.toml.schema.json, scripts/agentbox-config-validate.js, management-api/lib/system-manifest.js, scripts/visioncraft-deepsec-gate.sh, services/agentbox-manifest/src/deepsec_gate.rs, skills/visioncraft/references/deepsec.md, .github/workflows/deepsec.yml, lib/visioncraft.nix, config/visioncraft-source.json, lib/lockfiles/visioncraft-0.3.0.Cargo.lock, tests/config/visioncraft-deepsec.test.mjs]
 owner: jjohare
 review_trigger: a deepsec major version, a change to its CLI exit-code contract or model-route schema, any new model route, or the first paid full-repo run
 repo: agentbox
@@ -31,7 +31,7 @@ Runtime acceptance and all existing status limitations remain separate.
 ADR-2165 moves the executable gate to the pinned independent VisionCraft release.
 VisionCraft 0.1.0 source and registry publication are confirmed; the current
 source consumed upstream `9cf450c5fb82033139527ace29d5731a77d96fc7`; since 2026-11-05 it
-consumes 0.2.0 at `b7e579f99e4c431b34ca911b80980b18c2e948d9` (skill-only change; library, CLI and Deepsec protocol unchanged, Deepsec fixtures 18/18, `verified_commit` moved to `83637b7c3615`). Activation is
+consumes 0.2.0 at `b7e579f99e4c431b34ca911b80980b18c2e948d9` (skill-only change; library, CLI and Deepsec protocol unchanged, Deepsec fixtures 18/18, `verified_commit` moved to `83637b7c3615`), and since 2026-11-06 0.3.0 at `2c6627ce01d0e68bb0f48fc55a209b2c674716f1` (skill-only: Rune UI guidance; library, CLI and Deepsec protocol unchanged). Activation is
 staged for the operator rebuild. Historical live receipts below describe the
 retired wrapper at their recorded revisions, not the new image.
 Agentbox owns installation and the Rust `agentbox-manifest deepsec-gate` policy
