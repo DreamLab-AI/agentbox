@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 18b79218d81b0ddea7840aca11a50ee829068bb9
+verified_commit: cfa535b8c846e094718bd6f0d75e77b9565656d8
 verified_paths: [services/agentbox-manifest/src/deepsec_gate.rs, services/agentbox-manifest/src/visioncraft_source.rs, services/agentbox-manifest/src/jsonio.rs, services/agentbox-manifest/src/mcp.rs, services/agentbox-manifest/src/mcp_hub.rs, services/agentbox-manifest/tests/deepsec_gate.rs, services/agentbox-manifest/tests/aqe.rs, tests/config/visioncraft-deepsec.test.mjs, tests/config/visioncraft-aqe.test.mjs, tests/system-one/visioncraft-picker.test.mjs, config/visioncraft-source.json, lib/lockfiles/visioncraft-0.3.0.Cargo.lock, lib/visioncraft.nix, lib/agentbox-manifest.nix, flake.nix, skills/visioncraft, skills/registered-skills.txt, skills/codex-registered-skills.txt, scripts/reconcile-skills.sh, services/agentbox-manifest/src/main.rs, tests/config/visioncraft-cutover.test.mjs]
 owner: jjohare
 review_trigger: a VisionCraft release, a Deepsec protocol change, or discovery of a second active quality implementation
@@ -114,6 +114,8 @@ adding Rune Rust-native UI guidance (`references/rust/rune.md`) and a verified
 `assets/rune-web/` scaffold. All 40 payload files and Cargo.lock match that
 archive; `lib/lockfiles/visioncraft-0.3.0.Cargo.lock` replaces the 0.2.0
 lockfile. **Decision unaffected.**
+
+Re-verified at `cfa535b8c846`: `visioncraft-source-check` passes (40 files), VisionCraft Deepsec/cutover/AQE/picker fixtures 26/26, skill lint, skill count, environment inventory and routing table current; the image bake copies `path:./skills` unfiltered, so the `.tmpl` scaffold files reach the upstream `diff -r`. agentbox-manifest source is unchanged and was not rebuilt. `verified_commit` moved to the landing commit.
 
 The independent host review also reproduced two existing projector faults.
 Private JSON writes now use exclusive, unpredictable, owner-only staging files

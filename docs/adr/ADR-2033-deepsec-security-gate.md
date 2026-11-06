@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 18b79218d81b0ddea7840aca11a50ee829068bb9
+verified_commit: cfa535b8c846e094718bd6f0d75e77b9565656d8
 verified_paths: [flake.nix, agentbox.toml, schema/agentbox.toml.schema.json, scripts/agentbox-config-validate.js, management-api/lib/system-manifest.js, scripts/visioncraft-deepsec-gate.sh, services/agentbox-manifest/src/deepsec_gate.rs, skills/visioncraft/references/deepsec.md, .github/workflows/deepsec.yml, lib/visioncraft.nix, config/visioncraft-source.json, lib/lockfiles/visioncraft-0.3.0.Cargo.lock, tests/config/visioncraft-deepsec.test.mjs]
 owner: jjohare
 review_trigger: a deepsec major version, a change to its CLI exit-code contract or model-route schema, any new model route, or the first paid full-repo run

@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 3beca506c1d44122bf2e14ed935d590b9d020233
+verified_commit: cfa535b8c846e094718bd6f0d75e77b9565656d8
 verified_paths: [skills/lint-skills.mjs, skills/gen-routing-table.mjs, skills/SKILL-DIRECTORY.md, skills/system-one/scripts/route-eval.mjs]
 owner: jjohare
 review_trigger: the next time a skill is demoted, merged, or added to a cluster that already shows measured overlap
@@ -177,5 +177,7 @@ Verified source commit `c1b0c700c42596d35a1faba3074b667c1928d8fb`.
 The governed change is SKILL-DIRECTORY.md: quality-method links move to the single canonical VisionCraft entry, while dated historical observations retain their original names. The status vocabulary, linter, routing-table generator and evaluator are unchanged. All 131 skills lint clean, the generated table and count match, and the real candidate/registration plus mocked Jev wire tests expose VisionCraft without the retired candidate. The small paired method evaluation showed no measured regression, not improved routing accuracy; live activation awaits rebuild.
 
 Re-verified at `83637b7c3615`. The governed change is the VisionCraft 0.2.0 SKILL-DIRECTORY row gaining "browser targets as Rust compiled to WebAssembly". Status vocabulary, linter, routing-table generator and evaluator are unchanged; all 131 skills lint clean and the routing table regenerates current. **Decision unaffected.** `verified_commit` moved to the landing commit.
+
+Re-verified at `cfa535b8c846`. The governed change is the VisionCraft 0.3.0 SKILL-DIRECTORY row gaining "Rune Rust-native desktop/web UI guidance with a verified scaffold". Status vocabulary, linter, routing-table generator and evaluator are unchanged; all 132 skills lint clean and the routing table regenerates current. **Decision unaffected.** `verified_commit` moved to the landing commit.
 
 Re-verified 2026-11-05 at `3beca506c` for ADR-2177: the new `supersplat` skill carries no `status:` field (live by default) and its SKILL-DIRECTORY row carries no unavailability marker; `skills/lint-skills.sh` passes.
