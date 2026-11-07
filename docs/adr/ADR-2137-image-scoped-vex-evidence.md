@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 18b79218d81b0ddea7840aca11a50ee829068bb9
+verified_commit: 1cf3f86ff9982c2997437a6a3dc90892005d76f3
 verified_paths: [flake.nix, lib/sbomnix.nix, lib/sbomnix-python.nix, lib/agentbox-vex.nix, lib/vex-evidence.nix, services/agentbox-vex, scripts/security-scan.sh, scripts/runtime-delivery.cjs, agentbox.sh, tests/security, tests/config/runtime-delivery.test.cjs, .github/workflows/build-multi-arch.yml, .github/workflows/image-scan.yml, .github/workflows/release.yml, .github/workflows/security-vex.yml, .github/workflows/flake-check.yml]
 owner: jjohare
 review_trigger: image inventory, VEX predicates, scanner matching or release artefact selection changes; a host preparation bundle that carries raw and VEX-filtered Grype reports, or a release with matching-commit scan artefacts (activation → live)
@@ -227,3 +227,5 @@ Governed-path delta since `753788564` is the RuVector Postgres credential custod
 Nothing this record decides is changed; its status axes are unchanged. Re-run: `git diff 753788564..cc949bb79 -- agentbox.sh flake.nix tests/security/zai-launch-env.test.cjs`.
 
 Re-verified 2026-11-05 at `3beca506c` for ADR-2177: SuperSplat adds image store paths and no daemon, adapter or gate to the VEX method; evidence generation is unchanged.
+
+Re-verified 2026-11-07 at `1cf3f86ff`. Governed-path delta since `18b79218d`: `lib/sbomnix.nix` only. nixpkgs 6b01148e2e97 now ships sbomnix's `makeWrapperArgs` as the four separate `--prefix PATH :` arguments that this override produced, so the shape assert accepts exactly that form (passed through) or the old single fragment (split, as before) and still fails on anything else. The wrapped PATH, the tools in `securityTools` and evidence generation are unchanged; the decision and status axes are unchanged. Re-run: `git diff 18b79218d..1cf3f86ff -- lib/sbomnix.nix`.
