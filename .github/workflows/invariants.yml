@@ -48,7 +48,19 @@ on:
       - 'schema/**'
       - 'setup/agentbox.default.toml'
       - 'agentbox.toml'
+      # Inputs of the session-plane, trust-seed and ADR-ratchet steps.
+      - 'tests/cli/aoe-launch-never-attaches-from-scripts.test.mjs'
+      - 'tests/cli/session-launch-contract.test.mjs'
+      - 'tests/config/session-plane-notify.test.sh'
+      - 'tests/config/trust-seed.test.mjs'
+      - 'tests/config/adr-ratchet.test.sh'
+      - 'tests/config/adr-ratchet-evidence.test.sh'
+      - 'config/harness-wrappers/**'
+      - 'config/session-plane/**'
+      - 'config/hooks/**'
+      - 'docs/user/**'
       - '.github/workflows/invariants.yml'
+  # Same inputs as push (no branch protection, so a filtered PR never hangs).
   pull_request:
     paths:
       - 'docker-compose*.yml'
@@ -62,6 +74,47 @@ on:
       - 'management-api/**'
       - 'lib/**'
       - 'scripts/**'
+      # The gates' own unit tests run in this job, so a change to one of them must
+      # re-run it. Without this, tests/security/check-listeners.test.mjs could be
+      # edited on main and the listener rule never re-asserted on that push.
+      - 'tests/security/**'
+      - 'services/agentbox-manifest/**'
+      - 'config/visioncraft-source.json'
+      - 'tests/config/visioncraft*'
+      - 'tests/system-one/**'
+      - 'tests/config/protocol-registry-lint.test.mjs'
+      - 'tests/config/declared-vs-running.test.js'
+      - 'tests/config/fixtures/runtime-state.json'
+      - 'tests/config/ruflo-console.test.mjs'
+      - 'tests/config/runtime-delivery.test.cjs'
+      - 'config/build-registry.json'
+      - 'agentbox.sh'
+      - 'config/claude-plugins/**'
+      - 'flake.lock'
+      # Custody X-1 W0/W2 runtime contracts (RC-X1-01..06) and what they read
+      # beyond config/entrypoint-unified.sh and flake.nix (both listed here).
+      - 'tests/runtime-contract/RC-X1-*'
+      - 'config/docker-read-proxy.cjs'
+      - 'config/bake-devuser-privilege.sh'
+      - 'config/custody/**'
+      - 'flake.nix'
+      - 'skills/**'
+      - 'mcp/**'
+      - 'schema/**'
+      - 'setup/agentbox.default.toml'
+      - 'agentbox.toml'
+      # Inputs of the session-plane, trust-seed and ADR-ratchet steps.
+      - 'tests/cli/aoe-launch-never-attaches-from-scripts.test.mjs'
+      - 'tests/cli/session-launch-contract.test.mjs'
+      - 'tests/config/session-plane-notify.test.sh'
+      - 'tests/config/trust-seed.test.mjs'
+      - 'tests/config/adr-ratchet.test.sh'
+      - 'tests/config/adr-ratchet-evidence.test.sh'
+      - 'config/harness-wrappers/**'
+      - 'config/session-plane/**'
+      - 'config/hooks/**'
+      - 'docs/user/**'
+      - '.github/workflows/invariants.yml'
   workflow_dispatch:
 
 concurrency:
