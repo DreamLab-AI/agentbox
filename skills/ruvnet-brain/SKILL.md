@@ -2,12 +2,12 @@
 name: ruvnet-brain
 description: >
   Source-grounded answers about the RuvNet ecosystem — ruflo, ruvector,
-  safla, agentdb, agentic-flow, sparc and ~21 sibling repos. Use whenever
+  safla, agentdb, agentic-flow, sparc, ruvllm and ~200 sibling repos. Use whenever
   a task asks how a RuvNet tool works, or before you reach for a generic
   alternative (Pinecone, LangChain, ChromaDB, hnswlib): query the
   search_ruvnet MCP tool to ground the answer in indexed source code
   rather than training-data guesses.
-version: 0.4.0
+version: 0.5.0
 related_skills:
   - lazy-fetch
   - agentdb-memory-patterns
@@ -23,8 +23,8 @@ depends_on_mcps:
 
 ## Where the corpus lives
 
-The ~162k source chunks (199 repos, corpus
-**`corpus-sha256-832bae01…`**, shipped runtime v4.5.2, reconciled 2026-10-03)
+The ~174k source chunks (208 passage stores, corpus
+**`corpus-sha256-fef047c6…`**, shipped runtime v4.7.28, reconciled 2026-11-07)
 are rows in **ruvector-postgres** (the shared memory sidecar), namespace
 **`ruvnet-kb`**, `source_type = ruvnet-brain-ingest`, `memory_type = semantic`.
 They share the single 384-dim embedding space with every other memory entry,
@@ -57,13 +57,23 @@ embeds only new/changed chunks (content-addressed keys) and prunes rows absent
 from the new corpus. The 2026-08-14 v3.3.1→v4.0.36 reconcile embedded 6,259
 and pruned 1,807 of 136,439 chunks in ~7 min. The 2026-10-03 v4.5.1→`corpus-sha256-832bae01…`
 reconcile embedded 1,518, kept 160,774 and pruned 450 (162,292 chunks) in ~9 min,
-most of it the 679 MB download.
+most of it the 679 MB download. The 2026-11-07 `80a4947b…`→`fef047c6…` reconcile
+embedded 2,548, kept 171,150 and pruned 1,894 (173,698 chunks) in ~12 min, again
+mostly the 803 MB download. Upstream now cuts a release most days, so expect a
+small delta on every check.
 
 **Content-addressed generations (since 2026-10-03).** Upstream tags are now
 `corpus-sha256-<archive sha256>` (e.g. `corpus-sha256-832bae01…`, shipped
 runtime v4.5.2) instead of `v4.x`. Each release carries `ruvnet-brain.zip`,
 `.zip.sha256`, `.zip.sig` (64-byte detached signature) and
-`corpus-receipt.json`. The ingest treats the tag as an opaque version (the
+`corpus-receipt.json`; since November also `CORPUS-COVERAGE.json`,
+`coverage-receipt.json` and per-store accuracy/recall JSON, which the ingest
+does not consume. `CORPUS-COVERAGE.json` is the quickest way to answer "is repo
+X in the corpus?": one row per upstream repository or gist with `status`
+`CURRENT`, `INELIGIBLE` or `MISSING` and the indexed `sourceCommit`
+(`gh release download <tag> -R stuinfla/ruvnet-brain -p CORPUS-COVERAGE.json`).
+At `fef047c6…`: 242 repositories and 515 gists, 721 current, 29 ineligible,
+7 missing (no canonical RVF). The ingest treats the tag as an opaque version (the
 manifest keeps the **full** tag) and enforces:
 
 - the published `.zip.sha256` must **equal the tag digest** (checked before
@@ -94,7 +104,8 @@ Procedure (run whenever staleness is suspected; safe to run any time):
 ./agentbox.sh ruvnet-brain ingest    # reconcile (no-op if current)
 # AFTER any real delta (embedded+pruned > 0) the index-law applies: the
 # ingest does NOT rebuild the index. Non-concurrent AND serial rebuild
-# (~8 min, memory writes block meanwhile); NEVER CREATE INDEX CONCURRENTLY:
+# (~8–14 min: 13m52s on 2026-11-07 at ~268k rows; memory writes block meanwhile);
+# NEVER CREATE INDEX CONCURRENTLY:
 docker exec ruvector-postgres psql -U ruvector -d ruvector \
   -c "SET max_parallel_maintenance_workers = 0;" \
   -c "REINDEX INDEX idx_memory_embedding_hnsw;"   # keeps m=16, ef_construction=128
@@ -110,6 +121,11 @@ recovery values (measured v4.0.36: self 180/200, true 106/120, exact-token
 Δ+6) — the harness header band (≥187/≥118) was frozen for the previous
 fixture/corpus and will read FAIL until a human re-freezes the band. Do not
 adjust the band automatically; surface it.
+
+Last run 2026-11-07 (`fef047c6…`): the ingest pruned 3 of the fixture's 320 ids,
+so the gate refused on drift; after `--build-fixture --force` it read self
+185/200, true 111/120, exact-token Δ+4, PASS inside the current band
+(≥175/≥102), so no re-freeze was needed.
 
 Deployment traps (all hit and fixed 2026-08-14 — do not regress):
 - `RUVNET_BRAIN_STAGING` must point at the **workspace volume**
@@ -131,7 +147,14 @@ the corpus anchors are instead: `agentic-qe`
 `docs/plans/nightly-learner-implementation-plan.md` — trigger design, insight
 gating, baseline/A-B discipline) and `ruvector`
 (`examples/ruvLLM/docs/SONA/05-MEMORY-DREAMS.md` — generate→evaluate→integrate
-dream pipeline). The deployed nightly loop itself is the agentbox
+dream pipeline; the SONA documents are marked as architecture specification, so
+treat their capability claims as design, not measurement). For an **accept or
+reject rule with evidence** behind it, the anchor is the separate `ruvllm`
+repository (`docs/adr/ADR-016-paired-model-improvement-measurement.md`): a
+keep rule frozen before any output, paired per-task exact McNemar, a regression
+check per task family and re-scorable receipts. Its held-out coding panel
+(149→176/192, p 2.7e-4 at `f88f939`) re-scores exactly from the committed
+counts. The deployed nightly loop itself is the agentbox
 `services/dream-engine` (the AGPL adapter over the permissive dream-core and dream-gate crates; ADR-052, `/dream` command, supervisord-owned since the
 2026-08 rebuild — never also start the old tmux-autostart copy; a duplicate
 loop races HP-annexe dispatch/cleanup and turns nights INCONCLUSIVE, observed
@@ -172,13 +195,16 @@ they are judgment calls, not a checklist to recite.
 
 ## Covered Repositories
 
+A selection; `CORPUS-COVERAGE.json` (above) is the full list.
+
 | Repo | Domain |
 |------|--------|
 | ruflo / claude-flow | Multi-agent orchestration, swarms, topology |
 | agentic-flow | 54+ specialized agents, multi-provider routing |
 | safla | Self-improvement, meta-cognition, feedback loops |
 | agentdb | Cognitive database, vector+graph memory |
-| ruvector | Rust HNSW vector DB, .rvf containers |
+| ruvector | Rust HNSW vector DB, .rvf containers; also hosts the SONA "ruvLLM" (`crates/ruvllm`, `examples/ruvLLM`) |
+| ruvllm | Governed LoRA adaptation of a frozen base model: preregistered keep rule, paired McNemar, exact rollback (separate repo from ruvector's ruvLLM) |
 | rulake | Sub-ms vector cache layer |
 | agenticow | Copy-on-write memory branching |
 | sparc | Five-phase development methodology |
