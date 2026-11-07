@@ -5,6 +5,8 @@ name: Security Invariants
 # regression. check-no-npx-latest is a ratchet (fails only above baseline).
 on:
   push:
+    branches:
+      - main
     paths:
       - 'docker-compose*.yml'
       - 'docs/adr/**'
@@ -48,7 +50,23 @@ on:
       - 'agentbox.toml'
       - '.github/workflows/invariants.yml'
   pull_request:
+    paths:
+      - 'docker-compose*.yml'
+      - 'docs/adr/**'
+      - 'docs/PROTOCOL-registry.md'
+      - 'docs/SECURITY-profiles.md'
+      - 'config/egress-policy.json'
+      - 'docs/LAN-door-threat-model.md'
+      - 'config/seccomp-agentbox.json'
+      - 'config/entrypoint-unified.sh'
+      - 'management-api/**'
+      - 'lib/**'
+      - 'scripts/**'
   workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -56,6 +74,7 @@ permissions:
 jobs:
   invariants:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Checkout (full history — ADR staleness gate diffs old commits)
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -148,6 +167,11 @@ jobs:
         run: node scripts/skill-count-check.js
       - name: routing-table freshness (generated from frontmatter; ADR-2021)
         run: node skills/gen-routing-table.mjs --check
+
+      - name: Cache cargo registry, build and installed binaries
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
+        with:
+          workspaces: services/agentbox-manifest
 
       - name: VisionCraft release source and host contract
         run: |

@@ -11,6 +11,7 @@
 name: Nix flake check
 
 on:
+  workflow_dispatch: {}
   pull_request:
 
 concurrency:
@@ -24,6 +25,7 @@ jobs:
   flake-check:
     name: Check ${{ matrix.arch }}
     runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
     strategy:
       fail-fast: true
       matrix:

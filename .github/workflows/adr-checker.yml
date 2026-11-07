@@ -6,7 +6,10 @@ name: adr-checker
 # in invariants.yml.) Changing the script changes its sha256: the consumers' pins
 # in scripts/adr-ledger.sh must be bumped deliberately, in their own commits.
 on:
+  workflow_dispatch: {}
   push:
+    branches:
+      - main
     paths:
       - 'scripts/adr-index-gen.js'
       - 'tests/config/adr-ledger-config.test.mjs'
@@ -18,11 +21,16 @@ on:
       - 'tests/config/adr-ledger-config.test.mjs'
       - 'tests/config/adr-index-check.test.mjs'
       - '.github/workflows/adr-checker.yml'
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 jobs:
   adr-checker:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
         with:

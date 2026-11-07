@@ -7,7 +7,10 @@ on:
       - 'scripts/security-scan.sh'
       - 'tests/security/security-scan.test.cjs'
       - 'tests/security/vex-grype.integration.sh'
-      - '.github/workflows/**'
+      - '.github/workflows/security-vex.yml'
+      - '.github/workflows/build-multi-arch.yml'
+      - '.github/workflows/image-scan.yml'
+      - '.github/workflows/release.yml'
       - 'flake.nix'
       - 'lib/vex-evidence.nix'
       - 'lib/agentbox-vex.nix'
@@ -18,11 +21,18 @@ on:
       - 'scripts/security-scan.sh'
       - 'tests/security/security-scan.test.cjs'
       - 'tests/security/vex-grype.integration.sh'
-      - '.github/workflows/**'
+      - '.github/workflows/security-vex.yml'
+      - '.github/workflows/build-multi-arch.yml'
+      - '.github/workflows/image-scan.yml'
+      - '.github/workflows/release.yml'
       - 'flake.nix'
       - 'lib/vex-evidence.nix'
       - 'lib/agentbox-vex.nix'
   workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -30,6 +40,7 @@ permissions:
 jobs:
   contracts:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
       - name: Use the verified Rust compiler and quality tools
@@ -37,6 +48,10 @@ jobs:
         with:
           toolchain: '1.99.0'
           components: rustfmt, clippy
+      - name: Cache cargo registry and build
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
+        with:
+          workspaces: services/agentbox-vex
       - name: Rust formatting, tests and lint
         working-directory: services/agentbox-vex
         run: |

@@ -13,6 +13,7 @@
 name: CI
 
 on:
+  workflow_dispatch: {}
   pull_request:
   push:
     branches:
@@ -30,6 +31,7 @@ jobs:
   ci-passed:
     name: CI passed
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     # Only meaningful on PRs (branch protection gate) and main-branch pushes.
     # Skip on other pushes — those don't have a PR check suite to wait for.
     if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'

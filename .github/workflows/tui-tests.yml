@@ -1,6 +1,7 @@
 name: TUI helper tests
 
 on:
+  workflow_dispatch: {}
   pull_request:
     paths:
       - 'services/agentbox-manifest/**'
@@ -30,10 +31,15 @@ on:
       - 'tests/tui/**'
       - '.github/workflows/tui-tests.yml'
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   manifest-tests:
     name: cargo test — agentbox-manifest
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -73,6 +79,7 @@ jobs:
   sessions-tests:
     name: cargo test — agentbox-sessions (ADR-2153)
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -117,6 +124,7 @@ jobs:
   tab0-bridge-readiness:
     name: tab0-bridge follows the session plane (ADR-2153)
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262

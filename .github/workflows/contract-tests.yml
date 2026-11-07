@@ -61,6 +61,7 @@ on:
       - 'management-api/package.json'
       - 'management-api/package-lock.json'
       - 'mcp/nostr-bridge/**'
+      - 'scripts/opf-router.py'
       - 'tests/contract/**'
       - 'management-api/lib/uris.js'
       - 'management-api/routes/chain.js'
@@ -116,6 +117,7 @@ jobs:
   contract:
     name: Adapter contract suites
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -195,6 +197,7 @@ jobs:
   custody:
     name: Custody — identity port and activation rehearsal
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: project/agentbox

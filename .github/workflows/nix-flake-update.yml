@@ -26,6 +26,7 @@ concurrency:
 jobs:
   update:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       # Full history: the publish step pushes a real commit, and a push from a
       # shallow clone is refused by the remote.
