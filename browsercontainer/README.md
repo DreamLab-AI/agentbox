@@ -219,7 +219,7 @@ site grants. The plaintext private key exists only in `chrome.storage.session`
 (memory) while unlocked. Never run `docker compose -f docker-compose.browsercontainer.yml down -v`.
 That deletes the volume and, with it, the sealed K_browser.
 
-`/tmp/chrome-profile` is gone. Extensions installed by hand into it (Proton Pass
+Chrome no longer uses `/tmp/chrome-profile`; compose mounts the same volume there only for retained images that still start Chrome with it (ADR-2177, 2026-11-05). Extensions installed by hand into the old in-layer profile (Proton Pass
 was added from the Chrome Web Store via VNC on 2026-09-28 13:03 UTC; it was never
 part of this build) are not carried over, and the policy blocks re-installing them.
 

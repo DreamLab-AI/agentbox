@@ -32,12 +32,14 @@ describe('owned web-interface contracts', () => {
     expect(caddy).toMatch(/handle \/mgmt\/\*/);
   });
 
-  test('cockpit has keyboard-complete tabs, labelled composers, and safe approvals', () => {
-    expect(cockpitHtml).toMatch(/role="tab"[^>]+aria-selected="true"[^>]+aria-controls="term"/);
-    expect(cockpitHtml).toContain('role="tabpanel" aria-labelledby="tab-term"');
-    expect(cockpitHtml).toContain('for="detail-text"');
+  // ADR-2153: the cockpit's AoE session board (its Terminal/Diff tabs and the
+  // per-session composer) went away with Agent of Empires; sessions are managed
+  // in the terminal Sessions tab or over Nostr. Guard that it stays gone.
+  test('cockpit has no session board, labelled composers, and safe approvals', () => {
+    expect(cockpitHtml).not.toMatch(/id="(board|detail|term|diff)"/);
+    expect(cockpitHtml).not.toContain('role="tablist"');
     expect(cockpitHtml).toContain('for="nostr-text"');
-    expect(cockpitJs).toContain("['ArrowLeft', 'ArrowRight', 'Home', 'End']");
+    expect(cockpitHtml).toContain('id="feed" class="scroll" role="log" aria-live="polite"');
     expect(cockpitJs).toContain('window.confirm(consequence)');
     expect(cockpitJs).toContain("el('summary', '', 'Review scope')");
   });

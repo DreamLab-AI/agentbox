@@ -9,7 +9,12 @@
 //   1. the service mounts a volume at the profile path launch-chromium.sh uses
 //   2. that volume is declared with the stable name browsercontainer-profile
 //      and is not external (compose creates it on a fresh host)
-//   3. /tmp/chrome-profile appears nowhere in the resolved model
+//   3. /tmp/chrome-profile appears in the resolved model only as a second mount
+//      of that same volume: the retained-image compatibility alias recorded in
+//      ADR-2177 (Activation, 2026-11-05). It is never a bind, tmpfs, anonymous
+//      volume, environment value or command argument, so it cannot become a
+//      second, non-durable profile. launch-args.test.sh case 4 keeps the image
+//      itself off /tmp.
 //   4. the podkey-loader supervisord program exists and Chrome keeps its CDP port
 // Run: node tests/browsercontainer/compose-profile-volume.test.cjs
 'use strict';
@@ -37,7 +42,17 @@ assert.equal(vol?.name, 'browsercontainer-profile', 'stable volume name, indepen
 assert.ok(!vol.external, 'compose creates the volume on a fresh host');
 passed++;
 
-assert.ok(!JSON.stringify(model).includes('/tmp/chrome-profile'), '/tmp/chrome-profile is gone from compose');
+const LEGACY = '/tmp/chrome-profile';
+const legacyMounts = svc.volumes.filter((v) => v.target === LEGACY);
+assert.ok(legacyMounts.length <= 1, `at most one mount at ${LEGACY}`);
+for (const m of legacyMounts) {
+  assert.equal(m.type, 'volume', `${LEGACY} is only ever the profile volume, never a bind or tmpfs`);
+  assert.equal(m.source, 'browsercontainer-profile', `${LEGACY} aliases the same durable profile volume`);
+}
+const withoutLegacyMounts = { ...model, services: { ...model.services,
+  browsercontainer: { ...svc, volumes: svc.volumes.filter((v) => v.target !== LEGACY) } } };
+assert.ok(!JSON.stringify(withoutLegacyMounts).includes(LEGACY),
+  `${LEGACY} appears in compose only as the profile-volume alias`);
 passed++;
 
 const launch = fs.readFileSync(path.join(cwd, 'browsercontainer/launch-chromium.sh'), 'utf8');
@@ -47,4 +62,4 @@ assert.match(sup, /\[program:podkey-loader\][^[]*command=node \/opt\/browsercont
 assert.match(launch, /--remote-debugging-port=9222/);
 passed++;
 
-console.log(`PASS: ${passed} compose/profile checks (volume browsercontainer-profile at ${PROFILE}, /tmp profile gone, loader wired)`);
+console.log(`PASS: ${passed} compose/profile checks (volume browsercontainer-profile at ${PROFILE}, /tmp only as the volume alias, loader wired)`);
