@@ -9,6 +9,7 @@
 name: Browsercontainer
 
 on:
+  workflow_dispatch: {}
   pull_request:
     paths:
       - 'browsercontainer/**'
