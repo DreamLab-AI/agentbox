@@ -1,0 +1,20 @@
+[package]
+name = "nostr-receipt"
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+description = "Signed did:nostr receipts for disclosures and revocations, verifiable by people and agents"
+publish = false
+
+[dependencies]
+# Default features only: the `did` feature pulls in an AGPL-3.0 dependency.
+nostr-bbs-core = "=1.0.0-beta.19"
+k256 = { version = "0.14", features = ["schnorr"] }
+sha2 = "0.10"
+hex = "0.4"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+getrandom = "0.2"
+
+[workspace]

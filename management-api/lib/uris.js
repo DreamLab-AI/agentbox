@@ -480,8 +480,17 @@ function _slug(s) {
   return String(s).replace(/[^A-Za-z0-9._-]/g, '_').slice(0, 96);
 }
 
+/**
+ * Is `s` a did:nostr identifier in the canonical grammar (`did:nostr:` + 64 lowercase hex)?
+ * Shared contract with the Rust `nostr-receipt` crate: crates/nostr-receipt/fixtures/did-nostr.json.
+ */
+function isDidNostr(s) {
+  return typeof s === 'string' && DID_NOSTR_RE.test(s);
+}
+
 module.exports = {
   KINDS,
+  isDidNostr,
   CHAIN_EVENT_KIND,
   mint,
   resolveCanonical,
