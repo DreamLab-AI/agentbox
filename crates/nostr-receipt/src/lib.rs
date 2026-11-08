@@ -103,23 +103,34 @@ pub struct Verified {
     pub receipt: Receipt,
 }
 
-/// Format a BIP-340 x-only public key (64 lowercase hex characters) as a `did:nostr` identifier.
+/// Format a BIP-340 x-only public key (64 lowercase hex characters) as a `did:nostr` identifier,
+/// using the canonical solid-pod-rs types (through `nostr-bbs-core`'s `did` feature).
 pub fn did_nostr(pubkey_hex: &str) -> String {
-    format!("did:nostr:{pubkey_hex}")
+    match nostr_bbs_core::NostrPubkey::from_hex(pubkey_hex) {
+        Ok(pk) => nostr_bbs_core::did_nostr_uri(&pk),
+        Err(_) => format!("did:nostr:{pubkey_hex}"),
+    }
 }
 
 /// Parse `did:nostr:<64 lowercase hex>` into the public key bytes.
 ///
-/// The grammar matches agentbox's URI mint (`management-api/lib/uris.js`); the shared fixtures in
-/// `fixtures/did-nostr.json` keep the two in step.
+/// Lowercase is required, as NIP-01 specifies and agentbox's URI mint (`management-api/lib/uris.js`)
+/// enforces; the shared fixtures in `fixtures/did-nostr.json` keep the two in step. Decoding is
+/// delegated to solid-pod-rs's `NostrPubkey`.
 pub fn parse_did_nostr(s: &str) -> Result<[u8; 32], Error> {
     let hex_part = s.strip_prefix("did:nostr:").ok_or_else(|| Error::Schema(format!("not a did:nostr: {s:?}")))?;
     if !is_hex64(hex_part) {
         return Err(Error::Schema(format!("did:nostr needs 64 lowercase hex characters: {s:?}")));
     }
-    let mut out = [0u8; 32];
-    hex::decode_to_slice(hex_part, &mut out).map_err(|e| Error::Schema(e.to_string()))?;
-    Ok(out)
+    let pk = nostr_bbs_core::NostrPubkey::from_hex(hex_part).map_err(Error::Schema)?;
+    Ok(pk.0)
+}
+
+/// The issuer's minimal (tier-1) DID document, rendered by solid-pod-rs, so a verifier can show
+/// or publish it at `/.well-known/did/nostr/<hex>.json`.
+pub fn did_document(did: &str) -> Result<serde_json::Value, Error> {
+    let pk = nostr_bbs_core::NostrPubkey(parse_did_nostr(did)?);
+    Ok(nostr_bbs_core::render_did_document_tier1(&pk))
 }
 
 fn is_hex64(s: &str) -> bool {

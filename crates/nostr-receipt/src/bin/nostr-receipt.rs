@@ -7,6 +7,7 @@
 //! nostr-receipt revoke   --key KEYFILE --memory HEX --document TEXT
 //!                        --sigma S --clip C --epsilon E --delta D [--prev ID]
 //! nostr-receipt verify   [--file RECEIPT.json] [--salt HEX --query TEXT --answer TEXT] [--human]
+//! nostr-receipt did --did DID
 //! nostr-receipt bench    [--n N]
 //! ```
 //!
@@ -14,7 +15,7 @@
 //! when the receipt is valid and, if a question and answer were given, they match it.
 
 use nostr_bbs_core::event::NostrEvent;
-use nostr_receipt::{did_nostr, issue, matches, salted_hash, sha256_hex, verify, Body, KeySigner, Mechanism, Receipt, Signer};
+use nostr_receipt::{did_document, did_nostr, issue, matches, salted_hash, sha256_hex, verify, Body, KeySigner, Mechanism, Receipt, Signer};
 use std::collections::HashMap;
 use std::process::ExitCode;
 
@@ -63,7 +64,7 @@ fn mechanism(f: &HashMap<String, String>) -> Result<Mechanism, String> {
 }
 
 fn run(args: &[String]) -> Result<bool, String> {
-    let (cmd, rest) = args.split_first().ok_or("usage: nostr-receipt keygen|disclose|revoke|verify|bench")?;
+    let (cmd, rest) = args.split_first().ok_or("usage: nostr-receipt keygen|disclose|revoke|verify|did|bench")?;
     let f = flags(rest)?;
     match cmd.as_str() {
         "keygen" => {
@@ -109,6 +110,12 @@ fn run(args: &[String]) -> Result<bool, String> {
                 _ => None,
             };
             Ok(report(human, verdict, answer_check))
+        }
+        "did" => {
+            // did --did DID : print the issuer's DID document (solid-pod-rs tier 1).
+            let doc = did_document(need(&f, "did")?).map_err(|e| e.to_string())?;
+            println!("{}", serde_json::to_string_pretty(&doc).map_err(|e| e.to_string())?);
+            Ok(true)
         }
         "bench" => {
             let n: usize = f.get("n").map(|s| s.parse()).transpose().map_err(|_| "--n must be a number")?.unwrap_or(10_000);

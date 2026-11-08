@@ -3,7 +3,8 @@
 Signed `did:nostr` receipts for disclosures and revocations, verifiable by people and by agents.
 
 A receipt is an ordinary Nostr event (NIP-01) signed with BIP-340 Schnorr through
-`nostr-bbs-core` (default features; its `did` feature is AGPL and is not used). The issuer is the
+`nostr-bbs-core` with its `did` feature, so `did:nostr` identifiers and DID documents come from
+solid-pod-rs's canonical types. AGPL-3.0-only, like solid-pod-rs and agentbox. The issuer is the
 event pubkey, written `did:nostr:<hex>`.
 
 | Kind (provisional) | Attests | Commits to |
@@ -27,6 +28,7 @@ nostr-receipt disclose --key issuer.key --memory <hex> --salt <hex> --query "...
                        --sigma 1.5 --clip 1 --epsilon 6.13 --delta 1e-5 > receipt.json
 nostr-receipt verify   --file receipt.json [--salt <hex> --query "..." --answer "..."] [--human]
 nostr-receipt revoke   --key issuer.key --memory <hex> --document "..." --sigma ... --prev <id>
+nostr-receipt did      --did did:nostr:<hex>     # issuer DID document (solid-pod-rs tier 1)
 nostr-receipt bench
 ```
 
