@@ -6,7 +6,7 @@ let
   pin = builtins.fromJSON (builtins.readFile ../config/visioncraft-source.json);
 in pkgs.rustPlatform.buildRustPackage {
   pname = "visioncraft";
-  version = pin.version;
+  inherit (pin) version;
   src = pkgs.fetchFromGitHub {
     owner = "DreamLab-AI";
     repo = "visioncraft";
