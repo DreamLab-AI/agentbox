@@ -49,7 +49,7 @@ zeroize = "1"
 # secp256k1 scalar/point arithmetic for the BIP-340 even-y normalisation and the
 # 64-byte SEC1 (X || Y) `public_key_hex` the identity file records. Signing and
 # every NIP-19 encoding still go through nostr-bbs-core; this is encoding only.
-k256 = "0.13"
+k256 = "0.14"
 # /etc/agentbox.toml — the `[sovereign_mesh] enabled` gate for `bootstrap`.
 toml = "1"
 # Z.AI / GLM digest call on the `session-summary` path. Already in the lock graph

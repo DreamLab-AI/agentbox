@@ -15,7 +15,7 @@
 //! string is derived from the x-only pubkey and is untouched by anything here.
 
 use anyhow::{anyhow, Context, Result};
-use k256::elliptic_curve::sec1::ToEncodedPoint;
+use k256::elliptic_curve::sec1::ToSec1Point;
 use serde::Serialize;
 use std::path::Path;
 use std::process::{Command, Stdio};
@@ -164,7 +164,7 @@ pub fn pod_pubkey_base(identity: &Identity) -> String {
     hex::decode(format!("04{}", identity.public_key_hex.trim()))
         .ok()
         .and_then(|sec1| k256::PublicKey::from_sec1_bytes(&sec1).ok())
-        .map(|pk| hex::encode(pk.to_encoded_point(true).as_bytes()))
+        .map(|pk| hex::encode(pk.to_sec1_point(true).as_bytes()))
         .filter(|full| full[2..] == x_only)
         .unwrap_or_else(|| format!("02{x_only}"))
 }

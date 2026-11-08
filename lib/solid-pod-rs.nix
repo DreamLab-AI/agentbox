@@ -35,7 +35,11 @@
 
 let
 
-  # Pin: d4910c0 (v0.5.0-alpha.20 workspace, 2026-11-03). Per-resource write lock
+  # Pin: 27e1899 (v0.5.0-alpha.21 workspace, 2026-11-08). openidconnect 4.1
+  # (p256 0.14) takes RUSTSEC-2026-0387 (crypto-bigint 0.5.5) off the OIDC
+  # path, actix-web 4.13 -> 4.18 clears RUSTSEC-2026-0177/0178, and the
+  # #12-#14 nightly fixes ship (owner-gated pod writes, strict Content-Length,
+  # GitLenient sibling-repo rejection). On top of alpha.20's per-resource write lock
   # across LDP/MCP writes, strong If-Match, N3 Patch, ACL PATCH no longer 409,
   # repeated ACL predicates kept; on top of alpha.19's WAC/payment/provenance
   # and owner-only Git export repairs, with JSS 0.0.221 and plugins/forge parity,
@@ -54,12 +58,12 @@ let
   #   3. Lockfile: `git -C ../solid-pod-rs show <tag>:Cargo.lock > lib/solid-pod-rs.cargo-lock`
   #      (upstream ships its Cargo.lock since 0.5.0; the vendored copy keeps the
   #      Nix build hermetic and byte-identical to the tag).
-  version = "0.5.0-alpha.20";
+  version = "0.5.0-alpha.21";
 
   # Includes the full external-review follow-up and retains the existing Jev gate.
-  rev     = "d4910c0a6cf47a1d0e58f62530b13b7deeb33872";
+  rev     = "27e18995fc20790fa956acb41f7d8420544a13ec";
 
-  srcHash = "sha256-u9H48lLWtkU8xIFkS1yw0S3zHFDM1HejcpsyWrWPxTA=";
+  srcHash = "sha256-v1caiCMFMpN5SyJ4KFNusq4Dr6kt7E3+IMIIaUvj71w=";
 
   cargoLockFile = ./solid-pod-rs.cargo-lock;
 
