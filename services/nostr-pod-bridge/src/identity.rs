@@ -37,7 +37,7 @@
 //! exactly; `public_key_hex` therefore always has an even final byte.
 
 use anyhow::{anyhow, Context, Result};
-use k256::elliptic_curve::sec1::ToEncodedPoint;
+use k256::elliptic_curve::sec1::ToSec1Point;
 use nostr_bbs_core::nip19::{decode_npub, decode_nsec, encode_npub, encode_nsec};
 use serde::Serialize;
 use serde_json::Value;
@@ -107,7 +107,7 @@ fn now_unix() -> u64 {
 fn normalise_even_y(bytes: &[u8; 32]) -> Result<([u8; 32], [u8; 64])> {
     let sk = k256::SecretKey::from_slice(bytes)
         .map_err(|_| anyhow!("secret key is not a valid secp256k1 scalar"))?;
-    let point = sk.public_key().to_encoded_point(false);
+    let point = sk.public_key().to_sec1_point(false);
     // SEC1 uncompressed: 0x04 ‖ X(32) ‖ Y(32). The final byte's low bit is y's
     // parity, which is what BIP-340 lift_x constrains.
     let odd_y = point.as_bytes()[64] & 1 == 1;
@@ -116,7 +116,7 @@ fn normalise_even_y(bytes: &[u8; 32]) -> Result<([u8; 32], [u8; 64])> {
     } else {
         sk
     };
-    let point = sk.public_key().to_encoded_point(false);
+    let point = sk.public_key().to_sec1_point(false);
 
     let mut secret = [0u8; 32];
     secret.copy_from_slice(&sk.to_bytes());
