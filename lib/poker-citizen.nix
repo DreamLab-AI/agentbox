@@ -23,19 +23,18 @@
 { lib, pkgs }:
 
 let
-  version = "1.0.0-beta.16";
-  # dd45447 = bdeb561 + the ER-22 security release repin (solid-pod-rs 0.5.0-alpha.13,
-  # nostr-bbs-core beta.16) + rustls 0.23.46 / quinn-proto 0.11.19 (RUSTSEC-2026-0346..0349,
-  # 0339/0341). Only the relay-worker crate and lockfile changed since bdeb561; the citizen's own
-  # crates are untouched. Protocol VERSION is still 1 on both sides, so the website KIT_REF
-  # (72463fb) stays put.
-  rev = "dd454474295510fac1d643f911b3817a3a292c0f";
+  version = "1.0.0-beta.19";
+  # 6064622 = the 1.0.0-beta.19 kit release (tag v1.0.0-beta.19), the website's
+  # KIT_REF since 2026-11-08: nostr-bbs-core beta.19 on k256 0.14 clears
+  # RUSTSEC-2026-0387 (crypto-bigint 0.5.5), with the deepsec HIGH ports. The
+  # citizen's own crates are unchanged since dd45447; 90 tests pass --locked.
+  rev = "6064622dbb1a7cc1ba2d072109f9e3e8a96157df";
 
   src = pkgs.fetchFromGitHub {
     owner = "DreamLab-AI";
     repo  = "nostr-rust-forum";
     inherit rev;
-    hash  = "sha256-hdg7s1GvY6imWl6XMGorxwj/I+yjgojuiFruhyIzk2k=";
+    hash  = "sha256-paUWTKXS2dFLSN8QUER8RoE/BGN9fm+kgUz4vaXqY2Q=";
   };
 
 in
