@@ -1,0 +1,16 @@
+[package]
+name = "statcraft_run"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Headless StatCraft runner: load a dataset, execute SPSS syntax, print JSON results"
+
+[[bin]]
+name = "statcraft-run"
+path = "src/main.rs"
+
+[dependencies]
+statcraft_core = { path = "../statcraft_core" }
+statcraft_io = { path = "../statcraft_io" }
+statcraft_syntax = { path = "../statcraft_syntax" }
+serde_json = "1.0"

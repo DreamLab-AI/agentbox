@@ -9,7 +9,7 @@
 > consultant-deepseek, consultant-perplexity, consultant-zai, consultant-antigravity) are
 > not skills; route to them directly via their `consult` tool when a second model opinion is wanted.
 
-Skills: 127 active, 5 deprecated redirects. Sections mirror SKILL-DIRECTORY.md Artefact 1.
+Skills: 128 active, 5 deprecated redirects. Sections mirror SKILL-DIRECTORY.md Artefact 1.
 
 ## How to route
 
@@ -91,6 +91,7 @@ Skills: 127 active, 5 deprecated redirects. Sections mirror SKILL-DIRECTORY.md A
 | Skill | Route when (from the skill's own description) |
 |---|---|
 | `jupyter-notebooks` | Programmatically build and run Jupyter .ipynb notebooks end-to-end via the jupyter-notebooks MCP server — add/delete/move/update cells, execute cells or whole notebooks, manage kernel state, capture outputs, and export to HTML/PDF/Python. Use when authoring or executing a notebook from Claude (data-analysis or ML pipelines, reproducible research docs, tutorial/educational notebooks), driving cell and kernel operations, or converting a .ipynb to another format. Not for one-off edits to a single already-open notebook (use NotebookEdit) or non-interactive production code. |
+| `statcraft` | Run SPSS-compatible statistics headlessly with StatCraft's pure-Rust engine (`statcraft-run`): load CSV, TSV, SAV or XLSX, execute SPSS syntax (DESCRIPTIVES, FREQUENCIES, CROSSTABS, T-TEST independent/paired/one-sample, ONEWAY ANOVA, CORRELATIONS, REGRESSION, FACTOR, RELIABILITY, NPAR TESTS such as Mann-Whitney and Kruskal-Wallis), and read exact results back as JSON. Use when a task needs a significance test, effect size, survey or questionnaire analysis, an SPSS .sav file opened or replicated, or a statistics result an assessor or reviewer can re-run — even if the user only says 'is this difference significant'. Not for model … |
 
 ## Development Methodology and Meta-Skills
 

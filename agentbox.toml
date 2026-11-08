@@ -642,6 +642,7 @@ supersplat = true
 [skills.data_science]
 pytorch = true
 jupyter = true
+statcraft = true
 
 [skills.docs]
 latex = true

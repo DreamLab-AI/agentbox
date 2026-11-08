@@ -276,6 +276,11 @@
       "name": "PyTorch stack",
       "summary": "Python ML runtime baked into the image (pairs with toolchains.cuda for GPU)."
     },
+    "skills.data_science.statcraft": {
+      "class": "rebuild",
+      "name": "StatCraft statistics",
+      "summary": "statcraft-run on PATH: SPSS syntax over CSV/SAV/XLSX with JSON results, no GUI (lib/statcraft.nix)."
+    },
     "skills.docs.latex": {
       "class": "rebuild",
       "name": "Docs toolchain (Mermaid + LaTeX)",

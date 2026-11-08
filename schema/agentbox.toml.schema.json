@@ -398,6 +398,10 @@
             "jupyter": {
               "description": "Bake Jupyter for notebook skills. Notebooks are served at /jupyter/ in the operator cockpit through the identity proxy.",
               "type": "boolean"
+            },
+            "statcraft": {
+              "description": "Bake statcraft-run, a headless runner for the pure-Rust StatCraft SPSS-compatible statistics engine (skills/statcraft).",
+              "type": "boolean"
             }
           }
         },

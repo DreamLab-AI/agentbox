@@ -1509,6 +1509,9 @@
             pkgs.python312Packages.jupyterlab
             pkgs.python312Packages.notebook
             pkgs.python312Packages.ipykernel
+          ]
+          ++ lib.optionals (dataScienceCfg.statcraft or false) [
+            (import ./lib/statcraft.nix { inherit lib; pkgs = rustPkgs; })
           ];
 
         docsPackages =

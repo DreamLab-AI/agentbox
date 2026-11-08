@@ -92,6 +92,7 @@
     "hooks-automation": "Swarm and Multi-Agent Orchestration",
     "host-webserver-debug": "Browser Automation and Web",
     "imagemagick": "Media Processing",
+    "isaac-sim": "3D and Game Development",
     "jupyter-notebooks": "Data Science and Notebooks",
     "latex-book": "Deprecated and Archived",
     "latex-documents": "Documentation and Reports",
@@ -138,8 +139,9 @@
     "skill-tuning": "Context, Discovery, and Session Management",
     "sparc-methodology": "Development Methodology and Meta-Skills",
     "spark-scene": "3D and Game Development",
-    "supersplat": "3D and Game Development",
+    "statcraft": "Data Science and Notebooks",
     "stream-chain": "Swarm and Multi-Agent Orchestration",
+    "supersplat": "3D and Game Development",
     "swarm-advanced": "Swarm and Multi-Agent Orchestration",
     "system-one": "AI/ML and Neural Networks",
     "terracraft": "3D and Game Development",
@@ -153,13 +155,12 @@
     "vanity-engineering-review": "Software Architecture and Strategic Review",
     "verification-quality": "Code Quality, Review, and Verification",
     "video-production": "Media Processing",
+    "visioncraft": "Development Methodology and Meta-Skills",
     "voyager-skill-library": "Code Execution and Experiential Learning",
     "wardley-maps": "Documentation and Reports",
     "wasm-js": "Systems Programming",
     "web-researcher": "Web Research and Content",
     "web-summary": "Web Research and Content",
-    "youtube-transcript-archiver": "Web Research and Content",
-    "isaac-sim": "3D and Game Development",
-    "visioncraft": "Development Methodology and Meta-Skills"
+    "youtube-transcript-archiver": "Web Research and Content"
   }
 }
