@@ -25,6 +25,7 @@ not in the clear on a public relay.
 ```sh
 nostr-receipt keygen   --out issuer.key
 nostr-receipt disclose --key issuer.key --memory <hex> --salt <hex> --query "..." --answer "..." \
+                       [--acquired <hex>,<hex>,...]  # sha256 of each document acquired to answer \
                        --sigma 1.5 --clip 1 --epsilon 6.13 --delta 1e-5 > receipt.json
 nostr-receipt verify   --file receipt.json [--salt <hex> --query "..." --answer "..."] [--human]
 nostr-receipt revoke   --key issuer.key --memory <hex> --document "..." --sigma ... --prev <id>

@@ -4,6 +4,7 @@
 //! nostr-receipt keygen --out KEYFILE
 //! nostr-receipt disclose --key KEYFILE --memory HEX --salt HEX --query TEXT --answer TEXT
 //!                        --sigma S --clip C --epsilon E --delta D [--requester DID] [--prev ID]
+//!                        [--acquired HEX,HEX,...]   sha256 of each document acquired to answer
 //! nostr-receipt revoke   --key KEYFILE --memory HEX --document TEXT
 //!                        --sigma S --clip C --epsilon E --delta D [--prev ID]
 //! nostr-receipt verify   [--file RECEIPT.json] [--salt HEX --query TEXT --answer TEXT] [--human]
@@ -82,6 +83,7 @@ fn run(args: &[String]) -> Result<bool, String> {
                     query_hash: salted_hash(&salt, need(&f, "query")?),
                     answer_hash: sha256_hex(need(&f, "answer")?.as_bytes()),
                     requester: f.get("requester").cloned(),
+                    acquired: f.get("acquired").map(|s| s.split(',').filter(|x| !x.is_empty()).map(str::to_string).collect()).unwrap_or_default(),
                 }
             } else {
                 Body::Revocation { document_hash: sha256_hex(need(&f, "document")?.as_bytes()) }
@@ -123,7 +125,7 @@ fn run(args: &[String]) -> Result<bool, String> {
             let r = Receipt {
                 memory: "ab".repeat(32),
                 mechanism: Mechanism { name: "gaussian".into(), sigma: 1.5, clip: 1.0, epsilon: 6.13, delta: 1e-5 },
-                body: Body::Disclosure { query_hash: "cd".repeat(32), answer_hash: "ef".repeat(32), requester: None },
+                body: Body::Disclosure { query_hash: "cd".repeat(32), answer_hash: "ef".repeat(32), requester: None, acquired: vec!["ab".repeat(32); 14] },
                 prev: None,
                 created_at: now(),
             };
@@ -166,6 +168,13 @@ fn report(human: bool, verdict: Result<nostr_receipt::Verified, String>, answer:
                 println!("Valid receipt {} from {}.", &v.id[..12], v.issuer);
                 println!("It states that {what} from memory {}, under a {} mechanism (sigma {}, clip {}),", &v.receipt.memory[..12], m.name, m.sigma, m.clip);
                 println!("with a per-document guarantee of epsilon {} at delta {}.", m.epsilon, m.delta);
+                if let Body::Disclosure { acquired, .. } = &v.receipt.body {
+                    if acquired.is_empty() {
+                        println!("It does not list acquired documents: the whole collection was read.");
+                    } else {
+                        println!("It lists {} acquired document hash{}; each is bound by the signature.", acquired.len(), if acquired.len() == 1 { "" } else { "es" });
+                    }
+                }
                 if let Some(a) = answer {
                     println!("The question and answer you supplied {} this receipt.", if a { "match" } else { "do NOT match" });
                 }

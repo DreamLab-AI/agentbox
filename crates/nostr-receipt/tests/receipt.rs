@@ -47,6 +47,7 @@ fn disclosure() -> Receipt {
             query_hash: salted_hash(b"salt", "Is X a supplier of Y?"),
             answer_hash: sha256_hex(b"True"),
             requester: Some(did_nostr(&"11".repeat(32))),
+            acquired: vec![sha256_hex(b"document one"), sha256_hex(b"document two")],
         },
         prev: None,
         created_at: 1_762_600_000,
@@ -164,4 +165,25 @@ fn did_nostr_grammar_fixtures() {
 fn command_signer_output_is_verified() {
     let cmd = CommandSigner { command: vec!["cat".into()], pubkey: signer().pubkey_hex() };
     assert!(issue(&disclosure(), &cmd).is_err(), "an unsigned echo was accepted");
+}
+
+#[test]
+fn acquired_documents_are_bound_by_the_signature() {
+    let signer = KeySigner::from_secret_hex(&"77".repeat(32)).unwrap();
+    let ev = issue(&disclosure(), &signer).unwrap();
+    let v = verify(&ev).unwrap();
+    match &v.receipt.body {
+        Body::Disclosure { acquired, .. } => assert_eq!(acquired.len(), 2),
+        _ => panic!("not a disclosure"),
+    }
+    assert!(ev.content.contains("2 acquired documents"));
+    // Swap one acquired hash: the signature no longer covers the tags.
+    let mut e = ev.clone();
+    let i = e.tags.iter().position(|t| t[0] == "acquired").unwrap();
+    e.tags[i][1] = sha256_hex(b"document three");
+    assert!(verify(&e).is_err());
+    // Drop one acquired tag: same.
+    let mut e = ev.clone();
+    e.tags.remove(i);
+    assert!(verify(&e).is_err());
 }

@@ -69,6 +69,9 @@ pub enum Body {
         answer_hash: String,
         /// The asking party, if the issuer chooses to name it.
         requester: Option<String>,
+        /// `sha256(document)` of each document acquired to answer, hex; empty when the whole
+        /// collection was read. This is what makes an acquisition decision auditable.
+        acquired: Vec<String>,
     },
     /// A document was removed from the memory.
     Revocation {
@@ -237,11 +240,14 @@ fn tags(r: &Receipt) -> Vec<Vec<String>> {
         vec!["dp".into(), m.epsilon.to_string(), m.delta.to_string(), "per-document".into()],
     ];
     match &r.body {
-        Body::Disclosure { query_hash, answer_hash, requester } => {
+        Body::Disclosure { query_hash, answer_hash, requester, acquired } => {
             t.push(vec!["query".into(), query_hash.clone()]);
             t.push(vec!["answer".into(), answer_hash.clone()]);
             if let Some(d) = requester {
                 t.push(vec!["requester".into(), d.clone()]);
+            }
+            for h in acquired {
+                t.push(vec!["acquired".into(), h.clone()]);
             }
         }
         Body::Revocation { document_hash } => t.push(vec!["document".into(), document_hash.clone()]),
@@ -262,8 +268,9 @@ fn kind_of(b: &Body) -> u64 {
 fn content_of(r: &Receipt) -> String {
     let m = &r.mechanism;
     let what = match &r.body {
-        Body::Disclosure { .. } => "Answer released",
-        Body::Revocation { .. } => "Document revoked",
+        Body::Disclosure { acquired, .. } if !acquired.is_empty() => format!("Answer released using {} acquired documents", acquired.len()),
+        Body::Disclosure { .. } => "Answer released".to_string(),
+        Body::Revocation { .. } => "Document revoked".to_string(),
     };
     format!(
         "{what} from memory {}; {} mechanism, sigma {}, clip {}; per-document epsilon {} at delta {}.",
@@ -288,11 +295,14 @@ fn check_receipt(r: &Receipt) -> Result<(), Error> {
         }
     }
     match &r.body {
-        Body::Disclosure { query_hash, answer_hash, requester } => {
+        Body::Disclosure { query_hash, answer_hash, requester, acquired } => {
             hex_ok("query", query_hash)?;
             hex_ok("answer", answer_hash)?;
             if let Some(d) = requester {
                 parse_did_nostr(d)?;
+            }
+            for h in acquired {
+                hex_ok("acquired", h)?;
             }
         }
         Body::Revocation { document_hash } => hex_ok("document", document_hash)?,
@@ -358,6 +368,7 @@ pub fn verify(event: &NostrEvent) -> Result<Verified, Error> {
             query_hash: field(one("query")?, 1)?,
             answer_hash: field(one("answer")?, 1)?,
             requester: opt("requester")?.map(|t| field(t, 1)).transpose()?,
+            acquired: event.tags.iter().filter(|t| t.first().map(String::as_str) == Some("acquired")).map(|t| field(t, 1)).collect::<Result<Vec<_>, _>>()?,
         },
         KIND_REVOCATION => Body::Revocation { document_hash: field(one("document")?, 1)? },
         k => return Err(Error::Schema(format!("kind {k} is not a receipt kind"))),
