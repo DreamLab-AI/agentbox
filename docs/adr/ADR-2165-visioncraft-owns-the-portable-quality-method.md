@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: cfa535b8c846e094718bd6f0d75e77b9565656d8
+verified_commit: a0f91fba21b7214c8f0f16db8373f7cddf6ee944
 verified_paths: [services/agentbox-manifest/src/deepsec_gate.rs, services/agentbox-manifest/src/visioncraft_source.rs, services/agentbox-manifest/src/jsonio.rs, services/agentbox-manifest/src/mcp.rs, services/agentbox-manifest/src/mcp_hub.rs, services/agentbox-manifest/tests/deepsec_gate.rs, services/agentbox-manifest/tests/aqe.rs, tests/config/visioncraft-deepsec.test.mjs, tests/config/visioncraft-aqe.test.mjs, tests/system-one/visioncraft-picker.test.mjs, config/visioncraft-source.json, lib/lockfiles/visioncraft-0.3.0.Cargo.lock, lib/visioncraft.nix, lib/agentbox-manifest.nix, flake.nix, skills/visioncraft, skills/registered-skills.txt, skills/codex-registered-skills.txt, scripts/reconcile-skills.sh, services/agentbox-manifest/src/main.rs, tests/config/visioncraft-cutover.test.mjs]
 owner: jjohare
 review_trigger: a VisionCraft release, a Deepsec protocol change, or discovery of a second active quality implementation
@@ -141,3 +141,5 @@ Verified source commit `c1b0c700c42596d35a1faba3074b667c1928d8fb`.
 The final governed source is the actual Agentbox release-pin commit below. It binds the upstream published 0.1.0 source, NAR hash, complete 34-file payload, lockfile, Nix integration, host policy/source-check modules, AQE projection, registration and Jev tests. All 235 Rust tests, Clippy, 18 actual registry-artifact protocol fixtures, eight focused consumer cases and 71 existing Jev checks pass. The native integrity checker, official NAR repeat, three Nix parses, skill/configuration/catalogue/environment gates pass. The binary hash stayed ae5d7568af0a56e46cb134d93391d2ede856544bbead6a0d68a43d5f510dce17 through the registry fixture run. Rebuild and live baked/source parity remain the activation boundary; no production independent-review PASS is inferred from model findings or the separate tiny smoke.
 
 Re-verified 2026-11-05 at `3beca506c` for ADR-2177: the only change to this record's governed paths since its last stamp is ADR-2177's additive SuperSplat hunk (a gated package set and supervisor block, one toml/schema key, a skill registration); this record's decision is unaffected.
+
+Re-verified 2026-11-08 at `a0f91fba2`. Governed-path delta since `cfa535b8c`: `lib/visioncraft.nix` only. `version = pin.version;` becomes `inherit (pin) version;` (statix W04). That is the same attribute set; the pinned source, lockfile path and cargo flags are unchanged. The decision and status axes are unchanged. Re-run: `git diff cfa535b8c..a0f91fba2 -- lib/visioncraft.nix`. Nix was not evaluated here; the image is unverified until the host rebuild.

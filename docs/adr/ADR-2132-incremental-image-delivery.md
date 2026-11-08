@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 18b79218d81b0ddea7840aca11a50ee829068bb9
+verified_commit: a0f91fba21b7214c8f0f16db8373f7cddf6ee944
 verified_paths: [agentbox.sh, scripts/runtime-delivery.*, scripts/refresh-compose.sh, config/build-registry.json, lib/image-layers.nix, flake.nix, tests/config/runtime-delivery*, .github/workflows/invariants.yml, docs/developer/incremental-builds.md]
 owner: jjohare
 review_trigger: layer grouping, delivery transport, candidate validation or cache retention changes
@@ -240,3 +240,5 @@ Governed-path delta since `3d27cc11e` is the RuVector Postgres credential custod
 Nothing this record decides is changed; its status axes are unchanged. Re-run: `git diff 3d27cc11e..cc949bb79 -- agentbox.sh flake.nix`.
 
 Re-verified 2026-11-05 at `3beca506c` for ADR-2177: the only change to this record's governed paths since its last stamp is ADR-2177's additive SuperSplat hunk (a gated package set and supervisor block, one toml/schema key, a skill registration); this record's decision is unaffected.
+
+Re-verified 2026-11-08 at `a0f91fba2`. Governed-path delta since `18b79218d`: `.github/workflows/invariants.yml` only (`840468521`, `d2d39d26a`, the CI pare-back). It restricts `push` to `main`, mirrors the push path list onto `pull_request`, and adds `concurrency`, `timeout-minutes: 20` and a CI `rust-cache` step. That step is a job cache for `services/agentbox-manifest`, not the image binary/Rust caches this record defers. The runtime-delivery step is unchanged and moves from `:70` to `.github/workflows/invariants.yml:146`. Both trigger lists still name its inputs (`scripts/**`, `tests/config/runtime-delivery.test.cjs`, `config/build-registry.json`, `agentbox.sh`, `lib/**`, `flake.nix`). The decision and status axes are unchanged. Re-run: `git diff 18b79218d..a0f91fba2 -- <verified_paths>`.

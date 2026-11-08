@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 18b79218d81b0ddea7840aca11a50ee829068bb9
+verified_commit: a0f91fba21b7214c8f0f16db8373f7cddf6ee944
 verified_paths: [scripts/ci/check-ports-loopback.sh, .github/workflows/invariants.yml, flake.nix, docker-compose.yml]
 owner: jjohare
 review_trigger: Any new entry on the SANCTIONED list, or a new compose overlay file
@@ -500,3 +500,5 @@ Governed-path delta since `3d27cc11e` is the RuVector Postgres credential custod
 Nothing this record decides is changed; its status axes are unchanged. Re-run: `git diff 3d27cc11e..cc949bb79 -- flake.nix`.
 
 Re-verified 2026-11-05 at `3beca506c` for ADR-2177: `[program:supersplat]` binds 0.0.0.0:8795 on the docker network and publishes no compose port, so the `SANCTIONED` publish inventory is unchanged; its in-container listener is sanctioned separately under ADR-2062's `LISTENER_SANCTIONED`.
+
+Re-verified 2026-11-08 at `a0f91fba2`. Governed-path delta since `18b79218d`: `.github/workflows/invariants.yml` only (`840468521`, `d2d39d26a`, the CI pare-back). It adds `branches: [main]` to `push`, gives `pull_request` the same path list as `push` (it was unfiltered), and adds a workflow-level `concurrency` group (cancel-in-progress), `timeout-minutes: 20` and a `Swatinem/rust-cache` step for `services/agentbox-manifest`. No step's command changes. The earlier note's "run on every push and pull request" now reads: on pushes to `main` and on pull requests touching the listed paths. Those paths still cover every input the gate reads: `docker-compose*.yml`, `flake.nix`, `scripts/**` (the `.sh`/`.mjs` gate) and `tests/security/**`. Citations move: `check-ports-loopback` from `:78-79` to `.github/workflows/invariants.yml:154-155`, `check-listeners` unit tests from `:81-82` to `:157-158`. `flake.nix`, `docker-compose.yml` and `scripts/ci/check-ports-loopback.sh` did not move. The decision and status axes are unchanged. Re-run: `git diff 18b79218d..a0f91fba2 -- <verified_paths>`.

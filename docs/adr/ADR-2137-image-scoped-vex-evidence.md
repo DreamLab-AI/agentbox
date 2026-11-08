@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 1cf3f86ff9982c2997437a6a3dc90892005d76f3
+verified_commit: a0f91fba21b7214c8f0f16db8373f7cddf6ee944
 verified_paths: [flake.nix, lib/sbomnix.nix, lib/sbomnix-python.nix, lib/agentbox-vex.nix, lib/vex-evidence.nix, services/agentbox-vex, scripts/security-scan.sh, scripts/runtime-delivery.cjs, agentbox.sh, tests/security, tests/config/runtime-delivery.test.cjs, .github/workflows/build-multi-arch.yml, .github/workflows/image-scan.yml, .github/workflows/release.yml, .github/workflows/security-vex.yml, .github/workflows/flake-check.yml]
 owner: jjohare
 review_trigger: image inventory, VEX predicates, scanner matching or release artefact selection changes; a host preparation bundle that carries raw and VEX-filtered Grype reports, or a release with matching-commit scan artefacts (activation → live)
@@ -229,3 +229,5 @@ Nothing this record decides is changed; its status axes are unchanged. Re-run: `
 Re-verified 2026-11-05 at `3beca506c` for ADR-2177: SuperSplat adds image store paths and no daemon, adapter or gate to the VEX method; evidence generation is unchanged.
 
 Re-verified 2026-11-07 at `1cf3f86ff`. Governed-path delta since `18b79218d`: `lib/sbomnix.nix` only. nixpkgs 6b01148e2e97 now ships sbomnix's `makeWrapperArgs` as the four separate `--prefix PATH :` arguments that this override produced, so the shape assert accepts exactly that form (passed through) or the old single fragment (split, as before) and still fails on anything else. The wrapped PATH, the tools in `securityTools` and evidence generation are unchanged; the decision and status axes are unchanged. Re-run: `git diff 18b79218d..1cf3f86ff -- lib/sbomnix.nix`.
+
+Re-verified 2026-11-08 at `a0f91fba2`. Governed-path delta since `1cf3f86ff`: five workflows, all from the CI pare-back `840468521`. `build-multi-arch.yml`, `image-scan.yml` and `release.yml` gain only job `timeout-minutes` (240/15, 45, 20). `flake-check.yml` gains `workflow_dispatch` and `timeout-minutes: 20`. `security-vex.yml` gains `concurrency`, `timeout-minutes: 15` and a `rust-cache` step for `services/agentbox-vex`. Its path filter narrows from `.github/workflows/**` to `security-vex.yml`, `build-multi-arch.yml`, `image-scan.yml` and `release.yml`, so an edit to the governed `flake-check.yml` alone no longer re-runs the VEX contracts. No evidence, scan, digest-binding or release-selection step changes. Citations shift by one or two lines: `image-scan.yml` download `:72`, publication match `:88`, `--fail-on high` `:136`; `build-multi-arch.yml` evidence build `:82`, report `:90`, `publication.json` `:165`; `release.yml` tag resolution `:71-83`, publication verify `:155-158`; `flake-check.yml` evidence evals `:74-75`. The decision and status axes are unchanged. Re-run: `git diff 1cf3f86ff..a0f91fba2 -- <verified_paths>`.
