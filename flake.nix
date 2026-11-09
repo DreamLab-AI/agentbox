@@ -970,8 +970,8 @@
         vaultPackages = lib.optionals vaultCliActive [ vaultPkg ontomarkPkg ];
 
         # Supercronic drives the podcast ingestion schedule.  Keep it in the
-        # immutable Nix closure: ~/.local is intentionally a noexec tmpfs, so a
-        # binary downloaded there during bootstrap can never be launched.
+        # immutable Nix closure so its version and integrity are build-pinned,
+        # rather than downloading an executable during bootstrap.
         supercronicPkg = pkgs.stdenvNoCC.mkDerivation {
           pname = "supercronic";
           # Bumped 0.2.33 -> 0.2.49 (2026-10-01 review). v0.2.49 published
@@ -3789,18 +3789,6 @@ stderr_logfile_maxbytes=5MB
           # Some native npm installers (notably sharp) hard-code ~/.npm even
           # when NPM_CONFIG_CACHE is redirected into the writable workspace.
           "/home/devuser/.npm:mode=755,size=${resTmpfsNpm},uid=1000,gid=1000"
-          # devuser's XDG_DATA_HOME. zoxide, fzf, atuin, npm globals,
-          # pip --user, pipx, and a long tail of other XDG-aware CLIs
-          # write here. Same Read-only-fs symptom as .cache without it.
-          # The codeserver-config and opencode-store named volumes mount
-          # INSIDE this tmpfs at .../code-server and .../opencode — Docker
-          # handles the layered mount order (tmpfs first, then volumes on
-          # top), so persistence is preserved and neither eats the 128M.
-          # OpenCode's session database is the reason for the second: a day
-          # of agent runs filled this tmpfs and the next session failed on a
-          # database checkpoint reporting a full disk (2026-09-11), an error
-          # that named neither the writer nor the run that caused it.
-          "/home/devuser/.local:mode=755,size=128M,uid=1000,gid=1000"
           # devuser's XDG_CONFIG_HOME. Many CLIs that don't honor
           # XDG_CONFIG_HOME still write to $HOME/.config (git, gh, kube,
           # etc.). The .config/claude subdir is bound from host / mounted
@@ -3922,6 +3910,9 @@ stderr_logfile_maxbytes=5MB
           # The privacy model is ~2.8 GiB. Keep it out of the deliberately
           # bounded XDG cache tmpfs and retain it across rolling rebuilds.
           "hf-cache:/home/devuser/.cache/huggingface"
+          # XDG data, user-installed runtimes and decision records are durable.
+          # Nested tool volumes retain their existing identities.
+          "local-home:/home/devuser/.local"
           "opencode-store:/home/devuser/.local/share/opencode"
           # ADR-2147: retain transcripts, session indexes and SQLite state.
           "codex-home:/home/devuser/.codex"
@@ -3956,7 +3947,7 @@ stderr_logfile_maxbytes=5MB
         # are auto-derived so every volume referenced in the agentbox service's
         # volumes list has a matching top-level declaration. Without this,
         # docker compose rejects the file with "undefined volume <name>".
-        baselineTopLevelVolumeNames = [ "ruvector-data" "solid-data" "sovereign-identities" "agentbox-secrets" "code-harness-data" "agentbox-events" "consultations-data" "telemetry-data" "aoe-profiles" "hf-cache" "opencode-store" "codex-home" "codex-packages" ];
+        baselineTopLevelVolumeNames = [ "ruvector-data" "solid-data" "sovereign-identities" "agentbox-secrets" "code-harness-data" "agentbox-events" "consultations-data" "telemetry-data" "aoe-profiles" "hf-cache" "local-home" "opencode-store" "codex-home" "codex-packages" ];
         exceptionVolumeNames = lib.unique (
           map (v: lib.head (lib.splitString ":" v)) exceptionWritableVolumes
         );

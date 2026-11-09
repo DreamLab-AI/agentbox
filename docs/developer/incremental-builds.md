@@ -148,3 +148,9 @@ Codex session retention (ADR-2147): the complete `~/.codex` home now uses
 `agentbox-codex-home`. Existing tmpfs installations require the
 [one-time migration](../adr/ADR-2147-retain-codex-session-state.md) before
 container replacement; fast activation rejects this mount change.
+
+Local application storage: `~/.local` uses `agentbox-local-home` rather than
+the former 128 MiB tmpfs. Existing containers require the
+[local-home migration](local-home-storage.md) before replacement to retain
+installed runtimes and application records. Fast activation also rejects this
+mount change.

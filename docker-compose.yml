@@ -115,7 +115,6 @@ services:
       - /var/lib/https-bridge:mode=755,size=8M,uid=1000,gid=1000
       - /home/devuser/.cache:mode=755,size=4G,uid=1000,gid=1000
       - /home/devuser/.npm:mode=755,size=4G,uid=1000,gid=1000
-      - /home/devuser/.local:mode=755,size=128M,uid=1000,gid=1000
       - /home/devuser/.config:mode=755,size=64M,uid=1000,gid=1000
       - /home/devuser/.claude-flow:mode=755,size=64M,uid=1000,gid=1000
       - /home/devuser/.antigravity:mode=755,size=256M,uid=1000,gid=1000
@@ -143,6 +142,7 @@ services:
       - telemetry-data:/var/lib/agentbox/telemetry
       - aoe-profiles:/home/devuser/.config/agent-of-empires/profiles
       - hf-cache:/home/devuser/.cache/huggingface
+      - local-home:/home/devuser/.local
       - opencode-store:/home/devuser/.local/share/opencode
       - codex-home:/home/devuser/.codex
       - codex-packages:/home/devuser/.codex/packages
@@ -195,6 +195,8 @@ volumes:
     name: agentbox-aoe-profiles
   hf-cache:
     name: agentbox-hf-cache
+  local-home:
+    name: agentbox-local-home
   opencode-store:
     name: agentbox-opencode-store
   codex-home:

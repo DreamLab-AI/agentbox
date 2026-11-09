@@ -16,6 +16,7 @@ const expected = {
   '/var/lib/agentbox/telemetry': 'agentbox-telemetry-data',
   '/home/devuser/.config/agent-of-empires/profiles': 'agentbox-aoe-profiles',
   '/home/devuser/.cache/huggingface': 'agentbox-hf-cache',
+  '/home/devuser/.local': 'agentbox-local-home',
   '/home/devuser/.local/share/code-server': 'agentbox-codeserver-config',
   '/home/devuser/.local/share/opencode': 'agentbox-opencode-store',
   '/home/devuser/.codex': 'agentbox-codex-home',
@@ -35,8 +36,8 @@ assert.equal(instructions?.read_only, true);
 assert.equal(model.services.agentbox.pids_limit, model.services.agentbox.deploy.resources.limits.pids);
 console.log(`PASS: ${Object.keys(expected).length} persistent volume identities, external Claude home, read-only instructions and PID parity`);
 
-// A nested credential bind must never become the only durable Codex state.
-for (const target of ['/home/devuser/.codex', '/home/devuser/.claude']) {
+// Nested tool/credential mounts must not be the only durable home state.
+for (const target of ['/home/devuser/.codex', '/home/devuser/.claude', '/home/devuser/.local']) {
   assert.ok(!(model.services.agentbox.tmpfs || []).some(entry =>
     (typeof entry === 'string' ? entry.split(':')[0] : entry.target) === target),
     `${target} must not be shadowed by tmpfs`);
