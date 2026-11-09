@@ -242,7 +242,7 @@ checksum = "877a4ace8713b0bcf2a4e7eec82529c029f1d0619886d18145fea96c3ffe5c0f"
 
 [[package]]
 name = "factrail"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "clap",
  "factrail-backend",
@@ -256,7 +256,7 @@ dependencies = [
 
 [[package]]
 name = "factrail-backend"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "factrail-core",
  "futures",
@@ -269,7 +269,7 @@ dependencies = [
 
 [[package]]
 name = "factrail-core"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "regex",
  "serde",
@@ -279,7 +279,7 @@ dependencies = [
 
 [[package]]
 name = "factrail-eval"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "factrail-core",
  "hex",
@@ -291,7 +291,7 @@ dependencies = [
 
 [[package]]
 name = "factrail-policy"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "serde",
  "serde_json",
