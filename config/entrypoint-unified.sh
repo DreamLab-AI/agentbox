@@ -889,6 +889,11 @@ elif ! grep -q '^[[:space:]]*sandbox_mode[[:space:]]*=' "$CODEX_CFG"; then
   echo "[bootstrap] Prepended sandbox_mode = danger-full-access to codex config.toml"
 fi
 
+# Codex remote control is started and paired explicitly by the operator.
+# The pinned CLI handles remote enablement through `remote-control start`;
+# its former remote_control feature flag is removed. Do not restart a daemon
+# during bootstrap: that could interrupt the sessions it hosts.
+
 # ── ADR-2151: voicelink — Codex `notify` program ──
 # [voicelink].enabled && .record_events point Codex's top-level `notify` at the
 # baked recorder: Codex appends its JSON payload as the last argv word, and

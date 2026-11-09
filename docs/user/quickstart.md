@@ -623,6 +623,19 @@ Verify the volumes are mounted and the entrypoint bootstrap ran successfully.
 Codex sessions persist in `agentbox-codex-home`; existing tmpfs installations
 need a [one-time migration](../adr/ADR-2147-retain-codex-session-state.md) before replacement.
 
+With `toolchains.codex` enabled, sign in, then explicitly start remote control
+and generate a short-lived mobile pairing code. The pinned CLI marks the old
+`remote_control` feature flag removed; no feature toggle is required at boot:
+
+```bash
+codex remote-control start
+codex remote-control pair
+```
+
+If the daemon was started without remote control, finish active Codex work,
+then run `codex remote-control stop` before starting it again. Stopping the
+daemon can interrupt sessions it hosts. Startup and pairing remain manual.
+
 Media control-plane update: Blender retains its socket/background-job path and
 adds an internal typed DCC-MCP gateway; external ComfyUI includes its MCP
 dependencies. See [ADR-2148](../adr/ADR-2148-remote-media-control-planes.md).
