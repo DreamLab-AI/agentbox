@@ -7,8 +7,8 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 3beca506c1d44122bf2e14ed935d590b9d020233
-verified_paths: [lib/factrail.nix, lib/lockfiles/factrail-57ac25b5.Cargo.lock, lib/claude-code-binary.nix, config/entrypoint-unified.sh, config/claude-plugins/.claude-plugin/marketplace.json, scripts/factrail-store-migrate.mjs, tests/config/factrail-store-migrate.test.mjs, tests/config/factrail-projection.test.sh, schema/agentbox.toml.schema.json, scripts/bake-ruflo-console.sh, scripts/ruflo-console-project.mjs, tests/config/ruflo-console.test.mjs]
+verified_commit: 9ae202a8aad0ddd73738f76618777c89b50d374d
+verified_paths: [lib/factrail.nix, lib/lockfiles/factrail-cd40f2f5.Cargo.lock, lib/claude-code-binary.nix, config/entrypoint-unified.sh, config/claude-plugins/.claude-plugin/marketplace.json, scripts/factrail-store-migrate.mjs, tests/config/factrail-store-migrate.test.mjs, tests/config/factrail-projection.test.sh, schema/agentbox.toml.schema.json, scripts/bake-ruflo-console.sh, scripts/ruflo-console-project.mjs, tests/config/ruflo-console.test.mjs]
 owner: jjohare
 review_trigger: a factrail rev bump in lib/factrail.nix, the end of the post-rebuild residency soak, a Claude Code function-hook API change, or a decision to train a local judge on recorded Jev decisions
 repo: agentbox
@@ -18,7 +18,7 @@ lineage: ADR-2093 (the decision this implements; amends its implementation, not 
 
 # ADR-2121 — Implement Jev compaction with factrail — fact rails in Rust, baked at a pinned commit
 
-## Finding — 2026-11-09: reduced tool inputs are imitated in new tool calls (open)
+## Finding — 2026-11-09: reduced tool inputs are imitated in new tool calls (fix landed; open until verified)
 
 **Symptom.** In long sessions, newly generated Bash commands and Write contents arrive containing the
 literal compaction stub `…[N chars]`, so commands fail (`unexpected EOF`, `e…[1159: command not
@@ -52,11 +52,35 @@ corruption is in-context imitation of the rewritten history, not a transport fau
 4. Add a PreToolUse guard that refuses a tool call whose input contains `…[\d+ chars]`, returning a
    clear error so the model rewrites the call instead of executing a corrupt one.
 
-**Workaround until fixed.** Keep tool inputs short; build long files line by line; start a fresh
+**Fix — 2026-11-09 (options 1 and 4).** factrail 0.1.1 (`cd40f2f5`; the change is `04df371b`),
+pinned here at `9ae202a8a`:
+
+- `apply` reduces results only. No call's arguments are rewritten, so `drop_call` now applies
+  exactly as `drop_result`. The variant stays so recorded decisions and judge answers still parse.
+  The argument cut also hit every *reproducible read* (160 chars), not only `drop_call` (200);
+  both paths are gone.
+- The `taint` hook, which already runs on every `tool.call`, now receives the call's arguments
+  and returns `deny` when any string carries the stub. The plugin refuses the call with a message
+  that names the stub in words, never in its shape, so the model rewrites the call. This covers
+  sessions resumed from transcripts compacted before the fix, whose stubs keep seeding the copy
+  until they leave the context.
+- factrail ADR-001 carries the amendment; `docs/protocol.md` documents `input` and `deny`.
+
+Activation requires the host image rebuild. The binary's store path then reads `factrail-0.1.1`;
+until then the running image has 0.1.0 (`d270a0a1`).
+
+**Workaround until the rebuild.** Keep tool inputs short; build long files line by line; start a fresh
 session for long-form writing once history is mostly stubs.
 
 **Acceptance for closing this finding.** Re-run the scanner over sessions started after the fix:
 zero broken stubbed calls, and no `…[\d+ chars]` inside any newly generated `tool_use` input.
+Re-verified 2026-11-09 at `9ae202a8a`: `lib/factrail.nix` moves to factrail 0.1.1 `cd40f2f5` (rev,
+NAR hash, version; the lockfile is renamed and changes only in the workspace members' versions).
+The decision, activation keys and store migration are unchanged; the reduction rails lose only
+the argument cut described in the finding above. The other governed-path change since
+`3beca506c` is `schema/agentbox.toml.schema.json` gaining the `statcraft` feature key
+(`1ad45e303`), which does not touch this record.
+
 ## Scoped source re-verification — 2026-11-03
 
 Shared-file changes add pinned VisionCraft and direct AQE registration, retire
