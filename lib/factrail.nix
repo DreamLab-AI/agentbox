@@ -32,14 +32,14 @@
 { lib, pkgs }:
 
 let
-  version = "0.1.0";
-  rev = "d270a0a168a4f7e69e7751d2a69c62b98264560a";
+  version = "0.1.1";
+  rev = "cd40f2f54201792f375d88cfca225333eba5257f";
 
   src = pkgs.fetchFromGitHub {
     owner = "DreamLab-AI";
     repo  = "factrail";
     inherit rev;
-    hash  = "sha256-lF/Xv7hQS16Va1HSmOHSc5mRZZVszKtjafd1MQfipcA=";
+    hash  = "sha256-koNsXJykgV9SjC1PSgJqWmE0rsNWZTbtSUm6dW0EI0s=";
   };
 
 in
