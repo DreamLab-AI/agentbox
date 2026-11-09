@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 9ae202a8aad0ddd73738f76618777c89b50d374d
+verified_commit: 04321ea4d7e8635a1103a16b0140a01b5804d4a8
 verified_paths: [lib/factrail.nix, config/entrypoint-unified.sh, lib/claude-code-binary.nix]
 owner: jjohare
 review_trigger: the first measured residency bill that exceeds the summary path's re-read savings, a Claude Code function-hook API change, a request to fence a class other than email, or a change to ADR-2121 (its implementation); `/jev-compact status` answering in a fresh session on a booted image (activation → live)
@@ -453,3 +453,7 @@ arguments carry that stub. This brings the implementation closer to the verbatim
 record owns; thresholds, the rules fallback and the taint fence are unchanged. The NAR hash
 reproduced the previous pin before being computed for the new one. Not checked: an image build
 of the new pin.
+
+Re-verified 2026-11-09 at `04321ea4d`: `lib/factrail.nix` moves to factrail 0.1.2 `af23eca6`, which adds
+the `factrail stubs` acceptance scan (ADR-2121) and changes no compaction behaviour this record
+governs.

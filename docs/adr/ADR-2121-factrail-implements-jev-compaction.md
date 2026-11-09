@@ -7,8 +7,8 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 9ae202a8aad0ddd73738f76618777c89b50d374d
-verified_paths: [lib/factrail.nix, lib/lockfiles/factrail-cd40f2f5.Cargo.lock, lib/claude-code-binary.nix, config/entrypoint-unified.sh, config/claude-plugins/.claude-plugin/marketplace.json, scripts/factrail-store-migrate.mjs, tests/config/factrail-store-migrate.test.mjs, tests/config/factrail-projection.test.sh, schema/agentbox.toml.schema.json, scripts/bake-ruflo-console.sh, scripts/ruflo-console-project.mjs, tests/config/ruflo-console.test.mjs]
+verified_commit: 04321ea4d7e8635a1103a16b0140a01b5804d4a8
+verified_paths: [lib/factrail.nix, lib/lockfiles/factrail-af23eca6.Cargo.lock, lib/claude-code-binary.nix, config/entrypoint-unified.sh, config/claude-plugins/.claude-plugin/marketplace.json, scripts/factrail-store-migrate.mjs, tests/config/factrail-store-migrate.test.mjs, tests/config/factrail-projection.test.sh, schema/agentbox.toml.schema.json, scripts/bake-ruflo-console.sh, scripts/ruflo-console-project.mjs, tests/config/ruflo-console.test.mjs]
 owner: jjohare
 review_trigger: a factrail rev bump in lib/factrail.nix, the end of the post-rebuild residency soak, a Claude Code function-hook API change, or a decision to train a local judge on recorded Jev decisions
 repo: agentbox
@@ -38,7 +38,7 @@ corruption is in-context imitation of the rewritten history, not a transport fau
   (`unexpected EOF`, `command not found`, `SyntaxError`, or the stub echoed back).
 - Worst: innovate-uk-2582 `0d0bbb45` (78), project `35190ae0` (71), VisionFlow `3bacf5e1` (46),
   agentbox `c4aec900` (37), ontomark `79281e39` (30), visionGraph `46b80485` (27).
-- Scanner: `stubscan2.py` (session scratchpad); pattern `…\[\d+ chars\]` on `tool_use`
+- Scanner: `stubscan2.py` (session scratchpad; superseded by `factrail stubs`, below); pattern `…\[\d+ chars\]` on `tool_use`
   inputs, failure regex on the matching `tool_result`'s first 400 characters.
 
 **Options, not yet decided.**
@@ -66,14 +66,19 @@ pinned here at `9ae202a8a`:
   until they leave the context.
 - factrail ADR-001 carries the amendment; `docs/protocol.md` documents `input` and `deny`.
 
-Activation requires the host image rebuild. The binary's store path then reads `factrail-0.1.1`;
-until then the running image has 0.1.0 (`d270a0a1`).
+Activation requires the host image rebuild. The pin is now factrail 0.1.2 (`af23eca6`, at
+`04321ea4d`), which adds the scan below and changes nothing else; the binary's store path then reads
+`factrail-0.1.2`. Until then the running image has 0.1.0 (`d270a0a1`).
 
 **Workaround until the rebuild.** Keep tool inputs short; build long files line by line; start a fresh
 session for long-form writing once history is mostly stubs.
 
-**Acceptance for closing this finding.** Re-run the scanner over sessions started after the fix:
-zero broken stubbed calls, and no `…[\d+ chars]` inside any newly generated `tool_use` input.
+**Acceptance for closing this finding.** `factrail stubs --since <first boot on 0.1.2> --check`
+(`crates/factrail-eval/src/stubs.rs`) passes over a working week of sessions: zero broken
+stubbed calls, and the stubbed count itself near zero, since 0.1.2 never writes the stub. Run
+on 2026-11-09 against every transcript here it reported 406 broken calls before the fix and
+none after 15:00 UTC. (It counts slightly fewer than the scratchpad script's 443: it requires
+the full stub shape where the script also matched a bare `…[` digit prefix in results.)
 Re-verified 2026-11-09 at `9ae202a8a`: `lib/factrail.nix` moves to factrail 0.1.1 `cd40f2f5` (rev,
 NAR hash, version; the lockfile is renamed and changes only in the workspace members' versions).
 The decision, activation keys and store migration are unchanged; the reduction rails lose only
@@ -421,3 +426,7 @@ Re-stamped again at `09067b095`: the one further change to `config/entrypoint-un
 Governed-path delta since `09067b095`: `config/entrypoint-unified.sh`: the credential-scrub block (`PGSCRUB_MARKER`) now also rewrites Claude Code's backups and the `*.pre-*`/`*.bak*` snapshots of the projected config, writes atomically (sibling temp file, fsync, rename) keeping owner and mode, and scopes its text rules to RuVector's own values (ADR-2164 amendment 4). This record's decision does not concern these changes. Decision unchanged; `verified_commit` bumped. Re-run: `git diff 09067b095..4f3bd5325 -- config/entrypoint-unified.sh`.
 
 Re-verified 2026-11-05 at `3beca506c` for ADR-2177: the only change to this record's governed paths since its last stamp is ADR-2177's additive SuperSplat hunk (a gated package set and supervisor block, one toml/schema key, a skill registration); this record's decision is unaffected.
+
+Re-verified 2026-11-09 at `04321ea4d`: `lib/factrail.nix` moves to factrail 0.1.2 `af23eca6` (rev, NAR
+hash, version; lockfile renamed, members' versions only). 0.1.2 adds the `factrail stubs`
+subcommand named in the acceptance above and no engine change; the decision is unchanged.
