@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: e2b49adfc22f60123a33c85fb9f456782c557b39
+verified_commit: 662848dcbacc9a61f60a62a39804286df6142cc2
 verified_paths: [lib/factrail.nix, lib/lockfiles/factrail-af23eca6.Cargo.lock, lib/claude-code-binary.nix, config/entrypoint-unified.sh, config/claude-plugins/.claude-plugin/marketplace.json, scripts/factrail-store-migrate.mjs, tests/config/factrail-store-migrate.test.mjs, tests/config/factrail-projection.test.sh, schema/agentbox.toml.schema.json, scripts/bake-ruflo-console.sh, scripts/ruflo-console-project.mjs, tests/config/ruflo-console.test.mjs]
 owner: jjohare
 review_trigger: a factrail rev bump in lib/factrail.nix, the end of the post-rebuild residency soak, a Claude Code function-hook API change, or a decision to train a local judge on recorded Jev decisions
@@ -17,6 +17,14 @@ lineage: ADR-2093 (the decision this implements; amends its implementation, not 
 ---
 
 # ADR-2121 — Implement Jev compaction with factrail — fact rails in Rust, baked at a pinned commit
+
+## Prebuilt CLI pin check — 2026-11-09
+
+Claude Code advances to 2.1.319 with both upstream manifest hashes; Codex
+advances to 0.167.0 with the complete package assets checked by the update
+helper. The factrail 0.1.2 engine, shim and projection are unchanged. This
+pin check does not close the reduced-input finding: the working-week stubs
+acceptance and live hook behaviour remain separate observations.
 
 ## Scoped source check — 2026-11-09
 

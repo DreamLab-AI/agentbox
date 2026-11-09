@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: e2b49adfc22f60123a33c85fb9f456782c557b39
+verified_commit: 662848dcbacc9a61f60a62a39804286df6142cc2
 verified_paths: [lib/factrail.nix, config/entrypoint-unified.sh, lib/claude-code-binary.nix]
 owner: jjohare
 review_trigger: the first measured residency bill that exceeds the summary path's re-read savings, a Claude Code function-hook API change, a request to fence a class other than email, or a change to ADR-2121 (its implementation); `/jev-compact status` answering in a fresh session on a booted image (activation → live)
@@ -15,6 +15,14 @@ repo: agentbox
 ---
 
 # ADR-2093 — Compact context by Jev judgement, verbatim, with email fenced out and a switch
+
+## Prebuilt CLI pin check — 2026-11-09
+
+Claude Code advances to 2.1.319 with both upstream manifest hashes; Codex
+advances to 0.167.0 with the complete package assets checked by the update
+helper. The factrail 0.1.2 engine, shim and projection are unchanged. This
+pin check does not close the reduced-input finding: the working-week stubs
+acceptance and live hook behaviour remain separate observations.
 
 ## Scoped source check — 2026-11-09
 
