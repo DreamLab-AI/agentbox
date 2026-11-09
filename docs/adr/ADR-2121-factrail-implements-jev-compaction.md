@@ -18,6 +18,45 @@ lineage: ADR-2093 (the decision this implements; amends its implementation, not 
 
 # ADR-2121 — Implement Jev compaction with factrail — fact rails in Rust, baked at a pinned commit
 
+## Finding — 2026-11-09: reduced tool inputs are imitated in new tool calls (open)
+
+**Symptom.** In long sessions, newly generated Bash commands and Write contents arrive containing the
+literal compaction stub `…[N chars]`, so commands fail (`unexpected EOF`, `e…[1159: command not
+found`) and files are written corrupt (a Python file with U+2026 on a code line). Short calls succeed.
+
+**Cause (verified in session `0d0bbb45`).** The tools do not truncate: the Write tool wrote exactly
+what was generated, stub included. factrail's `compact` reduces earlier `tool_use` *inputs* as well
+as results (actions `reduced` / `drop_call`), rewriting them to `head…[N chars]`. Once most long
+inputs in context have that shape, the model reproduces it when it writes a new long input. The
+corruption is in-context imitation of the rewritten history, not a transport fault.
+
+**Extent, measured 2026-11-09 across `~/.claude/projects/*/*.jsonl`.**
+
+- 276 sessions contain stubbed `tool_use` inputs (up to 68% of a session's calls, mostly rewritten
+  history persisted in the transcript).
+- **72 sessions, 443 calls actually broke**: a stubbed input whose `tool_result` shows the failure
+  (`unexpected EOF`, `command not found`, `SyntaxError`, or the stub echoed back).
+- Worst: innovate-uk-2582 `0d0bbb45` (78), project `35190ae0` (71), VisionFlow `3bacf5e1` (46),
+  agentbox `c4aec900` (37), ontomark `79281e39` (30), visionGraph `46b80485` (27).
+- Scanner: `stubscan2.py` (session scratchpad); pattern `…\[\d+ chars\]` on `tool_use`
+  inputs, failure regex on the matching `tool_result`'s first 400 characters.
+
+**Options, not yet decided.**
+
+1. Stop reducing `tool_use` inputs; reduce only results. Inputs are small and are the shape the
+   model copies. Likely the whole fix.
+2. If inputs must shrink, use a marker the model will not imitate as content, for example a
+   structured placeholder outside the input object (`{"_factrail_elided": N}`), never an inline
+   ellipsis inside a command string.
+3. Raise `preserve-recent` so recent calls keep their full inputs (mitigates, does not fix).
+4. Add a PreToolUse guard that refuses a tool call whose input contains `…[\d+ chars]`, returning a
+   clear error so the model rewrites the call instead of executing a corrupt one.
+
+**Workaround until fixed.** Keep tool inputs short; build long files line by line; start a fresh
+session for long-form writing once history is mostly stubs.
+
+**Acceptance for closing this finding.** Re-run the scanner over sessions started after the fix:
+zero broken stubbed calls, and no `…[\d+ chars]` inside any newly generated `tool_use` input.
 ## Scoped source re-verification — 2026-11-03
 
 Shared-file changes add pinned VisionCraft and direct AQE registration, retire
