@@ -21,7 +21,7 @@
 { lib, pkgs }:
 
 let
-  # 2.1.309 (built 2026-10-22T19:32:59Z; checksums from the published manifest).
+  # 2.1.319 (built 2026-11-05T19:38:09Z; checksums from the published manifest).
   # Advisor tool (ADR-2134) needs >= 2.1.293 for Haiku 5.5 pairings.
   # 2.1.294 (bumped 2026-10-08).
   # 2.1.289 (built 2026-10-03T19:38:35Z; bumped 2026-10-05).
@@ -32,10 +32,10 @@ let
   #
   # This is Anthropic's latest channel release. Both per-arch hashes are
   # verified against its published manifest:
-  # https://downloads.claude.ai/claude-code-releases/2.1.309/manifest.json
-  #   linux-x64   4d704a8aecbe038affa3000f498ae17c1b4f753add8facb8764120affc99b658
-  #   linux-arm64 9796dd26899337f687739a0b39a7353b639f062a3436a7b941fcf19a1b757a9b
-  claudeCodeVersion = "2.1.309";
+  # https://downloads.claude.ai/claude-code-releases/2.1.319/manifest.json
+  #   linux-x64   dabafec82ca1319fa43d8be36a10fc61b1d11821cb98ad5df04ad95e199b8eed
+  #   linux-arm64 a7e687fd1cb054d651c7588223de3786c99d4c682365e3c3ae1e59ce7f3a591f
+  claudeCodeVersion = "2.1.319";
 
   # Map agentbox's system string to the upstream download platform slug.
   platforms = {
@@ -56,10 +56,10 @@ let
   # lib.fakeHash triggers a build-time error with the exact prefetch command.
   assets = {
     "x86_64-linux" = {
-      sha256 = "sha256-TXBKiuy+A4r/owAPSYrhfBtPdTrdj6y4dkEgr/yZtlg=";
+      sha256 = "sha256-2rr+yCyhMZ+kPYvjahD8YbHRGCHLmK1d8ErZXhmbju0=";
     };
     "aarch64-linux" = {
-      sha256 = "sha256-l5bdJomTN/aHc5oLOac1O2OfBio0Nqe5Qfzxmht1eps=";
+      sha256 = "sha256-p+aH/RywVNZRx1iCI943hsmdTGgjZePDrh5Zzn86WR8=";
     };
   };
 
