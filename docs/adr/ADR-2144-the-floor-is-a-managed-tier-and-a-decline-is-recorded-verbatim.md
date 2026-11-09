@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 18b79218d81b0ddea7840aca11a50ee829068bb9
+verified_commit: e2b49adfc22f60123a33c85fb9f456782c557b39
 verified_paths: [config/instructions/floor.md, config/hooks/decline-recorder.cjs, services/agentbox-manifest/src/instructions.rs, config/registered-hooks.txt, tests/config/decline-recorder.test.mjs, tests/config/instructions-layers.test.sh, services/agentbox-manifest/src/stacks.rs, services/agentbox-manifest/src/stacks_env.rs, flake.nix]
 owner: jjohare
 review_trigger: a Stop/SubagentStop hook that can halt a task (upgrade the exit clause to "halts the task"); a Claude Code release that changes managed CLAUDE.md, omitClaudeMd or last_assistant_message semantics; a second operator (the single-operator premise behind "the operator reads them")
@@ -15,6 +15,18 @@ repo: agentbox
 ---
 
 # ADR-2144 — The floor is a managed instruction tier, and a decline is recorded verbatim
+
+## Scoped source check — 2026-11-09
+
+Shared composition changes add gated StatCraft (rebuild-class catalogue),
+update pinned VisionCraft/dependency packages, and replace the bounded .local
+tmpfs with a named volume. Nested OpenCode/code-server volumes retain their
+identities. Codex remote startup stays manual; the removed feature flag is
+not written. This does not widen listeners, authority or retrieval geometry.
+The local-home migration fixture, 26 persistence/delivery tests, 25 supervisor
+checks, 13 boot checks, manifest validation and port/listener gates pass.
+See [local storage migration](../developer/local-home-storage.md). Runtime
+acceptance remains separate; existing status axes and open limitations remain.
 
 ## Scoped source check — 2026-11-05
 

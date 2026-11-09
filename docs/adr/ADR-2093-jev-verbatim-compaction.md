@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 04321ea4d7e8635a1103a16b0140a01b5804d4a8
+verified_commit: e2b49adfc22f60123a33c85fb9f456782c557b39
 verified_paths: [lib/factrail.nix, config/entrypoint-unified.sh, lib/claude-code-binary.nix]
 owner: jjohare
 review_trigger: the first measured residency bill that exceeds the summary path's re-read savings, a Claude Code function-hook API change, a request to fence a class other than email, or a change to ADR-2121 (its implementation); `/jev-compact status` answering in a fresh session on a booted image (activation → live)
@@ -15,6 +15,17 @@ repo: agentbox
 ---
 
 # ADR-2093 — Compact context by Jev judgement, verbatim, with email fenced out and a switch
+
+## Scoped source check — 2026-11-09
+
+Factrail now pins 0.1.2 (af23eca6) without rewriting tool-call arguments.
+Its stubs scanner is an acceptance instrument, not proof of a clean working
+week: the broken-call finding remains open until its dated acceptance passes.
+Projection tests pass (8), store migration/parity tests pass (11).
+The local-home migration fixture, 26 persistence/delivery tests, 25 supervisor
+checks, 13 boot checks, manifest validation and port/listener gates pass.
+See [local storage migration](../developer/local-home-storage.md). Runtime
+acceptance remains separate; existing status axes and open limitations remain.
 
 ## Scoped source re-verification — 2026-11-03
 

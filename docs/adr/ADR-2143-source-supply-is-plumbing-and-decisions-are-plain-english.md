@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: c7c2f76b93bfe81dadd8e3bb8c3104cda6b57bec
+verified_commit: e2b49adfc22f60123a33c85fb9f456782c557b39
 verified_paths: [services/dream-engine/src/wanted.rs, services/dream-engine/src/engine.rs, services/dream-engine/src/inbox.rs, services/dream-engine/src/governance.rs, services/dream-engine/src/prompt/nightly.tmpl, services/dream-engine/Cargo.toml]
 owner: jjohare
 review_trigger: a change to the nightly prompt's Human-action shape, to the wanted store's expiry, to dream-core's requested-source contract (ADR-DE-008), or a governance case that again asks the operator for a file
@@ -15,6 +15,18 @@ repo: agentbox
 ---
 
 # ADR-2143 — Source supply is plumbing, not a decision; every operator question is four plain-English fields
+
+## Scoped source check — 2026-11-09
+
+Shared composition changes add gated StatCraft (rebuild-class catalogue),
+update pinned VisionCraft/dependency packages, and replace the bounded .local
+tmpfs with a named volume. Nested OpenCode/code-server volumes retain their
+identities. Codex remote startup stays manual; the removed feature flag is
+not written. This does not widen listeners, authority or retrieval geometry.
+The local-home migration fixture, 26 persistence/delivery tests, 25 supervisor
+checks, 13 boot checks, manifest validation and port/listener gates pass.
+See [local storage migration](../developer/local-home-storage.md). Runtime
+acceptance remains separate; existing status axes and open limitations remain.
 
 ## Scoped source re-verification — 2026-11-03
 

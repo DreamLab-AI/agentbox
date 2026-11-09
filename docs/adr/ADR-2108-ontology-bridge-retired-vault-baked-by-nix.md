@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: [ADR-2022, ADR-2054]
 superseded_by: []
-verified_commit: 18b79218d81b0ddea7840aca11a50ee829068bb9
+verified_commit: e2b49adfc22f60123a33c85fb9f456782c557b39
 verified_paths: [lib/vault.nix, flake.nix, agentbox.toml, schema/agentbox.toml.schema.json, config/entrypoint-unified.sh, mcp/mcp.json, services/agentbox-manifest/tests/golden, management-api/lib/ontology-propose.js]
 owner: jjohare
 review_trigger: a `vault --version` gate failure at boot; a request to re-register any deleted server; ontology-monitor, typed-spawn and ontology-workingset re-pointed off mcp/servers/lib/ontology-local.js (vault shipped, so this is now due; ADR-2136); a vaultSrc bump that changes the vault verb set
@@ -17,6 +17,18 @@ lineage: ADR-2107 (no MCP for the corpus), ADR-2029 (rune, the gated-binary patt
 ---
 
 # ADR-2108 — ontology-bridge is retired; the vault binary is baked by Nix
+
+## Scoped source check — 2026-11-09
+
+Shared composition changes add gated StatCraft (rebuild-class catalogue),
+update pinned VisionCraft/dependency packages, and replace the bounded .local
+tmpfs with a named volume. Nested OpenCode/code-server volumes retain their
+identities. Codex remote startup stays manual; the removed feature flag is
+not written. This does not widen listeners, authority or retrieval geometry.
+The local-home migration fixture, 26 persistence/delivery tests, 25 supervisor
+checks, 13 boot checks, manifest validation and port/listener gates pass.
+See [local storage migration](../developer/local-home-storage.md). Runtime
+acceptance remains separate; existing status axes and open limitations remain.
 
 ## Scoped source check — 2026-11-05
 

@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: c7c2f76b93bfe81dadd8e3bb8c3104cda6b57bec
+verified_commit: e2b49adfc22f60123a33c85fb9f456782c557b39
 verified_paths: [config/entrypoint-unified.sh, services/agentbox-manifest/src/tui_write.rs, mcp/consultants/antigravity/server.js, skills/mcp.json]
 owner: jjohare
 review_trigger: any change to a consultant's default model, a Gemini model retirement, the 2027-01-01 Gemini tariff step, or a wizard that starts exposing the consultant model field; activation — a receipt on the running image for the absent, empty and explicit override cases and a TUI save (explicit case observed live 2026-10-30)
@@ -15,6 +15,18 @@ repo: agentbox
 ---
 
 # ADR-2031 — Consultant model selection is projected from the manifest at boot; environment wins, TUI preserves the operator's choice, and tariffs are dated
+
+## Scoped source check — 2026-11-09
+
+Shared composition changes add gated StatCraft (rebuild-class catalogue),
+update pinned VisionCraft/dependency packages, and replace the bounded .local
+tmpfs with a named volume. Nested OpenCode/code-server volumes retain their
+identities. Codex remote startup stays manual; the removed feature flag is
+not written. This does not widen listeners, authority or retrieval geometry.
+The local-home migration fixture, 26 persistence/delivery tests, 25 supervisor
+checks, 13 boot checks, manifest validation and port/listener gates pass.
+See [local storage migration](../developer/local-home-storage.md). Runtime
+acceptance remains separate; existing status axes and open limitations remain.
 
 ## Scoped source re-verification — 2026-11-03
 

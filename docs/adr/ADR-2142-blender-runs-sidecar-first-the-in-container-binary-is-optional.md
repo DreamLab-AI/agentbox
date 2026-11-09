@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 18b79218d81b0ddea7840aca11a50ee829068bb9
+verified_commit: e2b49adfc22f60123a33c85fb9f456782c557b39
 verified_paths: [agentbox.toml, flake.nix, skills/blender/tools/blender-job.js, skills/blender/tools/blender-introspect.js, skills/blender/tools/blender-batch.sh, skills/blender/SKILL.md, skills/uk-solar-planner/SKILL.md, skills/game-dev/tools/engine-check.sh, tests/toolchains/blender-present.sh]
 owner: jjohare
 review_trigger: the image rebuild activates the change, the GPU sidecar (gui-tools-service) or its shared volume changes, a local-Blender consumer is added, or `blender_local` is flipped in the shipped manifest
@@ -15,6 +15,18 @@ repo: agentbox
 ---
 
 # ADR-2142 — Blender runs sidecar-first; the in-container binary is optional
+
+## Scoped source check — 2026-11-09
+
+Shared composition changes add gated StatCraft (rebuild-class catalogue),
+update pinned VisionCraft/dependency packages, and replace the bounded .local
+tmpfs with a named volume. Nested OpenCode/code-server volumes retain their
+identities. Codex remote startup stays manual; the removed feature flag is
+not written. This does not widen listeners, authority or retrieval geometry.
+The local-home migration fixture, 26 persistence/delivery tests, 25 supervisor
+checks, 13 boot checks, manifest validation and port/listener gates pass.
+See [local storage migration](../developer/local-home-storage.md). Runtime
+acceptance remains separate; existing status axes and open limitations remain.
 
 ## Scoped source check — 2026-11-05
 

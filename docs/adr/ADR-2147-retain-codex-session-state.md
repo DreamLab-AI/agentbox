@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 18b79218d81b0ddea7840aca11a50ee829068bb9
+verified_commit: e2b49adfc22f60123a33c85fb9f456782c557b39
 verified_paths: [flake.nix, docker-compose.yml, docker-compose.override.yml, scripts/migrate-codex-home.sh, tests/config/compose-persistence.test.cjs]
 owner: jjohare
 review_trigger: changes to Codex home mounts, session retention, or the migration procedure
@@ -15,6 +15,18 @@ repo: agentbox
 ---
 
 # ADR-2147: Retain Codex session state in a named volume
+
+## Scoped source check — 2026-11-09
+
+Shared composition changes add gated StatCraft (rebuild-class catalogue),
+update pinned VisionCraft/dependency packages, and replace the bounded .local
+tmpfs with a named volume. Nested OpenCode/code-server volumes retain their
+identities. Codex remote startup stays manual; the removed feature flag is
+not written. This does not widen listeners, authority or retrieval geometry.
+The local-home migration fixture, 26 persistence/delivery tests, 25 supervisor
+checks, 13 boot checks, manifest validation and port/listener gates pass.
+See [local storage migration](../developer/local-home-storage.md). Runtime
+acceptance remains separate; existing status axes and open limitations remain.
 
 ## Scoped source check — 2026-11-05
 

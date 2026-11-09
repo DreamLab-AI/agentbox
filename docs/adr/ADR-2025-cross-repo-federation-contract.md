@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: 66425f9bd07206fe6e8f7215625ece1aa7e31eb8
+verified_commit: e2b49adfc22f60123a33c85fb9f456782c557b39
 verified_paths: [management-api/lib/bc20-provenance-bridge.js, management-api/lib/uris.js]
 owner: jjohare
 review_trigger: any change to the sha12 truncation, the urn:agentbox mint/parse grammar, or the closed inbound kind-map on either repo
@@ -16,6 +16,16 @@ domain: PROTOCOL-registry
 ---
 
 # ADR-2025 — Cross-repo federation contract: sha12 content address, urn:agentbox grammar, closed inbound kind-map
+
+## Scoped source check — 2026-11-09
+
+uris.js adds the canonical did:nostr grammar predicate shared with the
+Rust receipt fixture. Minting and cross-repo admission do not change; the
+parity test passes. This does not activate the proposed federation contract.
+The local-home migration fixture, 26 persistence/delivery tests, 25 supervisor
+checks, 13 boot checks, manifest validation and port/listener gates pass.
+See [local storage migration](../developer/local-home-storage.md). Runtime
+acceptance remains separate; existing status axes and open limitations remain.
 
 ## Context
 The agentbox↔visionclaw federation seam is pinned from the visionclaw side only.

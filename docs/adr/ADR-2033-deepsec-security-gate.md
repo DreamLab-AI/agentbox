@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: a0f91fba21b7214c8f0f16db8373f7cddf6ee944
+verified_commit: e2b49adfc22f60123a33c85fb9f456782c557b39
 verified_paths: [flake.nix, agentbox.toml, schema/agentbox.toml.schema.json, scripts/agentbox-config-validate.js, management-api/lib/system-manifest.js, scripts/visioncraft-deepsec-gate.sh, services/agentbox-manifest/src/deepsec_gate.rs, skills/visioncraft/references/deepsec.md, .github/workflows/deepsec.yml, lib/visioncraft.nix, config/visioncraft-source.json, lib/lockfiles/visioncraft-0.3.0.Cargo.lock, tests/config/visioncraft-deepsec.test.mjs]
 owner: jjohare
 review_trigger: a deepsec major version, a change to its CLI exit-code contract or model-route schema, any new model route, or the first paid full-repo run
@@ -16,6 +16,18 @@ domain: GOVERNANCE-capabilities
 ---
 
 # ADR-2033 — Deepsec is the optional VisionCraft security reviewer
+
+## Scoped source check — 2026-11-09
+
+Shared composition changes add gated StatCraft (rebuild-class catalogue),
+update pinned VisionCraft/dependency packages, and replace the bounded .local
+tmpfs with a named volume. Nested OpenCode/code-server volumes retain their
+identities. Codex remote startup stays manual; the removed feature flag is
+not written. This does not widen listeners, authority or retrieval geometry.
+The local-home migration fixture, 26 persistence/delivery tests, 25 supervisor
+checks, 13 boot checks, manifest validation and port/listener gates pass.
+See [local storage migration](../developer/local-home-storage.md). Runtime
+acceptance remains separate; existing status axes and open limitations remain.
 
 ## Scoped source check — 2026-11-05
 

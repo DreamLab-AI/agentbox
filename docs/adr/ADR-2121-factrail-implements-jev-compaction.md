@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 04321ea4d7e8635a1103a16b0140a01b5804d4a8
+verified_commit: e2b49adfc22f60123a33c85fb9f456782c557b39
 verified_paths: [lib/factrail.nix, lib/lockfiles/factrail-af23eca6.Cargo.lock, lib/claude-code-binary.nix, config/entrypoint-unified.sh, config/claude-plugins/.claude-plugin/marketplace.json, scripts/factrail-store-migrate.mjs, tests/config/factrail-store-migrate.test.mjs, tests/config/factrail-projection.test.sh, schema/agentbox.toml.schema.json, scripts/bake-ruflo-console.sh, scripts/ruflo-console-project.mjs, tests/config/ruflo-console.test.mjs]
 owner: jjohare
 review_trigger: a factrail rev bump in lib/factrail.nix, the end of the post-rebuild residency soak, a Claude Code function-hook API change, or a decision to train a local judge on recorded Jev decisions
@@ -17,6 +17,17 @@ lineage: ADR-2093 (the decision this implements; amends its implementation, not 
 ---
 
 # ADR-2121 — Implement Jev compaction with factrail — fact rails in Rust, baked at a pinned commit
+
+## Scoped source check — 2026-11-09
+
+Factrail now pins 0.1.2 (af23eca6) without rewriting tool-call arguments.
+Its stubs scanner is an acceptance instrument, not proof of a clean working
+week: the broken-call finding remains open until its dated acceptance passes.
+Projection tests pass (8), store migration/parity tests pass (11).
+The local-home migration fixture, 26 persistence/delivery tests, 25 supervisor
+checks, 13 boot checks, manifest validation and port/listener gates pass.
+See [local storage migration](../developer/local-home-storage.md). Runtime
+acceptance remains separate; existing status axes and open limitations remain.
 
 ## Finding — 2026-11-09: reduced tool inputs are imitated in new tool calls (fix landed; open until verified)
 

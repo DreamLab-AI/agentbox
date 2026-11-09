@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: c7c2f76b93bfe81dadd8e3bb8c3104cda6b57bec
+verified_commit: e2b49adfc22f60123a33c85fb9f456782c557b39
 verified_paths: [config/hooks/activity-sink.cjs, config/entrypoint-unified.sh, services/agentbox-manifest/src/stacks.rs, services/agentbox-manifest/src/stacks_env.rs, tests/config/activity-sink.test.js, config/egress-policy.json]
 owner: jjohare
 review_trigger: a second consumer of the sink, a change to the wire body, a new event or tool class, moving the token under role isolation (ADR-2122), or any change to the ADR-2026 redactor
@@ -16,6 +16,18 @@ domain: GOVERNANCE-capabilities
 ---
 
 # ADR-2146 — Agent activity leaves through one generic, manifest-gated, fail-open sink hook
+
+## Scoped source check — 2026-11-09
+
+Shared composition changes add gated StatCraft (rebuild-class catalogue),
+update pinned VisionCraft/dependency packages, and replace the bounded .local
+tmpfs with a named volume. Nested OpenCode/code-server volumes retain their
+identities. Codex remote startup stays manual; the removed feature flag is
+not written. This does not widen listeners, authority or retrieval geometry.
+The local-home migration fixture, 26 persistence/delivery tests, 25 supervisor
+checks, 13 boot checks, manifest validation and port/listener gates pass.
+See [local storage migration](../developer/local-home-storage.md). Runtime
+acceptance remains separate; existing status axes and open limitations remain.
 
 ## Scoped source re-verification — 2026-11-03
 

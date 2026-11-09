@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: 3beca506c1d44122bf2e14ed935d590b9d020233
+verified_commit: e2b49adfc22f60123a33c85fb9f456782c557b39
 verified_paths: [services/agentbox-manifest/src/routing.rs, agentbox.toml, schema/agentbox.toml.schema.json]
 owner: jjohare
 review_trigger: the sealmap skill landing (DESIGN §10 step 5) with the four routes and two hosts; a Loom model swap; a change of the GLM model behind [consultants.zai]; a seal review whose author and reviewer share a family; ADR-2079's router consolidating [model_routing.routes]
@@ -17,6 +17,18 @@ lineage: ADR-2079 (the routing table this extends; still proposed); ADR-2080 (th
 ---
 
 # ADR-2130 — Diagram work routes by activity, with measured tiers
+
+## Scoped source check — 2026-11-09
+
+Shared composition changes add gated StatCraft (rebuild-class catalogue),
+update pinned VisionCraft/dependency packages, and replace the bounded .local
+tmpfs with a named volume. Nested OpenCode/code-server volumes retain their
+identities. Codex remote startup stays manual; the removed feature flag is
+not written. This does not widen listeners, authority or retrieval geometry.
+The local-home migration fixture, 26 persistence/delivery tests, 25 supervisor
+checks, 13 boot checks, manifest validation and port/listener gates pass.
+See [local storage migration](../developer/local-home-storage.md). Runtime
+acceptance remains separate; existing status axes and open limitations remain.
 
 ## Context
 

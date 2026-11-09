@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 3beca506c1d44122bf2e14ed935d590b9d020233
+verified_commit: e2b49adfc22f60123a33c85fb9f456782c557b39
 verified_paths: [agentbox.toml, skills/tree-search-coder/SKILL.md, services/agentbox-ops/src/bin/tree-search-cap.rs]
 owner: jjohare
 review_trigger: any new optional skill/feature block added to agentbox.toml, or any change to the tree-search-coder spend/route posture
@@ -17,6 +17,18 @@ lineage: legacy ADR-039 (system-manifest apply-class catalogue), ADR-020 (ACI MC
 ---
 
 # ADR-2020 — Optional capabilities are manifest-gated and byte-identical-when-off; execution-gated tools are spend-capped and never auto-routed
+
+## Scoped source check — 2026-11-09
+
+Shared composition changes add gated StatCraft (rebuild-class catalogue),
+update pinned VisionCraft/dependency packages, and replace the bounded .local
+tmpfs with a named volume. Nested OpenCode/code-server volumes retain their
+identities. Codex remote startup stays manual; the removed feature flag is
+not written. This does not widen listeners, authority or retrieval geometry.
+The local-home migration fixture, 26 persistence/delivery tests, 25 supervisor
+checks, 13 boot checks, manifest validation and port/listener gates pass.
+See [local storage migration](../developer/local-home-storage.md). Runtime
+acceptance remains separate; existing status axes and open limitations remain.
 
 ## Scoped re-verification — 2026-10-31
 

@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: c7c2f76b93bfe81dadd8e3bb8c3104cda6b57bec
+verified_commit: e2b49adfc22f60123a33c85fb9f456782c557b39
 verified_paths: [config/hooks/trajectory-recorder.cjs, config/hooks/routing-label-recorder.cjs, config/entrypoint-unified.sh, management-api/lib/pg-config.js, management-api/lib/routing-label-store.js, management-api/lib/trajectory-store.js, mcp/consultants/shared/consultant-base.js, management-api/lib/task-action-tokens.js, management-api/middleware/auth.js, management-api/lib/agent-event-auth.js, management-api/routes/agent-events.js, management-api/utils/process-manager.js, management-api/adapters/index.js, management-api/adapters/lifecycle.js, management-api/adapters/events/external.js, management-api/server.js, scripts/ruvector-sidecar-update.sh]
 owner: jjohare
 review_trigger: any new reader of the RuVector Postgres password or any new place a connection is assembled, any new route a task needs to call, any change to the Management API auth gate or auth modes, or a hook that gains a way to sign NIP-98
@@ -17,6 +17,18 @@ acceptance_boundary: Jest suites tests/sovereign/task-action-token*.test.js driv
 ---
 
 # ADR-2164 — A per-task action token keeps the Management API key out of tasks
+
+## Scoped source check — 2026-11-09
+
+Shared composition changes add gated StatCraft (rebuild-class catalogue),
+update pinned VisionCraft/dependency packages, and replace the bounded .local
+tmpfs with a named volume. Nested OpenCode/code-server volumes retain their
+identities. Codex remote startup stays manual; the removed feature flag is
+not written. This does not widen listeners, authority or retrieval geometry.
+The local-home migration fixture, 26 persistence/delivery tests, 25 supervisor
+checks, 13 boot checks, manifest validation and port/listener gates pass.
+See [local storage migration](../developer/local-home-storage.md). Runtime
+acceptance remains separate; existing status axes and open limitations remain.
 
 ## Scoped source re-verification — 2026-11-03
 

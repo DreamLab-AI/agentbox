@@ -7,7 +7,7 @@ implementation_status: none
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: 3beca506c1d44122bf2e14ed935d590b9d020233
+verified_commit: e2b49adfc22f60123a33c85fb9f456782c557b39
 verified_paths: [mcp/servers/lib/aggregate-effectiveness.js, scripts/ruvector-sona-feeder.mjs, agentbox.toml]
 owner: jjohare
 review_trigger: A SONA binary with configurable embedding_dim (384-capable) ships, or a dimension migration is planned
@@ -17,6 +17,18 @@ lineage: "legacy PRD-020 / ADR-040 (model lifecycle), DDD-018 (I22)."
 ---
 
 # ADR-2019 — Model-lifecycle freeze — 384-dim bge is the active column, SONA and attention-rerank stay off
+
+## Scoped source check — 2026-11-09
+
+Shared composition changes add gated StatCraft (rebuild-class catalogue),
+update pinned VisionCraft/dependency packages, and replace the bounded .local
+tmpfs with a named volume. Nested OpenCode/code-server volumes retain their
+identities. Codex remote startup stays manual; the removed feature flag is
+not written. This does not widen listeners, authority or retrieval geometry.
+The local-home migration fixture, 26 persistence/delivery tests, 25 supervisor
+checks, 13 boot checks, manifest validation and port/listener gates pass.
+See [local storage migration](../developer/local-home-storage.md). Runtime
+acceptance remains separate; existing status axes and open limitations remain.
 
 ## Scoped re-verification — 2026-10-31
 

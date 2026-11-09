@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: cfa535b8c846e094718bd6f0d75e77b9565656d8
+verified_commit: e2b49adfc22f60123a33c85fb9f456782c557b39
 verified_paths: [config/hooks/lib/skill-route.cjs, config/hooks/skill-route.cjs, skills/skill-router/scripts/route.mjs, config/entrypoint-unified.sh, tests/config/skill-route.test.js, skills/visioncraft/SKILL.md, skills/registered-skills.txt, skills/codex-registered-skills.txt, tests/system-one/visioncraft-picker.test.mjs]
 owner: jjohare
 review_trigger: the first project that needs a per-project routing bypass (ADR-2090), a Jev model change, or a measured runtime-path accuracy below 85% on the 40-item set
@@ -15,6 +15,18 @@ repo: agentbox
 ---
 
 # ADR-2091 — Route each turn to a skill with one typed judgement, failing open to the table
+
+## Scoped source check — 2026-11-09
+
+Shared composition changes add gated StatCraft (rebuild-class catalogue),
+update pinned VisionCraft/dependency packages, and replace the bounded .local
+tmpfs with a named volume. Nested OpenCode/code-server volumes retain their
+identities. Codex remote startup stays manual; the removed feature flag is
+not written. This does not widen listeners, authority or retrieval geometry.
+The local-home migration fixture, 26 persistence/delivery tests, 25 supervisor
+checks, 13 boot checks, manifest validation and port/listener gates pass.
+See [local storage migration](../developer/local-home-storage.md). Runtime
+acceptance remains separate; existing status axes and open limitations remain.
 
 ## Amendment — VisionCraft picker cutover, 2026-11-03
 

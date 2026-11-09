@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: da086b1e1bdeca2ccd3fb54d4463dd19807f3219
+verified_commit: e2b49adfc22f60123a33c85fb9f456782c557b39
 verified_paths: [lib/supersplat.nix, lib/splat-transform.package-lock.json, flake.nix, agentbox.toml, scripts/ci/check-ports-loopback.mjs, docker-compose.browsercontainer.yml, skills/supersplat/SKILL.md]
 owner: jjohare
 review_trigger: SuperSplat or splat-transform pin bump; any change to the supersplat listener's bind, root or authentication; the browser sidecar's TREAT_AS_SECURE list; a proposal to serve datasets or anything outside $WORKSPACE/splats/share
@@ -17,6 +17,18 @@ relates: [ADR-2175, ADR-2062, ADR-2040]
 ---
 
 # ADR-2177: The SuperSplat editor is served in-container and driven in the browser sidecar; splat-transform is on PATH
+
+## Scoped source check — 2026-11-09
+
+Shared composition changes add gated StatCraft (rebuild-class catalogue),
+update pinned VisionCraft/dependency packages, and replace the bounded .local
+tmpfs with a named volume. Nested OpenCode/code-server volumes retain their
+identities. Codex remote startup stays manual; the removed feature flag is
+not written. This does not widen listeners, authority or retrieval geometry.
+The local-home migration fixture, 26 persistence/delivery tests, 25 supervisor
+checks, 13 boot checks, manifest validation and port/listener gates pass.
+See [local storage migration](../developer/local-home-storage.md). Runtime
+acceptance remains separate; existing status axes and open limitations remain.
 
 ## Scoped source check — 2026-11-05
 

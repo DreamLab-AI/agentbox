@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: c7c2f76b93bfe81dadd8e3bb8c3104cda6b57bec
+verified_commit: e2b49adfc22f60123a33c85fb9f456782c557b39
 verified_paths: [services/dream-engine/Cargo.toml, services/dream-engine/Cargo.lock, lib/dream-engine.nix, services/dream-engine/src/engine.rs, services/dream-engine/tests/night_e2e.rs]
 owner: jjohare
 review_trigger: the image rebuild activates the registry-pinned crates, a new release of dream-core or dream-gate is adopted, or any new module is added under services/dream-engine/src that is not estate-specific
@@ -15,6 +15,18 @@ repo: agentbox
 ---
 
 # ADR-2141 — Extract the dream engine core into a standalone permissive repo
+
+## Scoped source check — 2026-11-09
+
+Shared composition changes add gated StatCraft (rebuild-class catalogue),
+update pinned VisionCraft/dependency packages, and replace the bounded .local
+tmpfs with a named volume. Nested OpenCode/code-server volumes retain their
+identities. Codex remote startup stays manual; the removed feature flag is
+not written. This does not widen listeners, authority or retrieval geometry.
+The local-home migration fixture, 26 persistence/delivery tests, 25 supervisor
+checks, 13 boot checks, manifest validation and port/listener gates pass.
+See [local storage migration](../developer/local-home-storage.md). Runtime
+acceptance remains separate; existing status axes and open limitations remain.
 
 ## Scoped source re-verification — 2026-11-03
 
