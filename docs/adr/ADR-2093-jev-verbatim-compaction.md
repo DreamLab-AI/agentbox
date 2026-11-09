@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: c7c2f76b93bfe81dadd8e3bb8c3104cda6b57bec
+verified_commit: 9ae202a8aad0ddd73738f76618777c89b50d374d
 verified_paths: [lib/factrail.nix, config/entrypoint-unified.sh, lib/claude-code-binary.nix]
 owner: jjohare
 review_trigger: the first measured residency bill that exceeds the summary path's re-read savings, a Claude Code function-hook API change, a request to fence a class other than email, or a change to ADR-2121 (its implementation); `/jev-compact status` answering in a fresh session on a booted image (activation → live)
@@ -445,3 +445,11 @@ Re-stamped again at `09067b095`: the one further change to `config/entrypoint-un
 ## Re-verification — 2026-11-01 (`4f3bd5325`)
 
 Governed-path delta since `09067b095`: `config/entrypoint-unified.sh`: the credential-scrub block (`PGSCRUB_MARKER`) now also rewrites Claude Code's backups and the `*.pre-*`/`*.bak*` snapshots of the projected config, writes atomically (sibling temp file, fsync, rename) keeping owner and mode, and scopes its text rules to RuVector's own values (ADR-2164 amendment 4). This record's decision does not concern these changes. Decision unchanged; `verified_commit` bumped. Re-run: `git diff 09067b095..4f3bd5325 -- config/entrypoint-unified.sh`.
+
+Re-verified 2026-11-09 at `9ae202a8a`: `lib/factrail.nix` moves to factrail 0.1.1 `cd40f2f5`.
+Compaction no longer rewrites tool-call arguments (it cut them to an inline stub the model then
+copied into new calls; ADR-2121, "Finding — 2026-11-09"), and the taint hook refuses calls whose
+arguments carry that stub. This brings the implementation closer to the verbatim policy this
+record owns; thresholds, the rules fallback and the taint fence are unchanged. The NAR hash
+reproduced the previous pin before being computed for the new one. Not checked: an image build
+of the new pin.
