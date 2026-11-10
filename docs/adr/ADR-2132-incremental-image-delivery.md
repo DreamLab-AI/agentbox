@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 571c0ad436230a4ff3d0da4c0e344282417ba259
+verified_commit: 60aa1136ab006a8e20809f9549aacaea580e1bcb
 verified_paths: [agentbox.sh, scripts/runtime-delivery.*, scripts/refresh-compose.sh, config/build-registry.json, lib/image-layers.nix, flake.nix, tests/config/runtime-delivery*, .github/workflows/invariants.yml, docs/developer/incremental-builds.md]
 owner: jjohare
 review_trigger: layer grouping, delivery transport, candidate validation or cache retention changes
@@ -16,6 +16,17 @@ domain: BASELINE-container
 ---
 
 # ADR-2132 — Incremental image delivery and explicit activation
+
+## Measurement-only re-verification — 2026-11-10
+
+Reviewed `571c0ad43..60aa1136a` over every governed path. Only two measured
+deployment rows were added to `docs/developer/incremental-builds.md`; the
+delivery implementation, layer grouping, validation and retention are unchanged.
+The rows reproduce the clean Nov 9 and Nov 10 receipts' aggregate timings and
+layer sizes, not invented per-layer durations. The Nov 10 host prepare/activate
+cycle preserved the mount contract and sidecars; readiness is healthy with no
+degraded requirements. Runtime/persistence tests pass 25/25. Status axes remain
+unchanged. This is post-deployment evidence for the image sourced at `f707c5690`.
 
 ## Scoped source check — 2026-11-09
 
