@@ -32,6 +32,7 @@ use std::time::Duration;
 use thiserror::Error;
 use tracing::{info, warn};
 
+use crate::archive;
 use crate::baseline;
 use crate::candidate_flow::{self, Annexe, Flow};
 use crate::config::{self, RuntimeConfig, DEFAULT_LEDGER_PATH};
@@ -388,6 +389,12 @@ impl Engine {
             }
         }
 
+        // Archive the night: when the artefact directory is the checkout of a
+        // private archive repository, commit and push it (never forced). Before
+        // the governance publish, so a failure alert reaches the panel tonight.
+        // Fail-open.
+        self.archive_night(date, outcomes.len(), &nj).await;
+
         // Surface every open decision on the forum governance panel
         // (ADR-2115), then post the nightly digest (JunkieJarvis → dreamlab
         // zone, "chat with agents") — visibility only, pointing at the panel.
@@ -455,6 +462,43 @@ impl Engine {
             .await;
         records::record_night_journal(&nj.stats());
         Some(outcomes)
+    }
+
+    /// Commit and push the artefact directory when it is a git checkout with a
+    /// remote ([`archive::archive_night`]). A failure is logged and raised as
+    /// an inbox alert; it never fails the night.
+    async fn archive_night(&self, date: &str, repos: usize, nj: &Journal) {
+        let c = nj.called("archive.push", json!({ "repos": repos })).await;
+        let dir = self.artefact_dir.clone();
+        let night = date.to_string();
+        let outcome =
+            tokio::task::spawn_blocking(move || archive::archive_night(&dir, &night, repos))
+                .await
+                .unwrap_or_else(|e| archive::ArchiveOutcome::Failed {
+                    step: "push",
+                    detail: format!("archive task panicked: {e}"),
+                    commit: None,
+                });
+        let ok = !matches!(outcome, archive::ArchiveOutcome::Failed { .. });
+        nj.completed(c, ok, json!({ "outcome": format!("{outcome:?}") }))
+            .await;
+        match &outcome {
+            archive::ArchiveOutcome::NotARepository | archive::ArchiveOutcome::NoRemote => {
+                info!(dir = %self.artefact_dir.display(), ?outcome, "artefact directory not archived (not a git checkout with a remote)");
+            }
+            archive::ArchiveOutcome::Archived { commit, pushed_to } => {
+                info!(?commit, %pushed_to, "artefact archive pushed");
+            }
+            archive::ArchiveOutcome::Failed { .. } => {
+                warn!(?outcome, "artefact archive failed (fail-open)");
+            }
+        }
+        if let Some(text) = outcome.alert(&self.artefact_dir) {
+            if let Err(e) = inbox::add("alert", "archive", &format!("{date}-archive"), date, &text)
+            {
+                warn!(error = %e, "dream inbox write failed (fail-open)");
+            }
+        }
     }
 
     /// Fill the ledger's human columns from every night's validated

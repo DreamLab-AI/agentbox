@@ -86,6 +86,11 @@ pub struct RuntimeConfig {
     /// evaporating report. Draft only — the merge stays human.
     #[serde(default = "default_true")]
     pub persist_accepts: bool,
+    /// Night artefact directory, when not the estate default. A command-line
+    /// `--artefact-dir` overrides it. It may be the checkout of a private
+    /// archive repository, which the end-of-night step commits and pushes.
+    #[serde(default)]
+    pub artefact_dir: Option<String>,
 }
 
 fn default_true() -> bool {

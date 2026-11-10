@@ -218,9 +218,18 @@ dream-engine review import reviews.jsonl --dry-run   # validate human reviews; w
 
 ### The artefact directory is durable
 
-Night artefacts are written under `workspace/dream-artefacts/<date>-<repo>/` (the `--artefact-dir` default): `report.md`, `manifest.json`, `receipts/`, `gate.json`, `decision.json`, `replay.json`, `candidate.patch` when there is one, and `review.json` once a person has reviewed the night. Fleet files (`failures-*.json`, `harvest-*.md`, `loop.log`) sit beside the night folders.
+Night artefacts are written under `workspace/dream-artefacts/<date>-<repo>/` (the default; `[dream_machine].artefact_dir` or `--artefact-dir` overrides it): `report.md`, `manifest.json`, `receipts/`, `gate.json`, `decision.json`, `replay.json`, `candidate.patch` when there is one, and `review.json` once a person has reviewed the night. Fleet files (`failures-*.json`, `harvest-*.md`, `loop.log`) sit beside the night folders.
 
 **Nothing may prune this directory** — no tmp cleaner, retention job, disk-space sweep or agent tidy-up. A ledger row is bound to its folder by its witness, `sha256(sha256(report) ‖ baseline revision)`: once the folder is gone the row can no longer be checked, the decision can no longer be replayed, and a human review of that night can no longer be recorded, because the importer refuses any review it cannot match to a witness recomputed from the folder. The directory used to live under `workspace/.tmp`, the container's `TMPDIR`: scratch space that any tool or agent may clear, and no place for evidence. Nights before 2026-10-06 no longer exist. The old path is kept as a symlink to the new one so older binaries keep writing to the durable directory; do not remove it until no running binary predates this default.
+
+**The directory is the checkout of a private archive repository.** At the end of every night, after the last cycle and before the governance panel is published, the engine archives it (`services/dream-engine/src/archive.rs`):
+
+- It acts only when the directory is the top of its own git work tree and has a remote. A plain directory, a subdirectory of another repository, or a work tree without a remote is left untouched.
+- It stages everything (`git add -A`; the checkout's `.gitignore` should exclude `.lock`, `*.lock` and `*.tmp*`, the night locks and atomic-write temporaries), commits only when something is staged, with the message `dream night <date>: artefacts of <n> repositories`, and pushes to the branch's upstream, or with no upstream to the single remote under the current branch name. The remote is whatever the checkout has; nothing in this repository names it.
+- It never force-pushes. A failed commit or push is logged, journalled and raised as an inbox `alert` (repo `archive`), which tonight's governance publish carries to the panel; the night is never aborted. A commit whose push failed stays local and is pushed by the next successful night; a push rejected because the remote moved on needs the operator to reconcile the checkout by hand.
+- Every git call is non-interactive (`GIT_TERMINAL_PROMPT=0`, SSH in batch mode) and time-limited, so a credential prompt or a hung network cannot stall the night. Commits use the checkout's own git identity; set one in the checkout if the account has none, or every night will raise a commit alert.
+
+Review records (`review.json`) are therefore committed to the private archive with the rest of the night, which is intended: the archive is where reviews are kept.
 
 ## Human review columns
 

@@ -28,8 +28,10 @@
 //! [`ruvector`] (memory sink), [`notify`] (inbox/journal notifiers),
 //! [`dispatch`] (SSH to the annexe), [`present`], [`baseline`], and the forum
 //! drivers [`digest`], [`governance`], [`relay`], [`inbox`], [`zone_crypto`], and
-//! [`review`] (human review records and the ledger backfill that reads them).
+//! [`review`] (human review records and the ledger backfill that reads them),
+//! [`archive`] (the end-of-night commit and push of the artefact directory).
 
+pub mod archive;
 pub mod baseline;
 pub mod candidate_flow;
 pub mod config;

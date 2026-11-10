@@ -44,9 +44,10 @@ struct Cli {
     workspace: PathBuf,
 
     /// Directory for night artefacts (reports, receipts, review records).
-    /// Durable: never prune it.
-    #[arg(long, default_value_os_t = default_artefact_dir())]
-    artefact_dir: PathBuf,
+    /// Durable: never prune it. Default: `[dream_machine].artefact_dir`, else
+    /// /home/devuser/workspace/dream-artefacts.
+    #[arg(long)]
+    artefact_dir: Option<PathBuf>,
 
     /// Optional agentbox.toml to read the [dream_machine] table from.
     #[arg(long)]
@@ -276,8 +277,14 @@ async fn main() {
         .init();
 
     let cli = Cli::parse();
+    let runtime = load_runtime(&cli);
+    let artefact_dir = cli
+        .artefact_dir
+        .clone()
+        .or_else(|| runtime.artefact_dir.as_deref().map(PathBuf::from))
+        .unwrap_or_else(default_artefact_dir);
     if let Some(cmd) = &cli.command {
-        run_command(cmd, &cli.workspace, &cli.artefact_dir).await;
+        run_command(cmd, &cli.workspace, &artefact_dir).await;
         return;
     }
     if !cli.once && !cli.loop_mode && !cli.dry_run {
@@ -285,7 +292,6 @@ async fn main() {
         std::process::exit(2);
     }
 
-    let runtime = load_runtime(&cli);
     if !runtime.enabled && cli.loop_mode {
         info!("dream_machine.enabled = false — loop mode exiting cleanly");
         return;
@@ -318,7 +324,7 @@ async fn main() {
         llm_override: None,
         runtime,
         workspace: cli.workspace.clone(),
-        artefact_dir: cli.artefact_dir.clone(),
+        artefact_dir,
     };
 
     if cli.loop_mode {

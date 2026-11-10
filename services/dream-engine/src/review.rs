@@ -754,27 +754,6 @@ pub fn fill_ledger_text(
     }
 }
 
-/// True when `dir` is the top level of its own git work tree, so a ledger
-/// commit there cannot land in an enclosing repository instead.
-fn own_work_tree(dir: &Path) -> bool {
-    let Ok(out) = std::process::Command::new("git")
-        .arg("-C")
-        .arg(dir)
-        .args(["rev-parse", "--show-toplevel"])
-        .output()
-    else {
-        return false;
-    };
-    if !out.status.success() {
-        return false;
-    }
-    let top = PathBuf::from(String::from_utf8_lossy(&out.stdout).trim());
-    match (top.canonicalize(), dir.canonicalize()) {
-        (Ok(a), Ok(b)) => a == b,
-        _ => false,
-    }
-}
-
 /// Backfill one night's ledger row from a validated record, then commit the
 /// ledger locally (`dream_core::ledger::commit_ledger`: the ledger file only,
 /// on the default branch only, never pushed).
@@ -819,7 +798,7 @@ pub fn fill_ledger(
     if mode == Mode::Apply {
         manifest::write_atomic(&path, new_text.as_bytes())?;
         let repo_dir = workspace.join(&rec.repo);
-        if own_work_tree(&repo_dir) {
+        if crate::archive::is_own_work_tree(&repo_dir) {
             commit = Some(ledger::commit_ledger(
                 &repo_dir,
                 &path,
