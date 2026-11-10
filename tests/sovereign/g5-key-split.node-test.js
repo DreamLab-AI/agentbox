@@ -43,7 +43,6 @@ const PROXY_PATH = 'interaction_plane.proxy.allowed_pubkeys';
 /** Verifier paths these tests can drive. An unknown one fails loudly. */
 const KNOWN_VERIFIERS = new Set([PROXY_PATH]);
 const SESSION_SECRET = 'cd'.repeat(32);
-const AOE_TOKEN = 'ef'.repeat(32);
 
 /** BIP-340 lift_x: a valid x-only key is the x of a curve point with even y. */
 function isXonlyPoint(hex) {
@@ -92,7 +91,7 @@ function freePort() {
 
 function get(port, headers) {
   return new Promise((resolve) => {
-    const req = http.request({ hostname: '127.0.0.1', port, path: '/api/sessions', headers }, (res) => {
+    const req = http.request({ hostname: '127.0.0.1', port, path: '/g5/probe', headers }, (res) => {
       res.resume(); res.on('end', () => resolve(res.statusCode));
     });
     req.on('error', () => resolve(0));
@@ -107,13 +106,13 @@ async function bootProxy(t, allowedPubkeys) {
   await new Promise((r) => upstream.listen(0, '127.0.0.1', r));
   const upPort = upstream.address().port;
   const cfg = path.join(dir, 'nip98.json');
-  fs.writeFileSync(cfg, JSON.stringify({ routes: [], allowedPubkeys }));
-  const tok = path.join(dir, 'serve.url');
-  fs.writeFileSync(tok, `http://127.0.0.1:${upPort}/?token=${AOE_TOKEN}\n`);
+  // The proxy has no default upstream since the Agent of Empires route was retired: an
+  // authenticated request to an unrouted path is a 404. One explicit route reaches the stub.
+  fs.writeFileSync(cfg, JSON.stringify({
+    routes: [{ prefix: '/g5', target: `http://127.0.0.1:${upPort}` }], allowedPubkeys }));
   const port = await freePort();
   const env = { PATH: process.env.PATH, HOME: dir, NIP98_PROXY_PORT: String(port), NIP98_PROXY_HOST: '127.0.0.1',
-    NIP98_PROXY_CONFIG_FILE: cfg, NIP98_PROXY_SESSION_SECRET: SESSION_SECRET,
-    AOE_UPSTREAM: `http://127.0.0.1:${upPort}`, AOE_TOKEN_FILE: tok };
+    NIP98_PROXY_CONFIG_FILE: cfg, NIP98_PROXY_SESSION_SECRET: SESSION_SECRET };
   const proc = spawn(process.execPath, [PROXY], { env, stdio: ['ignore', 'ignore', 'pipe'] });
   let err = ''; proc.stderr.on('data', (c) => { err += c; });
   t.after(() => { proc.kill('SIGKILL'); upstream.close(); fs.rmSync(dir, { recursive: true, force: true }); });
