@@ -192,7 +192,7 @@ fn evidence_for(item: &InboxItem) -> String {
         "engine night-health record: workspace/.agentbox/dream-last-night.json".into()
     } else {
         format!(
-            "workspace/.tmp/dream-annexe-artefacts/{}/report.md · {} ledger",
+            "workspace/.agentbox/dream-artefacts/{}/report.md · {} ledger",
             item.night_id, item.repo
         )
     }

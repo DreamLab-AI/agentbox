@@ -30,6 +30,14 @@ pub fn default_roster_path() -> PathBuf {
     PathBuf::from("/home/devuser/workspace/.agentbox/dream-roster.json")
 }
 
+/// Default night artefact directory: one `<date>-<repo>/` folder per night
+/// (report, receipts, gate decision, review record). Durable control-plane
+/// state, never pruned: a ledger row's witness can only be checked, and a human
+/// review only recorded, while its folder exists.
+pub fn default_artefact_dir() -> PathBuf {
+    PathBuf::from("/home/devuser/workspace/.agentbox/dream-artefacts")
+}
+
 /// Paths the source reader must never send to a provider, on top of
 /// `dream-core`'s built-in secret-file list: the session-mirror key file
 /// (`~/.claude/nostr-mirror/mirror-key.txt`).

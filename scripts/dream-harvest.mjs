@@ -10,7 +10,7 @@
 //   - HANDOFF count — nominations refused at evaluator-readiness admission (ADR-2024)
 //
 // Output: markdown to stdout AND
-// workspace/.tmp/dream-annexe-artefacts/harvest-<date>.md. Anomalies queue an
+// workspace/.agentbox/dream-artefacts/harvest-<date>.md. Anomalies queue an
 // inbox item so the surfacing hook brings the harvest to the operator.
 //
 //   node dream-harvest.mjs [--days 7]
@@ -19,7 +19,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const WORKSPACE = '/home/devuser/workspace';
-const ARTEFACTS = path.join(WORKSPACE, '.tmp/dream-annexe-artefacts');
+const ARTEFACTS = path.join(WORKSPACE, '.agentbox/dream-artefacts');
 const INBOX = path.join(WORKSPACE, '.agentbox/dream-inbox.json');
 const days = Number(process.argv[process.argv.indexOf('--days') + 1]) || 7;
 const since = new Date(Date.now() - days * 86400e3).toISOString().slice(0, 10);

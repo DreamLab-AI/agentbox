@@ -50,6 +50,7 @@ use crate::present::{
 };
 use crate::prompt;
 use crate::records;
+use crate::review;
 use crate::runner::EvaluatorRunner;
 use crate::ruvector::{self, DreamFinding, RuVectorConfig, RuVectorSink};
 use crate::wanted;
@@ -181,6 +182,11 @@ impl Engine {
             nj.completed(c, true, json!({ "resolved": r.resolved, "withdrawn": r.withdrawn, "rejected": r.rejected, "skipped": r.skipped }))
                 .await;
         }
+
+        // Human reviews recorded since the last night (by `dream-engine review
+        // import` or any other tool that writes a night's review.json) fill
+        // their ledger rows before tonight reads the ledgers. Fail-open.
+        self.backfill_reviews(&nj).await;
 
         let repos = match self.discover() {
             Ok(r) => r,
@@ -449,6 +455,35 @@ impl Engine {
             .await;
         records::record_night_journal(&nj.stats());
         Some(outcomes)
+    }
+
+    /// Fill the ledger's human columns from every night's validated
+    /// `review.json` ([`review::backfill_all`]). A refused record is logged and
+    /// skipped; it never fails the night.
+    async fn backfill_reviews(&self, nj: &Journal) {
+        let c = nj.called("review.backfill", json!({})).await;
+        let out = review::backfill_all(&self.artefact_dir, &self.workspace, review::Mode::Apply);
+        let mut filled = 0usize;
+        let mut refused = 0usize;
+        for (night, result) in &out {
+            match result {
+                Ok(fill @ review::FillOutcome::Filled { .. }) => {
+                    filled += 1;
+                    info!(%night, "{fill}");
+                }
+                Ok(_) => {}
+                Err(e) => {
+                    refused += 1;
+                    warn!(%night, error = %e, "review record refused (fail-open)");
+                }
+            }
+        }
+        nj.completed(
+            c,
+            refused == 0,
+            json!({ "reviewed": out.len(), "filled": filled, "refused": refused }),
+        )
+        .await;
     }
 
     fn discover(&self) -> Result<Vec<(String, PathBuf)>, EngineError> {
@@ -1846,10 +1881,14 @@ impl Engine {
             effect: String::new(),
             witness: wit_short.clone(),
             prior_fates: String::new(),
-            // FR6.6 — the human columns are EMPTY tonight. A PR opened by this
-            // night has not been reviewed yet; they are filled on a later night
-            // from the merge event (ledger::review_from_merge), alongside the
-            // prior-night fate token for the same PR.
+            // FR6.6 — the human columns are EMPTY tonight, and stay empty
+            // unless a person records a review. They are filled only from the
+            // night's review.json (`dream-engine review import`, or any tool
+            // that writes one), validated against this row's witness, by the
+            // backfill at the start of a later night (crate::review). They are
+            // never derived from a merge event: agents merge under the
+            // operator's account, so `merged_by` cannot tell a person from an
+            // agent, and open-to-merge time is not review time.
             reviewer: String::new(),
             review_minutes: String::new(),
         };

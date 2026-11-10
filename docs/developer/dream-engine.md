@@ -73,7 +73,7 @@ One cycle (`run_cycle`) is a fixed sequence:
 7. **Verdict + finding** — parse the verdict, sanitise a one-line finding for the ledger cell.
 8. **Witness** — bind the report to the repo's current commit.
 9. **Persist report** locally under the artefact dir.
-10. **Ledger row** — append to the repo's `ledgerPath`.
+10. **Ledger row** — append to the repo's `ledgerPath`. The two human columns are left empty; only a recorded human review fills them, on a later night (see [Human review columns](#human-review-columns)).
 
 Between steps 6 and 8 two things now happen that the old engine did not do. The protected-path guard (ADR-2141) checks the patch before any git command, build or evaluator runs, and the candidate tree's `dream.config.json` digest is compared with the frozen one. Every night that reaches the gate also leaves a replay capture (`replay.json`, `decision.json`, `candidate.patch`) in the artefact directory, so the decision can be re-judged later with the same protected set (`replay verify` in the permissive `dream-cli`). Draft PRs stay human-merged; the permissive core has an automerge option, default off, which this adapter does not enable.
 
@@ -213,9 +213,53 @@ dream-engine --once                       # one cycle now, ignoring the window
 dream-engine --dry-run                     # compile + select only; no dispatch, no LLM
 dream-engine --once --target <repo>        # force a specific nominated repo
 dream-engine --once --workspace <path> --artefact-dir <path>
+dream-engine review import reviews.jsonl --dry-run   # validate human reviews; write nothing
 ```
 
-Night artefacts (reports, receipts) are written under `workspace/.tmp/dream-annexe-artefacts/<date>-<repo>/`.
+### The artefact directory is durable
+
+Night artefacts are written under `workspace/.agentbox/dream-artefacts/<date>-<repo>/` (the `--artefact-dir` default): `report.md`, `manifest.json`, `receipts/`, `gate.json`, `decision.json`, `replay.json`, `candidate.patch` when there is one, and `review.json` once a person has reviewed the night. Fleet files (`failures-*.json`, `harvest-*.md`, `loop.log`) sit beside the night folders.
+
+**Nothing may prune this directory** — no tmp cleaner, retention job, disk-space sweep or agent tidy-up. A ledger row is bound to its folder by its witness, `sha256(sha256(report) ‖ baseline revision)`: once the folder is gone the row can no longer be checked, the decision can no longer be replayed, and a human review of that night can no longer be recorded, because the importer refuses any review it cannot match to a witness recomputed from the folder. The directory used to live under `workspace/.tmp`, the container's `TMPDIR`, which is scratch space that tools and agents clear freely; every night before 2026-10-06 was lost that way. The old path is kept as a symlink to the new one so older binaries keep writing to the durable directory; do not remove it until no running binary predates this default.
+
+## Human review columns
+
+The ledger's `Reviewer` and `Review-minutes` columns record the human side of a night. They are filled **only from an explicit record of a human review**, and otherwise stay empty. They are never derived from a pull request's merge event: agents in this estate open and merge pull requests under the operator's own forge account, so `merged_by` cannot tell a person from an agent, and open-to-merge time is queueing time, not review time. Recording either would present agent decisions as human review. (`dream_core::ledger::review_from_merge` exists upstream; this adapter does not call it.)
+
+**The record.** One review per night, stored as `review.json` in the night's artefact folder (`services/dream-engine/src/review.rs`, schema 1):
+
+| Field | Meaning |
+|---|---|
+| `schema` | `1`. |
+| `night_id` | `<date>-<repo>`; must equal the folder name. |
+| `repo`, `date` | Repository directory name (not the forge slug) and night date. |
+| `witness` | The night's full 64-character witness, recomputed at import. |
+| `reviewer` | Who reviewed (name, login or DID); at most 64 characters, no `\|`. |
+| `verdict` | `approve`, `reject`, `needs-changes` or `cannot-judge`. |
+| `reason` | One line, at most 240 characters. |
+| `confidence` | 1 (guess) to 5 (certain). |
+| `active_seconds` | Seconds of active review measured by the tool, or `null` if unmeasured. |
+| `decided_at` | RFC 3339; not before the night it reviews. |
+| `blind_to_gate` | Whether the reviewer decided without seeing the gate's verdict. |
+| `tool` | What produced the review, e.g. `review-desk/1`. |
+
+Unknown fields are refused, so a typo cannot pass silently. A night holds one record: re-importing an identical record is a no-op, and a different one is refused until the existing file is moved aside.
+
+**Import.** `dream-engine review import <file.jsonl> [--dry-run]` (`-` reads standard input) takes one JSON object per line, carrying `repo`, `date`, `witness` (the full witness or a prefix of at least 12 hex characters, so the ledger's short witness is enough) and the review fields above. Each line is validated against its night folder — the witness is recomputed from `report.md` and the frozen manifest's `baseline_revision` — and a missing folder, missing report, malformed field or witness mismatch refuses that line with its line number and the reason, without stopping the others. Accepted lines are written atomically as `review.json` and backfilled straight away. The command exits non-zero if any line was refused. `--dry-run` validates and reports what would be written and filled, and writes nothing.
+
+```jsonl
+{"repo":"demo-repo","date":"2026-11-01","witness":"3f1c9a07d2e4","reviewer":"reviewer-a","verdict":"needs-changes","reason":"right idea; the test does not exercise the fix","confidence":4,"active_seconds":300,"decided_at":"2026-11-02T09:30:00Z","blind_to_gate":true,"tool":"review-desk/1"}
+```
+
+**Backfill.** Every night starts by running the backfill over all night folders holding a `review.json`, so records written by any tool are picked up; `dream-engine review backfill [--dry-run]` runs the same step by hand. Each record is re-validated exactly as the importer validates (schema, fields, folder name, recomputed witness); a refused record is logged and never fails the night. For a valid record the backfill edits the reviewed repository's ledger (its `ledgerPath`, read from the configuration frozen in the night folder):
+
+- The target row is the single row whose `Date` is the night date and whose `Witness` is the 12-character short witness. No match, or more than one, changes nothing.
+- Only the two human cells change, and only when both are empty, so the backfill is idempotent and never overwrites a cell. Every other byte of the file, including escaped `\|` in other cells and line endings, is preserved. The reviewer is escaped as the ledger writer escapes every cell.
+- `Review-minutes` is the active seconds rounded to the nearest whole minute (30 s rounds up, so a measured 29 s is `0` and 90 s is `2`). An absent or zero duration leaves the cell empty; a zero is never fabricated. A record without a duration still fills `Reviewer`.
+- Rows written at the legacy ten-column width are left alone and never widened; every surviving night folder postdates the twelve-column writer, so no review can match one. When the filled row sits under a legacy ten-column header, the header and divider gain `Reviewer | Review-minutes` so a markdown renderer shows the cells; legacy rows beneath keep their width, which the ledger reader accepts.
+- After a fill the ledger file alone is committed locally on the default branch (`dream_core::ledger::commit_ledger`; never pushed), and only when the repository directory is the top of its own git work tree.
+
+Run imports outside the nightly window: an import and the engine's own row append both rewrite the ledger file, and are not locked against each other.
 
 ### How the manifest reaches the binary
 

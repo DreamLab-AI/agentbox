@@ -27,7 +27,8 @@
 //! template), [`policy`], [`candidate_flow`], [`llm`] (Z.AI/Loom as an `Llm`),
 //! [`ruvector`] (memory sink), [`notify`] (inbox/journal notifiers),
 //! [`dispatch`] (SSH to the annexe), [`present`], [`baseline`], and the forum
-//! drivers [`digest`], [`governance`], [`relay`], [`inbox`], [`zone_crypto`].
+//! drivers [`digest`], [`governance`], [`relay`], [`inbox`], [`zone_crypto`], and
+//! [`review`] (human review records and the ledger backfill that reads them).
 
 pub mod baseline;
 pub mod candidate_flow;
@@ -48,6 +49,7 @@ pub mod present;
 pub mod prompt;
 pub mod records;
 pub mod relay;
+pub mod review;
 pub mod runner;
 pub mod ruvector;
 pub mod wanted;

@@ -6,7 +6,10 @@ use tracing_subscriber::EnvFilter;
 
 use dream_engine::config::RuntimeConfig;
 use dream_engine::engine::Engine;
-use dream_engine::estate::{default_roster_path, fallback_llm_config, llm_config, ruvector_config};
+use dream_engine::estate::{
+    default_artefact_dir, default_roster_path, fallback_llm_config, llm_config, ruvector_config,
+};
+use dream_engine::review::{self, Mode};
 use dream_engine::runner::{EvaluatorRunner, SshRunner};
 use dream_engine::{digest, governance, inbox};
 
@@ -40,11 +43,9 @@ struct Cli {
     #[arg(long, default_value = "/home/devuser/workspace")]
     workspace: PathBuf,
 
-    /// Directory for night artefacts (reports, receipts).
-    #[arg(
-        long,
-        default_value = "/home/devuser/workspace/.tmp/dream-annexe-artefacts"
-    )]
+    /// Directory for night artefacts (reports, receipts, review records).
+    /// Durable: never prune it.
+    #[arg(long, default_value_os_t = default_artefact_dir())]
     artefact_dir: PathBuf,
 
     /// Optional agentbox.toml to read the [dream_machine] table from.
@@ -77,6 +78,12 @@ enum Cmd {
         #[arg(long)]
         dry_run: bool,
     },
+    /// Human review records: the only source of the ledger's `Reviewer` and
+    /// `Review-minutes` cells.
+    Review {
+        #[command(subcommand)]
+        action: ReviewAction,
+    },
     /// Reopen a finished night: archive its run-state and manifest as
     /// `*-superseded-<timestamp>` (nothing is deleted) so the next start runs it
     /// afresh. A finished night is otherwise never repeated.
@@ -85,6 +92,27 @@ enum Cmd {
         repo: String,
         /// Night date, `YYYY-MM-DD`.
         date: String,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+enum ReviewAction {
+    /// Import reviews from a JSON Lines file, one review per line. Each line
+    /// is checked against its night folder (witness recomputed), written as
+    /// that night's review.json, and backfilled into the ledger row.
+    Import {
+        /// The JSON Lines file (`-` reads standard input).
+        file: PathBuf,
+        /// Validate and report; write no record, edit no ledger.
+        #[arg(long)]
+        dry_run: bool,
+    },
+    /// Backfill ledger rows from every night's review.json (the night-start
+    /// step, run by hand).
+    Backfill {
+        /// Validate and report; edit no ledger.
+        #[arg(long)]
+        dry_run: bool,
     },
 }
 
@@ -110,8 +138,9 @@ enum GovernanceAction {
     },
 }
 
-/// Run a one-shot subcommand. These touch only the forum and the inbox file,
-/// so they run alongside the supervised loop without its singleton lock.
+/// Run a one-shot subcommand. These touch only the forum, the inbox file, a
+/// night folder's review record and the ledger rows it names, so they run
+/// alongside the supervised loop without its singleton lock.
 async fn run_command(cmd: &Cmd, workspace: &std::path::Path, artefact_dir: &std::path::Path) {
     match cmd {
         Cmd::Governance { action } => {
@@ -139,6 +168,58 @@ async fn run_command(cmd: &Cmd, workspace: &std::path::Path, artefact_dir: &std:
                 report.skipped
             );
         }
+        Cmd::Review { action } => match action {
+            ReviewAction::Import { file, dry_run } => {
+                let text = if file.as_os_str() == "-" {
+                    std::io::read_to_string(std::io::stdin())
+                } else {
+                    std::fs::read_to_string(file)
+                };
+                let text = match text {
+                    Ok(t) => t,
+                    Err(e) => {
+                        eprintln!("review import: cannot read {}: {e}", file.display());
+                        std::process::exit(1);
+                    }
+                };
+                let mode = if *dry_run { Mode::DryRun } else { Mode::Apply };
+                let reports = review::import_jsonl(&text, artefact_dir, workspace, mode);
+                for r in &reports {
+                    println!("{r}");
+                }
+                let refused = reports.iter().filter(|r| r.refused()).count();
+                println!(
+                    "{}imported={} refused={refused}",
+                    if *dry_run { "dry-run: " } else { "" },
+                    reports.len() - refused
+                );
+                if refused > 0 {
+                    std::process::exit(1);
+                }
+            }
+            ReviewAction::Backfill { dry_run } => {
+                let mode = if *dry_run { Mode::DryRun } else { Mode::Apply };
+                let out = review::backfill_all(artefact_dir, workspace, mode);
+                let mut refused = 0usize;
+                for (night, result) in &out {
+                    match result {
+                        Ok(fill) => println!("{night}: {fill}"),
+                        Err(e) => {
+                            refused += 1;
+                            println!("{night}: REFUSED: {e}");
+                        }
+                    }
+                }
+                println!(
+                    "{}reviewed-nights={} refused={refused}",
+                    if *dry_run { "dry-run: " } else { "" },
+                    out.len()
+                );
+                if refused > 0 {
+                    std::process::exit(1);
+                }
+            }
+        },
         Cmd::ResetNight { repo, date } => {
             let dir = artefact_dir.join(format!("{date}-{repo}"));
             match dream_core::runstate::reset_night(&dir) {
@@ -200,7 +281,7 @@ async fn main() {
         return;
     }
     if !cli.once && !cli.loop_mode && !cli.dry_run {
-        eprintln!("usage: dream-engine --once | --loop | --dry-run [--target <repo>] | governance publish|ingest|withdraw [--dry-run] | digest [--date D] [--dry-run]");
+        eprintln!("usage: dream-engine --once | --loop | --dry-run [--target <repo>] | governance publish|ingest|withdraw [--dry-run] | digest [--date D] [--dry-run] | review import <file.jsonl> [--dry-run] | review backfill [--dry-run]");
         std::process::exit(2);
     }
 
