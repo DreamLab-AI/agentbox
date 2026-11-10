@@ -177,25 +177,31 @@ pub fn fallback_layer(identity: &GitIdentity, account_configs: &[PathBuf]) -> St
     out
 }
 
-/// Write the fallback layer ([`fallback_layer`]) to `path` and return the
-/// value `GIT_CONFIG_GLOBAL` should take. The account files included are the
-/// current `GIT_CONFIG_GLOBAL` when set, else git's defaults.
+/// Write the fallback layer ([`fallback_layer`]) into `dir` and return its
+/// path, the value `GIT_CONFIG_GLOBAL` should take. The account files included
+/// are the current `GIT_CONFIG_GLOBAL` when set, else git's defaults. The file
+/// is named by a hash of its content, so two engines started with different
+/// account configuration never overwrite each other's layer.
 ///
 /// # Errors
 ///
 /// Any I/O error writing the file.
-pub fn install_fallback_layer(identity: &GitIdentity, path: &Path) -> std::io::Result<PathBuf> {
+pub fn install_fallback_layer(identity: &GitIdentity, dir: &Path) -> std::io::Result<PathBuf> {
+    use sha2::{Digest, Sha256};
     let accounts = match std::env::var_os("GIT_CONFIG_GLOBAL") {
-        // An inherited value naming this very file (a nested engine) would
-        // include itself; read git's defaults instead.
-        Some(p) if !p.is_empty() && Path::new(&p) != path => vec![PathBuf::from(p)],
+        // An inherited value naming a layer this function wrote (a nested
+        // engine) would include itself; read git's defaults instead.
+        Some(p) if !p.is_empty() && Path::new(&p).parent() != Some(dir) => {
+            vec![PathBuf::from(p)]
+        }
         _ => default_account_configs(),
     };
-    if let Some(parent) = path.parent() {
-        std::fs::create_dir_all(parent)?;
-    }
-    crate::ledger_io::replace(path, fallback_layer(identity, &accounts).as_bytes())?;
-    Ok(path.to_path_buf())
+    let text = fallback_layer(identity, &accounts);
+    let digest = hex::encode(Sha256::digest(text.as_bytes()));
+    let path = dir.join(format!("fallback-identity-{}.gitconfig", &digest[..16]));
+    std::fs::create_dir_all(dir)?;
+    crate::ledger_io::replace(&path, text.as_bytes())?;
+    Ok(path)
 }
 
 /// What the end-of-night archive step did.

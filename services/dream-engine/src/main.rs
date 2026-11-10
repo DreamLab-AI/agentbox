@@ -339,14 +339,14 @@ fn main() {
             let layer = std::env::var_os("HOME")
                 .map(PathBuf::from)
                 .unwrap_or_else(std::env::temp_dir)
-                .join(".cache/dream-engine/fallback-identity.gitconfig");
+                .join(".cache/dream-engine");
             match dream_engine::archive::install_fallback_layer(&identity, &layer) {
                 Ok(path) => {
                     std::env::set_var("GIT_CONFIG_GLOBAL", &path);
                     info!(name = %identity.name, email = %identity.email, layer = %path.display(),
                         "fallback git identity (used only where a repository has none)");
                 }
-                Err(e) => warn!(error = %e, layer = %layer.display(),
+                Err(e) => warn!(error = %e, dir = %layer.display(),
                     "cannot write the fallback git identity layer; dream-core commits in a \
                      repository without its own identity will fail"),
             }
@@ -496,6 +496,9 @@ fn hold_night(artefact_dir: &std::path::Path) -> Option<NightRunning> {
 /// Nightly loop: at most one cycle per UTC day, only inside the window.
 async fn run_loop(engine: &Engine, target: Option<&str>) {
     let mut last_run_date = String::new();
+    // Start-up guard: alert at once rather than at the next window; the
+    // window check below is what actually holds nights back.
+    let _ = migration_guard_clear(&engine.artefact_dir, &day_int_and_date().1);
     info!(
         window_start = engine.runtime.window_start,
         window_end = engine.runtime.window_end,
