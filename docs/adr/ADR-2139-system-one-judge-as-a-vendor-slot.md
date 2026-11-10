@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: e2b49adfc22f60123a33c85fb9f456782c557b39
+verified_commit: 062487becfcb5758ad0dfa74c11e1aa18b87aaae
 verified_paths: [agentbox.toml, schema/agentbox.toml.schema.json, crates/system-one/system-one-proxy/src/config.rs, crates/system-one/system-one-proxy/tests/proxy.rs, tests/config/semantic-rules.test.js, crates/system-one/system-one-proxy/src/server.rs, crates/system-one/system-one-proxy/src/key.rs, services/agentbox-manifest/src/system_one.rs, config/entrypoint-unified.sh, config/hooks/lib/skill-route.cjs, config/seal-bootstrap.sh, lib/system-one-proxy.nix, flake.nix, scripts/agentbox-config-validate.js, agentbox.sh]
 owner: jjohare
 review_trigger: SubQ Snap leaving public preview or changing its price, retention default or the Decisions request shape; a Kev, Clef or pplx-decider release that serves /v1/systemone on a 9B-class checkpoint; a system-one-eval run on the ADR-2089 corpus that moves any backend by more than 5 points; the first compaction replay whose keep-rate is above 5%
@@ -408,3 +408,5 @@ Re-stamped again at `09067b095`: the one further change to `config/entrypoint-un
 Governed-path delta since `09067b095`: `config/entrypoint-unified.sh`: the credential-scrub block (`PGSCRUB_MARKER`) now also rewrites Claude Code's backups and the `*.pre-*`/`*.bak*` snapshots of the projected config, writes atomically (sibling temp file, fsync, rename) keeping owner and mode, and scopes its text rules to RuVector's own values (ADR-2164 amendment 4). This record's decision does not concern these changes. Decision unchanged; `verified_commit` bumped. Re-run: `git diff 09067b095..4f3bd5325 -- config/entrypoint-unified.sh`.
 
 Re-verified 2026-11-05 at `3beca506c` for ADR-2177: the only change to this record's governed paths since its last stamp is ADR-2177's additive SuperSplat hunk (a gated package set and supervisor block, one toml/schema key, a skill registration); this record's decision is unaffected.
+
+Re-verified 2026-11-10 at `062487bec` (PR #43, `dream-review-ledger`; ADR-2190). Governed-path delta since `e2b49adfc`: `schema/agentbox.toml.schema.json` gains three optional string properties in the `dream_machine` object (`git_author_name`, `git_author_email`, `artefact_dir`, `:2981-2992`); no other property, type or closure in the schema changes. The `[system_one]` judge slot is untouched. The decision and status axes are unchanged. Re-run: `git diff e2b49adfc..062487bec -- schema/agentbox.toml.schema.json`.

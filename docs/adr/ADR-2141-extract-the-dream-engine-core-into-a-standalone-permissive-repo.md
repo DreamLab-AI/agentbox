@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: e2b49adfc22f60123a33c85fb9f456782c557b39
+verified_commit: 062487becfcb5758ad0dfa74c11e1aa18b87aaae
 verified_paths: [services/dream-engine/Cargo.toml, services/dream-engine/Cargo.lock, lib/dream-engine.nix, services/dream-engine/src/engine.rs, services/dream-engine/tests/night_e2e.rs]
 owner: jjohare
 review_trigger: the image rebuild activates the registry-pinned crates, a new release of dream-core or dream-gate is adopted, or any new module is added under services/dream-engine/src that is not estate-specific
@@ -99,3 +99,5 @@ Governed-path delta since `21769a881` is the RuVector Postgres credential custod
 - `services/dream-engine/tests/night_e2e.rs`: one test literal: `pg_url: String::new()` becomes `pg: Default::default()`.
 
 Nothing this record decides is changed; its status axes are unchanged. Re-run: `git diff 21769a881..cc949bb79 -- services/dream-engine/src/engine.rs services/dream-engine/tests/night_e2e.rs`.
+
+Re-verified 2026-11-10 at `062487bec` (PR #43, `dream-review-ledger`; ADR-2190). Governed-path delta since `e2b49adfc`: `services/dream-engine/src/engine.rs` only (the review backfill and archive step, ADR-2190). The new estate default, the artefact directory, is supplied by the adapter as an explicit parameter (`estate.rs:38`, `default_artefact_dir`), as this record requires. The engine's commit identity reaches `dream-core`'s own git calls through the `GIT_AUTHOR_*`/`GIT_COMMITTER_*` environment, set in `main.rs` before the async runtime starts, so no `dream-core` API changes. `Cargo.toml`, `Cargo.lock`, `lib/dream-engine.nix` and `tests/night_e2e.rs` are unchanged (`dream-core = "=0.4.1"`). The decision and status axes are unchanged. Re-run: `git diff e2b49adfc..062487bec -- services/dream-engine/src/engine.rs`; `cargo test --offline` passes 236 + 11 + 2 at `062487bec`.

@@ -80,6 +80,12 @@ and [ADR-2011](../../../VisionFlow/docs/adr/ADR-2011-task-properties-set-the-bou
    `Review-minutes`, populated from the PR merge event (`merged_by`;
    `merged_at − pr_opened_at` in whole minutes) and left EMPTY otherwise. Ten-column
    ledgers remain valid — the parser's compatibility floor is the legacy width.
+   **Amended by ADR-2190 (2026-11-10): the two cells are filled only from a night's
+   recorded human review (`review.json`, witness-checked, imported with `dream-engine review
+   import`), never from the merge event. Agents merge under the operator's account, so
+   `merged_by` cannot tell a person from an agent. `Review-minutes` is the tool's measured
+   active review time. The merge-event derivation was never wired to a production caller
+   and is withdrawn.**
 
 ## Consequences
 
@@ -177,3 +183,7 @@ Two commits since `60f8b8458` touch one governed path, `services/dream-engine/sr
 **Re-verified 2026-10-15 (ADR-2141, `58fce653822b`).** Read against the code as it stands after the engine's mechanism moved into `dream-core`/`dream-gate`: the 12-column ledger row, with Reviewer and Review-minutes, is `dream_core::ledger::LedgerRow` (moved verbatim; its tests are listed in the extraction ledger) and the engine appends it from `records.rs` and `engine.rs`.
 
 Re-verified 2026-10-19 at `dfe78f0766e52ae6cfbae32c395e22c9590d6785`: The decide route forwards the optional effective_tier enum to the upstream rationale gate without changing receipt or authority dispatch; broker route regression tests pass. Existing implementation and activation statuses are retained.
+
+## Amendment — 2026-11-10 (ADR-2190: the human cells come from recorded reviews)
+
+Decision point 5's source for `Reviewer` and `Review-minutes` is amended by ADR-2190, as marked inline. The original text is kept. The 12-column row and the meaning of an empty cell ("no review recorded") stand. This record's `verified_commit` is not moved. Its `verified_paths` do not cover the engine files that changed (`services/dream-engine/src/engine.rs`, `review.rs`). `management-api/lib/dream-ledger.js` (governed here) still carries `reviewFromMergeEvent` and a header comment describing the merge-event rule. Neither has a production caller (`git grep reviewFromMergeEvent` finds the definition, its export and `tests/integration/dream-ledger-reviewer.test.js` only). Editing that file is follow-up work outside this amendment; until then its comment describes the withdrawn rule.

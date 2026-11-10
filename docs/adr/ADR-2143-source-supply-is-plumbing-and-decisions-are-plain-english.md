@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: e2b49adfc22f60123a33c85fb9f456782c557b39
+verified_commit: 062487becfcb5758ad0dfa74c11e1aa18b87aaae
 verified_paths: [services/dream-engine/src/wanted.rs, services/dream-engine/src/engine.rs, services/dream-engine/src/inbox.rs, services/dream-engine/src/governance.rs, services/dream-engine/src/prompt/nightly.tmpl, services/dream-engine/Cargo.toml]
 owner: jjohare
 review_trigger: a change to the nightly prompt's Human-action shape, to the wanted store's expiry, to dream-core's requested-source contract (ADR-DE-008), or a governance case that again asks the operator for a file
@@ -67,3 +67,5 @@ Governed-path delta since `21769a881` is the RuVector Postgres credential custod
 - `services/dream-engine/src/engine.rs`: one test literal: `pg_url: String::new()` becomes `pg: Default::default()` (RuVectorConfig now holds the address and a password-file path).
 
 Nothing this record decides is changed; its status axes are unchanged. Re-run: `git diff 21769a881..cc949bb79 -- services/dream-engine/src/engine.rs`.
+
+Re-verified 2026-11-10 at `062487bec` (PR #43, `dream-review-ledger`; ADR-2190). Governed-path delta since `e2b49adfc`: `governance.rs:195`, where the evidence path in a case moves to `workspace/dream-artefacts`. In `engine.rs`, the review backfill and archive step are added (ADR-2190). The four-field question format, `plain_decision`, the panel rendering and the `wanted.rs` feed are untouched. The decision and status axes are unchanged. Re-run: `git diff e2b49adfc..062487bec -- services/dream-engine/src/engine.rs services/dream-engine/src/governance.rs`.

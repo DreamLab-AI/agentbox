@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: e2b49adfc22f60123a33c85fb9f456782c557b39
+verified_commit: 062487becfcb5758ad0dfa74c11e1aa18b87aaae
 verified_paths: [agentbox.toml, setup/agentbox.default.toml, schema/agentbox.toml.schema.json, config/entrypoint-unified.sh, mcp/servers/lib/ontology-local.js, mcp/servers/lib/ontology-index-build.js, scripts/ontology-condense-scheduler.mjs, scripts/ontology-condense-refresh.sh, skills/podcast-knowledge-ingest/SKILL.md, skills/ontology-core/SKILL.md, skills/ontology-enrich/SKILL.md, skills/ontology-augment/SKILL.md, skills/web-summary/SKILL.md]
 owner: jjohare
 review_trigger: any new skill, MCP server, or supervised program that reads or writes authored markdown
@@ -411,3 +411,5 @@ Re-stamped again at `09067b095`: the one further change to `config/entrypoint-un
 ## Re-verification — 2026-11-01 (`4f3bd5325`)
 
 Governed-path delta since `09067b095`: `config/entrypoint-unified.sh`: the credential-scrub block (`PGSCRUB_MARKER`) now also rewrites Claude Code's backups and the `*.pre-*`/`*.bak*` snapshots of the projected config, writes atomically (sibling temp file, fsync, rename) keeping owner and mode, and scopes its text rules to RuVector's own values (ADR-2164 amendment 4). This record's decision does not concern these changes. Decision unchanged; `verified_commit` bumped. Re-run: `git diff 09067b095..4f3bd5325 -- config/entrypoint-unified.sh`.
+
+Re-verified 2026-11-10 at `062487bec` (PR #43, `dream-review-ledger`; ADR-2190). Governed-path delta since `e2b49adfc`: `schema/agentbox.toml.schema.json` gains three optional string properties in the `dream_machine` object (`git_author_name`, `git_author_email`, `artefact_dir`, `:2981-2992`); no other property, type or closure in the schema changes; `setup/agentbox.default.toml` gains the same three keys as commented examples in `[dream_machine]` (`:1513-1515`). `artefact_dir` names a dream-engine output directory, not a vault path, and takes no part in the `[vault]` path authority this record decides. The decision and status axes are unchanged. Re-run: `git diff e2b49adfc..062487bec -- schema/agentbox.toml.schema.json setup/agentbox.default.toml`.

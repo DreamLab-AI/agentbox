@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: c7c2f76b93bfe81dadd8e3bb8c3104cda6b57bec
+verified_commit: 062487becfcb5758ad0dfa74c11e1aa18b87aaae
 verified_paths: [services/dream-engine/src/governance.rs, services/dream-engine/src/digest.rs, services/dream-engine/src/relay.rs, services/dream-engine/src/inbox.rs, services/dream-engine/src/engine.rs, config/hooks/dream-inbox-surface.cjs]
 owner: jjohare
 review_trigger: JunkieJarvis registered in the relay agent_registry and the first night that publishes cases (activation_status → live), or any change to the forum's 31402/31403 wire format
@@ -147,3 +147,5 @@ Governed-path delta since `21769a881` is the RuVector Postgres credential custod
 - `services/dream-engine/src/engine.rs`: one test literal: `pg_url: String::new()` becomes `pg: Default::default()` (RuVectorConfig now holds the address and a password-file path).
 
 Nothing this record decides is changed; its status axes are unchanged. Re-run: `git diff 21769a881..cc949bb79 -- services/dream-engine/src/engine.rs`.
+
+Re-verified 2026-11-10 at `062487bec` (PR #43, `dream-review-ledger`; ADR-2190). Governed-path delta since `c7c2f76b9` has three parts. (1) `digest.rs:229` and `governance.rs:195`: the reports path in the digest footer and in a case's evidence line moves from `workspace/.tmp/dream-annexe-artefacts` to `workspace/dream-artefacts`. (2) `engine.rs`: an archive failure is written as an inbox `alert` (`:499`) before the governance publish, so it surfaces tonight as a low-tier case, as this record provides for alerts. (3) The review backfill runs at night start, after decision ingest. Decision ingest, signature rules, case shape and digest composition are unchanged. The decision and status axes are unchanged. Re-run: `git diff c7c2f76b9..062487bec -- services/dream-engine/src/digest.rs services/dream-engine/src/governance.rs services/dream-engine/src/engine.rs`.

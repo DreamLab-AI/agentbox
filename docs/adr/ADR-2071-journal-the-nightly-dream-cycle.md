@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: c7c2f76b93bfe81dadd8e3bb8c3104cda6b57bec
+verified_commit: 062487becfcb5758ad0dfa74c11e1aa18b87aaae
 verified_paths: [management-api/routes/exec-record.js, tests/integration/exec-record.test.js, services/dream-engine/src/journal.rs, services/dream-engine/src/engine.rs, services/dream-engine/src/records.rs]
 owner: jjohare
 review_trigger: an approver is wired into the action pipeline, a second process gains an events-adapter write path, or the nightly acquires a new external side effect
@@ -267,3 +267,5 @@ Governed-path delta since `21769a881` is the RuVector Postgres credential custod
 - `services/dream-engine/src/engine.rs`: one test literal: `pg_url: String::new()` becomes `pg: Default::default()` (RuVectorConfig now holds the address and a password-file path).
 
 Nothing this record decides is changed; its status axes are unchanged. Re-run: `git diff 21769a881..cc949bb79 -- services/dream-engine/src/engine.rs`.
+
+Re-verified 2026-11-10 at `062487bec` (PR #43, `dream-review-ledger`; ADR-2190). Governed-path delta since `c7c2f76b9`: `services/dream-engine/src/engine.rs` only. The night gains two side effects, and both are journalled through the night's `Journal` like the others. The first is `review.backfill` (`engine.rs:509`, called at `:190`), which fills ledger human cells from validated `review.json` records. The second is `archive.push` (`engine.rs:470`, called at `:396`), which commits the artefact directory and pushes it, never forced, to that checkout's own remote. Both are fail-open, which matches Phase 1's posture. Phase 2's "ten side effects" now understates by these two (the archive push is git egress), and any future classification must include them. Phase 1 is still auditability, not enforcement. The decision and status axes are unchanged. Re-run: `git diff c7c2f76b9..062487bec -- services/dream-engine/src/engine.rs`; `cargo test --offline` in `services/dream-engine` passes 236 + 11 + 2 at `062487bec`.
