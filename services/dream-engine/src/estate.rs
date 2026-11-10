@@ -35,7 +35,7 @@ pub fn default_roster_path() -> PathBuf {
 /// state, never pruned: a ledger row's witness can only be checked, and a human
 /// review only recorded, while its folder exists.
 pub fn default_artefact_dir() -> PathBuf {
-    PathBuf::from("/home/devuser/workspace/.agentbox/dream-artefacts")
+    PathBuf::from("/home/devuser/workspace/dream-artefacts")
 }
 
 /// Paths the source reader must never send to a provider, on top of

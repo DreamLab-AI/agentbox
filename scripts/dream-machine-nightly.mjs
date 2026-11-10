@@ -40,7 +40,7 @@ const ZAI_URL = process.env.ZAI_URL || 'https://api.z.ai/api/anthropic';
 const ZAI_API_KEY = process.env.ZAI_ANTHROPIC_API_KEY || process.env.ZAI_API_KEY || '';
 const ZAI_MODEL = process.env.ZAI_MODEL || 'glm-5.3';
 const ZAI_MAX_TOKENS = parseInt(process.env.ZAI_MAX_TOKENS || '16384', 10);
-const ARTEFACT_DIR = join(WORKSPACE_ROOT, '.agentbox/dream-artefacts');
+const ARTEFACT_DIR = join(WORKSPACE_ROOT, 'dream-artefacts');
 const LOG_PREFIX = '[dream-nightly]';
 
 const SCAN_DIRS = [

@@ -460,6 +460,6 @@ if supervisorctl status dream-engine 2>/dev/null | grep -qE '^dream-engine[[:spa
 fi
 if [ -n "$DREAM_BIN" ] && [ -x "$DREAM_BIN" ] && ! tmux $TMUX_ARGS has-session -t dream-engine 2>/dev/null; then
   tmux $TMUX_ARGS new-session -d -s dream-engine \
-    "mkdir -p /home/devuser/workspace/.agentbox/dream-artefacts && RUST_LOG=info $DREAM_BIN --loop 2>&1 | tee -a /home/devuser/workspace/.agentbox/dream-artefacts/loop.log"
+    "mkdir -p /home/devuser/workspace/dream-artefacts && RUST_LOG=info $DREAM_BIN --loop 2>&1 | tee -a /home/devuser/workspace/dream-artefacts/loop.log"
   echo "[tmux-autostart] dream-engine nightly loop started"
 fi
