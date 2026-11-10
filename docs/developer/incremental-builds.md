@@ -131,6 +131,8 @@ layers, and changed bytes do not by themselves predict transfer time.
 | Run | Platform | Toolchains | Agent CLIs | Services | Final root | Timings and context |
 | --- | ---: | ---: | ---: | ---: | ---: | --- |
 | 2026-10-27, daemon delivery, source `bd68a8d4e` (dirty) | 25.60 GB | 1.55 GB | 4.28 GB | 2.11 GB | 1.07 GB | Nix build 16.9 s with prior outputs cached; cold full-image stream 1,149.7 s (~19 min); smoke 0.6 s. All 34.61 GB was reported changed against that delivery baseline. |
+| 2026-11-09, registry delivery, source `4f41f77be` (clean) | 25.77 GB | 1.55 GB | 4.58 GB | 2.02 GB | 1.11 GB | Prior derivations cached; Nix build 461.9 s; push 255.4 s; pull/extraction 1,521.6 s (~25 min); smoke 0.6 s. Platform, CLI, services and final root changed. The only added platform store path was StatCraft: a small addition still invalidated the large layer. |
+| 2026-11-10, registry delivery, source `f707c5690` (clean) | 25.77 GB | 1.65 GB | 4.58 GB | 2.02 GB | 1.11 GB | Prior base/dependency outputs cached; Bend assets/kernel and changed services built. Nix build 408.4 s; push 20.7 s; pull/extraction 427.2 s (~7 min); smoke 0.7 s. Toolchains, services and final root changed; platform and CLI blobs were unchanged. Changing a parent layer still required downstream extraction. |
 
 For each future run, record the source and dirty state, delivery mode, cache
 state, changed layer names and sizes, and the receipt's aggregate build,

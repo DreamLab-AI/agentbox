@@ -3,11 +3,11 @@ id: ADR-2191
 title: Bend is baked from the pinned upstream release, with the proof kernel built at image-build time
 date: 2026-11-10
 decision_status: accepted
-implementation_status: partial
-activation_status: staged
+implementation_status: complete
+activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 571c0ad436230a4ff3d0da4c0e344282417ba259
+verified_commit: f707c5690c7789716e4da69dfec9de9a7634c824
 verified_paths: [lib/bend.nix, tests/artifact-probes/bend-probe.sh]
 owner: jjohare
 review_trigger: a Bend pin bump (it may change the Lean release Bend demands); the first aarch64 image build; a request for Bend windowing or audio programs; any proposal to make the home directory writable for ~/.bend
@@ -99,6 +99,23 @@ At `571c0ad43` (PR #45) CI evaluated the flake on x86_64-linux and aarch64-linux
 Bend derivations evaluate on both. The checks listed above were run on the same file
 contents before that commit.
 
-Not established: that `nix build .#runtime` succeeds. Nothing has been built by Nix, in
-CI or on the host. The record moves to `complete` and `live` after the host rebuild
-passes the probe.
+Host deployment, 2026-11-10, source `f707c5690` (clean):
+
+- `./agentbox.sh prepare` built the runtime and its security evidence successfully.
+  The toolchain, services and application layers changed; the platform and CLI
+  layer blobs were reused. Nix build: 408.4 s; registry push: 20.7 s; Docker
+  pull/extraction: 427.2 s; offline smoke: 0.7 s.
+- `tests/artifact-probes/bend-probe.sh` passed against the Nix output, then inside
+  the candidate with a read-only rootfs, UID 1000, no network or production mounts,
+  and a writable `/tmp` (`TMPDIR=/tmp`). Checking/running, native compilation and
+  execution, the baked proof kernel and refusal of `bend update` all passed.
+- Normal `./agentbox.sh activate` replaced only Agentbox at 21:48 UTC, preserving
+  the persistent mount contract and retaining the previous image for recovery.
+  The live container is healthy and the same complete Bend probe passed via
+  `docker exec --user devuser`. `bend version` prints `bend 2.0.40`.
+- Deployed OCI subject:
+  `sha256:471a5b22ea8dbec21e3a907ace7d7cdbaae919917c7f1bc00c66280bc009dec8`.
+
+This establishes the x86_64 build and activation, not aarch64 execution or
+GPU execution. Those boundaries remain unverified. This evidence entry is a
+post-deployment documentation change; the image's source remains `f707c5690`.
