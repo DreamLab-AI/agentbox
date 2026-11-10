@@ -504,11 +504,25 @@ impl Engine {
     }
 
     /// Fill the ledger's human columns from every night's validated
-    /// `review.json` ([`review::backfill_all`]). A refused record is logged and
-    /// skipped; it never fails the night.
+    /// `review.json` ([`review::backfill_all`]), each under its ledger's lock.
+    /// A refused record, or a ledger still locked after the wait, is logged
+    /// and skipped (the next night retries); it never fails the night.
     async fn backfill_reviews(&self, nj: &Journal) {
         let c = nj.called("review.backfill", json!({})).await;
-        let out = review::backfill_all(&self.artefact_dir, &self.workspace, review::Mode::Apply);
+        let (artefacts, workspace) = (self.artefact_dir.clone(), self.workspace.clone());
+        let how = review::Ledgering {
+            identity: self.runtime.git_identity(),
+            ..review::Ledgering::default()
+        };
+        // Blocking: ledger locks (bounded wait) and bounded git commits.
+        let out = tokio::task::spawn_blocking(move || {
+            review::backfill_all(&artefacts, &workspace, review::Mode::Apply, &how)
+        })
+        .await
+        .unwrap_or_else(|e| {
+            warn!(error = %e, "review backfill task failed (fail-open)");
+            Vec::new()
+        });
         let mut filled = 0usize;
         let mut refused = 0usize;
         for (night, result) in &out {

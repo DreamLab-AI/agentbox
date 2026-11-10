@@ -2,10 +2,12 @@
 //!
 //! The artefact directory may be the checkout of a private archive repository.
 //! When it is the top of its own git work tree and has a remote, the night ends
-//! by staging everything its `.gitignore` admits, committing it with a message
-//! naming the night date and the number of repositories dreamed, and pushing
-//! to the checkout's upstream (or, with no upstream, its single remote). The
-//! remote is whatever the checkout has; nothing here names one.
+//! by making sure its `.gitignore` keeps lock files, temporary files and the
+//! loop log out ([`ensure_gitignore`]), staging everything that file admits,
+//! committing it with a message naming the night date and the number of
+//! repositories dreamed, and pushing to the checkout's upstream (or, with no
+//! upstream, its single remote). The remote is whatever the checkout has;
+//! nothing here names one.
 //!
 //! The step is fail-open. A failed commit or push is returned as
 //! [`ArchiveOutcome::Failed`], which the engine logs and raises as an inbox
@@ -13,21 +15,44 @@
 //! leaves the local commit in place for the next night (or the operator) to
 //! push once the histories are reconciled. A directory that is not a git work
 //! tree, or one without a remote, is left completely alone.
+//!
+//! # Commit identity
+//!
+//! The configured identity ([`GitIdentity`], `[dream_machine]`
+//! `git_author_name` and `git_author_email`) is a **fallback**, never an
+//! override. A repository that resolves its own `user.name` and `user.email`
+//! (from its own config, or the account's) commits under them. The engine's own
+//! commits (this archive step, ledger rows) resolve the identity per repository
+//! and pass the fallback to that one invocation only when the repository's
+//! effective identity is empty ([`GitIdentity::args_for`]). Commits made inside
+//! `dream-core` (candidate worktrees) take no identity argument, so for those
+//! the engine installs the fallback as a process-wide git configuration layer
+//! *below* every repository's and the account's own settings
+//! ([`fallback_layer`]): git consults it only where nothing else names an
+//! identity.
 
-use std::io::Read;
+use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
-use std::time::{Duration, Instant};
+use std::time::Duration;
+
+use crate::gitcmd::{config_value, git, git_env};
 
 /// Longest a local git step (status, add, commit) may run.
 const LOCAL_TIMEOUT: Duration = Duration::from_secs(120);
 /// Longest the push may run before it is killed and reported as failed.
 const PUSH_TIMEOUT: Duration = Duration::from_secs(300);
-/// How often a running git command is polled for completion.
-const POLL: Duration = Duration::from_millis(50);
 
-/// The git identity the engine commits under, from `[dream_machine]`
-/// `git_author_name` and `git_author_email`.
+/// The non-interactive SSH command a push uses when the checkout configures
+/// none: a push must fail, not wait for a passphrase or host-key prompt.
+pub const BATCH_SSH_COMMAND: &str = "ssh -o BatchMode=yes";
+
+/// Patterns the archive's `.gitignore` must hold: the night and ledger lock
+/// files, partial writes, and the loop log a fallback launcher may write.
+pub const ARCHIVE_IGNORES: [&str; 4] = [".lock", "*.lock", "*.tmp*", "loop.log"];
+
+/// The fallback git identity the engine commits under where a repository has
+/// none of its own, from `[dream_machine]` `git_author_name` and
+/// `git_author_email`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GitIdentity {
     /// Author and committer name.
@@ -41,27 +66,136 @@ pub struct GitIdentity {
 pub const IDENTITY_KEYS: &str = "[dream_machine].git_author_name and git_author_email";
 
 impl GitIdentity {
-    /// The identity when both parts are present and non-blank.
+    /// The identity when both parts are present and non-blank. A value holding
+    /// a line break is refused: it could not be one git config value.
     pub fn from_parts(name: Option<&str>, email: Option<&str>) -> Option<Self> {
-        let name = name.map(str::trim).filter(|s| !s.is_empty())?;
-        let email = email.map(str::trim).filter(|s| !s.is_empty())?;
+        let clean = |v: Option<&str>| {
+            v.map(str::trim)
+                .filter(|s| !s.is_empty() && !s.contains(['\n', '\r']))
+                .map(String::from)
+        };
         Some(GitIdentity {
-            name: name.to_string(),
-            email: email.to_string(),
+            name: clean(name)?,
+            email: clean(email)?,
         })
     }
 
-    /// The environment that makes every git commit the process spawns use this
-    /// identity, including commits made inside `dream-core` (candidate
-    /// worktrees, ledger rows), which take no identity argument.
-    pub fn env(&self) -> [(&'static str, &str); 4] {
-        [
-            ("GIT_AUTHOR_NAME", self.name.as_str()),
-            ("GIT_AUTHOR_EMAIL", self.email.as_str()),
-            ("GIT_COMMITTER_NAME", self.name.as_str()),
-            ("GIT_COMMITTER_EMAIL", self.email.as_str()),
+    /// The `-c user.name=… -c user.email=…` arguments a git invocation in
+    /// `repo` needs to commit under this fallback: empty when the repository's
+    /// effective identity (its own config, else the account's) already names
+    /// both a user and an email, so its own identity is kept.
+    pub fn args_for(&self, repo: &Path) -> Vec<String> {
+        if effective_identity(repo).is_some() {
+            return Vec::new();
+        }
+        vec![
+            "-c".into(),
+            format!("user.name={}", self.name),
+            "-c".into(),
+            format!("user.email={}", self.email),
         ]
     }
+}
+
+/// The identity git would commit under in `repo` from configuration alone:
+/// `Some((name, email))` when both resolve non-blank, else `None`.
+pub fn effective_identity(repo: &Path) -> Option<(String, String)> {
+    let name = config_value(repo, "user.name", LOCAL_TIMEOUT)?;
+    let email = config_value(repo, "user.email", LOCAL_TIMEOUT)?;
+    Some((name, email))
+}
+
+/// `-c` arguments for an engine-owned commit in `repo`: the fallback's when the
+/// repository has no identity of its own ([`GitIdentity::args_for`]), else none.
+pub(crate) fn identity_args(repo: &Path, identity: Option<&GitIdentity>) -> Vec<String> {
+    identity.map(|i| i.args_for(repo)).unwrap_or_default()
+}
+
+/// Prefix a commit failure with the configuration to set, when no fallback
+/// identity is configured and the repository resolves none of its own.
+pub(crate) fn identity_hint(repo: &Path, identity: Option<&GitIdentity>, detail: String) -> String {
+    if identity.is_none() && effective_identity(repo).is_none() {
+        format!(
+            "the repository has no git identity and no engine fallback is configured \
+             (set {IDENTITY_KEYS}): {detail}"
+        )
+    } else {
+        detail
+    }
+}
+
+/// Quote a value for a git config file: double quotes, with `\` and `"` escaped.
+fn config_quote(value: &str) -> String {
+    let mut out = String::with_capacity(value.len() + 2);
+    out.push('"');
+    for c in value.chars() {
+        match c {
+            '\\' => out.push_str("\\\\"),
+            '"' => out.push_str("\\\""),
+            '\t' => out.push_str("\\t"),
+            c => out.push(c),
+        }
+    }
+    out.push('"');
+    out
+}
+
+/// The account-level git configuration files git would read with no
+/// `GIT_CONFIG_GLOBAL` override, in git's own order (XDG, then `~/.gitconfig`).
+fn default_account_configs() -> Vec<PathBuf> {
+    let home = std::env::var_os("HOME").map(PathBuf::from);
+    let xdg = std::env::var_os("XDG_CONFIG_HOME")
+        .map(PathBuf::from)
+        .filter(|p| p.is_absolute())
+        .or_else(|| home.as_ref().map(|h| h.join(".config")))
+        .map(|d| d.join("git").join("config"));
+    xdg.into_iter()
+        .chain(home.map(|h| h.join(".gitconfig")))
+        .collect()
+}
+
+/// The text of the fallback configuration layer: the fallback identity first,
+/// then an include of every account configuration file, so anything the
+/// account sets (an identity included) overrides the fallback, and anything a
+/// repository sets overrides both (repository config outranks account config).
+pub fn fallback_layer(identity: &GitIdentity, account_configs: &[PathBuf]) -> String {
+    let mut out = String::from(
+        "# Written by dream-engine at start-up: its fallback commit identity, used\n\
+         # only where neither the repository nor the account configures one.\n",
+    );
+    out.push_str(&format!(
+        "[user]\n\tname = {}\n\temail = {}\n",
+        config_quote(&identity.name),
+        config_quote(&identity.email)
+    ));
+    for path in account_configs {
+        out.push_str(&format!(
+            "[include]\n\tpath = {}\n",
+            config_quote(&path.to_string_lossy())
+        ));
+    }
+    out
+}
+
+/// Write the fallback layer ([`fallback_layer`]) to `path` and return the
+/// value `GIT_CONFIG_GLOBAL` should take. The account files included are the
+/// current `GIT_CONFIG_GLOBAL` when set, else git's defaults.
+///
+/// # Errors
+///
+/// Any I/O error writing the file.
+pub fn install_fallback_layer(identity: &GitIdentity, path: &Path) -> std::io::Result<PathBuf> {
+    let accounts = match std::env::var_os("GIT_CONFIG_GLOBAL") {
+        // An inherited value naming this very file (a nested engine) would
+        // include itself; read git's defaults instead.
+        Some(p) if !p.is_empty() && Path::new(&p) != path => vec![PathBuf::from(p)],
+        _ => default_account_configs(),
+    };
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    crate::ledger_io::replace(path, fallback_layer(identity, &accounts).as_bytes())?;
+    Ok(path.to_path_buf())
 }
 
 /// What the end-of-night archive step did.
@@ -82,7 +216,8 @@ pub enum ArchiveOutcome {
     /// A step failed. Whatever earlier steps did stays done: a commit made
     /// before a failed push is kept, and `commit` names it.
     Failed {
-        /// The failing step: `branch`, `remote`, `add`, `status`, `commit` or `push`.
+        /// The failing step: `branch`, `remote`, `gitignore`, `add`, `status`,
+        /// `commit` or `push`.
         step: &'static str,
         /// git's message, or why the step could not run.
         detail: String,
@@ -138,90 +273,6 @@ fn one_line(s: &str) -> String {
     out
 }
 
-/// The result of one git invocation.
-struct GitRun {
-    success: bool,
-    code: Option<i32>,
-    stdout: String,
-    stderr: String,
-}
-
-impl GitRun {
-    fn message(&self) -> String {
-        let text = if self.stderr.trim().is_empty() {
-            &self.stdout
-        } else {
-            &self.stderr
-        };
-        match (text.trim().is_empty(), self.code) {
-            (false, _) => text.trim().to_string(),
-            (true, Some(c)) => format!("git exited {c}"),
-            (true, None) => "git was killed".to_string(),
-        }
-    }
-}
-
-/// Run `git -C dir <args>` non-interactively, killing it after `timeout`.
-fn git(dir: &Path, args: &[&str], timeout: Duration) -> Result<GitRun, String> {
-    let mut cmd = Command::new("git");
-    cmd.arg("-C")
-        .arg(dir)
-        .args(args)
-        .env("GIT_TERMINAL_PROMPT", "0")
-        .stdin(Stdio::null())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped());
-    if std::env::var_os("GIT_SSH_COMMAND").is_none() {
-        // A push must fail, not wait for a passphrase or host-key prompt.
-        cmd.env("GIT_SSH_COMMAND", "ssh -o BatchMode=yes");
-    }
-    let mut child = cmd.spawn().map_err(|e| format!("cannot run git: {e}"))?;
-    let drain = |pipe: Option<Box<dyn Read + Send>>| {
-        std::thread::spawn(move || {
-            let mut buf = String::new();
-            if let Some(mut p) = pipe {
-                let _ = p.read_to_string(&mut buf);
-            }
-            buf
-        })
-    };
-    let out = drain(
-        child
-            .stdout
-            .take()
-            .map(|p| Box::new(p) as Box<dyn Read + Send>),
-    );
-    let err = drain(
-        child
-            .stderr
-            .take()
-            .map(|p| Box::new(p) as Box<dyn Read + Send>),
-    );
-    let deadline = Instant::now() + timeout;
-    let status = loop {
-        match child.try_wait() {
-            Ok(Some(status)) => break status,
-            Ok(None) if Instant::now() >= deadline => {
-                let _ = child.kill();
-                let _ = child.wait();
-                return Err(format!(
-                    "git {} timed out after {}s",
-                    args.first().copied().unwrap_or(""),
-                    timeout.as_secs()
-                ));
-            }
-            Ok(None) => std::thread::sleep(POLL),
-            Err(e) => return Err(format!("waiting for git: {e}")),
-        }
-    };
-    Ok(GitRun {
-        success: status.success(),
-        code: status.code(),
-        stdout: out.join().unwrap_or_default(),
-        stderr: err.join().unwrap_or_default(),
-    })
-}
-
 /// True when `dir` is the top level of its own git work tree, so a commit
 /// there cannot land in an enclosing repository instead. Symlinks resolve.
 pub fn is_own_work_tree(dir: &Path) -> bool {
@@ -236,6 +287,61 @@ pub fn is_own_work_tree(dir: &Path) -> bool {
         (Ok(a), Ok(b)) => a == b,
         _ => false,
     }
+}
+
+/// Make sure `dir/.gitignore` holds every [`ARCHIVE_IGNORES`] pattern,
+/// appending only the missing lines and never rewriting what is there.
+/// Returns whether the file changed.
+///
+/// # Errors
+///
+/// Any I/O error reading or appending to the file.
+pub fn ensure_gitignore(dir: &Path) -> std::io::Result<bool> {
+    let path = dir.join(".gitignore");
+    let existing = match std::fs::read_to_string(&path) {
+        Ok(t) => t,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => String::new(),
+        Err(e) => return Err(e),
+    };
+    let present: Vec<&str> = existing.lines().map(str::trim).collect();
+    let missing: Vec<&str> = ARCHIVE_IGNORES
+        .iter()
+        .copied()
+        .filter(|p| !present.contains(p))
+        .collect();
+    if missing.is_empty() {
+        return Ok(false);
+    }
+    let mut add = String::new();
+    if !existing.is_empty() && !existing.ends_with('\n') {
+        add.push('\n');
+    }
+    for p in missing {
+        add.push_str(p);
+        add.push('\n');
+    }
+    let mut f = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&path)?;
+    f.write_all(add.as_bytes())?;
+    f.sync_all()?;
+    Ok(true)
+}
+
+/// The `GIT_SSH_COMMAND` a push from `dir` needs: [`BATCH_SSH_COMMAND`] when
+/// nothing chooses an SSH command already, `None` when the environment sets
+/// `GIT_SSH_COMMAND` or `GIT_SSH`, or the checkout (or the account) configures
+/// `core.sshCommand`, such as a deploy-key command, which must win.
+pub fn batch_ssh_command(dir: &Path) -> Option<&'static str> {
+    let env_set = |k: &str| std::env::var_os(k).is_some_and(|v| !v.is_empty());
+    if env_set("GIT_SSH_COMMAND") || env_set("GIT_SSH") {
+        return None;
+    }
+    if config_value(dir, "core.sshCommand", LOCAL_TIMEOUT).is_some() {
+        return None;
+    }
+    Some(BATCH_SSH_COMMAND)
 }
 
 /// Where a plain push goes: the branch's upstream, or the single remote.
@@ -255,16 +361,17 @@ fn failed(step: &'static str, detail: String, commit: Option<String>) -> Archive
 /// Commit and push the artefact directory at the end of a night.
 ///
 /// Does nothing unless `dir` is the top of its own git work tree with at least
-/// one remote. Stages with `git add -A` (the checkout's `.gitignore` decides
-/// what is archived), commits only when something is staged, and pushes
-/// without force: to the branch's upstream when it has one, else to the single
-/// remote under the current branch name. Never panics and never returns an
-/// error; failures come back as [`ArchiveOutcome::Failed`].
+/// one remote. Then it appends any missing [`ARCHIVE_IGNORES`] line to the
+/// checkout's `.gitignore` (and stops tracking a `loop.log` committed before
+/// that line existed), stages with `git add -A`, commits only when something
+/// is staged, and pushes without force: to the branch's upstream when it has
+/// one, else to the single remote under the current branch name. Never panics
+/// and never returns an error; failures come back as [`ArchiveOutcome::Failed`].
 ///
-/// With `identity`, the commit is made under it explicitly (`-c user.name`,
-/// `-c user.email`), whatever the checkout or the account configures. Without
-/// one, the checkout's own identity is used, and a commit that fails for want
-/// of one names the configuration keys to set ([`IDENTITY_KEYS`]).
+/// `identity` is a fallback ([`GitIdentity::args_for`]): used only when the
+/// checkout resolves no identity of its own. With neither, a failed commit
+/// names the configuration keys to set ([`IDENTITY_KEYS`]). The push uses the
+/// checkout's own SSH command when it configures one ([`batch_ssh_command`]).
 pub fn archive_night(
     dir: &Path,
     date: &str,
@@ -332,6 +439,28 @@ pub fn archive_night(
         }
     };
 
+    if let Err(e) = ensure_gitignore(dir) {
+        return failed("gitignore", e.to_string(), None);
+    }
+    // A loop log committed before `.gitignore` named it stays tracked (and
+    // grows in every commit) until it is removed from the index.
+    match git(
+        dir,
+        &[
+            "rm",
+            "--cached",
+            "--quiet",
+            "--ignore-unmatch",
+            "--",
+            "loop.log",
+        ],
+        LOCAL_TIMEOUT,
+    ) {
+        Ok(r) if r.success => {}
+        Ok(r) => return failed("gitignore", r.message(), None),
+        Err(e) => return failed("gitignore", e, None),
+    }
+
     match git(dir, &["add", "-A"], LOCAL_TIMEOUT) {
         Ok(r) if r.success => {}
         Ok(r) => return failed("add", r.message(), None),
@@ -346,21 +475,13 @@ pub fn archive_night(
     let mut commit = None;
     if staged {
         let message = commit_message(date, repos);
-        let name_arg = identity.map(|i| format!("user.name={}", i.name));
-        let email_arg = identity.map(|i| format!("user.email={}", i.email));
-        let mut args: Vec<&str> = Vec::new();
-        if let (Some(n), Some(e)) = (&name_arg, &email_arg) {
-            args.extend(["-c", n.as_str(), "-c", e.as_str()]);
-        }
+        let id_args = identity_args(dir, identity);
+        let mut args: Vec<&str> = id_args.iter().map(String::as_str).collect();
         args.extend(["commit", "--quiet", "-m", &message]);
-        let hint = |detail: String| match identity {
-            Some(_) => detail,
-            None => format!("no engine git identity is configured (set {IDENTITY_KEYS}): {detail}"),
-        };
         match git(dir, &args, LOCAL_TIMEOUT) {
             Ok(r) if r.success => {}
-            Ok(r) => return failed("commit", hint(r.message()), None),
-            Err(e) => return failed("commit", hint(e), None),
+            Ok(r) => return failed("commit", identity_hint(dir, identity, r.message()), None),
+            Err(e) => return failed("commit", identity_hint(dir, identity, e), None),
         }
         commit = git(dir, &["rev-parse", "--short", "HEAD"], LOCAL_TIMEOUT)
             .ok()
@@ -376,7 +497,10 @@ pub fn archive_night(
             format!("{r}/{branch}"),
         ),
     };
-    match git(dir, &args, PUSH_TIMEOUT) {
+    let ssh: Vec<(&str, &str)> = batch_ssh_command(dir)
+        .map(|c| vec![("GIT_SSH_COMMAND", c)])
+        .unwrap_or_default();
+    match git_env(dir, &args, PUSH_TIMEOUT, &ssh) {
         Ok(r) if r.success => ArchiveOutcome::Archived { commit, pushed_to },
         Ok(r) => failed("push", r.message(), commit),
         Err(e) => failed("push", e, commit),
@@ -386,6 +510,7 @@ pub fn archive_night(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::process::Command;
     use tempfile::TempDir;
 
     /// Run git in `dir` for fixture set-up, asserting success.
@@ -744,19 +869,214 @@ mod tests {
     }
 
     #[test]
-    fn identity_needs_both_parts_and_maps_to_author_and_committer() {
+    fn identity_needs_both_clean_parts() {
         assert_eq!(GitIdentity::from_parts(Some("n"), None), None);
         assert_eq!(GitIdentity::from_parts(Some(" "), Some("e@x")), None);
+        assert_eq!(GitIdentity::from_parts(Some("a\nb"), Some("e@x")), None);
         let id = GitIdentity::from_parts(Some(" n "), Some("e@x")).expect("both");
-        assert_eq!(
-            id.env(),
-            [
-                ("GIT_AUTHOR_NAME", "n"),
-                ("GIT_AUTHOR_EMAIL", "e@x"),
-                ("GIT_COMMITTER_NAME", "n"),
-                ("GIT_COMMITTER_EMAIL", "e@x"),
-            ]
+        assert_eq!((id.name.as_str(), id.email.as_str()), ("n", "e@x"));
+    }
+
+    #[test]
+    fn a_checkout_with_its_own_identity_keeps_it() {
+        let fx = Fixture::new();
+        fx.night("2026-11-01-demo-repo");
+        assert!(ident().args_for(&fx.archive).is_empty());
+        let out = archive_night(&fx.archive, "2026-11-01", 1, Some(&ident()));
+        assert!(
+            matches!(
+                out,
+                ArchiveOutcome::Archived {
+                    commit: Some(_),
+                    ..
+                }
+            ),
+            "{out:?}"
         );
+        let who = sh(
+            &fx.bare,
+            &["log", "-1", "--format=%an <%ae> / %cn <%ce>", "main"],
+        );
+        assert_eq!(who, "t <t@example.invalid> / t <t@example.invalid>");
+    }
+
+    /// Run `git commit` in `repo` with only `layer` as the account-level
+    /// configuration, and return the author it recorded.
+    fn commit_with_layer(repo: &Path, layer: &Path, home: &Path) -> String {
+        std::fs::write(
+            repo.join("f"),
+            format!("{:?}", std::time::SystemTime::now()),
+        )
+        .expect("f");
+        let run = |args: &[&str]| {
+            let out = Command::new("git")
+                .arg("-C")
+                .arg(repo)
+                .args(args)
+                .env("GIT_CONFIG_GLOBAL", layer)
+                .env("GIT_CONFIG_NOSYSTEM", "1")
+                .env("HOME", home)
+                .env_remove("GIT_AUTHOR_NAME")
+                .env_remove("GIT_AUTHOR_EMAIL")
+                .env_remove("GIT_COMMITTER_NAME")
+                .env_remove("GIT_COMMITTER_EMAIL")
+                .env_remove("EMAIL")
+                .output()
+                .expect("git runs");
+            assert!(
+                out.status.success(),
+                "git {args:?}: {}",
+                String::from_utf8_lossy(&out.stderr)
+            );
+            String::from_utf8_lossy(&out.stdout).trim().to_string()
+        };
+        run(&["add", "-A"]);
+        run(&["commit", "--quiet", "-m", "m"]);
+        run(&["log", "-1", "--format=%an <%ae>"])
+    }
+
+    #[test]
+    fn the_fallback_layer_yields_to_the_repository_and_the_account() {
+        let root = tempfile::tempdir().expect("tempdir");
+        let home = root.path();
+        let account = home.join("account.gitconfig");
+        let layer = home.join("layer.gitconfig");
+        let repo = home.join("r");
+        std::fs::create_dir_all(&repo).expect("dir");
+        sh(&repo, &["init", "--quiet", "--initial-branch=main"]);
+        let fallback =
+            GitIdentity::from_parts(Some("Fall \"Back\" Bot"), Some("fb@example.invalid"))
+                .expect("identity");
+        std::fs::write(
+            &layer,
+            fallback_layer(&fallback, std::slice::from_ref(&account)),
+        )
+        .expect("layer");
+
+        // Neither the repository nor the account names anyone: the fallback.
+        std::fs::write(&account, "[core]\n\tautocrlf = false\n").expect("account");
+        assert_eq!(
+            commit_with_layer(&repo, &layer, home),
+            "Fall \"Back\" Bot <fb@example.invalid>"
+        );
+        // The account's identity outranks the fallback.
+        std::fs::write(
+            &account,
+            "[user]\n\tname = acct\n\temail = a@example.invalid\n",
+        )
+        .expect("account");
+        assert_eq!(
+            commit_with_layer(&repo, &layer, home),
+            "acct <a@example.invalid>"
+        );
+        // The repository's own identity outranks both.
+        sh(&repo, &["config", "user.name", "own"]);
+        sh(&repo, &["config", "user.email", "own@example.invalid"]);
+        assert_eq!(
+            commit_with_layer(&repo, &layer, home),
+            "own <own@example.invalid>"
+        );
+    }
+
+    #[test]
+    fn the_gitignore_gains_only_missing_lines_and_keeps_its_content() {
+        let root = tempfile::tempdir().expect("tempdir");
+        let ignore = root.path().join(".gitignore");
+        std::fs::write(&ignore, "# archive\nscratch/\n*.lock").expect("ignore");
+        assert!(ensure_gitignore(root.path()).expect("ensure"));
+        assert_eq!(
+            std::fs::read_to_string(&ignore).expect("read"),
+            "# archive\nscratch/\n*.lock\n.lock\n*.tmp*\nloop.log\n"
+        );
+        assert!(
+            !ensure_gitignore(root.path()).expect("again"),
+            "a second run changes nothing"
+        );
+
+        let fresh = tempfile::tempdir().expect("tempdir");
+        assert!(ensure_gitignore(fresh.path()).expect("ensure"));
+        assert_eq!(
+            std::fs::read_to_string(fresh.path().join(".gitignore")).expect("read"),
+            ".lock\n*.lock\n*.tmp*\nloop.log\n"
+        );
+    }
+
+    #[test]
+    fn the_loop_log_is_never_archived_even_if_tracked_before() {
+        let fx = Fixture::new();
+        // An older launcher's log, committed before `.gitignore` named it.
+        std::fs::write(fx.archive.join("loop.log"), "line 1\n").expect("log");
+        sh(&fx.archive, &["add", "-f", "loop.log"]);
+        sh(&fx.archive, &["commit", "--quiet", "-m", "log"]);
+        sh(&fx.archive, &["push", "--quiet"]);
+        std::fs::write(fx.archive.join("loop.log"), "line 1\nline 2\n").expect("log");
+        fx.night("2026-11-01-demo-repo");
+        let out = archive_night(&fx.archive, "2026-11-01", 1, None);
+        assert!(
+            matches!(
+                out,
+                ArchiveOutcome::Archived {
+                    commit: Some(_),
+                    ..
+                }
+            ),
+            "{out:?}"
+        );
+        let files = fx.remote_files();
+        assert!(!files.contains("loop.log"), "{files}");
+        assert!(files.contains("2026-11-01-demo-repo/report.md"), "{files}");
+        assert!(
+            fx.archive.join("loop.log").exists(),
+            "the log itself stays on disk"
+        );
+        let ignore = sh(&fx.bare, &["show", "main:.gitignore"]);
+        for p in ARCHIVE_IGNORES {
+            assert!(ignore.lines().any(|l| l == p), "{p} in {ignore}");
+        }
+    }
+
+    #[test]
+    fn a_configured_ssh_command_is_not_overridden() {
+        if std::env::var_os("GIT_SSH_COMMAND").is_some() || std::env::var_os("GIT_SSH").is_some() {
+            eprintln!("skipped: the environment chooses an SSH command already");
+            return;
+        }
+        let fx = Fixture::new();
+        assert_eq!(batch_ssh_command(&fx.archive), Some(BATCH_SSH_COMMAND));
+
+        // A deploy-key style command that records it ran, then refuses.
+        let marker = fx.root.path().join("ssh-ran");
+        let script = fx.root.path().join("deploy-ssh");
+        std::fs::write(
+            &script,
+            format!("#!/bin/sh\ntouch '{}'\nexit 1\n", marker.display()),
+        )
+        .expect("script");
+        let mut perms = std::fs::metadata(&script).expect("meta").permissions();
+        std::os::unix::fs::PermissionsExt::set_mode(&mut perms, 0o755);
+        std::fs::set_permissions(&script, perms).expect("chmod");
+        sh(
+            &fx.archive,
+            &["config", "core.sshCommand", script.to_str().expect("utf8")],
+        );
+        sh(
+            &fx.archive,
+            &[
+                "remote",
+                "set-url",
+                "origin",
+                "ssh://git@archive.invalid/a.git",
+            ],
+        );
+        assert_eq!(batch_ssh_command(&fx.archive), None);
+
+        fx.night("2026-11-01-demo-repo");
+        let out = archive_night(&fx.archive, "2026-11-01", 1, None);
+        assert!(
+            matches!(out, ArchiveOutcome::Failed { step: "push", .. }),
+            "{out:?}"
+        );
+        assert!(marker.exists(), "the checkout's own core.sshCommand ran");
     }
 
     #[test]

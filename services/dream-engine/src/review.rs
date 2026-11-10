@@ -22,7 +22,10 @@
 //! manifest's baseline revision), writes `review.json`, then backfills that
 //! night's ledger row. [`backfill_all`] runs at the start of every night and
 //! picks up records written by any other tool; it validates each one exactly as
-//! the importer does.
+//! the importer does. A record written whose ledger fill then fails (the ledger
+//! busy past the lock wait, or unwritable) is reported as
+//! [`LineResult::FillPending`], not as refused: the record stands, and the next
+//! backfill fills the row.
 //!
 //! # The ledger edit
 //!
@@ -34,6 +37,11 @@
 //! predates the twelve-column writer, so no review can match one). When the
 //! filled row sits under a legacy ten-column header, the header and divider
 //! gain the two human column names so a markdown renderer shows the cells.
+//!
+//! The edit is made under the ledger's lock ([`crate::ledger_io::LedgerLock`]),
+//! the same lock the night's own row append takes, with the ledger re-read
+//! inside the lock and committed before it is released, so a fill can never
+//! drop a row the night appended meanwhile.
 
 use chrono::{DateTime, NaiveDate, TimeZone, Utc};
 use dream_core::ledger::{self, LedgerCommit};
@@ -41,9 +49,12 @@ use dream_gate::{manifest, witness};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::path::{Path, PathBuf};
+use std::time::Duration;
 use thiserror::Error;
 
+use crate::archive::GitIdentity;
 use crate::config::{self, DEFAULT_LEDGER_PATH};
+use crate::ledger_io::{self, LedgerLock, LockError};
 
 /// File name of a night's review record, inside the night's artefact folder.
 pub const REVIEW_FILE: &str = "review.json";
@@ -199,6 +210,9 @@ pub enum ReviewError {
     /// The night already holds a different review.
     #[error("{0} already holds a different review; a night keeps one record, so move it aside to replace it")]
     Conflict(PathBuf),
+    /// The ledger stayed locked by another writer, or its lock failed.
+    #[error(transparent)]
+    Lock(#[from] LockError),
     /// Reading or writing failed.
     #[error("io: {0}")]
     Io(#[from] std::io::Error),
@@ -214,6 +228,26 @@ pub enum Mode {
     Apply,
     /// Validate and report; write nothing.
     DryRun,
+}
+
+/// How ledger edits are made: the fallback identity for the ledger commit
+/// (used only in a repository with no identity of its own), and how long to
+/// wait for another writer's ledger lock.
+#[derive(Debug, Clone)]
+pub struct Ledgering {
+    /// The engine's fallback commit identity, if configured.
+    pub identity: Option<GitIdentity>,
+    /// Longest wait for the ledger lock before the fill is given up.
+    pub lock_wait: Duration,
+}
+
+impl Default for Ledgering {
+    fn default() -> Self {
+        Ledgering {
+            identity: None,
+            lock_wait: ledger_io::DEFAULT_LOCK_WAIT,
+        }
+    }
 }
 
 /// What writing a record did.
@@ -755,20 +789,34 @@ pub fn fill_ledger_text(
 }
 
 /// Backfill one night's ledger row from a validated record, then commit the
-/// ledger locally (`dream_core::ledger::commit_ledger`: the ledger file only,
-/// on the default branch only, never pushed).
+/// ledger locally ([`ledger_io::commit_ledger`]: the ledger file only, on the
+/// default branch only, never pushed).
+///
+/// In [`Mode::Apply`] the read, the edit, the crash-safe replace and the
+/// commit all happen under the ledger's lock, the ledger read inside it.
 ///
 /// # Errors
 ///
-/// [`ReviewError::Io`] when the ledger exists but cannot be read or written.
+/// [`ReviewError::Lock`] when another writer keeps the ledger locked past
+/// `how.lock_wait`; [`ReviewError::Io`] when the ledger exists but cannot be
+/// read or written.
 pub fn fill_ledger(
     workspace: &Path,
     night_dir: &Path,
     rec: &ReviewRecord,
     mode: Mode,
+    how: &Ledgering,
 ) -> Result<FillOutcome, ReviewError> {
     let path = ledger_path(workspace, night_dir, &rec.repo);
-    let text = match std::fs::read_to_string(&path) {
+    if !path.exists() {
+        return Ok(FillOutcome::NoLedger(path));
+    }
+    let lock = match mode {
+        Mode::Apply => Some(LedgerLock::acquire(&path, how.lock_wait)?),
+        Mode::DryRun => None,
+    };
+    let read_from = lock.as_ref().map_or(path.as_path(), |l| l.ledger());
+    let text = match std::fs::read_to_string(read_from) {
         Ok(t) => t,
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
             return Ok(FillOutcome::NoLedger(path))
@@ -795,19 +843,21 @@ pub fn fill_ledger(
         return Ok(fill.outcome);
     };
     let mut commit = None;
-    if mode == Mode::Apply {
-        manifest::write_atomic(&path, new_text.as_bytes())?;
+    if let Some(lock) = lock {
+        ledger_io::replace(lock.ledger(), new_text.as_bytes())?;
         let repo_dir = workspace.join(&rec.repo);
         if crate::archive::is_own_work_tree(&repo_dir) {
-            commit = Some(ledger::commit_ledger(
+            commit = Some(ledger_io::commit_ledger(
                 &repo_dir,
                 &path,
                 &format!(
                     "dream: record human review of {} in the ledger",
                     rec.night_id
                 ),
+                how.identity.as_ref(),
             ));
         }
+        drop(lock);
     }
     Ok(FillOutcome::Filled {
         ledger: path,
@@ -829,12 +879,13 @@ pub fn backfill_night(
     workspace: &Path,
     night_dir: &Path,
     mode: Mode,
+    how: &Ledgering,
 ) -> Result<Option<FillOutcome>, ReviewError> {
     let Some(rec) = load_record(night_dir)? else {
         return Ok(None);
     };
     validate_record(&rec, night_dir)?;
-    fill_ledger(workspace, night_dir, &rec, mode).map(Some)
+    fill_ledger(workspace, night_dir, &rec, mode, how).map(Some)
 }
 
 /// Backfill every night under `artefact_dir` that holds a `review.json`, in
@@ -844,6 +895,7 @@ pub fn backfill_all(
     artefact_dir: &Path,
     workspace: &Path,
     mode: Mode,
+    how: &Ledgering,
 ) -> Vec<(String, Result<FillOutcome, ReviewError>)> {
     let Ok(entries) = std::fs::read_dir(artefact_dir) else {
         return Vec::new();
@@ -858,13 +910,27 @@ pub fn backfill_all(
         .into_iter()
         .filter_map(|dir| {
             let name = dir.file_name()?.to_string_lossy().into_owned();
-            match backfill_night(workspace, &dir, mode) {
+            match backfill_night(workspace, &dir, mode, how) {
                 Ok(Some(outcome)) => Some((name, Ok(outcome))),
                 Ok(None) => None,
                 Err(e) => Some((name, Err(e))),
             }
         })
         .collect()
+}
+
+/// What became of one import line.
+#[derive(Debug)]
+pub enum LineResult {
+    /// The record is stored (or already was) and the ledger step ran.
+    Done(WriteOutcome, FillOutcome),
+    /// The record is stored, but the ledger fill failed (the ledger stayed
+    /// locked, or could not be written). The record stands; the next
+    /// backfill, at the start of a night or by `dream-engine review backfill`,
+    /// fills the row.
+    FillPending(WriteOutcome, ReviewError),
+    /// The line was refused; nothing was written.
+    Refused(ReviewError),
 }
 
 /// The outcome of one import line.
@@ -874,14 +940,26 @@ pub struct LineReport {
     pub line: usize,
     /// `<date>-<repo>` when the line parsed far enough to name a night.
     pub night_id: Option<String>,
-    /// The record and ledger outcomes, or why the line was refused.
-    pub result: Result<(WriteOutcome, FillOutcome), ReviewError>,
+    /// What became of the line.
+    pub result: LineResult,
 }
 
 impl LineReport {
-    /// True when the line was refused.
+    /// True when the line was refused and nothing was recorded.
     pub fn refused(&self) -> bool {
-        self.result.is_err()
+        matches!(self.result, LineResult::Refused(_))
+    }
+
+    /// True when the review was recorded but its ledger fill is pending.
+    pub fn fill_pending(&self) -> bool {
+        matches!(self.result, LineResult::FillPending(..))
+    }
+}
+
+fn write_word(write: &WriteOutcome) -> &'static str {
+    match write {
+        WriteOutcome::Written => "review recorded",
+        WriteOutcome::Unchanged => "review already recorded",
     }
 }
 
@@ -889,14 +967,21 @@ impl fmt::Display for LineReport {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let night = self.night_id.as_deref().unwrap_or("?");
         match &self.result {
-            Ok((write, fill)) => {
-                let write = match write {
-                    WriteOutcome::Written => "review recorded",
-                    WriteOutcome::Unchanged => "review already recorded",
-                };
-                write!(f, "line {}: {night}: {write}; {fill}", self.line)
+            LineResult::Done(write, fill) => {
+                write!(
+                    f,
+                    "line {}: {night}: {}; {fill}",
+                    self.line,
+                    write_word(write)
+                )
             }
-            Err(e) => write!(f, "line {}: {night}: REFUSED: {e}", self.line),
+            LineResult::FillPending(write, e) => write!(
+                f,
+                "line {}: {night}: {}, ledger fill pending ({e}); the next backfill retries it",
+                self.line,
+                write_word(write)
+            ),
+            LineResult::Refused(e) => write!(f, "line {}: {night}: REFUSED: {e}", self.line),
         }
     }
 }
@@ -906,39 +991,47 @@ fn import_line(
     artefact_dir: &Path,
     workspace: &Path,
     mode: Mode,
-) -> (
-    Option<String>,
-    Result<(WriteOutcome, FillOutcome), ReviewError>,
-) {
+    how: &Ledgering,
+) -> (Option<String>, LineResult) {
     let imp: ReviewImport = match serde_json::from_str(raw) {
         Ok(i) => i,
-        Err(e) => return (None, Err(e.into())),
+        Err(e) => return (None, LineResult::Refused(e.into())),
     };
     let night_id = Some(format!("{}-{}", imp.date, imp.repo));
-    let result = record_from_import(&imp, artefact_dir).and_then(|rec| {
-        let dir = night_dir(artefact_dir, &rec.date, &rec.repo);
-        let written = write_record(&dir, &rec, mode)?;
-        let filled = fill_ledger(workspace, &dir, &rec, mode)?;
-        Ok((written, filled))
-    });
+    let rec = match record_from_import(&imp, artefact_dir) {
+        Ok(r) => r,
+        Err(e) => return (night_id, LineResult::Refused(e)),
+    };
+    let dir = night_dir(artefact_dir, &rec.date, &rec.repo);
+    let written = match write_record(&dir, &rec, mode) {
+        Ok(w) => w,
+        Err(e) => return (night_id, LineResult::Refused(e)),
+    };
+    let result = match fill_ledger(workspace, &dir, &rec, mode, how) {
+        Ok(fill) => LineResult::Done(written, fill),
+        // Nothing was written in a dry run, so nothing is pending.
+        Err(e) if mode == Mode::DryRun => LineResult::Refused(e),
+        Err(e) => LineResult::FillPending(written, e),
+    };
     (night_id, result)
 }
 
 /// Import reviews from JSON Lines text: one [`ReviewImport`] object per
 /// non-blank line. Each line is validated against its night folder, written as
 /// that night's `review.json`, and backfilled into the ledger. A refused line
-/// changes nothing and does not stop the others.
+/// changes nothing and does not stop the others; a line whose record was
+/// written but whose ledger fill failed is [`LineResult::FillPending`].
 ///
 /// # Examples
 ///
 /// ```
-/// use dream_engine::review::{import_jsonl, Mode};
+/// use dream_engine::review::{import_jsonl, Ledgering, Mode};
 /// let dir = tempfile::tempdir()?;
 /// let line = r#"{"repo":"demo","date":"2026-11-01","witness":"0123456789ab",
 ///   "reviewer":"reviewer-a","verdict":"approve","reason":"sound change",
 ///   "confidence":4,"active_seconds":300,"decided_at":"2026-11-02T09:00:00Z",
 ///   "blind_to_gate":true,"tool":"review-desk/1"}"#.replace('\n', "");
-/// let reports = import_jsonl(&line, dir.path(), dir.path(), Mode::DryRun);
+/// let reports = import_jsonl(&line, dir.path(), dir.path(), Mode::DryRun, &Ledgering::default());
 /// // No such night folder: the line is refused, and says why.
 /// assert!(reports[0].refused());
 /// assert!(reports[0].to_string().contains("no night folder"));
@@ -949,12 +1042,13 @@ pub fn import_jsonl(
     artefact_dir: &Path,
     workspace: &Path,
     mode: Mode,
+    how: &Ledgering,
 ) -> Vec<LineReport> {
     text.lines()
         .enumerate()
         .filter(|(_, l)| !l.trim().is_empty())
         .map(|(i, raw)| {
-            let (night_id, result) = import_line(raw, artefact_dir, workspace, mode);
+            let (night_id, result) = import_line(raw, artefact_dir, workspace, mode, how);
             LineReport {
                 line: i + 1,
                 night_id,
@@ -1027,7 +1121,13 @@ mod tests {
         }
 
         fn import(&self, lines: &[String], mode: Mode) -> Vec<LineReport> {
-            import_jsonl(&lines.join("\n"), &self.artefacts, &self.workspace, mode)
+            import_jsonl(
+                &lines.join("\n"),
+                &self.artefacts,
+                &self.workspace,
+                mode,
+                &Ledgering::default(),
+            )
         }
     }
 
@@ -1387,7 +1487,12 @@ mod tests {
         fx.write_ledger(&twelve_column_ledger());
         fx.import(&[import_line_json(&short_witness(), "300")], Mode::Apply);
         let once = fx.read_ledger();
-        let again = backfill_all(&fx.artefacts, &fx.workspace, Mode::Apply);
+        let again = backfill_all(
+            &fx.artefacts,
+            &fx.workspace,
+            Mode::Apply,
+            &Ledgering::default(),
+        );
         assert_eq!(again.len(), 1);
         assert!(
             matches!(again[0].1, Ok(FillOutcome::AlreadyFilled)),
@@ -1410,7 +1515,12 @@ mod tests {
         r.review_minutes = "7".into();
         let before = format!("{}{}\n", empty_ledger(), render_row(&r));
         fx.write_ledger(&before);
-        let out = backfill_all(&fx.artefacts, &fx.workspace, Mode::Apply);
+        let out = backfill_all(
+            &fx.artefacts,
+            &fx.workspace,
+            Mode::Apply,
+            &Ledgering::default(),
+        );
         assert!(matches!(out[0].1, Ok(FillOutcome::AlreadyFilled)));
         assert_eq!(fx.read_ledger(), before);
     }
@@ -1538,7 +1648,12 @@ mod tests {
             serde_json::to_vec(&forged).expect("ser"),
         )
         .expect("write");
-        let out = backfill_all(&fx.artefacts, &fx.workspace, Mode::Apply);
+        let out = backfill_all(
+            &fx.artefacts,
+            &fx.workspace,
+            Mode::Apply,
+            &Ledgering::default(),
+        );
         assert!(
             matches!(out[0].1, Err(ReviewError::WitnessMismatch { .. })),
             "{:?}",
@@ -1553,7 +1668,12 @@ mod tests {
         )
         .expect("write");
         std::fs::remove_file(fx.dir().join(REVIEW_FILE)).expect("rm");
-        let out = backfill_all(&fx.artefacts, &fx.workspace, Mode::Apply);
+        let out = backfill_all(
+            &fx.artefacts,
+            &fx.workspace,
+            Mode::Apply,
+            &Ledgering::default(),
+        );
         let msg = out[0].1.as_ref().expect_err("refused").to_string();
         assert!(msg.contains("night_id"), "{msg}");
 
@@ -1566,7 +1686,12 @@ mod tests {
             serde_json::to_vec(&future).expect("ser"),
         )
         .expect("write");
-        let out = backfill_all(&fx.artefacts, &fx.workspace, Mode::Apply);
+        let out = backfill_all(
+            &fx.artefacts,
+            &fx.workspace,
+            Mode::Apply,
+            &Ledgering::default(),
+        );
         assert!(out[0]
             .1
             .as_ref()
@@ -1585,7 +1710,12 @@ mod tests {
             serde_json::to_vec(&good).expect("ser"),
         )
         .expect("write");
-        let out = backfill_all(&fx.artefacts, &fx.workspace, Mode::Apply);
+        let out = backfill_all(
+            &fx.artefacts,
+            &fx.workspace,
+            Mode::Apply,
+            &Ledgering::default(),
+        );
         assert!(
             matches!(out[0].1, Ok(FillOutcome::Filled { .. })),
             "{:?}",
@@ -1649,8 +1779,147 @@ mod tests {
         fx.write_ledger(&twelve_column_ledger());
         let r = fx.import(&[import_line_json(&short_witness(), "300")], Mode::Apply);
         match &r[0].result {
-            Ok((_, FillOutcome::Filled { commit, .. })) => assert_eq!(*commit, None),
+            LineResult::Done(_, FillOutcome::Filled { commit, .. }) => assert_eq!(*commit, None),
             other => panic!("expected a fill, got {other:?}"),
         }
+    }
+
+    /// The race the ledger lock closes: an import reads the ledger, the night
+    /// appends its row, the import writes. With the fill blocked on the lock
+    /// while the night holds it, the fill re-reads after the append, so both
+    /// the filled cells and tonight's row survive.
+    #[test]
+    fn a_fill_waiting_on_the_night_keeps_the_row_the_night_appended() {
+        let fx = Fixture::new();
+        fx.write_ledger(&twelve_column_ledger());
+        let night = ledger_io::LedgerLock::acquire(&fx.ledger(), Duration::ZERO).expect("lock");
+
+        let (artefacts, workspace) = (fx.artefacts.clone(), fx.workspace.clone());
+        let line = import_line_json(&short_witness(), "300");
+        let import = std::thread::spawn(move || {
+            import_jsonl(
+                &line,
+                &artefacts,
+                &workspace,
+                Mode::Apply,
+                &Ledgering::default(),
+            )
+        });
+        std::thread::sleep(Duration::from_millis(300));
+        assert_eq!(fx.read_ledger(), twelve_column_ledger(), "the fill waits");
+        assert!(
+            load_record(&fx.dir()).expect("readable").is_some(),
+            "record first"
+        );
+
+        ledger_io::append_row(
+            &night,
+            &row("2026-11-03", "cccccccccccc", "the night's row"),
+        )
+        .expect("append");
+        drop(night);
+        let reports = import.join().expect("import thread");
+        assert!(
+            matches!(reports[0].result, LineResult::Done(..)),
+            "{}",
+            reports[0]
+        );
+
+        let parsed = parse_ledger(&fx.read_ledger());
+        let tonight = parsed.rows.iter().find(|r| r.date == DATE).expect("row");
+        assert_eq!(tonight.reviewer, "reviewer-a");
+        assert!(
+            parsed.rows.iter().any(|r| r.witness == "cccccccccccc"),
+            "the appended row survived: {:?}",
+            parsed.rows
+        );
+    }
+
+    /// The other order: a fill holds the lock (here the test, standing in for
+    /// it) when the night appends. The append waits, re-reads, and keeps the
+    /// fill.
+    #[test]
+    fn an_append_waiting_on_a_fill_keeps_the_filled_cells() {
+        let fx = Fixture::new();
+        fx.write_ledger(&twelve_column_ledger());
+        let fill = ledger_io::LedgerLock::acquire(&fx.ledger(), Duration::ZERO).expect("lock");
+        let stale = ledger_io::read(&fill).expect("read");
+
+        let ledger = fx.ledger();
+        let append = std::thread::spawn(move || {
+            let lock = ledger_io::LedgerLock::acquire(&ledger, Duration::from_secs(30))?;
+            ledger_io::append_row(&lock, &row("2026-11-03", "cccccccccccc", "the night's row"))
+        });
+        std::thread::sleep(Duration::from_millis(300));
+        assert_eq!(fx.read_ledger(), stale, "the append waits");
+
+        let filled = fill_ledger_text(&stale, DATE, &short_witness(), "reviewer-a", "5");
+        ledger_io::replace(fill.ledger(), filled.text.expect("filled").as_bytes())
+            .expect("replace");
+        drop(fill);
+        append.join().expect("append thread").expect("append");
+
+        let parsed = parse_ledger(&fx.read_ledger());
+        assert_eq!(parsed.rows.len(), 4, "{:?}", parsed.rows);
+        let tonight = parsed.rows.iter().find(|r| r.date == DATE).expect("row");
+        assert_eq!(
+            (tonight.reviewer.as_str(), tonight.review_minutes.as_str()),
+            ("reviewer-a", "5")
+        );
+    }
+
+    #[test]
+    fn a_busy_ledger_leaves_the_record_and_reports_the_fill_pending() {
+        let fx = Fixture::new();
+        fx.write_ledger(&twelve_column_ledger());
+        let _night = ledger_io::LedgerLock::acquire(&fx.ledger(), Duration::ZERO).expect("lock");
+        let how = Ledgering {
+            identity: None,
+            lock_wait: Duration::from_millis(200),
+        };
+        let reports = import_jsonl(
+            &import_line_json(&short_witness(), "300"),
+            &fx.artefacts,
+            &fx.workspace,
+            Mode::Apply,
+            &how,
+        );
+        assert!(
+            reports[0].fill_pending() && !reports[0].refused(),
+            "{}",
+            reports[0]
+        );
+        let text = reports[0].to_string();
+        assert!(
+            text.contains("review recorded, ledger fill pending"),
+            "{text}"
+        );
+        assert!(
+            text.contains("dream-ledger.lock") || text.contains("LEDGER.md.lock"),
+            "{text}"
+        );
+        assert!(
+            load_record(&fx.dir()).expect("readable").is_some(),
+            "the record stands"
+        );
+        assert_eq!(
+            fx.read_ledger(),
+            twelve_column_ledger(),
+            "the ledger is untouched"
+        );
+
+        // Once the night lets go, the backfill fills the row.
+        drop(_night);
+        let out = backfill_all(
+            &fx.artefacts,
+            &fx.workspace,
+            Mode::Apply,
+            &Ledgering::default(),
+        );
+        assert!(
+            matches!(out[0].1, Ok(FillOutcome::Filled { .. })),
+            "{:?}",
+            out[0]
+        );
     }
 }

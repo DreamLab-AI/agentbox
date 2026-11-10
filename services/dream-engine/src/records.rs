@@ -21,12 +21,20 @@ use crate::dispatch;
 use crate::engine::{CycleResult, Engine, EngineError};
 use crate::inbox;
 use crate::journal::{Journal, JournalStats};
+use crate::ledger_io;
 
 impl Engine {
     /// Check the night's ledger row against the row contract, append it, then
     /// commit it on the default branch so the night is visible in git
     /// (ADR-2071 Phase 1). Both are journalled. The append is fatal as before;
     /// the commit is fail-open.
+    ///
+    /// The append and the commit run under the ledger's lock
+    /// ([`ledger_io::LedgerLock`]), the same lock a review import or the
+    /// night-start backfill takes, and the ledger is re-read inside it, so a
+    /// concurrent review fill can neither drop this row nor collide with this
+    /// commit. A lock still held after [`ledger_io::DEFAULT_LOCK_WAIT`] fails
+    /// the append with an error naming the lock file.
     ///
     /// A row that breaks the contract is repaired, never appended as is and
     /// never fatal: a failing finding is replaced by `fallback`, a line stating
@@ -52,9 +60,24 @@ impl Engine {
                 json!({ "verdict": row.verdict, "deep": row.deep, "repaired": broken }),
             )
             .await;
-        let appended = ledger::append_row(ledger_path, &row);
-        j.completed(c, appended.is_ok(), json!({})).await;
-        appended?;
+        let (lock_ledger, append_row) = (ledger_path.to_path_buf(), row.clone());
+        let appended = tokio::task::spawn_blocking(move || {
+            let lock = ledger_io::LedgerLock::acquire(&lock_ledger, ledger_io::DEFAULT_LOCK_WAIT)?;
+            ledger_io::append_row(&lock, &append_row)?;
+            Ok::<_, std::io::Error>(lock)
+        })
+        .await
+        .unwrap_or_else(|e| Err(std::io::Error::other(format!("ledger append task: {e}"))));
+        j.completed(
+            c,
+            appended.is_ok(),
+            match &appended {
+                Ok(_) => json!({}),
+                Err(e) => json!({ "error": e.to_string() }),
+            },
+        )
+        .await;
+        let lock = appended.map_err(ledger::LedgerError::from)?;
 
         if std::env::var("DREAM_LEDGER_COMMIT").as_deref() == Ok("0") {
             return Ok(row);
@@ -65,11 +88,17 @@ impl Engine {
                 json!({ "path": ledger_path.display().to_string() }),
             )
             .await;
-        let outcome = ledger::commit_ledger(
-            repo_path,
-            ledger_path,
-            &format!("dream-cycle: {} ledger row ({})", night_id, row.verdict),
-        );
+        let (repo, path) = (repo_path.to_path_buf(), ledger_path.to_path_buf());
+        let message = format!("dream-cycle: {} ledger row ({})", night_id, row.verdict);
+        let identity = self.runtime.git_identity();
+        // The lock moves into the commit task and drops when the commit ends.
+        let outcome = tokio::task::spawn_blocking(move || {
+            let outcome = ledger_io::commit_ledger(&repo, &path, &message, identity.as_ref());
+            drop(lock);
+            outcome
+        })
+        .await
+        .unwrap_or_else(|e| ledger::LedgerCommit::Failed(format!("ledger commit task: {e}")));
         let ok = matches!(
             outcome,
             ledger::LedgerCommit::Committed(_) | ledger::LedgerCommit::NothingToCommit

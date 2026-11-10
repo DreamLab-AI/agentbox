@@ -2979,15 +2979,15 @@
           "type": "boolean"
         },
         "git_author_name": {
-          "description": "Name the dream engine commits under (candidate worktrees, ledger rows, the artefact archive). Set with git_author_email; unset, commits rely on each checkout's own identity and fail where it has none.",
+          "description": "Fallback name for the dream engine's commits (candidate worktrees, ledger rows, the artefact archive), used only in a repository whose own and account git identity is empty; a repository's own user.name/user.email always wins. Set with git_author_email; unset, commits in a checkout without an identity fail.",
           "type": "string"
         },
         "git_author_email": {
-          "description": "Email the dream engine commits under; see git_author_name.",
+          "description": "Fallback email for the dream engine's commits, used only where a repository has no identity of its own; see git_author_name.",
           "type": "string"
         },
         "artefact_dir": {
-          "description": "Night artefact directory (reports, receipts, review records). Default /home/devuser/workspace/dream-artefacts. Durable: nothing may prune it. When it is the checkout of a private archive repository with a remote, each night ends by committing and pushing it (never forced).",
+          "description": "Night artefact directory (reports, receipts, review records). Default /home/devuser/workspace/dream-artefacts. Durable: nothing may prune it. When it is the checkout of a private archive repository with a remote, each night ends by committing and pushing it (never forced). If it holds no night folders while the legacy .tmp/dream-annexe-artefacts still does, nights are refused until they are moved.",
           "type": "string"
         },
         "jev_triage": {

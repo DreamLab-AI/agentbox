@@ -7,7 +7,7 @@
 //! switches, the source denylist entry for the session-mirror key file, the
 //! default roster path, and the redaction of annexe-side paths.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use dream_core::context::DEFAULT_BUDGET;
 use dream_core::source::{Denylist, SourceConfig};
@@ -36,6 +36,74 @@ pub fn default_roster_path() -> PathBuf {
 /// review only recorded, while its folder exists.
 pub fn default_artefact_dir() -> PathBuf {
     PathBuf::from("/home/devuser/workspace/dream-artefacts")
+}
+
+/// Where night artefacts lived before the durable default
+/// ([`default_artefact_dir`]): a temporary directory. A deployment that has not
+/// moved them still has its nights here.
+pub fn legacy_artefact_dir() -> PathBuf {
+    PathBuf::from("/home/devuser/workspace/.tmp/dream-annexe-artefacts")
+}
+
+/// True for a night folder name: `<YYYY-MM-DD>-<repo>`.
+pub fn is_night_folder(name: &str) -> bool {
+    name.len() > 11
+        && name.is_char_boundary(10)
+        && name.as_bytes()[10] == b'-'
+        && chrono::NaiveDate::parse_from_str(&name[..10], "%Y-%m-%d").is_ok()
+}
+
+fn has_night_folders(dir: &Path) -> bool {
+    std::fs::read_dir(dir).is_ok_and(|entries| {
+        entries.flatten().any(|e| {
+            e.file_type().is_ok_and(|t| t.is_dir())
+                && is_night_folder(&e.file_name().to_string_lossy())
+        })
+    })
+}
+
+/// The start-up guard for a deployment whose nights are still in the legacy
+/// directory: `Some(alert)` when `artefact_dir` holds no night folder while
+/// `legacy` exists, is not the same directory (a symlink to it, say), and
+/// does. Running nights then would start from an empty record (no witnesses
+/// to review against, no finished-night markers) and could rerun a night, so
+/// the engine refuses to run nights until the folders are moved. The alert
+/// names both paths and the one-line migration.
+///
+/// # Examples
+///
+/// ```
+/// use dream_engine::estate::unmigrated_artefacts;
+/// let root = tempfile::tempdir()?;
+/// let (new, old) = (root.path().join("new"), root.path().join("old"));
+/// std::fs::create_dir_all(old.join("2026-11-01-demo"))?;
+/// let alert = unmigrated_artefacts(&new, &old).expect("guard trips");
+/// assert!(alert.contains("mv -n"));
+/// std::fs::create_dir_all(new.join("2026-11-02-demo"))?;
+/// assert_eq!(unmigrated_artefacts(&new, &old), None);
+/// # Ok::<(), std::io::Error>(())
+/// ```
+pub fn unmigrated_artefacts(artefact_dir: &Path, legacy: &Path) -> Option<String> {
+    if has_night_folders(artefact_dir) || !legacy.is_dir() {
+        return None;
+    }
+    if let (Ok(a), Ok(b)) = (artefact_dir.canonicalize(), legacy.canonicalize()) {
+        if a == b {
+            return None;
+        }
+    }
+    if !has_night_folders(legacy) {
+        return None;
+    }
+    let (new, old) = (artefact_dir.display(), legacy.display());
+    Some(format!(
+        "Dream nights are paused: the artefact directory {new} holds no night folders, but the \
+         legacy directory {old} still does. Running from an empty directory would lose the \
+         record the ledger witnesses and reviews depend on, and could rerun a finished night. \
+         Move the nights with: mkdir -p '{new}' && mv -n '{old}'/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]-* '{new}'/ \
+         (or keep the old location with --artefact-dir or [dream_machine].artefact_dir). \
+         Nights resume on their own once {new} holds them."
+    ))
 }
 
 /// Paths the source reader must never send to a provider, on top of
@@ -219,6 +287,69 @@ fn xinference_url_from_env() -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn night_folder_names_are_dated() {
+        assert!(is_night_folder("2026-11-01-demo-repo"));
+        assert!(!is_night_folder("2026-11-01-"));
+        assert!(!is_night_folder("2026-13-01-demo"));
+        assert!(!is_night_folder("loop.log"));
+        assert!(!is_night_folder(".git"));
+    }
+
+    #[test]
+    fn the_migration_guard_trips_only_for_unmoved_legacy_nights() {
+        let root = tempfile::tempdir().expect("tempdir");
+        let new = root.path().join("dream-artefacts");
+        let old = root.path().join("legacy");
+
+        // Legacy absent: nothing to migrate.
+        assert_eq!(unmigrated_artefacts(&new, &old), None);
+
+        // Legacy holds nights, the new directory is empty (an archive
+        // checkout with only its .git and .gitignore counts as empty).
+        std::fs::create_dir_all(old.join("2026-11-01-demo-repo")).expect("old night");
+        std::fs::create_dir_all(new.join(".git")).expect("new");
+        let alert = unmigrated_artefacts(&new, &old).expect("trips");
+        assert!(alert.contains(&new.display().to_string()), "{alert}");
+        assert!(alert.contains(&old.display().to_string()), "{alert}");
+        assert!(alert.contains("mv -n"), "{alert}");
+
+        // Legacy is a symlink to the new directory: the same place.
+        let linked = root.path().join("linked-legacy");
+        std::os::unix::fs::symlink(&new, &linked).expect("symlink");
+        assert_eq!(unmigrated_artefacts(&new, &linked), None);
+
+        // The new directory already holds nights: migrated.
+        std::fs::create_dir_all(new.join("2026-11-02-demo-repo")).expect("new night");
+        assert_eq!(unmigrated_artefacts(&new, &old), None);
+    }
+
+    #[test]
+    fn the_migration_line_moves_nights_into_an_archive_checkout() {
+        let root = tempfile::tempdir().expect("tempdir");
+        let new = root.path().join("dream-artefacts");
+        let old = root.path().join("legacy");
+        std::fs::create_dir_all(new.join(".git")).expect("checkout");
+        std::fs::create_dir_all(old.join("2026-11-01-demo-repo")).expect("night");
+        std::fs::write(old.join("2026-11-01-demo-repo/report.md"), "r").expect("report");
+        let alert = unmigrated_artefacts(&new, &old).expect("trips");
+        let line = alert
+            .split("Move the nights with: ")
+            .nth(1)
+            .and_then(|s| s.split(" (or keep").next())
+            .expect("migration line");
+        let ok = std::process::Command::new("sh")
+            .arg("-c")
+            .arg(line)
+            .status()
+            .expect("sh runs")
+            .success();
+        assert!(ok, "{line}");
+        assert!(new.join("2026-11-01-demo-repo/report.md").is_file());
+        assert!(new.join(".git").is_dir(), "the checkout is kept");
+        assert_eq!(unmigrated_artefacts(&new, &old), None);
+    }
     use std::sync::Mutex;
 
     /// The env-reading helpers share process-global state.

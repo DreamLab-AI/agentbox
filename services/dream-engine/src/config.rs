@@ -91,12 +91,14 @@ pub struct RuntimeConfig {
     /// archive repository, which the end-of-night step commits and pushes.
     #[serde(default)]
     pub artefact_dir: Option<String>,
-    /// Name the engine commits under (candidate worktrees, ledger rows, the
-    /// artefact archive). With `git_author_email`; when either is unset the
-    /// engine relies on each checkout's own identity and says so at start-up.
+    /// Fallback name for the engine's commits (candidate worktrees, ledger
+    /// rows, the artefact archive), used only in a repository whose effective
+    /// git identity is empty; a repository's own identity always wins (see
+    /// [`crate::archive`]). With `git_author_email`; when either is unset the
+    /// engine says so at start-up.
     #[serde(default)]
     pub git_author_name: Option<String>,
-    /// Email the engine commits under; see `git_author_name`.
+    /// Fallback email for the engine's commits; see `git_author_name`.
     #[serde(default)]
     pub git_author_email: Option<String>,
 }
@@ -134,7 +136,7 @@ pub fn resolve_env_placeholder(value: &str) -> Option<String> {
 }
 
 impl RuntimeConfig {
-    /// The configured commit identity, when both keys are set.
+    /// The configured fallback commit identity, when both keys are set.
     pub fn git_identity(&self) -> Option<crate::archive::GitIdentity> {
         crate::archive::GitIdentity::from_parts(
             self.git_author_name.as_deref(),

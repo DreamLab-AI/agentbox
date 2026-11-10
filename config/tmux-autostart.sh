@@ -452,6 +452,8 @@ echo "  0:Claude  1:Agent  2:Services  3:Build  4:Logs  5:System  6:VNC  7:Git  
 # double-runs the night and races dispatch/cleanup on the connected node annexe (observed
 # 2026-08-20/21: tarball vanished mid-scp, checkout rm'd mid-evaluation).
 # Only start here when supervisord does NOT manage it.
+# The log goes beside the roster, never into the artefact directory: that
+# directory may be an archive checkout committed nightly with `git add -A`.
 # ============================================================================
 DREAM_BIN="$PROJECT/project/agentbox/services/dream-engine/target/release/dream-engine"
 [ -x "$DREAM_BIN" ] || DREAM_BIN="/home/devuser/workspace/project/agentbox/services/dream-engine/target/release/dream-engine"
@@ -460,6 +462,6 @@ if supervisorctl status dream-engine 2>/dev/null | grep -qE '^dream-engine[[:spa
 fi
 if [ -n "$DREAM_BIN" ] && [ -x "$DREAM_BIN" ] && ! tmux $TMUX_ARGS has-session -t dream-engine 2>/dev/null; then
   tmux $TMUX_ARGS new-session -d -s dream-engine \
-    "mkdir -p /home/devuser/workspace/dream-artefacts && RUST_LOG=info $DREAM_BIN --loop 2>&1 | tee -a /home/devuser/workspace/dream-artefacts/loop.log"
+    "mkdir -p /home/devuser/workspace/.agentbox && RUST_LOG=info $DREAM_BIN --loop 2>&1 | tee -a /home/devuser/workspace/.agentbox/dream-loop.log"
   echo "[tmux-autostart] dream-engine nightly loop started"
 fi

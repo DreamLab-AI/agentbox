@@ -29,7 +29,9 @@
 //! [`dispatch`] (SSH to the annexe), [`present`], [`baseline`], and the forum
 //! drivers [`digest`], [`governance`], [`relay`], [`inbox`], [`zone_crypto`], and
 //! [`review`] (human review records and the ledger backfill that reads them),
-//! [`archive`] (the end-of-night commit and push of the artefact directory).
+//! [`archive`] (the end-of-night commit and push of the artefact directory,
+//! and the fallback commit identity), [`ledger_io`] (the per-ledger lock and
+//! the durable row append, fill and commit every ledger writer goes through).
 
 pub mod archive;
 pub mod baseline;
@@ -39,11 +41,13 @@ pub mod digest;
 pub mod dispatch;
 pub mod engine;
 pub mod estate;
+mod gitcmd;
 pub mod governance;
 pub mod inbox;
 pub mod jev_triage;
 pub mod journal;
 pub mod judge;
+pub mod ledger_io;
 pub mod llm;
 pub mod notify;
 pub mod policy;
