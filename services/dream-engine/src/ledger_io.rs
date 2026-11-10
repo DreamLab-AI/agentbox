@@ -483,6 +483,13 @@ mod tests {
         let held = NightRunning::acquire(d.path(), Duration::ZERO).expect("lock");
         assert!(night_in_progress(d.path()));
         drop(held);
-        assert!(!night_in_progress(d.path()));
+        // Another test thread forking git between our open and its exec holds
+        // a duplicate of the lock descriptor for that instant (close-on-exec
+        // releases it), so a just-released lock can look held: poll briefly.
+        let deadline = std::time::Instant::now() + Duration::from_secs(2);
+        while night_in_progress(d.path()) {
+            assert!(std::time::Instant::now() < deadline, "the lock stayed held");
+            std::thread::sleep(Duration::from_millis(10));
+        }
     }
 }
