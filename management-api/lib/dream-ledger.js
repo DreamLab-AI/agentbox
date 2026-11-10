@@ -16,8 +16,10 @@
  * human who reviewed the PR it opened. Augmentation conditions C4 (deepening
  * learning) and C6 (job purpose) are longitudinal — they need a human
  * measurement, repeated — so the schema gains two columns, `Reviewer` and
- * `Review-minutes`, populated from the PR merge event (`merged_by`, and
- * `merged_at − pr_opened_at`).
+ * `Review-minutes`. The engine fills them only from a recorded human review
+ * (`review.json`, ADR-2190), never from a PR merge event: agents merge under
+ * the operator's account, so `merged_by` cannot tell a person from an agent.
+ * This module only reads them.
  *
  * TWO RULES GOVERN THEM.
  *
@@ -146,37 +148,6 @@ function verdictStats(rows) {
 function latestNights(rows, n = 5) {
   const take = Math.max(0, n);
   return rows.slice(-take).reverse();
-}
-
-/**
- * Derive the two human columns from a PR merge event.
- *
- * Nothing here guesses. An unmerged PR has no reviewer and no duration; a merge
- * event missing either timestamp yields a null duration even though the
- * reviewer is known; a `merged_at` before `pr_opened_at` (a clock skew, or a
- * back-dated import) is refused rather than recorded as a negative review.
- *
- * @param {object} event
- * @param {string|{login?: string, did?: string}} [event.merged_by]
- * @param {string|number|Date} [event.merged_at]
- * @param {string|number|Date} [event.pr_opened_at]
- * @returns {{reviewer: string|null, reviewMinutes: number|null}}
- */
-function reviewFromMergeEvent(event) {
-  const e = (event && typeof event === 'object') ? event : {};
-
-  let reviewer = null;
-  const by = e.merged_by;
-  if (typeof by === 'string') reviewer = cellOrNull(by);
-  else if (by && typeof by === 'object') reviewer = cellOrNull(by.did || by.login || by.name || '');
-
-  const opened = Date.parse(e.pr_opened_at ?? '');
-  const merged = Date.parse(e.merged_at ?? '');
-  let reviewMinutes = null;
-  if (Number.isFinite(opened) && Number.isFinite(merged) && merged >= opened) {
-    reviewMinutes = Math.round((merged - opened) / 60000);
-  }
-  return { reviewer, reviewMinutes };
 }
 
 /** Median of a numeric array (mean of the middle two when even). */
@@ -416,7 +387,6 @@ module.exports = {
   LEDGER_KEYS,
   LEGACY_LEDGER_KEYS,
   parseLedger,
-  reviewFromMergeEvent,
   reviewerStats,
   verdictStats,
   latestNights,
