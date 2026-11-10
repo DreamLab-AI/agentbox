@@ -2978,6 +2978,14 @@
           "description": "When a candidate is accepted, push it as a dream/* branch with a draft pull request for human review. Off leaves it on a local branch only.",
           "type": "boolean"
         },
+        "git_author_name": {
+          "description": "Name the dream engine commits under (candidate worktrees, ledger rows, the artefact archive). Set with git_author_email; unset, commits rely on each checkout's own identity and fail where it has none.",
+          "type": "string"
+        },
+        "git_author_email": {
+          "description": "Email the dream engine commits under; see git_author_name.",
+          "type": "string"
+        },
         "artefact_dir": {
           "description": "Night artefact directory (reports, receipts, review records). Default /home/devuser/workspace/dream-artefacts. Durable: nothing may prune it. When it is the checkout of a private archive repository with a remote, each night ends by committing and pushing it (never forced).",
           "type": "string"

@@ -26,6 +26,44 @@ const PUSH_TIMEOUT: Duration = Duration::from_secs(300);
 /// How often a running git command is polled for completion.
 const POLL: Duration = Duration::from_millis(50);
 
+/// The git identity the engine commits under, from `[dream_machine]`
+/// `git_author_name` and `git_author_email`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GitIdentity {
+    /// Author and committer name.
+    pub name: String,
+    /// Author and committer email.
+    pub email: String,
+}
+
+/// The configuration keys that supply [`GitIdentity`], for messages that say
+/// what is missing.
+pub const IDENTITY_KEYS: &str = "[dream_machine].git_author_name and git_author_email";
+
+impl GitIdentity {
+    /// The identity when both parts are present and non-blank.
+    pub fn from_parts(name: Option<&str>, email: Option<&str>) -> Option<Self> {
+        let name = name.map(str::trim).filter(|s| !s.is_empty())?;
+        let email = email.map(str::trim).filter(|s| !s.is_empty())?;
+        Some(GitIdentity {
+            name: name.to_string(),
+            email: email.to_string(),
+        })
+    }
+
+    /// The environment that makes every git commit the process spawns use this
+    /// identity, including commits made inside `dream-core` (candidate
+    /// worktrees, ledger rows), which take no identity argument.
+    pub fn env(&self) -> [(&'static str, &str); 4] {
+        [
+            ("GIT_AUTHOR_NAME", self.name.as_str()),
+            ("GIT_AUTHOR_EMAIL", self.email.as_str()),
+            ("GIT_COMMITTER_NAME", self.name.as_str()),
+            ("GIT_COMMITTER_EMAIL", self.email.as_str()),
+        ]
+    }
+}
+
 /// What the end-of-night archive step did.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ArchiveOutcome {
@@ -222,7 +260,17 @@ fn failed(step: &'static str, detail: String, commit: Option<String>) -> Archive
 /// without force: to the branch's upstream when it has one, else to the single
 /// remote under the current branch name. Never panics and never returns an
 /// error; failures come back as [`ArchiveOutcome::Failed`].
-pub fn archive_night(dir: &Path, date: &str, repos: usize) -> ArchiveOutcome {
+///
+/// With `identity`, the commit is made under it explicitly (`-c user.name`,
+/// `-c user.email`), whatever the checkout or the account configures. Without
+/// one, the checkout's own identity is used, and a commit that fails for want
+/// of one names the configuration keys to set ([`IDENTITY_KEYS`]).
+pub fn archive_night(
+    dir: &Path,
+    date: &str,
+    repos: usize,
+    identity: Option<&GitIdentity>,
+) -> ArchiveOutcome {
     if !is_own_work_tree(dir) {
         return ArchiveOutcome::NotARepository;
     }
@@ -298,10 +346,21 @@ pub fn archive_night(dir: &Path, date: &str, repos: usize) -> ArchiveOutcome {
     let mut commit = None;
     if staged {
         let message = commit_message(date, repos);
-        match git(dir, &["commit", "--quiet", "-m", &message], LOCAL_TIMEOUT) {
+        let name_arg = identity.map(|i| format!("user.name={}", i.name));
+        let email_arg = identity.map(|i| format!("user.email={}", i.email));
+        let mut args: Vec<&str> = Vec::new();
+        if let (Some(n), Some(e)) = (&name_arg, &email_arg) {
+            args.extend(["-c", n.as_str(), "-c", e.as_str()]);
+        }
+        args.extend(["commit", "--quiet", "-m", &message]);
+        let hint = |detail: String| match identity {
+            Some(_) => detail,
+            None => format!("no engine git identity is configured (set {IDENTITY_KEYS}): {detail}"),
+        };
+        match git(dir, &args, LOCAL_TIMEOUT) {
             Ok(r) if r.success => {}
-            Ok(r) => return failed("commit", r.message(), None),
-            Err(e) => return failed("commit", e, None),
+            Ok(r) => return failed("commit", hint(r.message()), None),
+            Err(e) => return failed("commit", hint(e), None),
         }
         commit = git(dir, &["rev-parse", "--short", "HEAD"], LOCAL_TIMEOUT)
             .ok()
@@ -417,7 +476,7 @@ mod tests {
         let fx = Fixture::new();
         fx.night("2026-11-01-demo-repo");
         fx.night("2026-11-01-other-repo");
-        let out = archive_night(&fx.archive, "2026-11-01", 2);
+        let out = archive_night(&fx.archive, "2026-11-01", 2, None);
         let ArchiveOutcome::Archived { commit, pushed_to } = &out else {
             panic!("expected archived, got {out:?}");
         };
@@ -438,9 +497,9 @@ mod tests {
     fn nothing_new_makes_no_commit_and_still_succeeds() {
         let fx = Fixture::new();
         fx.night("2026-11-01-demo-repo");
-        archive_night(&fx.archive, "2026-11-01", 1);
+        archive_night(&fx.archive, "2026-11-01", 1, None);
         let before = fx.remote_log();
-        let out = archive_night(&fx.archive, "2026-11-02", 0);
+        let out = archive_night(&fx.archive, "2026-11-02", 0, None);
         assert_eq!(
             out,
             ArchiveOutcome::Archived {
@@ -457,7 +516,7 @@ mod tests {
         fx.night("2026-11-01-demo-repo");
         let moved = fx.root.path().join("remote-away.git");
         std::fs::rename(&fx.bare, &moved).expect("remote unavailable");
-        let out = archive_night(&fx.archive, "2026-11-01", 1);
+        let out = archive_night(&fx.archive, "2026-11-01", 1, None);
         let ArchiveOutcome::Failed { step, commit, .. } = &out else {
             panic!("expected failure, got {out:?}");
         };
@@ -470,7 +529,7 @@ mod tests {
         );
 
         std::fs::rename(&moved, &fx.bare).expect("remote back");
-        let out = archive_night(&fx.archive, "2026-11-02", 0);
+        let out = archive_night(&fx.archive, "2026-11-02", 0, None);
         assert!(
             matches!(out, ArchiveOutcome::Archived { commit: None, .. }),
             "{out:?}"
@@ -495,7 +554,7 @@ mod tests {
         let remote_head = sh(&fx.bare, &["rev-parse", "main"]);
 
         fx.night("2026-11-01-demo-repo");
-        let out = archive_night(&fx.archive, "2026-11-01", 1);
+        let out = archive_night(&fx.archive, "2026-11-01", 1, None);
         assert!(
             matches!(
                 out,
@@ -520,12 +579,12 @@ mod tests {
         let dir = root.path().join("plain");
         std::fs::create_dir_all(dir.join("2026-11-01-demo-repo")).expect("dir");
         assert_eq!(
-            archive_night(&dir, "2026-11-01", 1),
+            archive_night(&dir, "2026-11-01", 1, None),
             ArchiveOutcome::NotARepository
         );
         assert!(!dir.join(".git").exists());
         assert_eq!(
-            archive_night(&root.path().join("missing"), "2026-11-01", 1),
+            archive_night(&root.path().join("missing"), "2026-11-01", 1, None),
             ArchiveOutcome::NotARepository
         );
     }
@@ -538,7 +597,7 @@ mod tests {
         std::fs::write(inner.join("f"), "x").expect("file");
         let before = sh(&fx.archive, &["rev-parse", "HEAD"]);
         assert_eq!(
-            archive_night(&inner, "2026-11-01", 1),
+            archive_night(&inner, "2026-11-01", 1, None),
             ArchiveOutcome::NotARepository
         );
         assert_eq!(sh(&fx.archive, &["rev-parse", "HEAD"]), before);
@@ -555,7 +614,7 @@ mod tests {
         identity(&dir);
         std::fs::write(dir.join("f"), "x").expect("file");
         assert_eq!(
-            archive_night(&dir, "2026-11-01", 1),
+            archive_night(&dir, "2026-11-01", 1, None),
             ArchiveOutcome::NoRemote
         );
         let status = sh(&dir, &["status", "--porcelain"]);
@@ -567,7 +626,7 @@ mod tests {
         let fx = Fixture::new();
         sh(&fx.archive, &["branch", "--unset-upstream"]);
         fx.night("2026-11-01-demo-repo");
-        let out = archive_night(&fx.archive, "2026-11-01", 1);
+        let out = archive_night(&fx.archive, "2026-11-01", 1, None);
         assert!(
             matches!(&out, ArchiveOutcome::Archived { pushed_to, .. } if pushed_to == "origin/main"),
             "{out:?}"
@@ -587,7 +646,7 @@ mod tests {
         let mut perms = std::fs::metadata(&hook).expect("meta").permissions();
         std::os::unix::fs::PermissionsExt::set_mode(&mut perms, 0o755);
         std::fs::set_permissions(&hook, perms).expect("chmod");
-        let out = archive_night(&fx.archive, "2026-11-01", 1);
+        let out = archive_night(&fx.archive, "2026-11-01", 1, None);
         let ArchiveOutcome::Failed {
             step,
             detail,
@@ -612,12 +671,92 @@ mod tests {
         std::os::unix::fs::symlink(&fx.archive, &link).expect("symlink");
         fx.night("2026-11-01-demo-repo");
         assert!(matches!(
-            archive_night(&link, "2026-11-01", 1),
+            archive_night(&link, "2026-11-01", 1, None),
             ArchiveOutcome::Archived {
                 commit: Some(_),
                 ..
             }
         ));
+    }
+
+    fn ident() -> GitIdentity {
+        GitIdentity {
+            name: "dream-engine".into(),
+            email: "dream-engine@example.invalid".into(),
+        }
+    }
+
+    /// Blank identity in the checkout: overrides any account-wide identity, so
+    /// these tests do not depend on the machine running them.
+    fn blank_identity(repo: &Path) {
+        sh(repo, &["config", "user.name", ""]);
+        sh(repo, &["config", "user.email", ""]);
+    }
+
+    #[test]
+    fn the_configured_identity_is_passed_explicitly() {
+        let fx = Fixture::new();
+        blank_identity(&fx.archive);
+        fx.night("2026-11-01-demo-repo");
+        let out = archive_night(&fx.archive, "2026-11-01", 1, Some(&ident()));
+        assert!(
+            matches!(
+                out,
+                ArchiveOutcome::Archived {
+                    commit: Some(_),
+                    ..
+                }
+            ),
+            "{out:?}"
+        );
+        let who = sh(
+            &fx.bare,
+            &["log", "-1", "--format=%an <%ae> / %cn <%ce>", "main"],
+        );
+        assert_eq!(
+            who,
+            "dream-engine <dream-engine@example.invalid> / dream-engine <dream-engine@example.invalid>"
+        );
+    }
+
+    #[test]
+    fn a_missing_identity_names_the_configuration_to_set() {
+        let fx = Fixture::new();
+        blank_identity(&fx.archive);
+        fx.night("2026-11-01-demo-repo");
+        let before = fx.remote_log();
+        let out = archive_night(&fx.archive, "2026-11-01", 1, None);
+        let ArchiveOutcome::Failed {
+            step,
+            detail,
+            commit,
+        } = &out
+        else {
+            panic!("expected failure, got {out:?}");
+        };
+        assert_eq!((*step, commit.as_deref()), ("commit", None));
+        assert!(detail.contains(IDENTITY_KEYS), "{detail}");
+        assert!(out
+            .alert(&fx.archive)
+            .expect("alert")
+            .contains("git_author_email"));
+        assert_eq!(fx.remote_log(), before);
+    }
+
+    #[test]
+    fn identity_needs_both_parts_and_maps_to_author_and_committer() {
+        assert_eq!(GitIdentity::from_parts(Some("n"), None), None);
+        assert_eq!(GitIdentity::from_parts(Some(" "), Some("e@x")), None);
+        let id = GitIdentity::from_parts(Some(" n "), Some("e@x")).expect("both");
+        assert_eq!(
+            id.env(),
+            [
+                ("GIT_AUTHOR_NAME", "n"),
+                ("GIT_AUTHOR_EMAIL", "e@x"),
+                ("GIT_COMMITTER_NAME", "n"),
+                ("GIT_COMMITTER_EMAIL", "e@x"),
+            ]
+        );
     }
 
     #[test]

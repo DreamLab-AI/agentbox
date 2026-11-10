@@ -1,7 +1,7 @@
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 use std::sync::Arc;
-use tracing::{error, info};
+use tracing::{error, info, warn};
 use tracing_subscriber::EnvFilter;
 
 use dream_engine::config::RuntimeConfig;
@@ -268,8 +268,7 @@ fn day_int_and_date() -> (u32, String) {
     (day_int, date)
 }
 
-#[tokio::main]
-async fn main() {
+fn main() {
     tracing_subscriber::fmt()
         .with_env_filter(
             EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")),
@@ -278,6 +277,39 @@ async fn main() {
 
     let cli = Cli::parse();
     let runtime = load_runtime(&cli);
+
+    // Every commit the engine spawns, including those inside dream-core
+    // (candidate worktrees, ledger rows) that take no identity argument, uses
+    // the configured identity. Set while the process is still single-threaded,
+    // before the async runtime starts.
+    match runtime.git_identity() {
+        Some(identity) => {
+            for (key, value) in identity.env() {
+                std::env::set_var(key, value);
+            }
+            info!(name = %identity.name, email = %identity.email, "engine git identity");
+        }
+        None => warn!(
+            "no engine git identity configured: set {} — until then commits in a checkout \
+             without its own git identity fail (Author identity unknown)",
+            dream_engine::archive::IDENTITY_KEYS
+        ),
+    }
+
+    let rt = match tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+    {
+        Ok(rt) => rt,
+        Err(e) => {
+            error!(error = %e, "cannot start the async runtime");
+            std::process::exit(1);
+        }
+    };
+    rt.block_on(run(cli, runtime));
+}
+
+async fn run(cli: Cli, runtime: RuntimeConfig) {
     let artefact_dir = cli
         .artefact_dir
         .clone()

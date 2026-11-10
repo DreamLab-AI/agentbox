@@ -471,14 +471,16 @@ impl Engine {
         let c = nj.called("archive.push", json!({ "repos": repos })).await;
         let dir = self.artefact_dir.clone();
         let night = date.to_string();
-        let outcome =
-            tokio::task::spawn_blocking(move || archive::archive_night(&dir, &night, repos))
-                .await
-                .unwrap_or_else(|e| archive::ArchiveOutcome::Failed {
-                    step: "push",
-                    detail: format!("archive task panicked: {e}"),
-                    commit: None,
-                });
+        let identity = self.runtime.git_identity();
+        let outcome = tokio::task::spawn_blocking(move || {
+            archive::archive_night(&dir, &night, repos, identity.as_ref())
+        })
+        .await
+        .unwrap_or_else(|e| archive::ArchiveOutcome::Failed {
+            step: "push",
+            detail: format!("archive task panicked: {e}"),
+            commit: None,
+        });
         let ok = !matches!(outcome, archive::ArchiveOutcome::Failed { .. });
         nj.completed(c, ok, json!({ "outcome": format!("{outcome:?}") }))
             .await;

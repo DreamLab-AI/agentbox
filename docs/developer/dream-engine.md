@@ -227,9 +227,13 @@ Night artefacts are written under `workspace/dream-artefacts/<date>-<repo>/` (th
 - It acts only when the directory is the top of its own git work tree and has a remote. A plain directory, a subdirectory of another repository, or a work tree without a remote is left untouched.
 - It stages everything (`git add -A`; the checkout's `.gitignore` should exclude `.lock`, `*.lock` and `*.tmp*`, the night locks and atomic-write temporaries), commits only when something is staged, with the message `dream night <date>: artefacts of <n> repositories`, and pushes to the branch's upstream, or with no upstream to the single remote under the current branch name. The remote is whatever the checkout has; nothing in this repository names it.
 - It never force-pushes. A failed commit or push is logged, journalled and raised as an inbox `alert` (repo `archive`), which tonight's governance publish carries to the panel; the night is never aborted. A commit whose push failed stays local and is pushed by the next successful night; a push rejected because the remote moved on needs the operator to reconcile the checkout by hand.
-- Every git call is non-interactive (`GIT_TERMINAL_PROMPT=0`, SSH in batch mode) and time-limited, so a credential prompt or a hung network cannot stall the night. Commits use the checkout's own git identity; set one in the checkout if the account has none, or every night will raise a commit alert.
+- Every git call is non-interactive (`GIT_TERMINAL_PROMPT=0`, SSH in batch mode) and time-limited, so a credential prompt or a hung network cannot stall the night. Commits carry an explicit identity: see [Commit identity](#commit-identity).
 
 Review records (`review.json`) are therefore committed to the private archive with the rest of the night, which is intended: the archive is where reviews are kept.
+
+### Commit identity
+
+The engine commits in three places: candidate worktrees (inside `dream-core`), ledger rows, and the artefact archive. The container account has no global git identity, so a checkout without its own identity failed with `Author identity unknown`, which lost the ledger commit and, worse, made a candidate "not apply" and turned an ACCEPT into BLOCKED-ENV. Set `[dream_machine].git_author_name` and `git_author_email`: at start-up the engine exports them as `GIT_AUTHOR_*` and `GIT_COMMITTER_*` for every git process it spawns (the only way to reach the commits inside `dream-core`), and the archive commit also passes them explicitly. Unset, the engine logs a warning naming the two keys at start-up, and an archive commit that fails for want of an identity says which keys to set.
 
 ## Human review columns
 
