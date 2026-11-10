@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 69d4a8488bc79fe085e6df76e849c660e24d7505
+verified_commit: 5420315819a50977c570ec6a6b11aaf6397759ee
 verified_paths: [services/dream-engine/src/review.rs, services/dream-engine/src/archive.rs, services/dream-engine/src/ledger_io.rs, services/dream-engine/src/gitcmd.rs, services/dream-engine/src/records.rs, services/dream-engine/src/lib.rs, services/dream-engine/src/engine.rs, services/dream-engine/src/main.rs, services/dream-engine/src/config.rs, services/dream-engine/src/estate.rs, services/dream-engine/src/digest.rs, services/dream-engine/src/governance.rs, config/tmux-autostart.sh, schema/agentbox.toml.schema.json, setup/agentbox.default.toml]
 owner: jjohare
 review_trigger: a forge identity that separates agent merges from human merges (a dedicated agent account or signed human approvals), which would reopen merge events as review evidence; a review tool that authenticates its reviewer; any change that prunes, relocates or stops archiving the artefact directory; a dream-core release that changes the ledger row or the witness
@@ -16,7 +16,7 @@ domain: GOVERNANCE-capabilities
 lineage: amends ADR-2087 (decision point 5, the source of the Reviewer and Review-minutes cells)
 relates: [ADR-2087, ADR-2024, ADR-2071, ADR-2115, ADR-2141]
 evidence_class: source+test
-acceptance_boundary: "cargo test in services/dream-engine at 69d4a8488 passes 255 unit tests (29 in review.rs, including interleaved append and fill under the ledger lock; 19 in archive.rs, some against a local bare remote; 7 in ledger_io.rs; 13 in estate.rs, including the migration guard), 11 and 3 doc tests. Not shown: a night run by the rebuilt image, a real import into a live ledger, or a push to the private archive repository. Those are the activation evidence. Until the image is rebuilt, the running loop takes no ledger lock."
+acceptance_boundary: "cargo test in services/dream-engine at 542031581 passes 255 unit tests (29 in review.rs, including interleaved append and fill under the ledger lock; 19 in archive.rs, some against a local bare remote; 7 in ledger_io.rs; 13 in estate.rs, including the migration guard), 11 and 3 doc tests. Not shown: a night run by the rebuilt image, a real import into a live ledger, or a push to the private archive repository. Those are the activation evidence. Until the image is rebuilt, the running loop takes no ledger lock."
 ---
 
 # ADR-2190: Dream ledger human cells come only from recorded reviews, and night artefacts are a durable, archived record
@@ -60,7 +60,7 @@ Keep ADR-2087's merge-event rule and wire `review_from_merge` into the night. It
 
 ## Verification
 
-At `69d4a8488bc79fe085e6df76e849c660e24d7505` (PR #43, `dream-review-ledger`, after the review fixes):
+At `5420315819a50977c570ec6a6b11aaf6397759ee` (PR #43, `dream-review-ledger`, after the review fixes; the only change since `69d4a8488` is a test-only fix in `ledger_io.rs`, so the line references below hold at both):
 
 - `engine.rs:1944-1953`: the row is written with empty human cells, and the reason is stated. `engine.rs:190` runs the backfill at night start, and `:510` defines it, on a blocking thread, with the fallback identity. `engine.rs:396` archives the night before the governance publish, and `:470` defines it.
 - `records.rs:44-110`: the night's row is appended under the ledger lock through `dream_core::ledger::append_row` plus `fsync` (`:65-66`), and committed through `commit_ledger` before the lock is released (`:96-97`).
