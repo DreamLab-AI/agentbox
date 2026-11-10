@@ -911,6 +911,10 @@
           "description": "Bake the OpenCode harness CLI into the image.",
           "type": "boolean"
         },
+        "bend": {
+          "description": "ADR-2191: bake the pinned Bend 2 language toolchain (bendlang/bend, Apache-2.0): the bend checker and compiler, its guide, and a proof kernel built at image-build time so bend --verdict needs no Lean. GPU calls use the cuda toolchain when it is on.",
+          "type": "boolean"
+        },
         "code_server": {
           "description": "Bake code-server, a browser IDE served at /code/ in the operator cockpit through the identity proxy. Gets a writable volume for its settings.",
           "type": "boolean"
