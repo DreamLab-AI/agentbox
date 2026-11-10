@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: e2b49adfc22f60123a33c85fb9f456782c557b39
+verified_commit: 571c0ad436230a4ff3d0da4c0e344282417ba259
 verified_paths: [skills/ontology-augment, skills/podcast-knowledge-ingest, agents/ontology-curator.md, mcp/mcp.json, agentbox.toml, AGENTS.md]
 owner: jjohare
 review_trigger: a request to register any MCP server that reads or writes visionGraph, the ADR-140 /mcp plane reaching the deployed Loom, or the first `vault` subcommand an agent cannot express
@@ -188,3 +188,5 @@ Nothing this record decides is changed; its status axes are unchanged. Re-run: `
 Verified source commit `c1b0c700c42596d35a1faba3074b667c1928d8fb`.
 
 Only agentbox.toml changed: the optional direct AQE toolchain is enabled and Deepsec comments name VisionCraft. The [vault] corpus configuration, corpus skills, mcp/mcp.json and ontology-curator registration are unchanged. AQE is a quality-engineering MCP, not a corpus reader/writer; this amendment adds no ontology MCP. Manifest/configuration checks and the enabled/disabled AQE projection cases pass. Existing corpus activation limits remain.
+
+Re-verified 2026-11-10 at `571c0ad43` (PR #45, ADR-2191, the Bend toolchain). Governed-path delta since `e2b49adfc`: `agentbox.toml` gains `[toolchains].bend = true`. Every hunk is an addition. The change adds a gated language toolchain and no listener, published port, mount, volume, supervisor program, secret, identity, model route, vault path, registry entry or Nostr kind, and it alters no existing gate, so what this record decides is not touched. CI on that commit passed the flake evaluation on both architectures, config validation with the TUI round trip, the contract and adapter suites and the custody rehearsal. Re-run: `git diff e2b49adfc..571c0ad43 -- <verified_paths>`.

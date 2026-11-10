@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: e2b49adfc22f60123a33c85fb9f456782c557b39
+verified_commit: 571c0ad436230a4ff3d0da4c0e344282417ba259
 verified_paths: [agentbox.toml, skills/tree-search-coder/SKILL.md, services/agentbox-ops/src/bin/tree-search-cap.rs]
 owner: jjohare
 review_trigger: any new optional skill/feature block added to agentbox.toml, or any change to the tree-search-coder spend/route posture
@@ -369,3 +369,5 @@ Verified source commit `c1b0c700c42596d35a1faba3074b667c1928d8fb`.
 The optional agentic_qe gate changes false to true; both Claude and Codex projection retain disabled/missing-binary removal and preserve unrelated settings. Its existing rebuild-class catalogue contract remains. Tree-search skill references change the neighbouring quality method to VisionCraft without altering explicit opt-in, spend limits or never-auto-route rules; tree-search-cap.rs is unchanged. Three AQE boot cases, the manifest validator and all 118 catalogue paths pass. The running image has not yet enabled AQE.
 
 Re-verified 2026-11-05 at `3beca506c` for ADR-2177: ADR-2177 follows this record: `[skills.spatial_and_3d].supersplat` gates both the Nix package set (`spatialPackages`) and the supervisor block, with a `rebuild` apply class in `system-manifest.js`.
+
+Re-verified 2026-11-10 at `571c0ad43` (PR #45, ADR-2191, the Bend toolchain). Governed-path delta since `e2b49adfc`: `agentbox.toml` gains `[toolchains].bend = true`. Every hunk is an addition. The change adds a gated language toolchain and no listener, published port, mount, volume, supervisor program, secret, identity, model route, vault path, registry entry or Nostr kind, and it alters no existing gate, so what this record decides is not touched. **Review trigger fired** (a new optional gate in `agentbox.toml`). `[toolchains].bend` follows the gating rule: with the gate off `bendPackages` is the empty list, so no Bend store path reaches `allPackages` or a layer. `ENABLE_BEND=false` is still emitted when off, as every other `ENABLE_*` flag is. The byte-identical-when-off half of this record still needs a rebuilt image and is not advanced by this. CI on that commit passed the flake evaluation on both architectures, config validation with the TUI round trip, the contract and adapter suites and the custody rehearsal. Re-run: `git diff e2b49adfc..571c0ad43 -- <verified_paths>`.

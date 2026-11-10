@@ -278,8 +278,8 @@
     },
     "skills.data_science.statcraft": {
       "class": "rebuild",
-      "name": "StatCraft statistics",
-      "summary": "statcraft-run on PATH: SPSS syntax over CSV/SAV/XLSX with JSON results, no GUI (lib/statcraft.nix)."
+      "name": "StatCraft headless statistics runner",
+      "summary": "Bakes statcraft-run, the pure-Rust statistical analysis runner. No daemon or independent durable-state store."
     },
     "skills.docs.latex": {
       "class": "rebuild",
@@ -365,6 +365,11 @@
       "class": "rebuild",
       "name": "QGIS MCP",
       "summary": "Geospatial MCP server (:9877 plugin protocol); gated package + supervisor block."
+    },
+    "skills.spatial_and_3d.supersplat": {
+      "class": "rebuild",
+      "name": "SuperSplat editor + splat-transform",
+      "summary": "ADR-2177: the pinned SuperSplat static build served by [program:supersplat] (static-web-server, 0.0.0.0:8795 on the docker network only, never published, read-only) over $WORKSPACE/splats/share, plus the splat-transform CLI on PATH. Opened in the browser sidecar at http://agentbox:8795/editor/ (WebGPU only; the origin is on its TREAT_AS_SECURE list). REBUILD-class — package set and supervisor text are resolved at image composition."
     },
     "skills.tree_search_coder": {
       "class": "rebuild",
@@ -495,6 +500,11 @@
       "class": "rebuild",
       "name": "Antigravity CLI",
       "summary": "Gemini consultant harness CLI."
+    },
+    "toolchains.bend": {
+      "class": "rebuild",
+      "name": "Bend 2 language toolchain",
+      "summary": "ADR-2191: pinned bend checker/compiler (lib/bend.nix) with its guide and Base library, native builds through clang, GPU calls through the CUDA toolkit when toolchains.cuda provides one, and a BendTT kernel built at image-build time so `bend --verdict` needs no Lean at run time. Hub packages cache under $WORKSPACE/.bend/lib; `bend update` is refused."
     },
     "toolchains.claude_code": {
       "class": "rebuild",

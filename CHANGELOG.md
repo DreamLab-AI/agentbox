@@ -4,6 +4,15 @@ All notable changes to agentbox are documented here. Format inspired by [Keep a 
 
 ## [Unreleased]
 
+### Bend 2 toolchain (2026-11-10 — staged, ADR-2191)
+
+- `[toolchains].bend` bakes the pinned Bend 2.0.40 release (`lib/bend.nix`):
+  `bend` checks, runs and compiles to native binaries, C or JS, and `bend
+  --verdict` rechecks proofs with a BendTT kernel built at image-build time with
+  Lean 4.34.0, so Lean is not in the image. GPU calls use the `cuda` gate's
+  toolkit. `bend update` is refused and `bend login` is unavailable under the
+  read-only home. `tests/artifact-probes/bend-probe.sh` covers the launcher.
+
 ### VoiceLink tmux locale (2026-10-27 — staged)
 
 - The pinned `voice-paned` build forces UTF-8 for its tmux control client:

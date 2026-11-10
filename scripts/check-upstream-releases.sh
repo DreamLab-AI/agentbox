@@ -65,6 +65,11 @@ pinned=$(grep -oE 'codexVersion\s*=\s*"[^"]+"' lib/codex-binary.nix | head -1 | 
 latest=$(latest_npm "@openai/codex")
 print_row "openai/codex" "${pinned:-???}" "$latest"
 
+section "Bend 2 (bendlang/bend)"
+pinned=$(grep -oE 'bendVersion\s*=\s*"[^"]+"' lib/bend.nix | head -1 | sed 's/.*"\(.*\)"/\1/')
+latest=$(latest_gh_release "bendlang/bend" "v")
+print_row "bendlang/bend" "${pinned:-???}" "$latest"
+
 section "Antigravity CLI (google-antigravity/antigravity-cli)"
 pinned_agy=$(nix eval --raw nixpkgs#antigravity.version 2>/dev/null || echo "???")
 latest=$(latest_gh_release "google-antigravity/antigravity-cli" "v")

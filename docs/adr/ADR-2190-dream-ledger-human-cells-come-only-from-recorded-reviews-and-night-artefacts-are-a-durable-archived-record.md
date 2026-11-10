@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 5420315819a50977c570ec6a6b11aaf6397759ee
+verified_commit: 571c0ad436230a4ff3d0da4c0e344282417ba259
 verified_paths: [services/dream-engine/src/review.rs, services/dream-engine/src/archive.rs, services/dream-engine/src/ledger_io.rs, services/dream-engine/src/gitcmd.rs, services/dream-engine/src/records.rs, services/dream-engine/src/lib.rs, services/dream-engine/src/engine.rs, services/dream-engine/src/main.rs, services/dream-engine/src/config.rs, services/dream-engine/src/estate.rs, services/dream-engine/src/digest.rs, services/dream-engine/src/governance.rs, config/tmux-autostart.sh, schema/agentbox.toml.schema.json, setup/agentbox.default.toml]
 owner: jjohare
 review_trigger: a forge identity that separates agent merges from human merges (a dedicated agent account or signed human approvals), which would reopen merge events as review evidence; a review tool that authenticates its reviewer; any change that prunes, relocates or stops archiving the artefact directory; a dream-core release that changes the ledger row or the witness
@@ -73,3 +73,5 @@ At `5420315819a50977c570ec6a6b11aaf6397759ee` (PR #43, `dream-review-ledger`, af
 - No caller of the merge-event rule. `git grep -n reviewFromMergeEvent` and `git grep -n review_from_merge` find no code, only documentation of the withdrawal and the historical evidence note `.claude/evidence/EXP-AC-006.evidence.md`. In the pinned `dream-core` 0.4.1 registry source, `review_from_merge` is defined (`src/ledger.rs:128`) and called only by its own tests.
 
 Activation (`staged` → `live`) needs three things: a night run by the rebuilt image that pushes the artefact archive, one real `review import` that fills a ledger row, and the legacy directory migrated (or confirmed as a symlink) on the live host.
+
+Re-verified 2026-11-10 at `571c0ad43` (PR #45, ADR-2191, the Bend toolchain). Governed-path delta since `542031581`: `schema/agentbox.toml.schema.json` gains the boolean `toolchains.bend`. Every hunk is an addition. The change adds a gated language toolchain and no listener, published port, mount, volume, supervisor program, secret, identity, model route, vault path, registry entry or Nostr kind, and it alters no existing gate, so what this record decides is not touched. CI on that commit passed the flake evaluation on both architectures, config validation with the TUI round trip, the contract and adapter suites and the custody rehearsal. Re-run: `git diff 542031581..571c0ad43 -- <verified_paths>`.

@@ -289,11 +289,29 @@ deepsec       = true     # vercel-labs deepsec vulnerability reviewer (ADR-2033)
 rust          = true
 antigravity_cli = true   # Google Antigravity CLI (agy)
 codex         = true     # OpenAI Codex Rust CLI
+bend          = true     # Bend 2 language toolchain (ADR-2191)
 code_server   = true     # Web IDE on port 8080
 cuda          = true     # CUDA toolchain (requires [gpu].backend = "local-cuda")
 ```
 
 Validator rule **E019**: `cuda = true` requires `gpu.backend = "local-cuda"`.
+
+`bend = true` bakes the pinned [Bend 2](https://bend-lang.com) release
+(`lib/bend.nix`, ADR-2191). Run `bend guide` before writing Bend code.
+
+| Command | What it needs here |
+|---|---|
+| `bend file.bend` | nothing more: checks, then runs `main` |
+| `bend file.bend -o file` | clang, which the launcher supplies |
+| `bend file.bend --verdict` | the BendTT kernel baked into the image; no Lean |
+| a `!` (GPU) call | `cuda = true`; otherwise it runs on the CPU |
+| an `import` from the hub | network; packages cache in `$WORKSPACE/.bend/lib` |
+
+`bend update` is refused (the version is pinned; bump `lib/bend.nix` and
+rebuild) and `bend login` cannot store its token, because the home directory is
+read-only. Programs that open a window or play audio need X11 and ALSA
+development libraries the image does not carry. The launcher turns off Bend's
+daily version check; set `BEND_NO_TELEMETRY=` (empty) to allow it.
 
 `ruflo_console = true` bakes the `/ruflo` cockpit into Claude Code. In the
 normal tmux tabs, use `./agentbox.sh shell` to preserve the local terminal's

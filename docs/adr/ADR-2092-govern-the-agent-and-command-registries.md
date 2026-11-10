@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: e2b49adfc22f60123a33c85fb9f456782c557b39
+verified_commit: 571c0ad436230a4ff3d0da4c0e344282417ba259
 verified_paths: [agents/registered-agents.txt, scripts/reconcile-agents.sh, scripts/reconcile-commands.sh, scripts/project-skill-roots.mjs, config/registered-commands.txt, config/entrypoint-unified.sh, flake.nix, tests/config/agent-reconcile.test.sh, scripts/reconcile-skills.sh, skills/registered-skills.txt, skills/codex-registered-skills.txt, tests/config/visioncraft-cutover.test.mjs]
 owner: jjohare
 review_trigger: a new subagent worth always-loading, or evidence the router surfaces baked-but-unregistered skills too slowly; a reconcile audit on the running image showing ~/.claude/agents matches agents/registered-agents.txt (activation → live)
@@ -453,3 +453,5 @@ Verified source commit `c1b0c700c42596d35a1faba3074b667c1928d8fb`.
 Reviewed the earlier shared-file deltas (DREAM_GOVERNANCE_PRIVKEY_HEX custody classification and removal of retired precedent-bridge from the default hub list) and this task's Nix/source-pin, AQE boot and quality-name cutover changes. Existing agent/command reconciler bodies and their allowlists are unchanged. The skill reconciler retires the old name only after VisionCraft is available, preserves custom content in a hidden archive, and passes both migration and idempotence cases. Source inventory, 131-skill lint/count and Nix parsing pass. No running-image reconciliation or deployment receipt is claimed.
 
 Re-verified 2026-11-05 at `3beca506c` for ADR-2177: skills registries gain one entry; the agent and command registries are unchanged.
+
+Re-verified 2026-11-10 at `571c0ad43` (PR #45, ADR-2191, the Bend toolchain). Governed-path delta since `e2b49adfc`: `flake.nix` gains `bendLib` and `bendPackages`, one `++ bendPackages` in `allPackages` and one in the `toolchains` layer group, and `ENABLE_BEND` in the image environment. Every hunk is an addition apart from one re-wrapped line in the `toolchains` layer group. The change adds a gated language toolchain and no listener, published port, mount, volume, supervisor program, secret, identity, model route, vault path, registry entry or Nostr kind, and it alters no existing gate, so what this record decides is not touched. CI on that commit passed the flake evaluation on both architectures, config validation with the TUI round trip, the contract and adapter suites and the custody rehearsal. Re-run: `git diff e2b49adfc..571c0ad43 -- <verified_paths>`.

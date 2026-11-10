@@ -1,10 +1,11 @@
 ---
 title: Agentbox Container Baseline
 doc_id: AB-BASELINE
-version: 0.5.15
+version: 0.5.16
 status: draft-for-ratification
 verified_commit: 
 changelog:
+  - "0.5.16 (2026-11-10): ADR-2191 (accepted, partial, staged). [toolchains].bend (rebuild class, on) bakes the pinned Bend 2 release from lib/bend.nix: the checker/compiler with only its ELF interpreter rewritten, a BendTT kernel built at image-build time with the exact Lean release Bend names (Lean is not in the image), and a launcher that pins the kernel, turns the version check off, caches hub packages under $WORKSPACE/.bend/lib and refuses bend update."
   - "0.5.15 (2026-11-05): ADR-2177 (accepted, partial, staged). [skills.spatial_and_3d] supersplat (rebuild class, on) builds the pinned SuperSplat editor and splat-transform CLI; [program:supersplat] serves $WORKSPACE/splats/share read-only on 0.0.0.0:8795 (docker network only, sanctioned listener), and the browser sidecar treats http://agentbox:8795 as secure."
   - "0.5.14 (2026-11-04): ADR-2175 (accepted, partial, staged). Image-to-splat adds a pinned SplatKit dataset stage to the ComfyUI sidecar (build arg SPLATKIT=1): splat_pipeline.py drives pano, geometry, preview and dataset jobs from pinned API graphs; an agentbox_video export node lets the client fetch the hash-checked COLMAP dataset over /view; weights come only from the splat-pano and splat-dataset profiles; training stays in LichtFeld behind its existing gate. No new port, mount or adapter."
   - "0.5.13 (2026-10-29): ADR-2153 is live: owned session daemon replaces AoE, :9095 and the board; profile volume retained unused for recovery. Cold boot and provider limits are recorded in the ADR."
@@ -88,6 +89,15 @@ PATH. `[program:supersplat]` serves `$WORKSPACE/splats/share` read-only on
 `0.0.0.0:8795`, never published, and mirrors the editor into its `editor/`
 folder at start. Agents open `http://agentbox:8795/editor/?load=/<name>/<file>`
 in the browser sidecar (WebGPU only) and drive it through its event bus.
+
+Bend (ADR-2191, staged until the host rebuild): `[toolchains].bend` puts the
+pinned Bend 2 `bend` on PATH from `lib/bend.nix`. The upstream executable keeps
+its layout and has only its ELF interpreter rewritten, because rewriting more
+breaks it. `bend --verdict` uses a BendTT kernel compiled at image-build time
+with the exact Lean release Bend names, so Lean is not in the image and nothing
+is written under the read-only home. Native builds use clang, GPU calls use the
+`[toolchains].cuda` toolkit when present, hub packages cache under
+`$WORKSPACE/.bend/lib`, and `bend update` and `bend login` do not work here.
 
 ### Supervised services (real `[program:*]` blocks in flake.nix)
 

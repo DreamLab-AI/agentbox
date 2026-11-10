@@ -2291,6 +2291,7 @@ rust = true
 antigravity_cli = true
 codex = true
 opencode = true
+bend = true  # ADR-2191: Bend 2 (bendlang/bend@2.0.40, Apache-2.0) — `bend` checker/compiler, guide and Base, plus the BendTT kernel for `--verdict` built at image-build time with Lean 4.34.0 (lib/bend.nix; Lean itself is not baked). GPU calls use the cuda gate's toolkit, else the CPU. rebuild-class
 code_server = true
 cuda = true
 

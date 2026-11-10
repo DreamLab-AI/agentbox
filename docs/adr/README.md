@@ -59,7 +59,7 @@ detect changes to files it already lists — it is structurally blind to **addit
 is exactly how a new crate landed unlicensed under ADR-2030 while the record still read as
 verified and its `review_trigger` ("any new crate under `services/`") sat unactioned.
 
-_150 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
+_151 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
 
 | ID | Title | Domain | Date | Decision | Impl | Activation | Supersedes | Superseded by | Owner | Repo |
 |----|-------|--------|------|----------|------|------------|------------|---------------|-------|------|
@@ -213,3 +213,4 @@ _150 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
 | [ADR-2175](ADR-2175-image-to-splat-is-a-pinned-splatkit-dataset-stage-in-the-comfyui-sidecar.md) | Image-to-splat is a pinned SplatKit dataset stage in the ComfyUI sidecar, driven by API, trained outside it | BASELINE-container | 2026-11-04 | accepted | partial | staged | — | — | jjohare | agentbox |
 | [ADR-2177](ADR-2177-supersplat-editor-is-served-in-container-and-driven-in-the-browser-sidecar.md) | The SuperSplat editor is served in-container and driven in the browser sidecar; splat-transform is on PATH | BASELINE-container | 2026-11-05 | accepted | partial | staged | — | — | jjohare | agentbox |
 | [ADR-2190](ADR-2190-dream-ledger-human-cells-come-only-from-recorded-reviews-and-night-artefacts-are-a-durable-archived-record.md) | Dream ledger human cells come only from recorded reviews, and night artefacts are a durable, archived record | GOVERNANCE-capabilities | 2026-11-10 | accepted | complete | staged | — | — | jjohare | agentbox |
+| [ADR-2191](ADR-2191-bend-is-baked-from-the-pinned-release-with-a-prebuilt-proof-kernel.md) | Bend is baked from the pinned upstream release, with the proof kernel built at image-build time | BASELINE-container | 2026-11-10 | accepted | partial | staged | — | — | jjohare | agentbox |

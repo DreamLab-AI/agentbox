@@ -1116,6 +1116,17 @@
           ((toolchainCfg.codex or false) && pkgs.stdenv.isLinux)
           [ (codexLib.makeCodex system) ];
 
+        # Bend 2 — proof-checked language that compiles to C and CUDA
+        # (ADR-2191). lib/bend.nix pins the upstream release archive, builds
+        # the BendTT kernel `bend --verdict` needs with the exact Lean release
+        # that Bend demands, and wraps both in a launcher. Lean is a build
+        # input only; the GPU path uses the image's CUDA when [toolchains].cuda
+        # provides one and falls back to the CPU otherwise.
+        bendLib = import ./lib/bend.nix { inherit lib pkgs; };
+        bendPackages = lib.optionals
+          ((toolchainCfg.bend or false) && pkgs.stdenv.isLinux)
+          [ (bendLib.makeBend system) ];
+
         # OpenCode is an AoE first-class agent. It supplies the native session
         # lifecycle for OpenAI-compatible Gemma LAN and DeepSeek providers.
         opencodePackages = lib.optionals (toolchainCfg.opencode or false) [ pkgs.opencode ];
@@ -2059,6 +2070,7 @@ default_days = ${toString (relayCfg.retention_days or 30)}
           ++ desktopPackages
           ++ antigravityCliPackages
           ++ codexPackages
+          ++ bendPackages
           ++ opencodePackages
           ++ claudeCodePackages
           ++ networkingPackages
@@ -4497,6 +4509,7 @@ ${ragflowNetworkDecl}
           "OPENSSL_INCLUDE_DIR=${pkgs.openssl.dev}/include"
           "ENABLE_ANTIGRAVITY_CLI=${boolEnv (toolchainCfg.antigravity_cli or false)}"
           "ENABLE_CODEX=${boolEnv (toolchainCfg.codex or false)}"
+          "ENABLE_BEND=${boolEnv (toolchainCfg.bend or false)}"
           "CODEX_HOME=/home/devuser/.codex"
           "GIT_CONFIG_GLOBAL=/home/devuser/.config/git/config"
           "CLAUDE_FLOW_PLUGIN_DIR=/home/devuser/.claude-flow/plugins"
@@ -4613,7 +4626,8 @@ ${ragflowNetworkDecl}
                 ++ networkingPackages ++ gpuCfg.nixPackages
                 ++ lib.subtractLists allPackages extraPackages; }
             { name = "toolchains"; packages = [ rustToolchain rustNightlyToolchain
-                pkgs.pkgsStatic.stdenv.cc pkgs.musl ] ++ headroomPackages; }
+                pkgs.pkgsStatic.stdenv.cc pkgs.musl ] ++ headroomPackages
+                ++ bendPackages; }
             { name = "agent-clis"; packages = codexPackages ++ claudeCodePackages
                 ++ opencodePackages ++ antigravityCliPackages
                 ++ npmCliAlwaysPackages ++ npmCliGatedPackages; }
