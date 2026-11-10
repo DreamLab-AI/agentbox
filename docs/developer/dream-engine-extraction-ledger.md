@@ -91,7 +91,7 @@ Still open, by design:
 - `manifest::baseline_of` was not extracted (it shells out to git); it lives in `baseline.rs`.
 - `DreamConfig` leaves `ledgerPath`, `branchPrefix` and `adrConvention` empty; `config::apply_estate_defaults` fills them.
 - `dream_core::ledger::review_from_merge` moved with the ledger (its three tests are listed below as moved), but the adapter never calls it. Filling the `Reviewer` and `Review-minutes` cells from a pull request's merge event was withdrawn by ADR-2190, because agents merge under the operator's account. The cells are filled only from a recorded human review (`review.json`) by `review.rs`, on a later night or by `dream-engine review import`. The JavaScript twin, `reviewFromMergeEvent` in `management-api/lib/dream-ledger.js`, was removed with its tests.
-- The adapter no longer calls `dream_core::ledger::append_row` or `commit_ledger` for the nightly row. `ledger_io.rs` re-implements both under a per-ledger lock that the review backfill also takes, with crash-safe replace and bounded git calls (ADR-2190). Row rendering, the row contract and the empty-ledger header still come from `dream_core::ledger`.
+- The nightly row is still written by `dream_core::ledger::append_row` and committed by `commit_ledger`. The adapter only serialises them (`ledger_io.rs`, ADR-2190). It runs both under a per-ledger lock that the review backfill and `review import` also take, and adds an `fsync` after the append. The review fill's own write goes through a crash-safe replace (temporary file, `fsync`, rename, directory `fsync`). That replace is adapter I/O, not a copy of a moved module: dream-gate's `write_atomic` neither syncs nor writes through a symlink.
 
 ### Call-order invariant
 

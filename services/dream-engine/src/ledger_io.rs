@@ -1,5 +1,5 @@
 //! Serialised, durable ledger writes: one advisory lock per ledger, a
-//! crash-safe replace, the row append and a bounded ledger commit.
+//! crash-safe replace, and the row append and ledger commit run under it.
 //!
 //! Two writers edit a repository's `docs/dream-cycle/LEDGER.md`: the night
 //! appending its row, and the review backfill filling a row's human cells
@@ -11,10 +11,16 @@
 //! 1. takes the ledger's [`LedgerLock`] (bounded wait, a clear error on
 //!    timeout),
 //! 2. reads the ledger **inside** the lock, immediately before writing,
-//! 3. replaces it ([`replace`]: temporary file, `fsync`, rename, directory
-//!    `fsync`, written through a symlinked ledger rather than over the link),
-//! 4. commits it ([`commit_ledger`], every git call bounded), and only then
-//!    releases the lock, so two commits never collide on `index.lock`.
+//! 3. writes it: the night's row through `dream_core::ledger::append_row`
+//!    followed by an `fsync` ([`append_row`]), a review fill through
+//!    [`replace`] (temporary file, `fsync`, rename, directory `fsync`); both
+//!    write through a symlinked ledger rather than over the link,
+//! 4. commits it through `dream_core::ledger::commit_ledger` ([`commit`]),
+//!    and only then releases the lock, so two commits never collide on
+//!    `index.lock`.
+//!
+//! The ledger mechanism itself (row rendering, the row contract, the commit
+//! rules) stays in `dream-core` (ADR-2141); this module only serialises it.
 //!
 //! The lock lives in the repository's git directory (`dream-ledger.lock`),
 //! keyed on the symlink-resolved ledger, so every caller derives the same
@@ -30,16 +36,18 @@ use std::time::{Duration, Instant};
 use dream_core::ledger::{self, LedgerCommit, LedgerRow};
 use thiserror::Error;
 
-use crate::archive::{identity_args, identity_hint, GitIdentity};
+use crate::archive::{identity_hint, GitIdentity};
 use crate::gitcmd::git;
 
 /// How long a ledger writer waits for another to finish before giving up.
-/// Longer than one holder can keep the lock: a read, a write and a commit of
-/// at most a handful of [`GIT_TIMEOUT`]-bounded git calls.
+/// A normal holder keeps the lock for a read, a write and a local commit, well
+/// under this. The commit is `dream_core::ledger::commit_ledger`, whose git
+/// calls are not time-limited: a git hung under the lock makes every waiter
+/// give up after this wait with [`LockError::Busy`], naming the lock file.
 pub const DEFAULT_LOCK_WAIT: Duration = Duration::from_secs(300);
 
-/// Longest one git call of a ledger commit may run.
-pub const GIT_TIMEOUT: Duration = Duration::from_secs(30);
+/// Longest the git-directory lookup for the lock path may run.
+const GIT_TIMEOUT: Duration = Duration::from_secs(30);
 
 /// How often a held lock is retried.
 const RETRY: Duration = Duration::from_millis(100);
@@ -279,29 +287,6 @@ pub fn replace(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
     result
 }
 
-/// The ledger text with `row` appended: a fresh header and divider for an
-/// absent or blank ledger, a missing final newline supplied, the row repaired
-/// against the row contract (as `dream_core::ledger::append_row` does).
-pub fn appended(existing: &str, row: &LedgerRow) -> String {
-    let mut row = row.clone();
-    let broken = ledger::enforce_contract(&mut row, "");
-    if !broken.is_empty() {
-        tracing::warn!(rules = ?broken, finding = %row.finding, "ledger row broke the row contract; repaired before append");
-    }
-    let mut out = if existing.trim().is_empty() {
-        ledger::empty_ledger()
-    } else {
-        let mut s = existing.to_string();
-        if !s.ends_with('\n') {
-            s.push('\n');
-        }
-        s
-    };
-    out.push_str(&ledger::render_row(&row));
-    out.push('\n');
-    out
-}
-
 /// Read the ledger the lock guards, as it is now (`""` when absent).
 ///
 /// # Errors
@@ -315,97 +300,36 @@ pub fn read(lock: &LedgerLock) -> std::io::Result<String> {
     }
 }
 
-/// Append `row` to the ledger the lock guards, re-reading it first.
+/// Append `row` to the ledger the lock guards with
+/// `dream_core::ledger::append_row` (which re-reads the ledger, bootstraps an
+/// absent one and repairs the row against the row contract), then `fsync` the
+/// ledger and its directory. Writes through a symlinked ledger.
 ///
 /// # Errors
 ///
-/// Any I/O error reading or replacing the ledger.
+/// Any I/O error appending or syncing.
 pub fn append_row(lock: &LedgerLock, row: &LedgerRow) -> std::io::Result<()> {
-    let existing = read(lock)?;
-    replace(lock.ledger(), appended(&existing, row).as_bytes())
+    ledger::append_row(lock.ledger(), row).map_err(|ledger::LedgerError::Io(e)| e)?;
+    File::open(lock.ledger())?.sync_all()?;
+    if let Some(dir) = lock.ledger().parent() {
+        File::open(dir)?.sync_all()?;
+    }
+    Ok(())
 }
 
-/// Commit the ledger file, and only it, on the repository's default branch,
-/// with every git call bounded by [`GIT_TIMEOUT`]. The same contract as
-/// `dream_core::ledger::commit_ledger` (local commit only, never pushed; HEAD
-/// off the default branch leaves the row for the operator), plus the fallback
-/// identity rule of [`GitIdentity::args_for`]. Call it while holding the
-/// ledger's [`LedgerLock`].
-pub fn commit_ledger(
+/// Commit the ledger with `dream_core::ledger::commit_ledger` (the ledger file
+/// only, on the default branch only, never pushed). Call it while holding the
+/// ledger's [`LedgerLock`]. A failure in a repository with no identity, when
+/// no fallback is configured, names the configuration keys to set.
+pub fn commit(
     repo: &Path,
     ledger_path: &Path,
     message: &str,
     identity: Option<&GitIdentity>,
 ) -> LedgerCommit {
-    let run = |args: &[&str]| git(repo, args, GIT_TIMEOUT);
-    let head = match run(&["symbolic-ref", "--quiet", "--short", "HEAD"]) {
-        Ok(r) if r.success => r.stdout.trim().to_string(),
-        Ok(_) => return LedgerCommit::NotDefaultBranch("(detached)".into()),
-        Err(e) => return LedgerCommit::Failed(e),
-    };
-    let default = run(&[
-        "symbolic-ref",
-        "--quiet",
-        "--short",
-        "refs/remotes/origin/HEAD",
-    ])
-    .ok()
-    .filter(|r| r.success)
-    .map(|r| r.stdout.trim().trim_start_matches("origin/").to_string())
-    .unwrap_or_else(|| {
-        let has = |b: &str| {
-            run(&[
-                "show-ref",
-                "--verify",
-                "--quiet",
-                &format!("refs/heads/{b}"),
-            ])
-            .map(|r| r.success)
-            .unwrap_or(false)
-        };
-        if !has("main") && has("master") {
-            "master".into()
-        } else {
-            "main".into()
-        }
-    });
-    if head != default {
-        return LedgerCommit::NotDefaultBranch(head);
-    }
-
-    let path = ledger_path.to_string_lossy();
-    match run(&["status", "--porcelain", "--", &path]) {
-        Ok(r) if r.success && r.stdout.trim().is_empty() => return LedgerCommit::NothingToCommit,
-        Ok(r) if !r.success => return LedgerCommit::Failed(r.message()),
-        Err(e) => return LedgerCommit::Failed(e),
-        _ => {}
-    }
-    // A freshly bootstrapped ledger is untracked, and `commit --only` refuses a
-    // pathspec git does not know; add that one path first.
-    let tracked = run(&["ls-files", "--error-unmatch", "--", &path])
-        .map(|r| r.success)
-        .unwrap_or(false);
-    if !tracked {
-        match run(&["add", "--", &path]) {
-            Ok(r) if r.success => {}
-            Ok(r) => return LedgerCommit::Failed(r.message()),
-            Err(e) => return LedgerCommit::Failed(e),
-        }
-    }
-    let id_args = identity_args(repo, identity);
-    let mut args: Vec<&str> = id_args.iter().map(String::as_str).collect();
-    args.extend(["commit", "--quiet", "--only", "-m", message, "--", &path]);
-    match run(&args) {
-        Ok(r) if r.success => {
-            let id = run(&["rev-parse", "--short", "HEAD"])
-                .ok()
-                .filter(|r| r.success)
-                .map(|r| r.stdout.trim().to_string())
-                .unwrap_or_default();
-            LedgerCommit::Committed(id)
-        }
-        Ok(r) => LedgerCommit::Failed(identity_hint(repo, identity, r.message())),
-        Err(e) => LedgerCommit::Failed(identity_hint(repo, identity, e)),
+    match ledger::commit_ledger(repo, ledger_path, message) {
+        LedgerCommit::Failed(e) => LedgerCommit::Failed(identity_hint(repo, identity, e)),
+        other => other,
     }
 }
 
@@ -518,14 +442,20 @@ mod tests {
 
     #[test]
     fn append_bootstraps_and_keeps_existing_rows() {
-        let first = appended("", &row("2026-11-01", "aaaaaaaaaaaa"));
-        assert!(first.starts_with("| Date |"), "{first}");
-        let second = appended(
-            first.trim_end_matches('\n'),
-            &row("2026-11-02", "bbbbbbbbbbbb"),
-        );
-        assert!(second.contains("aaaaaaaaaaaa") && second.contains("bbbbbbbbbbbb"));
-        assert!(second.ends_with("|\n"));
+        let d = tempfile::tempdir().expect("tempdir");
+        let ledger = d.path().join("docs/LEDGER.md");
+        let lock = LedgerLock::acquire(&ledger, Duration::ZERO).expect("lock");
+        append_row(&lock, &row("2026-11-01", "aaaaaaaaaaaa")).expect("first");
+        std::fs::write(
+            &ledger,
+            std::fs::read_to_string(&ledger).expect("read").trim_end(),
+        )
+        .expect("strip newline");
+        append_row(&lock, &row("2026-11-02", "bbbbbbbbbbbb")).expect("second");
+        let text = std::fs::read_to_string(&ledger).expect("read");
+        assert!(text.starts_with("| Date |"), "{text}");
+        assert!(text.contains("aaaaaaaaaaaa |") && text.contains("bbbbbbbbbbbb |"));
+        assert_eq!(ledger::parse_ledger(&text).rows.len(), 2, "{text}");
     }
 
     #[test]
@@ -537,7 +467,7 @@ mod tests {
         let lock = LedgerLock::acquire(&ledger, Duration::ZERO).expect("lock");
         append_row(&lock, &row("2026-11-01", "aaaaaaaaaaaa")).expect("append");
         let fallback = GitIdentity::from_parts(Some("fallback"), Some("f@example.invalid"));
-        let out = commit_ledger(&r, &ledger, "ledger row", fallback.as_ref());
+        let out = commit(&r, &ledger, "ledger row", fallback.as_ref());
         assert!(matches!(out, LedgerCommit::Committed(_)), "{out:?}");
         assert_eq!(
             sh(&r, &["log", "-1", "--format=%an", "--name-only"]),

@@ -789,8 +789,8 @@ pub fn fill_ledger_text(
 }
 
 /// Backfill one night's ledger row from a validated record, then commit the
-/// ledger locally ([`ledger_io::commit_ledger`]: the ledger file only, on the
-/// default branch only, never pushed).
+/// ledger locally ([`ledger_io::commit`], dream-core's `commit_ledger`: the
+/// ledger file only, on the default branch only, never pushed).
 ///
 /// In [`Mode::Apply`] the read, the edit, the crash-safe replace and the
 /// commit all happen under the ledger's lock, the ledger read inside it.
@@ -847,7 +847,7 @@ pub fn fill_ledger(
         ledger_io::replace(lock.ledger(), new_text.as_bytes())?;
         let repo_dir = workspace.join(&rec.repo);
         if crate::archive::is_own_work_tree(&repo_dir) {
-            commit = Some(ledger_io::commit_ledger(
+            commit = Some(ledger_io::commit(
                 &repo_dir,
                 &path,
                 &format!(

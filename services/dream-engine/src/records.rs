@@ -93,7 +93,7 @@ impl Engine {
         let identity = self.runtime.git_identity();
         // The lock moves into the commit task and drops when the commit ends.
         let outcome = tokio::task::spawn_blocking(move || {
-            let outcome = ledger_io::commit_ledger(&repo, &path, &message, identity.as_ref());
+            let outcome = ledger_io::commit(&repo, &path, &message, identity.as_ref());
             drop(lock);
             outcome
         })
