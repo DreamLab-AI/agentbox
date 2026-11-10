@@ -73,7 +73,7 @@ One cycle (`run_cycle`) is a fixed sequence:
 7. **Verdict + finding** — parse the verdict, sanitise a one-line finding for the ledger cell.
 8. **Witness** — bind the report to the repo's current commit.
 9. **Persist report** locally under the artefact dir.
-10. **Ledger row** — append to the repo's `ledgerPath`.
+10. **Ledger row** — append to the repo's `ledgerPath`. The two human columns are left empty; only a recorded human review fills them, on a later night (see [Human review columns](#human-review-columns)).
 
 Between steps 6 and 8 two things now happen that the old engine did not do. The protected-path guard (ADR-2141) checks the patch before any git command, build or evaluator runs, and the candidate tree's `dream.config.json` digest is compared with the frozen one. Every night that reaches the gate also leaves a replay capture (`replay.json`, `decision.json`, `candidate.patch`) in the artefact directory, so the decision can be re-judged later with the same protected set (`replay verify` in the permissive `dream-cli`). Draft PRs stay human-merged; the permissive core has an automerge option, default off, which this adapter does not enable.
 
@@ -213,9 +213,74 @@ dream-engine --once                       # one cycle now, ignoring the window
 dream-engine --dry-run                     # compile + select only; no dispatch, no LLM
 dream-engine --once --target <repo>        # force a specific nominated repo
 dream-engine --once --workspace <path> --artefact-dir <path>
+dream-engine review import reviews.jsonl --dry-run   # validate human reviews; write nothing
 ```
 
-Night artefacts (reports, receipts) are written under `workspace/.tmp/dream-annexe-artefacts/<date>-<repo>/`.
+### The artefact directory is durable
+
+Night artefacts are written under `workspace/dream-artefacts/<date>-<repo>/` (the default; `[dream_machine].artefact_dir` or `--artefact-dir` overrides it): `report.md`, `manifest.json`, `receipts/`, `gate.json`, `decision.json`, `replay.json`, `candidate.patch` when there is one, and `review.json` once a person has reviewed the night. Fleet files (`failures-*.json`, `harvest-*.md`) sit beside the night folders. The fallback tmux launcher's loop log is written to `workspace/.agentbox/dream-loop.log`, never into this directory, which is committed nightly.
+
+**Nothing may prune this directory** — no tmp cleaner, retention job, disk-space sweep or agent tidy-up. A ledger row is bound to its folder by its witness, `sha256(sha256(report) ‖ baseline revision)`: once the folder is gone the row can no longer be checked, the decision can no longer be replayed, and a human review of that night can no longer be recorded, because the importer refuses any review it cannot match to a witness recomputed from the folder. The directory used to live under `workspace/.tmp`, the container's `TMPDIR`: scratch space that any tool or agent may clear, and no place for evidence. Nights before 2026-10-06 no longer exist. The old path is kept as a symlink to the new one so older binaries keep writing to the durable directory; do not remove it until no running binary predates this default.
+
+**Un-migrated deployments.** supervisord passes no `--artefact-dir`, so a rebuilt engine on a host whose nights are still in the legacy `workspace/.tmp/dream-annexe-artefacts` would otherwise start from an empty directory and could rerun a night. At start-up, and again each time the nightly window opens, the engine checks: if the resolved artefact directory holds no `<date>-<repo>` folder while the legacy directory exists, is not the same directory (for example a symlink to it), and does hold night folders, it runs no night. It logs an error and raises one inbox `alert` (repo `archive`) naming both paths and the migration, `mkdir -p <new> && mv -n <legacy>/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]-* <new>/`, which also works when the new directory is already an archive checkout. A one-shot `--once` exits 1; the loop keeps running and resumes by itself once the folders are moved.
+
+**The directory is the checkout of a private archive repository.** At the end of every night, after the last cycle and before the governance panel is published, the engine archives it (`services/dream-engine/src/archive.rs`):
+
+- It acts only when the directory is the top of its own git work tree and has a remote. A plain directory, a subdirectory of another repository, or a work tree without a remote is left untouched.
+- It first makes sure the checkout's `.gitignore` holds `.lock`, `*.lock`, `*.tmp*` and `loop.log` (the night and ledger locks, atomic-write temporaries, and any loop log), appending only the missing lines and never rewriting the rest, and stops tracking a `loop.log` committed before that line existed. It then stages everything (`git add -A`), commits only when something is staged, with the message `dream night <date>: artefacts of <n> repositories`, and pushes to the branch's upstream, or with no upstream to the single remote under the current branch name. The remote is whatever the checkout has; nothing in this repository names it.
+- It never force-pushes. A failed commit or push is logged, journalled and raised as an inbox `alert` (repo `archive`), which tonight's governance publish carries to the panel; the night is never aborted. A commit whose push failed stays local and is pushed by the next successful night; a push rejected because the remote moved on needs the operator to reconcile the checkout by hand.
+- Every git call is non-interactive (`GIT_TERMINAL_PROMPT=0`) and time-limited, so a credential prompt or a hung network cannot stall the night. The push runs SSH in batch mode (`ssh -o BatchMode=yes`) only when nothing else chooses the SSH command: a `GIT_SSH_COMMAND` or `GIT_SSH` in the environment, or a `core.sshCommand` the checkout (or account) configures, such as a deploy-key command, is used as is. The commit identity follows [Commit identity](#commit-identity).
+
+Review records (`review.json`) are therefore committed to the private archive with the rest of the night, which is intended: the archive is where reviews are kept.
+
+### Commit identity
+
+The engine commits in three places: candidate worktrees (inside `dream-core`), ledger rows, and the artefact archive. The container account has no global git identity, so a checkout without its own identity failed with `Author identity unknown`, which lost the ledger commit and, worse, made a candidate "not apply" and turned an ACCEPT into BLOCKED-ENV.
+
+`[dream_machine].git_author_name` and `git_author_email` set a **fallback** identity, never an override: the estate deliberately gives checkouts their own identities, and those always win.
+
+- The archive commit resolves the archive checkout's effective `user.name` and `user.email` first, and passes the fallback (`-c user.name=… -c user.email=…`) to that one invocation only when either is empty.
+- Commits made through `dream-core` (candidate worktrees, and ledger rows and review fills, which use its `commit_ledger`) take no identity argument. For those, the engine writes a small git configuration file at start-up (`~/.cache/dream-engine/fallback-identity-<hash>.gitconfig`, named by its content). It sets the fallback `[user]` first and then includes the account's real configuration (the inherited `GIT_CONFIG_GLOBAL`, else `~/.config/git/config` and `~/.gitconfig`), and the engine points `GIT_CONFIG_GLOBAL` at it. git reads repository configuration after account configuration, and the account's own files after the fallback, so the fallback only fills an identity nothing else provides. This is a process-wide layer below the repository's settings, not a literal per-invocation flag, because it is the only way to reach dream-core's commits. Because the archive's per-repository check also reads through that layer, a repository that sets only one of the two keys gets the other from the fallback in every commit. A repository that sets a key to an empty value outranks the layer. Its archive commit gets the full fallback pair, but its dream-core commits fail as they would without the engine.
+- Unset, the engine logs a warning naming the two keys at start-up, and a commit that fails in a repository with no identity says which keys to set.
+
+## Human review columns
+
+The ledger's `Reviewer` and `Review-minutes` columns record the human side of a night. They are filled **only from an explicit record of a human review**, and otherwise stay empty. They are never derived from a pull request's merge event: agents in this estate open and merge pull requests under the operator's own forge account, so `merged_by` cannot tell a person from an agent, and open-to-merge time is queueing time, not review time. Recording either would present agent decisions as human review. (`dream_core::ledger::review_from_merge` exists upstream; this adapter does not call it.)
+
+**The record.** One review per night, stored as `review.json` in the night's artefact folder (`services/dream-engine/src/review.rs`, schema 1):
+
+| Field | Meaning |
+|---|---|
+| `schema` | `1`. |
+| `night_id` | `<date>-<repo>`; must equal the folder name. |
+| `repo`, `date` | Repository directory name (not the forge slug) and night date. |
+| `witness` | The night's full 64-character witness, recomputed at import. |
+| `reviewer` | Who reviewed (name, login or DID); at most 64 characters, no `\|`. |
+| `verdict` | `approve`, `reject`, `needs-changes` or `cannot-judge`. |
+| `reason` | One line, at most 240 characters. |
+| `confidence` | 1 (guess) to 5 (certain). |
+| `active_seconds` | Seconds of active review measured by the tool, or `null` if unmeasured. |
+| `decided_at` | RFC 3339; not before the night it reviews. |
+| `blind_to_gate` | Whether the reviewer decided without seeing the gate's verdict. |
+| `tool` | What produced the review, e.g. `review-desk/1`. |
+
+Unknown fields are refused, so a typo cannot pass silently. A night holds one record: re-importing an identical record is a no-op, and a different one is refused until the existing file is moved aside.
+
+**Import.** `dream-engine review import <file.jsonl> [--dry-run]` (`-` reads standard input) takes one JSON object per line, carrying `repo`, `date`, `witness` (the full witness or a prefix of at least 12 hex characters, so the ledger's short witness is enough) and the review fields above. Each line is validated against its night folder — the witness is recomputed from `report.md` and the frozen manifest's `baseline_revision` — and a missing folder, missing report, malformed field or witness mismatch refuses that line with its line number and the reason, without stopping the others. Accepted lines are written atomically as `review.json` and backfilled straight away. A line whose record was written but whose ledger fill then failed (the ledger stayed locked past the wait, or could not be written) is reported as `review recorded, ledger fill pending`, not as refused: the record stands and the next backfill fills the row. The command exits 1 if any line was refused, else 3 if any fill is pending, else 0. `--dry-run` validates and reports what would be written and filled, and writes nothing. The import (and `review backfill`) refuses to run while a night is in progress, detected by the night-in-progress lock `<artefact_dir>/.night-running.lock` that the loop holds for each night; `--force-during-night` overrides that, and is safe, because ledger edits still wait for the ledger lock.
+
+```jsonl
+{"repo":"demo-repo","date":"2026-11-01","witness":"3f1c9a07d2e4","reviewer":"reviewer-a","verdict":"needs-changes","reason":"right idea; the test does not exercise the fix","confidence":4,"active_seconds":300,"decided_at":"2026-11-02T09:30:00Z","blind_to_gate":true,"tool":"review-desk/1"}
+```
+
+**Backfill.** Every night starts by running the backfill over all night folders holding a `review.json`, so records written by any tool are picked up; `dream-engine review backfill [--dry-run]` runs the same step by hand. Each record is re-validated exactly as the importer validates (schema, fields, folder name, recomputed witness); a refused record is logged and never fails the night. For a valid record the backfill edits the reviewed repository's ledger (its `ledgerPath`, read from the configuration frozen in the night folder):
+
+- The target row is the single row whose `Date` is the night date and whose `Witness` is the 12-character short witness. No match, or more than one, changes nothing.
+- Only the two human cells change, and only when both are empty, so the backfill is idempotent and never overwrites a cell. Every other byte of the file, including escaped `\|` in other cells and line endings, is preserved. The reviewer is escaped as the ledger writer escapes every cell.
+- `Review-minutes` is the active seconds rounded to the nearest whole minute (30 s rounds up, so a measured 29 s is `0` and 90 s is `2`). An absent or zero duration leaves the cell empty; a zero is never fabricated. A record without a duration still fills `Reviewer`.
+- Rows written at the legacy ten-column width are left alone and never widened; every surviving night folder postdates the twelve-column writer, so no review can match one. When the filled row sits under a legacy ten-column header, the header and divider gain `Reviewer | Review-minutes` so a markdown renderer shows the cells; legacy rows beneath keep their width, which the ledger reader accepts.
+- After a fill the ledger file alone is committed locally on the default branch (never pushed), and only when the repository directory is the top of its own git work tree.
+
+**The ledger lock.** An import, the night-start backfill and the engine's own row append all rewrite the whole ledger file, so each takes one advisory lock per ledger (`services/dream-engine/src/ledger_io.rs`). The lock file is `dream-ledger.lock` in the git directory of the work tree holding the symlink-resolved ledger, or a hidden `.<ledger>.lock` beside a ledger outside any repository. The writer re-reads the ledger inside the lock and writes it durably. The night's row goes through dream-core's `append_row` followed by an `fsync`. A fill is replaced crash-safely: temporary file, `fsync`, rename, directory `fsync`. Either way a symlinked ledger is written through and the link kept. The writer then commits through dream-core's `commit_ledger` and only then releases the lock, so two commits never collide on `index.lock`. A writer waits at most five minutes. After that a fill reports `ledger fill pending` (the record stays and the next backfill retries), and the engine's append fails with an error naming the lock file. dream-core's commit is not time-limited, so a git hung under the lock shows up as waiters giving up with that error.
 
 ### How the manifest reaches the binary
 
@@ -284,7 +349,7 @@ Verify state before and after: `nvidia-smi --query-gpu=memory.used,memory.total 
 
 ## Legacy `.mjs` fallback
 
-`scripts/dream-machine-nightly.mjs` is the original Node orchestrator. It is retained as a manual fallback and rollback path only — the supervised, first-party path is the Rust `dream-engine` binary. Reach for the `.mjs` script only if the binary is unavailable; new behaviour lands in the crate.
+`scripts/dream-machine-nightly.mjs` is the original Node orchestrator. It takes no ledger lock (its `appendLedgerRow` rewrites the ledger whole), so never run it alongside the engine or a `review import`. It is retained as a manual fallback and rollback path only — the supervised, first-party path is the Rust `dream-engine` binary. Reach for the `.mjs` script only if the binary is unavailable; new behaviour lands in the crate.
 
 ## Related
 

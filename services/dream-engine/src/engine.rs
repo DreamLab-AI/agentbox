@@ -32,6 +32,7 @@ use std::time::Duration;
 use thiserror::Error;
 use tracing::{info, warn};
 
+use crate::archive;
 use crate::baseline;
 use crate::candidate_flow::{self, Annexe, Flow};
 use crate::config::{self, RuntimeConfig, DEFAULT_LEDGER_PATH};
@@ -50,6 +51,7 @@ use crate::present::{
 };
 use crate::prompt;
 use crate::records;
+use crate::review;
 use crate::runner::EvaluatorRunner;
 use crate::ruvector::{self, DreamFinding, RuVectorConfig, RuVectorSink};
 use crate::wanted;
@@ -181,6 +183,11 @@ impl Engine {
             nj.completed(c, true, json!({ "resolved": r.resolved, "withdrawn": r.withdrawn, "rejected": r.rejected, "skipped": r.skipped }))
                 .await;
         }
+
+        // Human reviews recorded since the last night (by `dream-engine review
+        // import` or any other tool that writes a night's review.json) fill
+        // their ledger rows before tonight reads the ledgers. Fail-open.
+        self.backfill_reviews(&nj).await;
 
         let repos = match self.discover() {
             Ok(r) => r,
@@ -382,6 +389,12 @@ impl Engine {
             }
         }
 
+        // Archive the night: when the artefact directory is the checkout of a
+        // private archive repository, commit and push it (never forced). Before
+        // the governance publish, so a failure alert reaches the panel tonight.
+        // Fail-open.
+        self.archive_night(date, outcomes.len(), &nj).await;
+
         // Surface every open decision on the forum governance panel
         // (ADR-2115), then post the nightly digest (JunkieJarvis → dreamlab
         // zone, "chat with agents") — visibility only, pointing at the panel.
@@ -449,6 +462,88 @@ impl Engine {
             .await;
         records::record_night_journal(&nj.stats());
         Some(outcomes)
+    }
+
+    /// Commit and push the artefact directory when it is a git checkout with a
+    /// remote ([`archive::archive_night`]). A failure is logged and raised as
+    /// an inbox alert; it never fails the night.
+    async fn archive_night(&self, date: &str, repos: usize, nj: &Journal) {
+        let c = nj.called("archive.push", json!({ "repos": repos })).await;
+        let dir = self.artefact_dir.clone();
+        let night = date.to_string();
+        let identity = self.runtime.git_identity();
+        let outcome = tokio::task::spawn_blocking(move || {
+            archive::archive_night(&dir, &night, repos, identity.as_ref())
+        })
+        .await
+        .unwrap_or_else(|e| archive::ArchiveOutcome::Failed {
+            step: "push",
+            detail: format!("archive task panicked: {e}"),
+            commit: None,
+        });
+        let ok = !matches!(outcome, archive::ArchiveOutcome::Failed { .. });
+        nj.completed(c, ok, json!({ "outcome": format!("{outcome:?}") }))
+            .await;
+        match &outcome {
+            archive::ArchiveOutcome::NotARepository | archive::ArchiveOutcome::NoRemote => {
+                info!(dir = %self.artefact_dir.display(), ?outcome, "artefact directory not archived (not a git checkout with a remote)");
+            }
+            archive::ArchiveOutcome::Archived { commit, pushed_to } => {
+                info!(?commit, %pushed_to, "artefact archive pushed");
+            }
+            archive::ArchiveOutcome::Failed { .. } => {
+                warn!(?outcome, "artefact archive failed (fail-open)");
+            }
+        }
+        if let Some(text) = outcome.alert(&self.artefact_dir) {
+            if let Err(e) = inbox::add("alert", "archive", &format!("{date}-archive"), date, &text)
+            {
+                warn!(error = %e, "dream inbox write failed (fail-open)");
+            }
+        }
+    }
+
+    /// Fill the ledger's human columns from every night's validated
+    /// `review.json` ([`review::backfill_all`]), each under its ledger's lock.
+    /// A refused record, or a ledger still locked after the wait, is logged
+    /// and skipped (the next night retries); it never fails the night.
+    async fn backfill_reviews(&self, nj: &Journal) {
+        let c = nj.called("review.backfill", json!({})).await;
+        let (artefacts, workspace) = (self.artefact_dir.clone(), self.workspace.clone());
+        let how = review::Ledgering {
+            identity: self.runtime.git_identity(),
+            ..review::Ledgering::default()
+        };
+        // Blocking: ledger locks (bounded wait) and bounded git commits.
+        let out = tokio::task::spawn_blocking(move || {
+            review::backfill_all(&artefacts, &workspace, review::Mode::Apply, &how)
+        })
+        .await
+        .unwrap_or_else(|e| {
+            warn!(error = %e, "review backfill task failed (fail-open)");
+            Vec::new()
+        });
+        let mut filled = 0usize;
+        let mut refused = 0usize;
+        for (night, result) in &out {
+            match result {
+                Ok(fill @ review::FillOutcome::Filled { .. }) => {
+                    filled += 1;
+                    info!(%night, "{fill}");
+                }
+                Ok(_) => {}
+                Err(e) => {
+                    refused += 1;
+                    warn!(%night, error = %e, "review record refused (fail-open)");
+                }
+            }
+        }
+        nj.completed(
+            c,
+            refused == 0,
+            json!({ "reviewed": out.len(), "filled": filled, "refused": refused }),
+        )
+        .await;
     }
 
     fn discover(&self) -> Result<Vec<(String, PathBuf)>, EngineError> {
@@ -1846,10 +1941,14 @@ impl Engine {
             effect: String::new(),
             witness: wit_short.clone(),
             prior_fates: String::new(),
-            // FR6.6 — the human columns are EMPTY tonight. A PR opened by this
-            // night has not been reviewed yet; they are filled on a later night
-            // from the merge event (ledger::review_from_merge), alongside the
-            // prior-night fate token for the same PR.
+            // FR6.6 — the human columns are EMPTY tonight, and stay empty
+            // unless a person records a review. They are filled only from the
+            // night's review.json (`dream-engine review import`, or any tool
+            // that writes one), validated against this row's witness, by the
+            // backfill at the start of a later night (crate::review). They are
+            // never derived from a merge event: agents merge under the
+            // operator's account, so `merged_by` cannot tell a person from an
+            // agent, and open-to-merge time is not review time.
             reviewer: String::new(),
             review_minutes: String::new(),
         };

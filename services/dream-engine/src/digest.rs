@@ -226,7 +226,7 @@ pub fn compose(
         ));
     }
     body.push(String::new());
-    body.push("Full reports are on the agentbox host under workspace/.tmp/dream-annexe-artefacts, one folder per repo per night. Nothing is ever merged automatically — staged changes wait for human review.".into());
+    body.push("Full reports are on the agentbox host under workspace/dream-artefacts, one folder per repo per night. Nothing is ever merged automatically — staged changes wait for human review.".into());
     body.join("\n")
 }
 

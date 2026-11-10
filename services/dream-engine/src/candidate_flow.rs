@@ -215,7 +215,10 @@ pub async fn attempt_judged(flow: &Flow<'_>, patch: &str, j: &Journal) -> (Attem
                 )
             });
             let prompt = crate::estate::redact(&source::apply_repair_prompt(
-                flow.report, patch, &detail, excerpt.as_deref(),
+                flow.report,
+                patch,
+                &detail,
+                excerpt.as_deref(),
             ));
             let c = j
                 .called(

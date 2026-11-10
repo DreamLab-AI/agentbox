@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 662848dcbacc9a61f60a62a39804286df6142cc2
+verified_commit: 69d4a8488bc79fe085e6df76e849c660e24d7505
 verified_paths: [lib/factrail.nix, lib/lockfiles/factrail-af23eca6.Cargo.lock, lib/claude-code-binary.nix, config/entrypoint-unified.sh, config/claude-plugins/.claude-plugin/marketplace.json, scripts/factrail-store-migrate.mjs, tests/config/factrail-store-migrate.test.mjs, tests/config/factrail-projection.test.sh, schema/agentbox.toml.schema.json, scripts/bake-ruflo-console.sh, scripts/ruflo-console-project.mjs, tests/config/ruflo-console.test.mjs]
 owner: jjohare
 review_trigger: a factrail rev bump in lib/factrail.nix, the end of the post-rebuild residency soak, a Claude Code function-hook API change, or a decision to train a local judge on recorded Jev decisions
@@ -449,3 +449,7 @@ Re-verified 2026-11-05 at `3beca506c` for ADR-2177: the only change to this reco
 Re-verified 2026-11-09 at `04321ea4d`: `lib/factrail.nix` moves to factrail 0.1.2 `af23eca6` (rev, NAR
 hash, version; lockfile renamed, members' versions only). 0.1.2 adds the `factrail stubs`
 subcommand named in the acceptance above and no engine change; the decision is unchanged.
+
+Re-verified 2026-11-10 at `062487bec` (PR #43, `dream-review-ledger`; ADR-2190). Governed-path delta since `662848dcb`: `schema/agentbox.toml.schema.json` gains three optional string properties in the `dream_machine` object (`git_author_name`, `git_author_email`, `artefact_dir`, `:2981-2992`); no other property, type or closure in the schema changes. The factrail keys and their projection are untouched. The decision and status axes are unchanged. Re-run: `git diff 662848dcb..062487bec -- schema/agentbox.toml.schema.json`.
+
+Re-verified 2026-11-10 at `69d4a8488` (PR #43 review fixes; ADR-2190). Governed-path delta since `062487bec`: `schema/agentbox.toml.schema.json` rewrites only the `description` strings of the three `dream_machine` keys added at `062487bec` (`git_author_name`, `git_author_email`, `artefact_dir`, `:2981-2992`): the identity becomes a fallback and the artefact directory notes the legacy-path guard; no property, type, default or closure changes. The factrail and compaction keys are untouched. The decision and status axes are unchanged. Re-run: `git diff 062487bec..69d4a8488 -- schema/agentbox.toml.schema.json`.

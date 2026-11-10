@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: e2b49adfc22f60123a33c85fb9f456782c557b39
+verified_commit: 69d4a8488bc79fe085e6df76e849c660e24d7505
 verified_paths: [flake.nix, lib/rune.nix, config/tmux-autostart.sh, config/tmux.conf, agentbox.toml, setup/agentbox.default.toml, schema/agentbox.toml.schema.json]
 owner: jjohare
 review_trigger: a Rune release that changes its CLI (`-w`), its keyboard-protocol requirement, or its licence; or the AoE plane absorbing note editing
@@ -457,3 +457,7 @@ Governed-path delta since `2f15c531b` is the RuVector Postgres credential custod
 Nothing this record decides is changed; its status axes are unchanged. Re-run: `git diff 2f15c531b..cc949bb79 -- agentbox.toml flake.nix setup/agentbox.default.toml`.
 
 Re-verified 2026-11-05 at `3beca506c` for ADR-2177: the only change to this record's governed paths since its last stamp is ADR-2177's additive SuperSplat hunk (a gated package set and supervisor block, one toml/schema key, a skill registration); this record's decision is unaffected.
+
+Re-verified 2026-11-10 at `062487bec` (PR #43, `dream-review-ledger`; ADR-2190). Governed-path delta since `e2b49adfc`: `config/tmux-autostart.sh` changes one line, the fallback `dream-engine` tmux session (used only when supervisord does not own the loop), which now creates `/home/devuser/workspace/dream-artefacts` and tees `loop.log` there instead of under `.tmp` (`:463`); `schema/agentbox.toml.schema.json` gains three optional string properties in the `dream_machine` object (`git_author_name`, `git_author_email`, `artefact_dir`, `:2981-2992`); no other property, type or closure in the schema changes; `setup/agentbox.default.toml` gains the same three keys as commented examples in `[dream_machine]` (`:1513-1515`). Window 9, the Rune gate and `_notes_window` are untouched. The decision and status axes are unchanged. Re-run: `git diff e2b49adfc..062487bec -- config/tmux-autostart.sh schema/agentbox.toml.schema.json setup/agentbox.default.toml`.
+
+Re-verified 2026-11-10 at `69d4a8488` (PR #43 review fixes; ADR-2190). Governed-path delta since `062487bec`: `config/tmux-autostart.sh` moves the fallback `dream-engine` tmux session's log from the artefact directory to `/home/devuser/workspace/.agentbox/dream-loop.log` and adds a two-line comment (`:454-465`); nothing else in the script changes; `schema/agentbox.toml.schema.json` rewrites only the `description` strings of the three `dream_machine` keys added at `062487bec` (`git_author_name`, `git_author_email`, `artefact_dir`, `:2981-2992`): the identity becomes a fallback and the artefact directory notes the legacy-path guard; no property, type, default or closure changes; `setup/agentbox.default.toml` rewords the comments on the two commented-out identity keys (`:1513-1514`) to say "fallback"; no live key changes. Window 9, the Rune gate and `_notes_window` are untouched. The decision and status axes are unchanged. Re-run: `git diff 062487bec..69d4a8488 -- config/tmux-autostart.sh schema/agentbox.toml.schema.json setup/agentbox.default.toml`.

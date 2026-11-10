@@ -90,6 +90,8 @@ Still open, by design:
 - **No `Notice` variant for relay, digest or governance.** That is a deliberate boundary, not a gap: those publish the whole night's state, not one event, and stay night-level drivers in this crate. No `Notice::Verdict`-style variant was added because nothing duplicates `NightSummary::render` here.
 - `manifest::baseline_of` was not extracted (it shells out to git); it lives in `baseline.rs`.
 - `DreamConfig` leaves `ledgerPath`, `branchPrefix` and `adrConvention` empty; `config::apply_estate_defaults` fills them.
+- `dream_core::ledger::review_from_merge` moved with the ledger (its three tests are listed below as moved), but the adapter never calls it. Filling the `Reviewer` and `Review-minutes` cells from a pull request's merge event was withdrawn by ADR-2190, because agents merge under the operator's account. The cells are filled only from a recorded human review (`review.json`) by `review.rs`, on a later night or by `dream-engine review import`. The JavaScript twin, `reviewFromMergeEvent` in `management-api/lib/dream-ledger.js`, was removed with its tests.
+- The nightly row is still written by `dream_core::ledger::append_row` and committed by `commit_ledger`. The adapter only serialises them (`ledger_io.rs`, ADR-2190). It runs both under a per-ledger lock that the review backfill and `review import` also take, and adds an `fsync` after the append. The review fill's own write goes through a crash-safe replace (temporary file, `fsync`, rename, directory `fsync`). That replace is adapter I/O, not a copy of a moved module: dream-gate's `write_atomic` neither syncs nor writes through a symlink.
 
 ### Call-order invariant
 

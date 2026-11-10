@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: dfe78f0766e52ae6cfbae32c395e22c9590d6785
+verified_commit: 69d4a8488bc79fe085e6df76e849c660e24d7505
 verified_paths: [management-api/lib/task-properties.js, management-api/lib/authority.js, management-api/lib/authority-journal.js, management-api/lib/governance-receipt-publisher.js, management-api/lib/governance-manual-continue.js, management-api/lib/governance-application-receipts.js, management-api/lib/dream-ledger.js, management-api/routes/broker-bridge.js, management-api/routes/llm-marketplace.js, mcp/servers/governance-bridge.js, services/dream-engine/src/records.rs, scripts/activation/adr-2087-check.sh]
 owner: jjohare
 review_trigger: nostr-bbs-core publishing TaskProperties (the schema this stamps against), agentbox authority_class gaining a third class, or the forum receipts endpoint changing shape; activation — scripts/activation/adr-2087-check.sh exiting 0 on the running image (2026-10-30 it exits 1 — B4 deny not journalled once, B5/C2 audit chain does not verify — and B7 has no posted receipt)
@@ -80,6 +80,12 @@ and [ADR-2011](../../../VisionFlow/docs/adr/ADR-2011-task-properties-set-the-bou
    `Review-minutes`, populated from the PR merge event (`merged_by`;
    `merged_at − pr_opened_at` in whole minutes) and left EMPTY otherwise. Ten-column
    ledgers remain valid — the parser's compatibility floor is the legacy width.
+   **Amended by ADR-2190 (2026-11-10): the two cells are filled only from a night's
+   recorded human review (`review.json`, witness-checked, imported with `dream-engine review
+   import`), never from the merge event. Agents merge under the operator's account, so
+   `merged_by` cannot tell a person from an agent. `Review-minutes` is the tool's measured
+   active review time. The merge-event derivation was never wired to a production caller
+   and is withdrawn.**
 
 ## Consequences
 
@@ -177,3 +183,9 @@ Two commits since `60f8b8458` touch one governed path, `services/dream-engine/sr
 **Re-verified 2026-10-15 (ADR-2141, `58fce653822b`).** Read against the code as it stands after the engine's mechanism moved into `dream-core`/`dream-gate`: the 12-column ledger row, with Reviewer and Review-minutes, is `dream_core::ledger::LedgerRow` (moved verbatim; its tests are listed in the extraction ledger) and the engine appends it from `records.rs` and `engine.rs`.
 
 Re-verified 2026-10-19 at `dfe78f0766e52ae6cfbae32c395e22c9590d6785`: The decide route forwards the optional effective_tier enum to the upstream rationale gate without changing receipt or authority dispatch; broker route regression tests pass. Existing implementation and activation statuses are retained.
+
+## Amendment — 2026-11-10 (ADR-2190: the human cells come from recorded reviews)
+
+Decision point 5's source for `Reviewer` and `Review-minutes` is amended by ADR-2190, as marked inline. The original text is kept. The 12-column row and the meaning of an empty cell ("no review recorded") stand. This record's `verified_commit` is not moved. Its `verified_paths` do not cover the engine files that changed (`services/dream-engine/src/engine.rs`, `review.rs`). `management-api/lib/dream-ledger.js` (governed here) still carries `reviewFromMergeEvent` and a header comment describing the merge-event rule. Neither has a production caller (`git grep reviewFromMergeEvent` finds the definition, its export and `tests/integration/dream-ledger-reviewer.test.js` only). Editing that file is follow-up work outside this amendment; until then its comment describes the withdrawn rule.
+
+Re-verified 2026-11-10 at `69d4a8488` (PR #43 review fixes; ADR-2190). Governed-path delta since `dfe78f076`, all from this branch: (1) `management-api/lib/dream-ledger.js` (`a3f738659`) removes `reviewFromMergeEvent` and its export. That was the follow-up the amendment above named, since nothing but its own tests called it. The header comment now states that the human cells come only from a recorded review. Its five tests leave `tests/integration/dream-ledger-reviewer.test.js`. `parseLedger`, `reviewerStats` and the rest of the module and its tests are unchanged, and the integration suite passes 70/70. (2) `services/dream-engine/src/records.rs` (`618a02dae`, `69d4a8488`) appends the 12-column row through `dream_core::ledger::append_row` and commits it through `commit_ledger` under a per-ledger lock (ADR-2190). The row, its human cells written empty, and the commit rules are unchanged. The other governed paths have no diff. Point 5 as amended by ADR-2190 holds. The other decision points, and the decision and status axes, are unchanged. Re-run: `git diff dfe78f076..69d4a8488 -- management-api/lib/dream-ledger.js services/dream-engine/src/records.rs`.

@@ -86,6 +86,21 @@ pub struct RuntimeConfig {
     /// evaporating report. Draft only — the merge stays human.
     #[serde(default = "default_true")]
     pub persist_accepts: bool,
+    /// Night artefact directory, when not the estate default. A command-line
+    /// `--artefact-dir` overrides it. It may be the checkout of a private
+    /// archive repository, which the end-of-night step commits and pushes.
+    #[serde(default)]
+    pub artefact_dir: Option<String>,
+    /// Fallback name for the engine's commits (candidate worktrees, ledger
+    /// rows, the artefact archive), used only in a repository whose effective
+    /// git identity is empty; a repository's own identity always wins (see
+    /// [`crate::archive`]). With `git_author_email`; when either is unset the
+    /// engine says so at start-up.
+    #[serde(default)]
+    pub git_author_name: Option<String>,
+    /// Fallback email for the engine's commits; see `git_author_name`.
+    #[serde(default)]
+    pub git_author_email: Option<String>,
 }
 
 fn default_true() -> bool {
@@ -121,6 +136,14 @@ pub fn resolve_env_placeholder(value: &str) -> Option<String> {
 }
 
 impl RuntimeConfig {
+    /// The configured fallback commit identity, when both keys are set.
+    pub fn git_identity(&self) -> Option<crate::archive::GitIdentity> {
+        crate::archive::GitIdentity::from_parts(
+            self.git_author_name.as_deref(),
+            self.git_author_email.as_deref(),
+        )
+    }
+
     /// Expand the `${NAME}` placeholders the manifest carried, falling back to
     /// this struct's own defaults wherever the variable is unset. Call once,
     /// straight after deserialising, so no consumer has to remember.

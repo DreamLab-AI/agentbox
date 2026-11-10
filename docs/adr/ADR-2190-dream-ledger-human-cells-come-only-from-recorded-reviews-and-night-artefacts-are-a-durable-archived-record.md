@@ -1,0 +1,75 @@
+---
+id: ADR-2190
+title: Dream ledger human cells come only from recorded reviews, and night artefacts are a durable, archived record
+date: 2026-11-10
+decision_status: accepted
+implementation_status: complete
+activation_status: staged
+supersedes: []
+superseded_by: []
+verified_commit: 5420315819a50977c570ec6a6b11aaf6397759ee
+verified_paths: [services/dream-engine/src/review.rs, services/dream-engine/src/archive.rs, services/dream-engine/src/ledger_io.rs, services/dream-engine/src/gitcmd.rs, services/dream-engine/src/records.rs, services/dream-engine/src/lib.rs, services/dream-engine/src/engine.rs, services/dream-engine/src/main.rs, services/dream-engine/src/config.rs, services/dream-engine/src/estate.rs, services/dream-engine/src/digest.rs, services/dream-engine/src/governance.rs, config/tmux-autostart.sh, schema/agentbox.toml.schema.json, setup/agentbox.default.toml]
+owner: jjohare
+review_trigger: a forge identity that separates agent merges from human merges (a dedicated agent account or signed human approvals), which would reopen merge events as review evidence; a review tool that authenticates its reviewer; any change that prunes, relocates or stops archiving the artefact directory; a dream-core release that changes the ledger row or the witness
+repo: agentbox
+domain: GOVERNANCE-capabilities
+lineage: amends ADR-2087 (decision point 5, the source of the Reviewer and Review-minutes cells)
+relates: [ADR-2087, ADR-2024, ADR-2071, ADR-2115, ADR-2141]
+evidence_class: source+test
+acceptance_boundary: "cargo test in services/dream-engine at 542031581 passes 255 unit tests (29 in review.rs, including interleaved append and fill under the ledger lock; 19 in archive.rs, some against a local bare remote; 7 in ledger_io.rs; 13 in estate.rs, including the migration guard), 11 and 3 doc tests. Not shown: a night run by the rebuilt image, a real import into a live ledger, or a push to the private archive repository. Those are the activation evidence. Until the image is rebuilt, the running loop takes no ledger lock."
+---
+
+# ADR-2190: Dream ledger human cells come only from recorded reviews, and night artefacts are a durable, archived record
+
+## Context
+
+- ADR-2087 point 5 gave every dream ledger row two human cells, `Reviewer` and `Review-minutes`, to be filled from the pull request's merge event (`merged_by`, and `merged_at − pr_opened_at`). Helpers were written on both sides: `dream_core::ledger::review_from_merge` and `management-api/lib/dream-ledger.js` `reviewFromMergeEvent`. Neither has a production caller, and the engine only ever wrote the cells empty. By the operator's count, about 350 rows carry empty human cells.
+- A merge event cannot carry this measurement. In this estate, agents open and merge pull requests under the operator's own forge account, so `merged_by` cannot tell a person from an agent. Open-to-merge time is queueing time, not review time. Filling the cells from merges would turn the ledger's only measure of human attention into a record of agent activity attributed to the operator.
+- Night artefacts (report, receipts, frozen manifest, gate decision) were written to `/home/devuser/workspace/.tmp/dream-annexe-artefacts` by default. That is a temporary path. Nights before 6 October 2026 were lost from it. A row's witness can be recomputed, and a review checked against the night it judges, only while that night's folder exists.
+- The engine's own commits (candidate worktrees, ledger rows) used whatever identity each checkout had, and failed where a checkout had none. The estate deliberately gives checkouts their own identities, so a configured engine identity must not override them.
+- The ledger is a whole-file read-modify-write in every writer: dream-core's `append_row`, and a review fill. A `review import` runs outside the loop's singleton lock, so without a lock an import that read the ledger before the night appended its row, and wrote after, would silently drop that row.
+
+## Decision
+
+The `Reviewer` and `Review-minutes` cells are filled only from an explicit record of a human review, never from a merge event. That record is the night's `review.json` (schema 1, `<artefact_dir>/<date>-<repo>/review.json`), written by `dream-engine review import` from JSON Lines or by any tool that writes the same shape. Each record is validated against its night folder: the witness is recomputed from `report.md` and the manifest's baseline revision, and a mismatch is refused. A backfill at the start of every night writes the reviewer and the measured active minutes into the one row with that date and short witness, only when both cells are empty. Every other byte of the ledger is preserved. Unmeasured minutes leave the cell empty. A record whose ledger fill fails after it was written is reported as `review recorded, ledger fill pending` (exit 3), not as refused. The record stands and the next backfill fills the row.
+
+Every ledger writer serialises on one advisory lock per ledger. The writers are the night's row append, the night-start backfill, and `review import` / `review backfill`. The lock is `dream-ledger.lock` in the git directory of the work tree that holds the symlink-resolved ledger, or a hidden file beside a ledger outside any repository. Each writer holds the lock across a re-read of the ledger, its write and its commit. The ledger mechanism stays dream-core's (ADR-2141): the row is appended by `dream_core::ledger::append_row` followed by an `fsync`, and committed by `commit_ledger`. A fill is written by a crash-safe replace (temporary file, `fsync`, rename, directory `fsync`) through any symlink. The wait is bounded at five minutes, and a timeout names the lock file. `review import` and `review backfill` refuse to run while a night holds `<artefact_dir>/.night-running.lock`, unless given `--force-during-night`.
+
+Night artefacts are durable control-plane state. The default directory is `/home/devuser/workspace/dream-artefacts`; `[dream_machine].artefact_dir` or `--artefact-dir` overrides it, and nothing may prune it. If that directory holds no night folder while the legacy `/home/devuser/workspace/.tmp/dream-annexe-artefacts` exists, is not the same directory, and does hold night folders, no night runs. One inbox alert names both paths and the one-line migration. When the directory is the checkout of a private archive repository with a remote, each night ends by archiving it, never forced. The engine appends any missing `.lock`, `*.lock`, `*.tmp*` or `loop.log` line to its `.gitignore`, then commits and pushes. The push runs SSH in batch mode only when neither the environment nor the checkout chooses an SSH command (`core.sshCommand`). A failure is fail-open, journalled as `archive.push` and raised as an inbox alert. The fallback tmux launcher logs outside the artefact directory.
+
+`[dream_machine].git_author_name` / `git_author_email` set a fallback commit identity, never an override. The archive commit passes it to one invocation (`-c user.name`/`-c user.email`) only when the checkout's effective identity is empty. Commits through dream-core (candidate worktrees, ledger commits) take no identity argument. For them, the engine writes a git configuration file that sets the fallback and then includes the account's real configuration, and points `GIT_CONFIG_GLOBAL` at it. That is a process-wide layer that the account's and every repository's own identity outrank.
+
+## Consequences
+
+- **Amends ADR-2087 point 5.** The two cells and their meaning stay, but their source changes from the merge event to a recorded review. The rest of ADR-2087 is unaffected. `reviewFromMergeEvent` (management-api) is removed. `dream_core::ledger::review_from_merge` stays upstream, uncalled here, and must not be called without superseding this record.
+- The existing ~350 empty rows stay empty unless someone records a review for a night whose folder survives. Rows from before 6 October 2026 cannot be filled, because their folders are gone and the backfill never widens a ten-column row. An empty cell continues to mean "no recorded review", not "zero minutes".
+- The record is explicit but not authenticated. `reviewer` is free text supplied by the importing tool, and the witness check binds a review to a night, not to a person. Who may write `review.json` is therefore an operator and tool discipline, not something the engine can enforce. An authenticated review tool is a review trigger.
+- `Review-minutes` now measures active review time reported by the tool (`active_seconds`, rounded to whole minutes), not elapsed time. Comparisons with any figure derived from merge timestamps are invalid.
+- The artefact directory grows without bound. Storage is the cost of a checkable ledger. Pruning it would orphan every witness and is now a decision-level change.
+- The night gains two journalled, fail-open side effects, `review.backfill` and `archive.push` (ADR-2071's Phase 2 count of side effects grows by two). A failed push reaches the governance panel the same night as a low-tier alert (ADR-2115). The human-merge gate (ADR-2024) is untouched. The archive push writes only the archive's own checkout. The backfill's ledger edit goes through the same `dream_core::ledger::commit_ledger` as the nightly row (`ledger_io::commit`, called at `records.rs:96` and `review.rs:850`), which makes a local commit of the ledger file only, on the default branch only, and never pushes. Candidates stay draft pull requests.
+- dream-core's `commit_ledger` is not time-limited. A git that hangs under the ledger lock shows up as later writers giving up after five minutes with an error naming the lock file. A bounded commit belongs in a dream-core release; copying it here would duplicate a moved module (ADR-2141). The archive step's git calls are time-limited.
+- The fallback identity is a process-wide git configuration layer, not literally per invocation for dream-core's commits. A repository that sets only one of `user.name` and `user.email` gets the other from the fallback. A repository that sets a key to an empty value outranks the layer, so its dream-core commits fail as they would without the engine.
+- The ledger lock binds only processes that take it. The legacy `scripts/dream-machine-nightly.mjs` fallback rewrites the ledger without it, and so does a loop built before this change. Neither may run alongside a lock-taking engine or import.
+- `config/tmux-autostart.sh`'s fallback session logs to `/home/devuser/workspace/.agentbox/dream-loop.log`, outside the archive. The archive step also untracks a `loop.log` committed before its `.gitignore` line existed. The fallback session ignores a configured `artefact_dir`.
+- A deployment still on the legacy directory stops dreaming at the next start until its nights are moved. That is deliberate: dreaming from an empty directory loses the record and can rerun a night.
+- The archive repository's name, organisation and remote are deliberately not in this public repository. The engine pushes to whatever remote the checkout has.
+
+### Rejected alternative
+
+Keep ADR-2087's merge-event rule and wire `review_from_merge` into the night. It lost because, under a shared operator account, it would fill all ~350 rows with plausible-looking data that measures nothing human. A filtered variant (count only merges outside agent sessions) was also rejected: the forge records no such distinction, and inferring it from session logs is a guess presented as a measurement.
+
+## Verification
+
+At `5420315819a50977c570ec6a6b11aaf6397759ee` (PR #43, `dream-review-ledger`, after the review fixes; the only change since `69d4a8488` is a test-only fix in `ledger_io.rs`, so the line references below hold at both):
+
+- `engine.rs:1944-1953`: the row is written with empty human cells, and the reason is stated. `engine.rs:190` runs the backfill at night start, and `:510` defines it, on a blocking thread, with the fallback identity. `engine.rs:396` archives the night before the governance publish, and `:470` defines it.
+- `records.rs:44-110`: the night's row is appended under the ledger lock through `dream_core::ledger::append_row` plus `fsync` (`:65-66`), and committed through `commit_ledger` before the lock is released (`:96-97`).
+- `ledger_io.rs`: `lock_path` (`:124`), `LedgerLock` (`:176`), `NightRunning` and `night_in_progress` (`:220`, `:244`), `replace` (`:263`), `append_row` (`:311`) and `commit` (`:324`). 7 tests: the lock is in the git directory and shared through a symlink, a held lock times out naming its file, replace writes through a symlink, and the commit takes only the ledger and keeps the repository's identity.
+- `review.rs`: `ReviewRecord` (`deny_unknown_fields`), witness recomputation (`night_witness`), and a locked fill (`:815-860`) that refuses non-empty cells and never widens ten-column rows. `LineResult::FillPending` is at `:1014`. 29 tests. Among them, a fill blocked on the night's lock keeps the row the night appends meanwhile; moving the read before the lock makes that test fail. An append blocked on a fill keeps the filled cells, and a busy ledger leaves the record and reports the fill pending.
+- `archive.rs`: `ensure_gitignore` (`:305`), `batch_ssh_command` (`:342`), `GitIdentity::args_for` (`:87`), `fallback_layer` / `install_fallback_layer` (`:161`, `:189`), and `archive_night` (`:381`), never forced. 19 tests. A checkout's own identity is kept. A blank identity gets the fallback. With none configured, the error names the keys. The layer yields to account and repository identity. The `.gitignore` gains only missing lines. A tracked `loop.log` is never archived. A configured `core.sshCommand` runs instead of the batch default.
+- `estate.rs:37`, `:44` and `:86`: the default and legacy directories, and `unmigrated_artefacts` (4 cases, and the migration line run against an archive checkout). `main.rs:471` applies the guard (`--once` exits 1; the loop alerts at start-up and holds nights at each window), `:486` holds the night lock, `:156` refuses review commands during a night, `:243` sets exit 3, and `:343` installs the identity layer.
+- `schema/agentbox.toml.schema.json:2981-2992` declares the three keys (the identity is described as a fallback), and `setup/agentbox.default.toml:1513-1515` gives them as comments.
+- `cargo test`: 255 + 11 + 3 doc tests passed, 0 failed. `cargo clippy --all-targets -- -D warnings`, `cargo fmt --check` and `cargo doc --no-deps` are clean.
+- No caller of the merge-event rule. `git grep -n reviewFromMergeEvent` and `git grep -n review_from_merge` find no code, only documentation of the withdrawal and the historical evidence note `.claude/evidence/EXP-AC-006.evidence.md`. In the pinned `dream-core` 0.4.1 registry source, `review_from_merge` is defined (`src/ledger.rs:128`) and called only by its own tests.
+
+Activation (`staged` → `live`) needs three things: a night run by the rebuilt image that pushes the artefact archive, one real `review import` that fills a ledger row, and the legacy directory migrated (or confirmed as a symlink) on the live host.

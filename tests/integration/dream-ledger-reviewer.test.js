@@ -3,7 +3,8 @@
 /**
  * dream-ledger reviewer columns — PRD-augmentation-conditions FR6.6,
  * EXP-AC-006: "The dream-cycle ledger schema gains `Reviewer` and
- * `Review-minutes` columns, populated from the PR merge event."
+ * `Review-minutes` columns." Their source was amended by ADR-2190: a recorded
+ * human review, never the PR merge event.
  *
  * Conditions C4 (deepening learning) and C6 (job purpose) are LONGITUDINAL:
  * they need a measurement, repeated. The dream cycle already measures the
@@ -20,7 +21,6 @@ const {
   LEDGER_KEYS,
   LEGACY_LEDGER_KEYS,
   parseLedger,
-  reviewFromMergeEvent,
   reviewerStats,
 } = require('../../management-api/lib/dream-ledger');
 
@@ -104,53 +104,6 @@ describe('parsing', () => {
   test('a row shorter than the legacy width is still skipped', () => {
     const md = ledger(HEADER12, SEP12, [row12('2026-09-14', 'jjohare', '5'), '| too | few | cols |']);
     expect(parseLedger(md).rows).toHaveLength(1);
-  });
-});
-
-describe('reviewFromMergeEvent', () => {
-  test('a merged PR yields the merging identity and the elapsed review minutes', () => {
-    expect(reviewFromMergeEvent({
-      merged_by: 'jjohare',
-      pr_opened_at: '2026-09-14T09:00:00Z',
-      merged_at: '2026-09-14T10:30:00Z',
-    })).toEqual({ reviewer: 'jjohare', reviewMinutes: 90 });
-  });
-
-  test('a did:nostr merger is preserved; a login object is read by `login`', () => {
-    expect(reviewFromMergeEvent({
-      merged_by: { login: 'jjohare' },
-      pr_opened_at: '2026-09-14T09:00:00Z', merged_at: '2026-09-14T09:05:00Z',
-    })).toEqual({ reviewer: 'jjohare', reviewMinutes: 5 });
-    const did = 'did:nostr:' + 'b'.repeat(64);
-    expect(reviewFromMergeEvent({
-      merged_by: { did }, pr_opened_at: '2026-09-14T09:00:00Z', merged_at: '2026-09-14T09:05:00Z',
-    }).reviewer).toBe(did);
-  });
-
-  test('minutes round to the nearest whole minute', () => {
-    expect(reviewFromMergeEvent({
-      merged_by: 'x', pr_opened_at: '2026-09-14T09:00:00Z', merged_at: '2026-09-14T09:00:40Z',
-    }).reviewMinutes).toBe(1);
-    expect(reviewFromMergeEvent({
-      merged_by: 'x', pr_opened_at: '2026-09-14T09:00:00Z', merged_at: '2026-09-14T09:00:20Z',
-    }).reviewMinutes).toBe(0);
-  });
-
-  test('NEVER FABRICATED: an unmerged, absent or unparseable event yields nulls', () => {
-    const empty = { reviewer: null, reviewMinutes: null };
-    expect(reviewFromMergeEvent(null)).toEqual(empty);
-    expect(reviewFromMergeEvent({})).toEqual(empty);
-    expect(reviewFromMergeEvent({ merged_by: 'jjohare' })).toEqual({ reviewer: 'jjohare', reviewMinutes: null });
-    expect(reviewFromMergeEvent({ pr_opened_at: '2026-09-14T09:00:00Z', merged_at: '2026-09-14T10:00:00Z' }))
-      .toEqual({ reviewer: null, reviewMinutes: 60 });
-    expect(reviewFromMergeEvent({ merged_by: 'x', pr_opened_at: 'nonsense', merged_at: '2026-09-14T10:00:00Z' }))
-      .toEqual({ reviewer: 'x', reviewMinutes: null });
-  });
-
-  test('a merge recorded BEFORE the PR opened is refused rather than negated', () => {
-    expect(reviewFromMergeEvent({
-      merged_by: 'x', pr_opened_at: '2026-09-14T10:00:00Z', merged_at: '2026-09-14T09:00:00Z',
-    }).reviewMinutes).toBeNull();
   });
 });
 

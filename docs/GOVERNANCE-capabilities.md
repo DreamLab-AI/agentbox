@@ -1,10 +1,11 @@
 ---
 title: Agentbox Capability Governance
 doc_id: AB-GOVERNANCE
-version: 0.6.14
+version: 0.6.15
 status: draft-for-ratification
 verified_commit: 
 changelog:
+  - "0.6.15 (2026-11-10): ADR-2190 (accepted, complete, staged for rebuild) amends ADR-2087 point 5. The dream ledger's Reviewer / Review-minutes cells come only from a recorded human review (review.json, imported with `dream-engine review import` and backfilled under a per-ledger lock shared with the night's own row append), never from a PR merge event; reviewFromMergeEvent is removed. Night artefacts live in a durable directory that is never pruned, committed and pushed (never forced) when it is a private archive checkout. A start-up guard refuses nights while the nights are still in the legacy temp path. The configured git identity is a fallback, used only where a repository has none of its own. Invariants unchanged."
   - "0.6.14 (2026-11-03): ADR-2131 review integrity amendment: comparable completed runs, persistent triage uncertainty, corruption-safe accounting and standalone Sealmap evidence receipts. Source-bearing triage artefacts stay private. Correct ADR-2130's implementation description; routing adoption remains partial. Invariants unchanged."
   - "0.6.13 (2026-10-31): ADR-2130 (accepted, partial, inactive) - the four diagram routes and the loom and zai hosts now parse in routing.rs, validate in the schema and ship in agentbox.toml; zai is never projected as codex. The sealmap-side same-family refusal, the .tiers.json reader and the measured descent are not in this repository and remain open. ADR-2041 /v1/system now carries the execution snapshot. Invariants unchanged."
   - "0.6.12 (2026-10-31): ADR-2139 Decision 5 implemented: an optional per-backend `state_budget_tokens` (0 = undeclared, E082) is projected by the boot projector to JSON, shell and plugin-config and reported, never enforced, by the proxy. ADR-2090's per-project bypass is built: `[skills.routing].bypass_projects` (E083) stops a matching project's turns before the one egress site; default empty, byte-identical."
@@ -38,7 +39,7 @@ sources:
   - agentbox/skills/tree-search-coder/SKILL.md
   - agentbox/skills/dream-machine/SKILL.md
   - agentbox/dream.config.json
-  - agentbox/services/dream-engine/ (records.rs; the 12-column row incl. Reviewer / Review-minutes is dream-core's ledger, ADR-2141)
+  - agentbox/services/dream-engine/ (records.rs; the 12-column row incl. Reviewer / Review-minutes is dream-core's ledger, ADR-2141; review.rs, ledger_io.rs, archive.rs for the human cells, the ledger lock and the artefact archive, ADR-2190)
   - agentbox/management-api/lib/{authority,task-properties,authority-journal,governance-receipt-publisher,governance-manual-continue,governance-application-receipts}.js
   - agentbox/mcp/servers/lib/ontology-retrieval.js
   - agentbox/mcp/mcp.json
@@ -297,6 +298,20 @@ the model rather than an enforced outbound filter (ADR-2053). The
 `/dream` control skill (`skills/dream-machine/`), management route (`management-api/routes/
 dream.js`), ledger (`management-api/lib/dream-ledger.js`), and console
 (`voice/console/site/dream.html`) exist.
+
+**Human review cells and the night record (ADR-2190, amending ADR-2087 point 5).** The
+ledger's `Reviewer` and `Review-minutes` cells are filled only from a recorded human review: a
+night's `review.json`, validated against a witness recomputed from the night folder, written by
+`dream-engine review import` and backfilled into the row. They are never derived from a merge
+event, because agents merge under the operator's account. Every ledger writer (the import, the
+night-start backfill, the night's own row append) holds one advisory lock per ledger across
+re-read, write and commit, so no writer can drop another's row. An import refuses to run during
+a night unless forced. Night artefacts live in a durable directory (`workspace/dream-artefacts`)
+that nothing may prune. When that directory is a private archive checkout, it is committed and
+pushed at the end of each night, never forced, using the checkout's own SSH command when it has
+one. Nights are refused while the legacy temp directory still holds the nights. The configured
+git identity is a fallback for repositories without one, never an override of a checkout's own
+identity.
 
 Shipped-vs-paper inventory of the ADR-052/055–072 band:
 

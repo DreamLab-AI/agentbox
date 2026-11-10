@@ -152,7 +152,8 @@ impl Config {
         let endpoint = if let Some(url) = private_url.filter(|_| local_only) {
             Ok(Endpoint {
                 url,
-                model: non_empty(get("AGENTBOX_SYSTEM_ONE_LOCAL_MODEL")).unwrap_or_else(|| DEFAULT_MODEL.into()),
+                model: non_empty(get("AGENTBOX_SYSTEM_ONE_LOCAL_MODEL"))
+                    .unwrap_or_else(|| DEFAULT_MODEL.into()),
                 bearer: None,
                 local: true,
             })
@@ -651,7 +652,9 @@ mod tests {
         let addr = listener.local_addr().unwrap();
         let server = std::thread::spawn(move || {
             let (mut stream, _) = listener.accept().unwrap();
-            stream.set_read_timeout(Some(std::time::Duration::from_secs(2))).unwrap();
+            stream
+                .set_read_timeout(Some(std::time::Duration::from_secs(2)))
+                .unwrap();
             let mut buf = [0; 4096];
             let _ = stream.read(&mut buf).unwrap();
             stream.write_all(b"HTTP/1.1 307 Temporary Redirect\r\nLocation: http://127.0.0.1:1/private\r\nContent-Length: 0\r\nConnection: close\r\n\r\n").unwrap();

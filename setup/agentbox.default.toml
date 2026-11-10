@@ -1510,6 +1510,9 @@ record_events = true
 # memory_namespace       = "dream-cycle"              # RuVector namespace for accepted/rejected findings
 # max_repos_per_night    = 5                           # roster cap: eligible repos dreamed serially per night
 # prune_dry_streak       = 5                           # standby after N trailing INCONCLUSIVE ledger rows
+# git_author_name        = "dream-engine"                # FALLBACK identity for the engine's commits (candidates, ledger rows, archive),
+# git_author_email       = "dream-engine@example.invalid" # used only where a checkout has none; a checkout's own identity always wins
+# artefact_dir           = "/home/devuser/workspace/dream-artefacts"  # night artefacts; durable, never pruned; a private archive checkout is committed and pushed nightly
 # ZAI_ANTHROPIC_API_KEY is a SECRET inherited from the container environment —
 # never write it here. Evaluator discipline: any @metaharness/darwin entrypoint
 # in a target repo's dream.config.json MUST pass `--sandbox mock` (or `agent`) —

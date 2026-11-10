@@ -61,7 +61,7 @@ Without a repo: dreams every eligible repo serially (a full night, 10–40 min �
 ## `/dream standby <repo>` · `/dream revive <repo>`
 
 - standby: `touch /home/devuser/workspace/<repo>/.dream-standby` — parks the repo (skipped nightly, `--target` still works).
-- revive: `rm -f /home/devuser/workspace/<repo>/.dream-standby`. If the repo is also parked by a dry streak (5 trailing REJECT or INCONCLUSIVE ledger rows), tell the user: only an ACCEPT clears that — suggest `/dream run <repo>` after fixing whatever kept the nights REJECT or INCONCLUSIVE (usually an evaluator gap; see the repo's last report under `/home/devuser/workspace/.tmp/dream-annexe-artefacts/`).
+- revive: `rm -f /home/devuser/workspace/<repo>/.dream-standby`. If the repo is also parked by a dry streak (5 trailing REJECT or INCONCLUSIVE ledger rows), tell the user: only an ACCEPT clears that — suggest `/dream run <repo>` after fixing whatever kept the nights REJECT or INCONCLUSIVE (usually an evaluator gap; see the repo's last report under `/home/devuser/workspace/dream-artefacts/`).
 
 ## `/dream digest [date]`
 
