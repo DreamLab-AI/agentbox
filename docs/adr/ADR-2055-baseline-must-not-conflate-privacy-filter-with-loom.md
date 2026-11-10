@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 3beca506c1d44122bf2e14ed935d590b9d020233
+verified_commit: 571c0ad436230a4ff3d0da4c0e344282417ba259
 verified_paths: [docs/BASELINE-container.md]
 owner: jjohare
 review_trigger: a change to [privacy_filter].port, to the [program:opf-router] supervisor block, or to the BASELINE-container supervised-program table
@@ -109,3 +109,5 @@ The routed BASELINE edit has landed (`f8e61efac`, 2026-09-05, re-checked at `e78
 Re-verified 2026-10-31 at `b65c3d4ed`. Governed paths changed: `docs/BASELINE-container.md`: vault section wording: `pages` defaults to `.`, corpus verbs use `ontomark`, the `ONTOLOGY_PAGES_DIR` override is recorded as removed (`f4beec643`, `7aa9365d4`); the supervised-program table is unchanged. No section this record governs changed; the decision holds. Re-verified by `git diff e786197cc..b65c3d4ed -- <verified_paths>`; no re-implementation was needed. The image carries it at the next rebuild.
 
 Re-verified 2026-11-05 at `3beca506c` for ADR-2177: the BASELINE gains an ADR-2177 paragraph, a services-table row and a changelog entry; the privacy-filter and Loom distinction this record guards is untouched.
+
+Re-verified 2026-11-10 at `571c0ad43` (PR #45, ADR-2191, the Bend toolchain). Governed-path delta since `3beca506c`: `docs/BASELINE-container.md` gains a Bend paragraph above the supervised-services heading, a changelog line and version 0.5.16, and its supervised-program table is unchanged. Every hunk is an addition apart from the baseline version number. The change adds a gated language toolchain and no listener, published port, mount, volume, supervisor program, secret, identity, model route, vault path, registry entry or Nostr kind, and it alters no existing gate, so what this record decides is not touched. CI on that commit passed the flake evaluation on both architectures, config validation with the TUI round trip, the contract and adapter suites and the custody rehearsal. Re-run: `git diff 3beca506c..571c0ad43 -- <verified_paths>`.

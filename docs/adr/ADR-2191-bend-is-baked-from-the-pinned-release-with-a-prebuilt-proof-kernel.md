@@ -7,8 +7,8 @@ implementation_status: partial
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 720e0d89656a4360998b3a716d0f3ee8cac66f93
-verified_paths: []
+verified_commit: 571c0ad436230a4ff3d0da4c0e344282417ba259
+verified_paths: [lib/bend.nix, tests/artifact-probes/bend-probe.sh]
 owner: jjohare
 review_trigger: a Bend pin bump (it may change the Lean release Bend demands); the first aarch64 image build; a request for Bend windowing or audio programs; any proposal to make the home directory writable for ~/.bend
 repo: agentbox
@@ -77,9 +77,8 @@ as it stands:
 
 ## Verification
 
-In the running container on 2026-11-10, with the working tree on `720e0d89` (the change
-itself is not yet committed, so `verified_paths` stays empty and nothing is claimed about
-a built image):
+In the running container on 2026-11-10, before the change was committed (nothing is
+claimed about a built image):
 
 - The four archives match the SHA-256 values in upstream's installer and GitHub's
   recorded asset digests.
@@ -95,6 +94,11 @@ a built image):
   image's CUDA toolkit with no extra configuration and prints `1048576`, with no
   missing-toolkit notice. Whether the call ran on the GPU or the CPU was not measured.
 
-Not established: that `nix build .#runtime` succeeds. Nix is not available inside the
-container, so the derivations have not been evaluated or built. The record moves to
-`complete` and `live` after the host rebuild passes the probe.
+At `571c0ad43` (PR #45) CI evaluated the flake on x86_64-linux and aarch64-linux
+(`nix flake check --no-build`, and `nix eval .#runtime.drvPath` with the gate on), so the
+Bend derivations evaluate on both. The checks listed above were run on the same file
+contents before that commit.
+
+Not established: that `nix build .#runtime` succeeds. Nothing has been built by Nix, in
+CI or on the host. The record moves to `complete` and `live` after the host rebuild
+passes the probe.
