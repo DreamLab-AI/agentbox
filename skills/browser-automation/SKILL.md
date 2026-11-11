@@ -7,7 +7,7 @@ description: >-
   browser: navigating pages, clicking, filling forms, taking screenshots, reading
   console or network traffic, debugging a web UI, or validating WebGPU/WebGL/GPU
   rendering on hardware. Sends GPU and standard automation to the browsercontainer
-  sidecar, raw CDP scripting to chrome-cdp, and AQE injection scanning to qe-browser.
+  sidecar, raw CDP scripting to chrome-cdp, and AQE visual, accessibility and URL checks to qe-browser.
 status: router-only
 ---
 
@@ -25,7 +25,7 @@ registration, and management details are owned by the **`browser`** skill
   snapshots) → **browsercontainer sidecar** via `http://browsercontainer:8931/sse`.
   Setup: see the `browser` skill or `references/sidecar.md`.
 - **Raw CDP scripting** against live tabs → `chrome-cdp` skill (`cdp-sidecar.sh`).
-- **AQE injection scanning / typed QE assertions** → `qe-browser` skill.
+- **AQE visual regression, accessibility and URL validation** → `qe-browser` skill.
 
 ## When not to use
 
@@ -38,7 +38,7 @@ registration, and management details are owned by the **`browser`** skill
 | Tool | When still useful |
 |------|-------------------|
 | **Chrome CDP (cdp.mjs)** | Raw CDP to live tabs — especially sidecar via `cdp-sidecar.sh` |
-| **qe-browser** | AQE fleet integration, injection scanning |
+| **qe-browser** | agentic-qe visual, accessibility, URL checks |
 | **host-webserver-debug** | Docker-to-host HTTPS bridge |
 
 ## Decision tree

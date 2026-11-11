@@ -80,7 +80,7 @@ vncviewer localhost:5903
 
 **Consider alternatives:**
 - **`browser`** -- lightweight AI-optimised snapshots, smaller context, faster
-- **`qe-browser`** -- QE-grade typed assertions, visual-diff baselines, injection scanning
+- **`qe-browser`** -- visual-diff baselines, accessibility and URL checks via agentic-qe
 - **`chrome-cdp`** -- raw CDP protocol access for performance profiling and low-level debugging
 - **`web-summary` / `gemini-url-context`** -- summarising page content without interaction
 - **`curl` / `httpx`** -- API testing without a real browser

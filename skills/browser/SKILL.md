@@ -58,7 +58,7 @@ claude mcp add browser-gpu --transport sse http://browsercontainer:8931/sse
 - Fetching page content without interaction -- use `web-summary` or `gemini-url-context`
 - API testing without a browser -- use `curl` or `httpx`
 - Raw CDP protocol scripting -- use the **chrome-cdp** skill
-- QE-grade typed assertions, visual-diff baselines -- use **qe-browser**
+- visual-diff baselines and accessibility checks via agentic-qe -- use **qe-browser**
 
 ## Key Tools
 

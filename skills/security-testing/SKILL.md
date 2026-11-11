@@ -45,7 +45,7 @@ Application-layer security testing for web services, APIs, and codebases.
 - **Dependency scanning**: npm audit, pip-audit, cargo audit, trivy
 - **Secrets detection**: gitleaks, trufflehog
 - **Dynamic testing**: OWASP ZAP (via Docker), custom request sequences
-- **Browser-based**: `qe-browser` for injection scanner (install with `aqe init`)
+- **Browser-based**: `qe-browser` for URL validation and in-page checks via the agentic-qe tools
 
 ## Signed-request and stateful API reviews
 
@@ -135,4 +135,4 @@ Security testing integrates with `visioncraft` as a quality gate:
 
 - `defense-security` — Linux system hardening, CIS/HIPAA/SOC2 compliance
 - `visioncraft` — Full development pipeline with integrated security agents
-- `qe-browser` — Browser-based injection and XSS scanning (after `aqe init`)
+- `qe-browser` — URL validation and browser-based checks via agentic-qe tools

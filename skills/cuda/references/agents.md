@@ -1,35 +1,15 @@
-# Specialist Agents
+# Working modes
 
-The CUDA skill routes work to 4 AI specialist agents: General, Optimizer, Debugger, Analyzer.
+One agent plays four roles depending on the task. Each uses only Read/Write/Edit and Bash with `nvcc` and `compute-sanitizer`.
 
-### 1. General Assistant
-**When to use**: General CUDA questions, kernel creation, learning
+## General
+Create a kernel from a specification: write the `.cu`, add a CPU reference and a `CUDA_CHECK` macro, build with the flags in `optimisation.md`, run and compare.
 
-```bash
-# Example: Create basic kernel
-cuda_general "Create a parallel reduction kernel for sum"
-```
+## Optimiser
+Start from a correct, measured baseline. Read `-Xptxas -v` output (registers, spills, shared memory), check coalescing and bank conflicts by reading the access pattern, apply one change, re-time with CUDA events.
 
-### 2. Optimizer Agent
-**When to use**: Performance optimisation, memory coalescing, shared memory
+## Debugger
+Wrong results or crashes: rebuild with `-g -G -lineinfo`, run `compute-sanitizer --tool memcheck`, then `racecheck` for shared-memory hazards and `synccheck` for divergent barriers. Add device `printf` for a single failing thread, guarded by `if (blockIdx.x == 0 && threadIdx.x == 0)`.
 
-```bash
-# Example: Optimize existing kernel
-cuda_optimize --file kernel.cu --target-gpu rtx4090
-```
-
-### 3. Debugger Agent
-**When to use**: Fix compilation errors, race conditions, memory issues
-
-```bash
-# Example: Debug kernel
-cuda_debug --file buggy_kernel.cu --error "incorrect results for large arrays"
-```
-
-### 4. Analyzer Agent
-**When to use**: Code review, best practices, complexity analysis
-
-```bash
-# Example: Analyze kernel quality
-cuda_analyze --file my_kernel.cu --report-format markdown
-```
+## Reviewer
+Read the kernel for: uncoalesced global access, shared-memory bank conflicts, warp divergence, missing `__syncthreads()`, unchecked launches, integer overflow in index maths, and block sizes that are not multiples of 32.
