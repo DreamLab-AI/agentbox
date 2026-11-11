@@ -11,7 +11,7 @@ All notable changes to agentbox are documented here. Format inspired by [Keep a 
 - 13 skills deleted with their build wiring (tool absent, hosted platform, or superseded):
   defense-security, scrapling, notebooklm, clipcannon, paperbanana, echoloop,
   open-montage, flow-nexus x3, playwright, openai-codex. `cuda`, `jupyter-notebooks` and
-  `qe-browser` rewritten around what the image has. 124 skills.
+  `qe-browser` rewritten around what the image has.
 - The router offers a gated skill only while its manifest gate is on.
 - The dead manifest switches `skills.browser.playwright` and `skills.browser.qe_browser` are
   removed from the manifest, schema, validator, setup screen, flake and goldens.
@@ -19,6 +19,10 @@ All notable changes to agentbox are documented here. Format inspired by [Keep a 
   promote uses `$LOOM_BASE_URL`; the finished EXP-B8 block is removed. Runs again after
   the next rebuild; YouTube's current 429 on subtitles still blocks new transcripts.
 - New diagrams: `docs/developer/diagrams/skill-selection.md`, `podcast-pipeline.md`.
+- Second pass: CUDA PyTorch importable from `python3` when `pytorch = true`; manim, bun,
+  pngquant, gdal, openssl, trunk, cargo-leptos, leptosfmt, rust-analyzer and arnis (pinned,
+  `lib/arnis.nix`) baked; `lichtfeld-studio` and its build-failing placeholder removed.
+  `scripts/nar-hash.py` computes Nix hashes without a Nix evaluator. 123 skills.
 - Nix changes take effect at the next image build.
 
 ### Skill estate and router audit (2026-11-11)

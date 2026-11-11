@@ -43,6 +43,16 @@ forbids), two marked `superseded` but still wired into the build (`playwright`,
    - Adapted to what exists: `cuda` (nvcc and compute-sanitizer; Nsight on the host),
      `jupyter-notebooks` (NotebookEdit and the code-interpreter kernel), `qe-browser` (the live
      agentic-qe tools plus the browser sidecar). Their unregistered servers are deleted.
+   - Second pass (the same day, after review found gaps left open): PyTorch goes inside the
+     runtime python env behind `[skills.data_science].pytorch` (`torch-bin`/`torchvision-bin`,
+     CUDA 12.8; a bare python package in the image list was never importable); `manim`, `bun`,
+     `pngquant`, `gdal` and the `openssl` CLI join `basePackages`; `trunk`, `cargo-leptos`,
+     `leptosfmt` and `rust-analyzer` join the Rust/wasm tooling; `arnis`, terracraft's engine,
+     is built from a pinned v3.4.0 commit (`lib/arnis.nix`, hashes computed by the new
+     `scripts/nar-hash.py`, which reproduces existing pinned hashes byte for byte).
+     `lichtfeld-studio` is deleted: its derivation was a placeholder that failed the build on
+     purpose, so `gaussian_splatting` could never be enabled; the switch now bakes COLMAP and
+     METIS.
    - Restored after review: `podcast-bulk-ingest` documents a baked binary; only an optional
      OntoCast step needs a missing tool, and it is now marked optional.
 2. **Gates are honoured by the router.** A skill naming `gate:` in its frontmatter is offered only
@@ -57,7 +67,7 @@ forbids), two marked `superseded` but still wired into the build (`playwright`,
 
 ## Consequences
 
-- 124 skills. `router-only` remains for index skills behind another (`skill-router`,
+- 123 skills. `router-only` remains for index skills behind another (`skill-router`,
   `browser-automation`); `gate:` is the only way to ship a deliberately-off skill.
 - The `skills.browser.playwright` switch is removed from the manifest, schema, validator, TUI,
   flake and goldens. `skills.browser.qe_browser`, equally dead (it set an environment variable
@@ -78,4 +88,7 @@ At `f8ab8d800f545ddfcacaa670641651a4d13f74c8` (an uncommitted tree's base until 
 - Podcast hand run against scratch copies: listing found 1,144 unseen episodes (then 429); one
   re-run episode gave 10 assertions, 1 ledger page, 8 draft pages; promote dry run 153 candidates;
   submit dry run 18 unchanged, 2 unresolved, 22 blocked, 0 failed.
-- Not built: every Nix change above.
+- Not built: every Nix change above. A build of this image is a host-side step
+  (`./agentbox.sh rebuild` from the host shell); after it, `command -v` for each tool named here,
+  `python3 -c 'import torch; print(torch.cuda.is_available())'`, and `arnis --help` close this
+  record's activation.

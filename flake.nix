@@ -1900,7 +1900,11 @@
         # motion-render — the motion-designer skill's frame renderer (ADR-2194);
         # see lib/motion-render.nix.
         motionRenderPkg = import ./lib/motion-render.nix { inherit lib; pkgs = rustPkgs; };
-        skillToolPackages = [ diagramIrPkg proseSanitiserPkg sealmapPkg visioncraftPkg motionRenderPkg ];
+        # arnis — the terracraft skill's OSM-to-Minecraft engine, CLI only, built from
+        # a pinned v3.4.0 commit (ADR-2196); see lib/arnis.nix. It reads the CA bundle
+        # through SSL_CERT_FILE, which the image environment already sets.
+        arnisPkg = import ./lib/arnis.nix { inherit lib; pkgs = rustPkgs; };
+        skillToolPackages = [ diagramIrPkg proseSanitiserPkg sealmapPkg visioncraftPkg motionRenderPkg arnisPkg ];
         # sidestr-agent — the sidechain faucet's engine ([sidechain].faucet).
         # Baked because a workspace cargo build stops executing after every image
         # rebuild (its glibc store path is collected); see lib/sidestr-agent.nix.
