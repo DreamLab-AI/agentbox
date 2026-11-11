@@ -1,74 +1,49 @@
-# Performance Optimisation, Advanced Features & Best Practices
+# Optimisation, flags and measurement
 
-## Performance Optimisation Checklist
+## Checklist
 
-The analyzer checks for:
+1. **Memory access**: global coalescing, shared-memory bank conflicts, strided access.
+2. **Occupancy**: registers per thread, shared memory per block, block size (a multiple of 32). Read these from `-Xptxas -v`.
+3. **Synchronisation**: `__syncthreads()` cost, warp divergence, races.
+4. **Arithmetic intensity**: compute-to-memory ratio, unrolling, vectorised loads (`float4`).
 
-1. **Memory Access Patterns**
-   - Global memory coalescing
-   - Shared memory bank conflicts
-   - Strided access patterns
+## Build flags
 
-2. **Occupancy**
-   - Register usage
-   - Shared memory allocation
-   - Thread block size
-
-3. **Synchronization**
-   - __syncthreads() overhead
-   - Warp divergence
-   - Race conditions
-
-4. **Arithmetic Intensity**
-   - Compute-to-memory ratio
-   - Loop unrolling opportunities
-   - Vectorization potential
-
-## Advanced Features
-
-### Custom Compilation Flags
-
-`cuda_compile` takes a single `--arch`; to target both card architectures in this
-container (RTX A6000 = sm_86, RTX 6000 Ada Generation x2 = sm_89), compile per arch
-or pass both `-gencode` clauses through `--extra-flags` to nvcc directly:
+RTX A6000 = sm_86, RTX 6000 Ada = sm_89. A fat binary covering both:
 
 ```bash
-cuda_compile \
-  --arch sm_89 \
-  --ptx \
-  --use_fast_math \
-  --maxrregcount 32 \
-  --extra-flags "-lineinfo -Xptxas -v"
-
-# Multi-arch fat binary covering both GPU architectures in this container:
-nvcc -gencode arch=compute_86,code=sm_86 \
-     -gencode arch=compute_89,code=sm_89 \
-     -lineinfo -Xptxas -v -o kernel.o -c kernel.cu
+nvcc -O3 -lineinfo -Xptxas -v --use_fast_math \
+  -gencode arch=compute_86,code=sm_86 \
+  -gencode arch=compute_89,code=sm_89 \
+  -o k k.cu
 ```
 
-### Profiling Integration
-```bash
-# Profile with nsys
-cuda_profile --tool nsys --kernel my_kernel --iterations 1000
+`--maxrregcount N` caps registers (trades spills for occupancy). Use `-g -G` only for debugging; it disables optimisation. Emit PTX/SASS with `-ptx` or `cuobjdump -sass k`.
 
-# Profile with ncu
-cuda_profile --tool ncu --metrics all --kernel my_kernel
+## Timing with CUDA events
+
+```cuda
+cudaEvent_t t0, t1; cudaEventCreate(&t0); cudaEventCreate(&t1);
+for (int i = 0; i < 10; ++i) kernel<<<g, b>>>(...);      // warm-up
+cudaEventRecord(t0);
+for (int i = 0; i < 100; ++i) kernel<<<g, b>>>(...);
+cudaEventRecord(t1); cudaEventSynchronize(t1);
+float ms; cudaEventElapsedTime(&ms, t0, t1);
+printf("%.3f us/iter\n", ms * 1000.f / 100);
 ```
 
-### Benchmarking
-```bash
-# Compare optimizations
-cuda_benchmark \
-  --baseline kernel_v1.cu \
-  --optimized kernel_v2.cu \
-  --input-sizes 1024,4096,16384 \
-  --iterations 100
-```
+Derive effective bandwidth (bytes moved / time) and compare with the card's peak to see whether you are memory- or compute-bound.
 
-## Best Practices
+## Correctness tools
 
-1. **Always profile before optimising** - Use cuda_profile to identify bottlenecks
-2. **Start with analyser** - Run cuda_analyze before manual optimisation
-3. **Test incrementally** - Verify correctness after each optimisation
-4. **Use appropriate agent** - Route complex tasks to specialist agents
-5. **Leverage GPU detection** - Let auto_arch detect compute capability
+`compute-sanitizer --tool memcheck|racecheck|synccheck|initcheck ./k`
+
+## Profiling
+
+`nsys` and `ncu` are not installed in this image. Nsight profiling runs on the operator's host: ask for the report (or the `ncu --set full` summary) and read it. Here, use `-Xptxas -v`, CUDA events and `-lineinfo` builds.
+
+## Best practices
+
+1. Measure before optimising; keep a CPU reference.
+2. Change one thing at a time and re-verify correctness.
+3. Warm up, then average many iterations.

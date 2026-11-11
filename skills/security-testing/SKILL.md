@@ -1,6 +1,6 @@
 ---
 name: security-testing
-description: "Application security testing with the baked semgrep, gitleaks and trivy: SAST, secrets scanning, dependency and misconfiguration scans, plus OWASP Top 10, authentication, signed-request and API review methods. Use to validate a web service or codebase. Not for Linux system hardening or CIS compliance (use defense-security)."
+description: "Application security testing with the baked semgrep, gitleaks and trivy: SAST, secrets scanning, dependency and misconfiguration scans, plus OWASP Top 10, authentication, signed-request and API review methods. Use to validate a web service or codebase. Not for host hardening or CIS benchmarks, nor quality checks of a running page (qe-browser)."
 ---
 
 # Security Testing
@@ -18,9 +18,9 @@ Application-layer security testing for web services, APIs, and codebases.
 
 ## When NOT to use
 
-- Linux system hardening, firewall rules, CIS compliance → use `defense-security`
+- Linux host hardening, firewall rules, CIS compliance: out of scope (no installed skill hardens hosts; this container is not the target)
 - Code quality gates and TDD → use `visioncraft`
-- Infrastructure security scanning → use `defense-security`
+- Infrastructure and container image scanning: `trivy image` / `trivy config` (below)
 
 ## Core Capabilities
 
@@ -45,7 +45,7 @@ Application-layer security testing for web services, APIs, and codebases.
 - **Not baked**: bandit, gosec, pip-audit, cargo-audit, trufflehog, OWASP ZAP; use them only if already on PATH
 - **Dependency scanning**: `trivy fs`, plus `npm audit` where Node is present
 - **Dynamic testing**: custom request sequences against a running service (ZAP needs Docker, which is denied here)
-- **Browser-based**: `qe-browser` for injection scanner (install with `aqe init`)
+- **Browser-based**: `qe-browser` for URL validation and in-page checks via the agentic-qe tools
 
 ## Signed-request and stateful API reviews
 
@@ -139,6 +139,5 @@ Security testing integrates with `visioncraft` as a quality gate:
 
 ## See also
 
-- `defense-security` — Linux system hardening, CIS/HIPAA/SOC2 compliance
 - `visioncraft` — Full development pipeline with integrated security agents
-- `qe-browser` — Browser-based injection and XSS scanning (after `aqe init`)
+- `qe-browser` — URL validation and browser-based checks via agentic-qe tools
