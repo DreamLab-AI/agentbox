@@ -951,7 +951,7 @@ both — see the innate-capability scan below):
 
 **Estate overlap: 9 pairs at ≥0.60 → 0.** `bhil-methodology`↔`sparc-methodology` (0.74),
 `bencium-controlled-ux-designer`↔`ui-ux-pro-max-skill` (0.60) and `clipcannon`↔`open-montage`
-(0.60) were each cleared by naming the boundary in both descriptions — artefact-trail vs build
+(0.60; both since removed) were each cleared by naming the boundary in both descriptions — artefact-trail vs build
 cycle, locked-spec process vs lookup table, existing footage vs generated material. The
 `human-architect-mindset`↔`renaissance-architecture` pair (0.70) was resolved by removing both.
 

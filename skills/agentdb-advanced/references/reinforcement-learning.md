@@ -2,6 +2,8 @@
 
 *RL capabilities merged from agentdb-learning. Use to build self-improving agents trained through experience.*
 
+> Upstream reference only. AgentDB is not this estate's memory path and is not installed here (no `agentdb` on PATH); the `create-plugin` commands below come from AgentDB v1 and are absent from 2.0.0-alpha. Use them only in a project that pins AgentDB v1 itself.
+
 ## Quick Start
 
 ```bash

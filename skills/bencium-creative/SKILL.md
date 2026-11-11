@@ -67,6 +67,19 @@ Commit to one clear aesthetic direction — intentionality over intensity. The f
 
 ---
 
+## When to Break the Rules
+
+The rules above prevent mediocrity; they do not cap excellence. Break one when the context demands
+it (the brand already uses Inter, glass morphism is the brief), when you hold a stronger idea and
+can say why, or when the unexpected is the point (deliberate dissonance, intentional "ugly").
+A banned pattern executed with intent beats a safe one executed without conviction.
+
+Before breaking a rule, answer yes to all four:
+1. Can you explain the creative intent?
+2. Is it a conscious choice, not laziness?
+3. Does it serve the user, brand or context?
+4. Would a senior designer defend it?
+
 ## Creative Reframing (When Stuck)
 
 Unblock direction with designer, context-shift, and era lenses ("What would Sagmeister do?", "What if this was a protest poster?", "1960s Swiss International?") — full lens set in [`references/creative-reframing.md`](references/creative-reframing.md).
