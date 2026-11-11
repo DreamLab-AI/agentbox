@@ -48,48 +48,18 @@ Tools that don't fetch remote fonts at import time (offline Illustrator, some Fi
 
 ## PNG export procedure
 
-Render **the original HTML** (not the extracted SVG) and screenshot only the `<svg>` element's bounding box. This keeps font loading reliable (already wired in the source HTML) while satisfying the "diagram only" rule. The PNG always has a **transparent background** (`omit_background=True`) so it can be placed on any slide or doc colour without a white halo. For motion-enabled HTML, append `?motion=static`, await `document.fonts.ready`, and assert the motion root has `data-frame="static"` before capture; never export at an arbitrary wall-clock delay.
+Render **the original HTML** (not the extracted SVG) and screenshot only the `<svg>` element's bounding box. This keeps font loading reliable (already wired in the source HTML) while satisfying the "diagram only" rule. The PNG should have a **transparent background** where the route allows it (ImageMagick on a bare SVG does; a sidecar screenshot carries the page colour unless keyed out, see below). For motion-enabled HTML, append `?motion=static`, await `document.fonts.ready`, and assert the motion root has `data-frame="static"` before capture; never export at an arbitrary wall-clock delay.
 
-### Detection
+### Route choice
 
-Before running anything, verify Playwright is installed:
+1. **No browser needed (first choice).** Mermaid sources: `pele-render` (or its `mmdc` shim). A bare standalone `.svg` file with no web fonts or CSS dependence: `magick -background none -density <dpi> in.svg out.png` (ImageMagick is in the image). Check the result for substituted fonts.
+2. **Diagram HTML (fonts load from the page): the browser sidecar.** Use the `browser` skill (`browser-gpu` MCP). The sidecar is a separate container and cannot open this container's `file://` paths, so serve the source over HTTP (`python3 -m http.server` in its directory) at an address the sidecar can reach, or load the HTML by `evaluate_script`. Then:
+   - `new_page` / `navigate_page` to the source (append `?motion=static` for motion-enabled sources);
+   - `evaluate_script` to await `document.fonts.ready`;
+   - `take_snapshot` to get the `uid` of the first `<svg>`, then `take_screenshot({ uid, filePath })` to clip to that element.
+   The page's device pixel ratio sets the scale: before navigating, `emulate` or `resize_page` to the `viewBox` size and use `evaluate_script` to confirm `window.devicePixelRatio`; if it is not the scale you need, size the viewport to `viewBox × scale` and screenshot full-page instead. Background is the page's own; for a transparent PNG, run `magick in.png -fuzz 1% -transparent '<page colour>' out.png` only if the user asks.
 
-```
-python -c "import playwright" 2>NUL || python -c "import playwright"
-```
-
-If the import fails, surface this exact instruction to the user and stop:
-
-> Playwright isn't installed. To enable PNG export, run:
-> ```
-> pip install playwright
-> playwright install chromium
-> ```
-> Then ask me to export again.
-
-Don't auto-install. The user asked for one feature, not a system change.
-
-### Rasterize
-
-Write the snippet below to a temp file and run it with `python <tmp.py> <src.html> <out.png>`:
-
-```python
-from playwright.sync_api import sync_playwright
-import sys, pathlib
-
-src, out = sys.argv[1], sys.argv[2]
-scale = int(sys.argv[3]) if len(sys.argv) > 3 else 2
-
-with sync_playwright() as p:
-    browser = p.chromium.launch()
-    page = browser.new_page(device_scale_factor=scale)
-    page.goto(f"file://{pathlib.Path(src).resolve()}")
-    page.wait_for_load_state("networkidle")
-    page.locator("svg").first.screenshot(path=out, omit_background=True)
-    browser.close()
-```
-
-Default `device_scale_factor=2` for crisp output. Accept `1` for compact assets or `3` for print/retina hero use, passed as a third CLI arg.
+Never install Playwright or any other browser tooling to export. If the sidecar is down (`agentbox.sh browsercontainer health`), say so and stop.
 
 ### Output naming
 
@@ -97,7 +67,7 @@ Default `device_scale_factor=2` for crisp output. Accept `1` for compact assets 
 
 ## Sizing the export
 
-The PNG's pixel dimensions are the SVG's `viewBox` × `device_scale_factor`. So the size decision was already made when the diagram was drawn — see [`output-spec.md` §2](output-spec.md) for the presets. Export only picks the multiplier.
+The PNG's pixel dimensions are the SVG's `viewBox` × the scale factor. So the size decision was already made when the diagram was drawn — see [`output-spec.md` §2](output-spec.md) for the presets. Export only picks the multiplier.
 
 | Destination | Scale | Result from a 1280×720 `viewBox` |
 |---|---|---|
@@ -108,7 +78,7 @@ The PNG's pixel dimensions are the SVG's `viewBox` × `device_scale_factor`. So 
 
 ### Hitting an exact pixel size
 
-When the user needs specific dimensions (an OG card at exactly 1200×630, a slide image at 1920×1080), compute the scale factor instead of guessing — Playwright accepts fractional values:
+When the user needs specific dimensions (an OG card at exactly 1200×630, a slide image at 1920×1080), compute the scale factor instead of guessing — fractional values work:
 
 ```
 scale = target_width / viewBox_width
@@ -126,7 +96,7 @@ If the target aspect ratio doesn't match the `viewBox` aspect ratio, say so and 
 - **Source is `assets/index.html`** (the gallery, multiple SVGs in one file): refuse the export and ask the user which specific diagram file they meant. Don't guess.
 - **No `<svg>` block found**: the source isn't a diagram file. Tell the user; don't write anything.
 - **Surrounding HTML matters to the user**: they want cards/header in the image. Tell them this skill exports diagrams only, and recommend a browser-based full-page screenshot (or a separate PDF print).
-- **Source is missing fonts at runtime**: Playwright will substitute, the screenshot will look off. Check that the source HTML has the `<link href="...fonts.googleapis.com...">` tag in `<head>`. If absent, the file isn't from a current template — fix the source rather than working around it in export.
+- **Source is missing fonts at runtime**: the browser will substitute, the screenshot will look off. Check that the source HTML has the `<link href="...fonts.googleapis.com...">` tag in `<head>`. If absent, the file isn't from a current template — fix the source rather than working around it in export.
 
 ## What this command never does
 
