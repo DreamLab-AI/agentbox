@@ -639,12 +639,13 @@ gaussian_splatting = false
 # Telemetry and self-update are off; setup/update/uninstall/plugin are refused. Adds
 # [program:cad-engine] (127.0.0.1:3245), Xvfb for snapshots and /usr/share/fonts.
 # Skills: cad, cad-drawing, cad-fea, cad-robot, cad-pcb, cad-render. REBUILD-class.
-# OFF until a build with it on has passed tests/config/cad-launcher.test.sh live: the
-# Nix for it was written without an evaluator, and off it cannot break an image build.
-cad = false
+# ON by the operator's decision (2026-11-11). The Nix for it was written without an
+# evaluator, so the first build with it may fail in lib/cad.nix; after a build run
+# AGENTBOX_RC_LIVE=1 bash tests/config/cad-launcher.test.sh.
+cad = true
 # OrcaSlicer on PATH for the cad-print skill (headless slicing; no printer is contacted).
 # Requires cad. REBUILD-class.
-cad_print = false
+cad_print = true
 # SuperSplat Gaussian-splat editor (ADR-2177): the static build served by
 # [program:supersplat] on :8795 (docker network only) over $WORKSPACE/splats/share,
 # plus the splat-transform CLI on PATH. Open http://agentbox:8795/editor/ in the

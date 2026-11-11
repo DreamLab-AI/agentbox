@@ -16,8 +16,8 @@ All notable changes to agentbox are documented here. Format inspired by [Keep a 
   `cad` launcher that installs from it offline with no package index, turns telemetry
   and self-update off, and refuses `setup`, `update`, `uninstall` and `plugin`. The
   engine runs as `[program:cad-engine]`. `cad_print = true` adds OrcaSlicer.
-- Both gates are off: the Nix was written without an evaluator, and off it cannot
-  break an image build. Turn `cad` on, rebuild, then run
+- Both gates are on in `agentbox.toml` (operator's decision, 2026-11-11). The Nix was
+  written without an evaluator, so the next build is its first test. After it, run
   `AGENTBOX_RC_LIVE=1 bash tests/config/cad-launcher.test.sh`.
 
 ### Whole-tree skill routing, runtime python3, motion design skill (2026-11-11 — staged, ADR-2192/2193/2194)
