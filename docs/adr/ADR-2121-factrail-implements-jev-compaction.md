@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 23717873089478ce4b18c6c09bddf4e0adb064f9
+verified_commit: a09c7297b221b9a4ae60caab4d939044011ff36b
 verified_paths: [lib/factrail.nix, lib/lockfiles/factrail-af23eca6.Cargo.lock, lib/claude-code-binary.nix, config/entrypoint-unified.sh, config/claude-plugins/.claude-plugin/marketplace.json, scripts/factrail-store-migrate.mjs, tests/config/factrail-store-migrate.test.mjs, tests/config/factrail-projection.test.sh, schema/agentbox.toml.schema.json, scripts/bake-ruflo-console.sh, scripts/ruflo-console-project.mjs, tests/config/ruflo-console.test.mjs]
 owner: jjohare
 review_trigger: a factrail rev bump in lib/factrail.nix, the end of the post-rebuild residency soak, a Claude Code function-hook API change, or a decision to train a local judge on recorded Jev decisions
@@ -17,6 +17,16 @@ lineage: ADR-2093 (the decision this implements; amends its implementation, not 
 ---
 
 # ADR-2121 — Implement Jev compaction with factrail — fact rails in Rust, baked at a pinned commit
+
+## Prebuilt CLI pin check — 2026-11-11
+
+The only governed-path delta since `237178730` is Claude Code 2.1.319 →
+2.1.322, with both downloaded Linux binaries matching the upstream manifest.
+Codex's complete Linux packages advance to 0.167.1. This clears the documented
+Fable 5.2 client minimum (2.1.321); Sonnet + Opus, consent, compaction policy,
+factrail and its projection are unchanged. This is source/integrity evidence,
+not a function-hook compatibility or working-week soak result. No container
+cutover is authorised in this preparation; status axes and open findings stay.
 
 ## Prebuilt CLI pin check — 2026-11-09
 
