@@ -55,13 +55,12 @@ The skill provides detailed error messages for:
 ## Troubleshooting
 
 ### Kernel Not Starting
-- Check `/opt/venv/bin/python` exists
+- Check `command -v python3` and `command -v jupyter`
 - Verify ipykernel installed
 - Check kernel specifications: `jupyter kernelspec list`
 
 ### Import Errors
-- Activate virtual environment: `source /opt/venv/bin/activate`
-- Install missing packages: `pip install <package>`
+- The image is immutable: a missing package cannot be installed at run time; report it instead
 - Verify CUDA installation for GPU packages
 
 ### Cell Execution Hangs

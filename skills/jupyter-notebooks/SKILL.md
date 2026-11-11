@@ -41,9 +41,9 @@ Use this skill when you need to:
 
 ## Prerequisites
 
-- Jupyter notebooks installed (`jupyter` and `jupyterlab` available in /opt/venv)
+- Jupyter notebooks installed (`jupyter` is on PATH in the image's python3 environment; check `command -v jupyter`)
 - MCP server running on stdio
-- Python virtual environment at /opt/venv with data science packages
+- The image's python3 environment (there is no /opt/venv here; check which data science packages import before relying on them)
 
 ## Available Operations
 
