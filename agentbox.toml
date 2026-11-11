@@ -1370,12 +1370,12 @@ cascade_cutoff = 0.3718         # relative margin (s1-s2)/s1; 0.3718 = openjev p
 # inspection, never the label) and the router's pick for that turn, into
 # `routing_labels` in the RuVector sidecar. Email-gateway turns are never embedded;
 # the embeddings endpoint must be on the LAN (validator E077).
-# ON as the bounded experiment EXP-B8 (owner decision 2026-10-02 R5b;
-# docs/experiments/EXP-B8-label-log.md): the router also logs a shadow BM25 pick
-# (a skill name and a score) as the copy-ceiling arm. Live from the checkout without
-# a rebuild: scripts/experiments/exp-b8-label-log.cjs (ticked by the checkout
-# crontab) registers the hooks while this is true and, at 510 rows or 2026-10-20,
-# de-registers them and opens the PR that sets this back to false.
+# OFF: it ran as the bounded experiment EXP-B8 (owner decision 2026-10-02 R5b;
+# docs/experiments/EXP-B8-label-log.md), with the router also logging a shadow BM25
+# pick as the copy-ceiling arm. The stopping rule fired on 2026-10-04 at n = 513
+# with verdict WITHDRAW (docs/experiments/EXP-B8-report.md), so ADR-2110 is
+# rejected and the hooks were de-registered; its crontab tick has been removed.
+# true still makes the entrypoint register routing-label-recorder.cjs at boot.
 label_log = false
 label_embeddings_url = "http://192.168.2.132:9997/v1/embeddings"   # bge-small via Xinference (LAN)
 

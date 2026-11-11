@@ -32,9 +32,21 @@ if [ ! -d "$LEDGER_DIR" ]; then
     exit 1
 fi
 
+# The Loom door. podcast-promote's built-in default, http://loom:8080/v1, is the
+# compose-profile sidecar name, which does not resolve from agentbox: every
+# Monday promote run logged "Loom reachability: UNREACHABLE" and deferred every
+# candidate. LOOM_BASE_URL is the façade the ingest stage already uses
+# (podcasts.yaml settings.loom_url); the sidecar name stays the fallback.
+LOOM_URL_ARG="${LOOM_BASE_URL:-http://loom:8080/v1}"
+
+# The weekly cap. clap refuses a second --limit, so a manual run lowers it
+# here (PODCAST_PROMOTE_LIMIT=1 ./run-promote.sh) instead of in "$@".
+LIMIT="${PODCAST_PROMOTE_LIMIT:-15}"
+
 exec "$BIN" \
+    --loom-url "${LOOM_URL_ARG}" \
     --pages-dir "${VAULT_PAGES}" \
     --ledger-dir "${LEDGER_DIR}" \
     --proposals-dir "${SKILL_DIR}/promotions/proposals" \
     --working-graph-dir "${VAULT_WORKING_PAGES}" \
-    --limit 15 "$@"
+    --limit "${LIMIT}" "$@"

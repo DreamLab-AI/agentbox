@@ -3,9 +3,10 @@
 # Channel list: podcasts.yaml (same directory, or --config path)
 
 # supercronic runs jobs via /bin/sh with only the supervisor PATH. All three
-# jobs need more than that: coreutils for `tee`, node for submit-proposals.mjs,
-# the python env for `yt-dlp` (which podcast-ingest still shells out to), and
-# the podcast-ingest/podcast-promote binaries themselves.
+# jobs need more than that: coreutils for `tee`, util-linux for `flock`
+# (lib-lock.sh), node for submit-proposals.mjs, the python env for `yt-dlp`
+# (which podcast-ingest still shells out to), `vault` and `ontomark` for
+# submit-proposals, and the podcast-ingest/podcast-promote binaries themselves.
 #
 # There is deliberately NO `PATH=` line here any more. It used to pin Nix store
 # paths by hand — which went stale on every image rebuild, and silently
@@ -17,7 +18,7 @@
 # pages are never edited; assertions land on `type: Episode` ledger pages under
 # ${VAULT_WORKING_PAGES}/podcast-evidence/ with [[Topic]] wikilinks (PRD Q16;
 # sandbox e2e verified: 0 curated pages modified, validate clean, idempotent).
-# First runs capped in podcasts.yaml.
+# Per-run cap: settings.max_episodes_per_run in podcasts.yaml.
 17 6 * * 1 /home/devuser/workspace/project/agentbox/skills/podcast-knowledge-ingest/run-ingest.sh /home/devuser/workspace/project/agentbox/skills/podcast-knowledge-ingest/podcasts.yaml 2>&1 | tee -a ${VAULT_TRANSCRIPTS}/.ingest-log.txt
 
 # Promotion stage 2h after ingest (Monday 08:17 UTC): survivors -> proposal
@@ -30,15 +31,3 @@
 # proposal queue (Whelk gate -> ACSP human approval). Idempotent per
 # fingerprint set; unresolvable targets are skipped, never guessed.
 47 8 * * 1 cd /home/devuser/workspace/project/agentbox/skills/podcast-knowledge-ingest && node submit-proposals.mjs 2>&1 | tee -a ${VAULT_TRANSCRIPTS}/.promote-log.txt
-
-# ── EXP-B8 bounded label-log experiment (owner decision 2026-10-02, R5b) ──────
-# Not a podcast job: this crontab is read from the checkout, so the experiment
-# runs and stops itself without an image rebuild. Every 30 minutes the tick
-# keeps the ADR-2110 label-log hooks registered while
-# [skills.routing].label_log = true in the checkout manifest,
-# counts analysable rows, and when the pre-registered stopping rule fires (510
-# rows or 2026-10-20 UTC) de-registers both hooks, runs the one test, opens a PR
-# setting label_log = false with the verdict in ADR-2110, and posts one forum
-# summary as JunkieJarvis. Protocol: docs/experiments/EXP-B8-label-log.md.
-# Remove this block once that PR has merged.
-*/30 * * * * cd /home/devuser/workspace/project/agentbox && node scripts/experiments/exp-b8-label-log.cjs

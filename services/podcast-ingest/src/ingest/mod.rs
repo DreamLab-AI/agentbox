@@ -187,7 +187,7 @@ pub async fn run(
             assertions_by_file.len()
         );
 
-        println!("\n--- Phase 3: Verification (Perplexity) ---");
+        println!("\n--- Phase 3: Verification (confidence tiers) ---");
         let verified = verify::phase_verify(&assertions_by_file);
         let total_verified: usize = verified.values().map(|v| v.len()).sum();
         println!("Verified: {total_verified} of {total_assertions}.");

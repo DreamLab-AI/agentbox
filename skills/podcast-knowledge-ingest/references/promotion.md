@@ -67,7 +67,7 @@ podcast-promote --pages-dir <scratch>/pages --proposals-dir <scratch>/proposals 
 | `--judge-b-min` | `0.0` | survive if rubric-B improvement `>` this (strict) |
 | `--completeness-min` | `0.6` | survive if completeness score `>= this` |
 | `--judge-seed` | `42` | seed for blind A/B before/after ordering |
-| `--loom-url` | `${LOOM_BASE_URL}` | Ontology Loom façade |
+| `--loom-url` | `http://loom:8080/v1` | Ontology Loom façade. That default is the compose sidecar name and does not resolve from agentbox; `run-promote.sh` passes `${LOOM_BASE_URL}` |
 | `--loom-model` | `qwen3.8-27b` | Loom model id |
 | `--dry-run` | off | stop after candidacy detection; no network calls, no writes |
 | `--limit N` | none | process at most N candidates this run |

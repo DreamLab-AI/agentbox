@@ -3087,10 +3087,16 @@ ${lib.optionalString podcastIngestEnabled ''
 ; podcast-ingest binary and supercronic stay in the closure either way:
 ; both are shared with always-baked surfaces (the podcast-{knowledge,bulk}-
 ; ingest skills and [program:forum-backup-cron]). REBUILD-class.
+; PATH carries everything the three crontab jobs run: podcast-ingest and
+; podcast-promote; yt-dlp (python env), which podcast-ingest spawns; coreutils
+; for `tee`; util-linux for `flock` (lib-lock.sh, 2026-10-19: without it every later
+; ingest aborted before listing); node for submit-proposals.mjs; and, when
+; [vault].cli bakes them, `vault` and `ontomark` (submit-proposals' class
+; lookup; ontomark has no /opt/agentbox/bin link, so PATH is its only route).
 [program:podcast-cron]
 command=${bgNice}${supercronicPkg}/bin/supercronic -split-logs /home/devuser/workspace/project/agentbox/skills/podcast-knowledge-ingest/crontab
 user=devuser
-environment=HOME="/home/devuser",PATH="${podcastIngestPkg}/bin:${pythonRuntimeEnv}/bin:${pkgs.coreutils}/bin:${pkgs.nodejs_22}/bin:/usr/local/bin:/bin:/usr/bin"
+environment=HOME="/home/devuser",PATH="${lib.makeBinPath ([ podcastIngestPkg pythonRuntimeEnv pkgs.coreutils pkgs.util-linux pkgs.nodejs_22 ] ++ vaultPackages)}:/usr/local/bin:/bin:/usr/bin"
 autostart=true
 autorestart=true
 startsecs=0
