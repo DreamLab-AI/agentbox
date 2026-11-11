@@ -21,7 +21,8 @@
 { lib, pkgs }:
 
 let
-  # 2.1.319 (built 2026-11-05T19:38:09Z; checksums from the published manifest).
+  # 2.1.322 (built 2026-11-10T00:53:25Z; checksums from the published manifest).
+  # Fable 5.2 main/advisor support requires >= 2.1.321 (upstream advisor docs).
   # Advisor tool (ADR-2134) needs >= 2.1.293 for Haiku 5.5 pairings.
   # 2.1.294 (bumped 2026-10-08).
   # 2.1.289 (built 2026-10-03T19:38:35Z; bumped 2026-10-05).
@@ -32,10 +33,10 @@ let
   #
   # This is Anthropic's latest channel release. Both per-arch hashes are
   # verified against its published manifest:
-  # https://downloads.claude.ai/claude-code-releases/2.1.319/manifest.json
-  #   linux-x64   dabafec82ca1319fa43d8be36a10fc61b1d11821cb98ad5df04ad95e199b8eed
-  #   linux-arm64 a7e687fd1cb054d651c7588223de3786c99d4c682365e3c3ae1e59ce7f3a591f
-  claudeCodeVersion = "2.1.319";
+  # https://downloads.claude.ai/claude-code-releases/2.1.322/manifest.json
+  #   linux-x64   bfb3703ad5380242328459bc62ada4bde8ae7ba57c6e1eeadb9c00e08874c478
+  #   linux-arm64 f220ca50ea4f3222043ff83cc224a1262e0196e9897acc0871efa94235b0c1fd
+  claudeCodeVersion = "2.1.322";
 
   # Map agentbox's system string to the upstream download platform slug.
   platforms = {
@@ -56,10 +57,10 @@ let
   # lib.fakeHash triggers a build-time error with the exact prefetch command.
   assets = {
     "x86_64-linux" = {
-      sha256 = "sha256-2rr+yCyhMZ+kPYvjahD8YbHRGCHLmK1d8ErZXhmbju0=";
+      sha256 = "sha256-v7NwOtU4AkIyhFm8Yq2kveiue6V8bh7q25wA4Ih0xHg=";
     };
     "aarch64-linux" = {
-      sha256 = "sha256-p+aH/RywVNZRx1iCI943hsmdTGgjZePDrh5Zzn86WR8=";
+      sha256 = "sha256-8iDKUOpPMiIEP/g8wiShJi4BlumJeswIce+pQjWwwf0=";
     };
   };
 

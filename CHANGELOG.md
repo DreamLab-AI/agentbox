@@ -4,6 +4,16 @@ All notable changes to agentbox are documented here. Format inspired by [Keep a 
 
 ## [Unreleased]
 
+### Prebuilt agent CLI pins (2026-11-11 — prepared, not activated)
+
+- Claude Code 2.1.322 replaces 2.1.319; both Linux binaries were downloaded and
+  checked against Anthropic's release manifest. This clears the documented
+  2.1.321 minimum for Fable 5.2 main/advisor support. Sonnet + Opus remains the
+  configured pairing; Fable access and usage-credit consent are not enabled here.
+- Codex 0.167.1 replaces 0.167.0. Both Linux musl package archives were downloaded,
+  checked for the required sibling tools/resources, and rehashed. Nixpkgs, CUDA,
+  browsers and model selections are unchanged.
+
 ### CAD, electronics, stress analysis, slicing and rendering skills (2026-11-11 — staged, gated off, ADR-2195)
 
 - Seven skills adapted from text-to-cad 0.11.8 (MIT): `cad` (build123d parts and
