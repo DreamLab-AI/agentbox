@@ -180,8 +180,19 @@ function localRank(prompt, criteria) {
   return { choice: names[b1], margin, score: s1 };
 }
 
+/**
+ * The leading `---…---` frontmatter block of a SKILL.md, or '' when the file has none. Every
+ * field read below is confined to it: a `status:` or `description:` line in a code fence in
+ * the body is documentation, not metadata.
+ */
+function frontmatterBlock(md) {
+  const m = String(md).match(/^\uFEFF?---[ \t]*\r?\n([\s\S]*?)\r?\n(?:---|\.\.\.)[ \t]*(?:\r?\n|$)/);
+  return m ? m[1] + '\n' : '';
+}
+
 /** Frontmatter `description`: folded block, quoted scalar or bare scalar. */
 function description(md) {
+  md = frontmatterBlock(md);
   const folded = md.match(/^description:\s*(?:>-|>|\|)\s*\n((?:[ \t]+.*\n)+)/m);
   if (folded) return folded[1].split('\n').map((l) => l.trim()).filter(Boolean).join(' ');
   const scalar = md.match(/^description:\s*"([\s\S]*?)"\s*$/m) || md.match(/^description:\s*(.+)$/m);
@@ -189,7 +200,7 @@ function description(md) {
 }
 
 function frontmatterField(md, key) {
-  const m = md.match(new RegExp(`^${key}:\\s*(.+)$`, 'm'));
+  const m = frontmatterBlock(md).match(new RegExp(`^${key}:\\s*(.+)$`, 'm'));
   return m ? m[1].trim() : '';
 }
 
@@ -254,6 +265,13 @@ function restrictToRegistered(criteria, cfg) {
 /** The namespace Claude Code gives skills synced from the claude.ai account. */
 const SYNCED_NAMESPACE = 'anthropic-skills';
 
+/**
+ * Synced account skills that drive the Claude desktop app or a browser extension on the
+ * person's own machine (each declares it in its `compatibility` frontmatter). Neither exists
+ * in a headless container, so offering them only invites a pick that cannot be acted on.
+ */
+const DESKTOP_ONLY_SYNCED = new Set(['computer-use', 'chrome-browser', 'built-in-browser']);
+
 function readJson(file) {
   try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return null; }
 }
@@ -263,7 +281,7 @@ function rubricOf(md) {
   const desc = description(md);
   if (!desc) return null;
   const status = frontmatterField(md, 'status') || 'live';
-  if (EXCLUDED_STATUS.has(status) || /^deprecated:\s*true/m.test(md)) return null;
+  if (EXCLUDED_STATUS.has(status) || /^deprecated:\s*true/m.test(frontmatterBlock(md))) return null;
   return STATUS_NOTE[status] ? `${STATUS_NOTE[status]} ${desc}` : desc;
 }
 
@@ -288,10 +306,13 @@ function loadLoadableExtras(claudeDir) {
     const skills = manifest && Array.isArray(manifest.skills) ? manifest.skills : [];
     for (const sk of skills) {
       const name = sk && (sk.name || sk.skillId);
-      if (!name || typeof name !== 'string') continue;
+      if (!name || typeof name !== 'string' || DESKTOP_ONLY_SYNCED.has(name)) continue;
       let md;
       try { md = fs.readFileSync(path.join(dir, name, 'SKILL.md'), 'utf8'); } catch { continue; }
-      const rubric = rubricOf(md) || (typeof sk.description === 'string' && sk.description.trim()) || null;
+      // The manifest text stands in only for a SKILL.md with no description at all; a skill
+      // `rubricOf` rejected on its status stays rejected.
+      const rubric = description(md) ? rubricOf(md)
+        : (typeof sk.description === 'string' && sk.description.trim()) || null;
       if (rubric) out[`${SYNCED_NAMESPACE}:${name}`] = rubric;
     }
   }
@@ -328,17 +349,22 @@ function candidateSignature(name, rubric) {
  * two options with the same rubric: it splits the probability mass between them, and in the
  * verify shortlist the pair ties and takes two of the three slots. Which copy survives is
  * fixed, not incidental: a baked skill first, then an enabled plugin (pinned by its install
- * record), then an account-synced copy. Same bare name with a DIFFERENT rubric is two
- * skills and both stay. Returns `{ extras, dropped }`; key order of the survivors is kept.
+ * record), then an account-synced copy. An extra sharing a bare name with a baked skill is
+ * dropped whatever its rubric says (the baked skill wins, measured: the account's
+ * `deep-research` summary differs from the tree's). Between two extras only the same bare
+ * name AND rubric collapse; the same name with a DIFFERENT rubric is two skills. Returns `{ extras, dropped }`; key order of the survivors is kept.
  */
 function dedupeExtras(criteria, extras) {
   const seen = new Set(Object.entries(criteria).map(([k, v]) => candidateSignature(k, v)));
+  const bare = (k) => String(k).toLowerCase().replace(/^.*:/, '');
+  const bakedNames = new Set(Object.keys(criteria).map(bare));
   const isSynced = (k) => k.startsWith(`${SYNCED_NAMESPACE}:`);
   const keep = new Set();
   const dropped = [];
   for (const pass of [(k) => !isSynced(k), isSynced]) {
     for (const [k, v] of Object.entries(extras)) {
       if (!pass(k) || k in criteria) continue;
+      if (bakedNames.has(bare(k))) { dropped.push(k); continue; }
       const sig = candidateSignature(k, v);
       if (seen.has(sig)) dropped.push(k); else { seen.add(sig); keep.add(k); }
     }
@@ -736,15 +762,22 @@ async function route(prompt, cfg, { retries = 0, candidates, registeredOnly = fa
       if (attempt < retries) continue;
       return fail(reason, { ...base, ms: Date.now() - t0 });
     }
-    clearTimeout(timer);
-    const ms = Date.now() - t0;
+    // The timer stays armed until the body is parsed: headers arriving is not an answer, and
+    // a server that stalls mid-body would otherwise hold the hook past its own budget.
     if (res.status === 429 || res.status === 529) {
+      clearTimeout(timer);
+      const ms = Date.now() - t0;
       if (attempt < retries) { await new Promise((r) => setTimeout(r, 750 * (attempt + 1))); continue; }
       return fail(`http-${res.status}`, { ...base, ms });
     }
-    if (!res.ok) return fail(`http-${res.status}`, { ...base, ms });
+    if (!res.ok) { clearTimeout(timer); return fail(`http-${res.status}`, { ...base, ms: Date.now() - t0 }); }
     let j;
-    try { j = await res.json(); } catch { return fail('bad-json', { ...base, ms }); }
+    try { j = await res.json(); } catch (e) {
+      clearTimeout(timer);
+      return fail(e && e.name === 'AbortError' ? 'timeout' : 'bad-json', { ...base, ms: Date.now() - t0 });
+    }
+    clearTimeout(timer);
+    const ms = Date.now() - t0;
     const a = j && j.answers && j.answers.skill;
     if (!a || typeof a.choice !== 'string') return fail('bad-shape', { ...base, ms });
     const probs = a.probabilities && typeof a.probabilities === 'object' ? a.probabilities : {};
@@ -821,7 +854,17 @@ function unregisteredPaths(names, cfg) {
   if (!cfg || !cfg.registeredDir || !cfg.skillsDir) return [];
   let registered;
   try { registered = new Set(fs.readdirSync(cfg.registeredDir)); } catch { return []; }
-  return names.filter((k) => !registered.has(k))
+  // Registered means the entry resolves to this tree's skill (or is a real directory). A link
+  // into another checkout loads that checkout's copy, so the baked path is still worth giving.
+  const loadsThisTree = (k) => {
+    if (!registered.has(k)) return false;
+    try {
+      const entry = path.join(cfg.registeredDir, k);
+      if (!fs.lstatSync(entry).isSymbolicLink()) return true;
+      return fs.realpathSync(entry) === fs.realpathSync(path.join(cfg.skillsDir, k));
+    } catch { return false; }
+  };
+  return names.filter((k) => !loadsThisTree(k))
     .map((k) => [k, path.join(cfg.skillsDir, k, 'SKILL.md')])
     .filter(([, p]) => fs.existsSync(p))
     .map(([k, p]) => `${k} → ${p}`);
@@ -860,9 +903,9 @@ function appendLog(cfg, record) {
 
 module.exports = {
   NONE, INSTRUCTIONS, JEV_USD_PER_MTOK_IN, USD_PER_MTOK_IN_ENV, DEFAULT_API, DEFAULT_MODEL,
-  description, loadCandidates, readTomlSection, config, clampPrompt, route, formatContext, unregisteredPaths, appendLog,
+  description, frontmatterField, loadCandidates, readTomlSection, config, clampPrompt, route, formatContext, unregisteredPaths, appendLog,
   tokenise, stripExclusion, bm25, localRank, DEFAULT_CASCADE_CUTOFF,
   readRegisteredManifest, restrictToRegistered, REGISTERED_MANIFEST_CANDIDATES, MAX_CONTEXT_CHARS,
-  loadLoadableExtras, SYNCED_NAMESPACE, dedupeExtras, candidateSignature,
+  loadLoadableExtras, SYNCED_NAMESPACE, DESKTOP_ONLY_SYNCED, dedupeExtras, candidateSignature,
   projectBypassed, jevConfig, jevPlan, applyJev, explicitSkillRequest, shortlist, JEV_SKILL_QUESTION_SET, JEV_FACETS,
 };

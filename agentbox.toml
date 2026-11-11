@@ -1327,7 +1327,7 @@ template_dir = "/home/devuser/workspace/VisionFlow/docs/engineering/templates"
 router = "jev"
 hook = true                     # register the UserPromptSubmit hook (router = "jev" only)
 model = "jev-latest"            # resolved server-side; pin (e.g. "jev-1.13.0") to freeze behaviour
-timeout_ms = 4000               # hook budget per call; the hook itself is registered at 8000
+timeout_ms = 4000               # hook budget per call; the hook itself is registered with an 8 s timeout
 min_prompt_chars = 24           # shorter turns are never sent (and never routed)
 # ADR-2192 — which baked skills the hook offers the judge.
 #   "registered" → only skills/registered-skills.txt (the always-loaded Skill list).

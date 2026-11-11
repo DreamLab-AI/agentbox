@@ -1,6 +1,7 @@
 ---
 name: swarm-advanced
-description: Advanced swarm orchestration patterns for research, development, testing, and complex distributed workflows. Use when: (1) running 3+ parallel agents locally, (2) needing adaptive topology, (3) doing research/dev tasks requiring parallel coordination.
+description: >-
+  Advanced swarm orchestration patterns for research, development, testing, and complex distributed workflows. Use when: (1) running 3+ parallel agents locally, (2) needing adaptive topology, (3) doing research/dev tasks requiring parallel coordination.
 version: 2.0.0
 category: orchestration
 tags: [swarm, distributed, parallel, research, testing, development, coordination]

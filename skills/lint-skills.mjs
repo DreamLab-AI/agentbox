@@ -187,6 +187,33 @@ const rel = (p) => relative(SKILLS_DIR, p) || p;
 // ---------------------------------------------------------------------------
 
 /**
+ * First line of a frontmatter block whose unquoted (plain) value contains `: ` — a real YAML
+ * parser rejects it ("incomplete explicit mapping pair"), which the key-by-key reader above
+ * would otherwise accept. Quoted values, flow collections and block-scalar bodies are skipped.
+ *
+ * @param {string[]} block frontmatter lines without the fences
+ * @returns {{line:number}|null} 1-based file line number
+ */
+function findInvalidPlainScalar(block) {
+  let ownerIndent = -1; // indent of the key that opened a block scalar, -1 outside one
+  for (let i = 0; i < block.length; i++) {
+    const raw = block[i];
+    if (raw.trim() === '' || /^[ \t]*#/.test(raw)) continue;
+    const indent = raw.length - raw.trimStart().length;
+    if (ownerIndent >= 0) {
+      if (indent > ownerIndent) continue;
+      ownerIndent = -1;
+    }
+    const entry = /^[ \t]*(?:-[ \t]+)*(?:(?:"[^"]*"|'[^']*'|[^\s:#"'\[{-][^:]*?)[ \t]*:(?:[ \t]+|$))?(.*)$/.exec(raw);
+    const value = entry ? entry[1].replace(/(^|[ \t])#.*$/, '').trim() : '';
+    if (/^[|>][+-]?[0-9]*$/.test(value)) { ownerIndent = indent; continue; }
+    if (value === '' || /^["'\[{&*!|>%@`]/.test(value)) continue;
+    if (/:[ \t]/.test(value)) return { line: i + 2 };
+  }
+  return null;
+}
+
+/**
  * Parses a real YAML frontmatter block: `---` on line 1, a closing `---` (or
  * `...`) line, and top-level mapping entries in between. Understands quoted
  * scalars, block scalars (`|`, `>` and their chomping variants), comments,
@@ -300,6 +327,11 @@ export function parseFrontmatter(text) {
 
     keys.set(key, { kind: 'scalar', value, line: lineNo });
     i++;
+  }
+
+  const bad = findInvalidPlainScalar(block);
+  if (bad) {
+    return { ok: false, error: `frontmatter line ${bad.line} is not valid YAML: an unquoted value contains ": " (quote the value or use a > block scalar)` };
   }
 
   if (keys.size === 0) {

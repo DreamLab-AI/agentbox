@@ -21,8 +21,8 @@ tools:
   - Grep
   - Glob
 memory:
-  before: mcp__claude-flow__memory_search({query: "[topic] optimization experiments", namespace: "patterns", limit: 5})
-  after: mcp__claude-flow__memory_store({namespace: "patterns", key: "autoresearch-[slug]", value: "[what worked, final metric]"})
+  before: 'mcp__claude-flow__memory_search({query: "[topic] optimization experiments", namespace: "patterns", limit: 5})'
+  after: 'mcp__claude-flow__memory_store({namespace: "patterns", key: "autoresearch-[slug]", value: "[what worked, final metric]"})'
 ---
 
 # Autoresearch: Autonomous Experiment Loop
