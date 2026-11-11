@@ -118,8 +118,7 @@ gitleaks detect --source . --verbose
 
 ### SAST with semgrep
 ```bash
-# Install semgrep
-pip install semgrep
+# semgrep is not baked into the image; run only if already on PATH
 
 # Run OWASP ruleset
 semgrep --config p/owasp-top-ten .

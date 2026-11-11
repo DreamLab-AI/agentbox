@@ -34,7 +34,7 @@ The guidance in the references is what to apply once a direction is agreed.
 2. **Explore options** — present 2-3 approaches with trade-offs; confirm direction on
    consequential visual decisions.
 3. **Implement iteratively** — structure and hierarchy first, then visual polish.
-4. **Validate** — playwright MCP for visual/responsive checks; verify accessibility.
+4. **Validate** — browser skill (browser-gpu MCP) for visual/responsive checks; verify accessibility.
 
 ## Core principles (at a glance)
 

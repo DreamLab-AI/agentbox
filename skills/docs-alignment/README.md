@@ -52,8 +52,6 @@ Copy `.github/workflows/docs-ci.yml` to your repository to enable automated docu
 
 ## Documentation
 
-- [MAINTENANCE.md](../../docs/MAINTENANCE.md) - Maintenance procedures
-- [CONTRIBUTION.md](../../docs/CONTRIBUTION.md) - Contribution guidelines
 - [SKILL.md](SKILL.md) - Skill implementation guide
 
 ## Scripts

@@ -15,7 +15,7 @@ Generate accurate daisyUI 5 components and themes with MCP-enhanced context.
 
 - For general CSS/Tailwind without daisyUI components -- write Tailwind directly
 - For React/Vue/Svelte component architecture -- use the ui-ux-pro-max-skill instead
-- For visual testing of rendered UI -- use the browser-automation or playwright skills
+- For visual testing of rendered UI -- use the `browser` skill
 - For design system creation without Tailwind -- use standard CSS approaches
 
 ## MCP Server Setup
