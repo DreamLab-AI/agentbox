@@ -50,6 +50,9 @@ const UNITS = {
  */
 const ON_DEMAND = {
   'setup-wizard': 'pre-boot manifest editor, started by hand and exits after saving',
+  // ADR-2149: ungated and opt-in, brought up and down from the host with
+  // `./agentbox.sh isaac-sim up|down`; the manifest has no key that declares it.
+  'isaac-sim-sidecar': 'opt-in sidecar started and stopped by hand (./agentbox.sh isaac-sim up|down)',
 };
 
 /** Supervisor programs that run once and exit 0 by design: EXITED means it ran. */

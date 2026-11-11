@@ -1,5 +1,5 @@
 {
-  "captured_at": "2026-10-23T11:11:52.322Z",
+  "captured_at": "2026-11-11T21:37:01.140Z",
   "supervisor": {
     "agentbox-hook-drain": "RUNNING",
     "agentbox-mcp-hub": "RUNNING",
@@ -7,6 +7,7 @@
     "blender-mcp": "RUNNING",
     "bootstrap": "RUNNING",
     "bootstrap-seal": "EXITED",
+    "cad-engine": "RUNNING",
     "claude-cred-sync": "RUNNING",
     "code-server": "RUNNING",
     "diagram-review-cron": "RUNNING",
@@ -39,6 +40,7 @@
     "sidestr-producer": "RUNNING",
     "sidestr-producer-dreamlab-txbt4": "RUNNING",
     "solid-pod": "RUNNING",
+    "supersplat": "RUNNING",
     "system-one-proxy": "RUNNING",
     "tab0-bridge": "RUNNING",
     "tailscale-up": "EXITED",
@@ -50,15 +52,15 @@
     "xvnc": "RUNNING"
   },
   "containers": {
-    "isaac-sim": {
+    "browsercontainer": {
       "state": "running",
       "project": "agentbox"
+    },
+    "voice-console": {
+      "state": "running",
+      "project": "agentbox-voice"
     },
     "gui-tools-service": {
-      "state": "running",
-      "project": "agentbox"
-    },
-    "browsercontainer": {
       "state": "running",
       "project": "agentbox"
     },
@@ -67,10 +69,6 @@
       "project": "agentbox-voice"
     },
     "agentbox-voice-backend-1": {
-      "state": "running",
-      "project": "agentbox-voice"
-    },
-    "voice-console": {
       "state": "running",
       "project": "agentbox-voice"
     },
