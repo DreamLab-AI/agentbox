@@ -19,7 +19,7 @@ High-performance WebAssembly graphics with JavaScript interoperability for web a
 - For general Rust development without WebAssembly graphics -- use the rust-development skill instead
 - For server-side CUDA GPU compute -- use the cuda skill instead
 - For non-graphical WASM modules (data processing, crypto) -- the rust-development skill with wasm32 target is sufficient
-- For browser automation and testing -- use the playwright or browser skills instead
+- For browser automation and testing -- use the browser skill instead
 - For UI component design guidance (styles, palettes, typography, layout) -- use the ui-ux-pro-max-skill skill instead; for auditing/polishing an existing interface -- use the design-audit skill
 
 ## Architecture Pattern
@@ -90,8 +90,7 @@ ctx.stroke();
 ## Build Commands
 
 ```bash
-# Install wasm-pack
-cargo install wasm-pack
+# wasm-pack is baked into the image (command -v wasm-pack)
 
 # Build for web target
 wasm-pack build --target web --release
@@ -119,7 +118,7 @@ wasm-pack build --target web --release
 
 - `rust-development` - Rust toolchain and patterns
 - `performance-analysis` - Profiling and optimisation
-- `playwright` - Visual testing of graphics output
+- `browser` - Visual testing of graphics output
 - `leptos` - Full-stack reactive Rust web framework; reach for it instead of this skill when the WASM/JS work is happening inside a Leptos component tree rather than a standalone hand-wired WASM module
 
 ## References

@@ -147,8 +147,8 @@ view! { <div node_ref=node/> }
 Load the JS lib via CDN/bundle in `index.html` — don't try to compile GSAP/Three into WASM.
 **Bevy/WebGL 3D** can compile to WASM and render to a `<canvas>` alongside the Leptos UI,
 sharing state via signals/custom events — non-trivial but demonstrated in the community. For
-hardware WebGPU/WebGL eye-candy validation, drive the running app with the `browser`/`playwright`
-sidecar skills.
+hardware WebGPU/WebGL eye-candy validation, drive the running app with the `browser` skill (browser-gpu sidecar)
+(browser-gpu sidecar).
 
 ---
 

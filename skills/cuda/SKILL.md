@@ -50,8 +50,6 @@ Load the reference that matches the task:
 
 - **pytorch-ml** - Deep learning with PyTorch + CUDA
 - **rust-development** - Safe CUDA bindings in Rust
-- **docker-orchestrator** - Deploy GPU containers
-- **infrastructure-manager** - Provision GPU cloud instances
 
 ## References
 

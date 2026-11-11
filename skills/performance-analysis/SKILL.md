@@ -56,7 +56,7 @@ mcp__claude-flow__bottleneck_analyze({ timeRange: "1h", threshold: 20, autoFix: 
    with real-time profiling and severity-ranked output.
 2. **Report generation** — executive summary, metrics, bottleneck analysis, and
    prioritized recommendations in json/html/markdown.
-3. **Optimisation** — `--fix` applies topology, caching, concurrency, priority,
+3. **Optimisation** — `--apply` applies topology, caching, concurrency, priority,
    and resource optimisations; review before applying.
 
 ## References

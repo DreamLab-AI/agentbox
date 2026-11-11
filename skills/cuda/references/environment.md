@@ -6,8 +6,7 @@
 nvcc --version
 nvidia-smi
 
-# Container has CUDA 13.0
-# Location: /opt/cuda/bin/nvcc
+# nvcc is on PATH (`command -v nvcc`); CUDA 13.4 in this image
 ```
 
 ### GPUs Detected (Container)

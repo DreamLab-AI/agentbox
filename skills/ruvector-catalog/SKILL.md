@@ -39,7 +39,7 @@ cd ruvector/crates/<crate-name-wasm>
 wasm-pack build --target nodejs --out-dir pkg
 # Then: require('./ruvector/crates/<crate-name-wasm>/pkg/<crate_name>.js')
 ```
-Prerequisites: `rustc` + `wasm-pack` (`cargo install wasm-pack`)
+Prerequisites: `rustc` + `wasm-pack` (both baked into the image)
 
 ### Path 3: NAPI native bindings (highest performance)
 ```bash
