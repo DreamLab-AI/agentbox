@@ -49,4 +49,15 @@ script against a live sidecar is recorded in ADR-2194.
 
 ## Licence
 
-MIT OR Apache-2.0. Not published to crates.io (`publish = false`).
+Licensed under either of
+
+- Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE))
+- MIT licence ([LICENSE-MIT](LICENSE-MIT))
+
+at your option. Not published to crates.io (`publish = false`).
+
+### Contribution
+
+Unless you explicitly state otherwise, any contribution intentionally submitted
+for inclusion in the work by you, as defined in the Apache-2.0 licence, shall be
+dual licensed as above, without any additional terms or conditions.

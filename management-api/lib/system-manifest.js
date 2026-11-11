@@ -427,6 +427,12 @@ const CATALOGUE = [
   { id: 'supersplat', name: 'SuperSplat editor + splat-transform', layer: 'module',
     gate: 'skills.spatial_and_3d.supersplat', apply_class: 'rebuild',
     summary: 'ADR-2177: the pinned SuperSplat static build served by [program:supersplat] (static-web-server, 0.0.0.0:8795 on the docker network only, never published, read-only) over $WORKSPACE/splats/share, plus the splat-transform CLI on PATH. Opened in the browser sidecar at http://agentbox:8795/editor/ (WebGPU only; the origin is on its TREAT_AS_SECURE list). REBUILD-class — package set and supervisor text are resolved at image composition.' },
+  { id: 'cad', name: 'CAD engine (text-to-cad, pinned and offline)', layer: 'module',
+    gate: 'skills.spatial_and_3d.cad', service: 'cad-engine', apply_class: 'rebuild',
+    summary: "ADR-2195: text-to-cad's `cad` command (build123d/OpenCASCADE models, STEP/STL/3MF/GLB/DXF, manufacturability checks, drawings, netgen + CalculiX stress studies, KiCad boards, MuJoCo descriptions, Blender renders), pinned to config/cad/wheels.lock.json and run OFFLINE from a baked hash-verified wheelhouse (about 0.9 GB) by the /bin/cad launcher: telemetry and self-update off, setup/update/uninstall/plugin refused. Adds [program:cad-engine] (127.0.0.1:3245), Xvfb for snapshots and /usr/share/fonts. Skills: cad, cad-drawing, cad-fea, cad-robot, cad-pcb, cad-print, cad-render. REBUILD-class. Default false when absent." },
+  { id: 'cad-print', name: 'OrcaSlicer for cad-print', layer: 'module',
+    gate: 'skills.spatial_and_3d.cad_print', requires: ['skills.spatial_and_3d.cad'], apply_class: 'rebuild',
+    summary: "ADR-2195: OrcaSlicer on PATH for the cad-print skill (headless slicing to G-code; no printer is ever contacted). Requires cad. REBUILD-class. Default false when absent." },
   // ADR-2034 — resource topology. The envelope is BOOT-class (the generated
   // compose is re-read on `up`), the resident paths are REBUILD-class (they
   // add supervised programs and binaries to the image).

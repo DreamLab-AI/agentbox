@@ -919,6 +919,8 @@
         "_SR_MODEL",
         "_SR_PROXY",
         "_SR_ROUTER",
+        "_SR_SCOPE",
+        "_SR_SCOPE_EXPORT",
         "_SR_TIMEOUT",
         "_SSO_API",
         "_SSO_EXPORTS",

@@ -4,6 +4,22 @@ All notable changes to agentbox are documented here. Format inspired by [Keep a 
 
 ## [Unreleased]
 
+### CAD, electronics, stress analysis, slicing and rendering skills (2026-11-11 — staged, gated off, ADR-2195)
+
+- Seven skills adapted from text-to-cad 0.11.8 (MIT): `cad` (build123d parts and
+  assemblies, STEP/STL/3MF/GLB/DXF, manufacturability checks), `cad-drawing`,
+  `cad-fea` (netgen + CalculiX), `cad-robot` (URDF/SRDF/MJCF), `cad-pcb` (KiCad, the
+  estate's first electronics skill), `cad-print` (OrcaSlicer) and `cad-render`
+  (headless bpy on the GPU). 141 skills.
+- The upstream tool is not vendored or ported. `[skills.spatial_and_3d] cad = true`
+  bakes a wheelhouse of 96 hash-locked wheels (`config/cad/wheels.lock.json`) and a
+  `cad` launcher that installs from it offline with no package index, turns telemetry
+  and self-update off, and refuses `setup`, `update`, `uninstall` and `plugin`. The
+  engine runs as `[program:cad-engine]`. `cad_print = true` adds OrcaSlicer.
+- Both gates are off: the Nix was written without an evaluator, and off it cannot
+  break an image build. Turn `cad` on, rebuild, then run
+  `AGENTBOX_RC_LIVE=1 bash tests/config/cad-launcher.test.sh`.
+
 ### Whole-tree skill routing, runtime python3, motion design skill (2026-11-11 — staged, ADR-2192/2193/2194)
 
 - `[skills.routing].scope = "all"` lets the routing hook offer every routable baked

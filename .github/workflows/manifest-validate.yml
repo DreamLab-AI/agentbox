@@ -132,6 +132,10 @@ jobs:
       - name: Assert JSON Schema is well-formed
         run: python3 -c "import json; json.load(open('schema/agentbox.toml.schema.json'))"
 
+      - name: CAD launcher policy, wheel lock and gate wiring (ADR-2195)
+        # Static half only on a runner: the live half needs an image built with cad = true.
+        run: bash tests/config/cad-launcher.test.sh
+
       - name: python3 in a supervised process is the runtime env (ADR-2193)
         # Static half only on a runner: the behavioural half needs the image's interpreter and SKIPs.
         run: bash tests/config/python-runtime-path.test.sh

@@ -781,6 +781,11 @@
 
         # SuperSplat editor + splat-transform CLI — gated by supersplat (ADR-2177).
         supersplatLib = import ./lib/supersplat.nix { inherit lib pkgs; };
+        # CAD (ADR-2195): text-to-cad's `cad`, pinned to config/cad/wheels.lock.json and run
+        # offline from a baked wheelhouse. Lazy: nothing here is evaluated unless
+        # [skills.spatial_and_3d].cad is true. See lib/cad.nix.
+        cadLib = import ./lib/cad.nix { inherit lib pkgs; };
+        cadEnabled = spatialCfg.cad or false;
 
         # ---------------------------------------------------------------------------
         # PRD-002 §9 Phase 1 — local npm service derivations via buildNpmPackage.
@@ -1525,7 +1530,11 @@
           # so wrap every executable (wrapGpuAll).
           ++ map wrapGpuAll gauss3dPackages
           # The editor itself is served by [program:supersplat]; only the CLI goes on PATH.
-          ++ lib.optionals (spatialCfg.supersplat or false) [ supersplatLib.splatTransform ];
+          ++ lib.optionals (spatialCfg.supersplat or false) [ supersplatLib.splatTransform ]
+          # CAD engine launcher (the wheelhouse rides in its closure) and the Xvfb its
+          # snapshots draw on. cad_print adds the slicer the cad-print skill drives.
+          ++ lib.optionals cadEnabled [ cadLib.launcher cadLib.xvfb ]
+          ++ lib.optionals (cadEnabled && (spatialCfg.cad_print or false)) [ pkgs.orca-slicer ];
 
         dataSciencePackages =
           lib.optionals (dataScienceCfg.pytorch or false) [
@@ -2421,6 +2430,28 @@ default_days = ${toString (relayCfg.retention_days or 30)}
         # published), unauthenticated, read-only, no directory listing: a sanctioned
         # listener in scripts/ci/check-ports-loopback.mjs.
         supersplatRoot = "/home/devuser/workspace/splats/share";
+        # CAD engine (ADR-2195). Upstream forks this daemon from the first `cad` command;
+        # here it is a supervised program so it is logged, restarted and stopped with the
+        # container like every other long-running process. `cad server` runs it in the
+        # foreground; later `cad` commands find it through the engine folder the launcher
+        # names. It listens on 127.0.0.1:3245 only. startsecs covers the first boot of a
+        # new image, when the launcher installs the release from the wheelhouse.
+        cadServiceBlock = ''
+[program:cad-engine]
+command=${cadLib.launcher}/bin/cad server
+directory=/home/devuser
+user=devuser
+environment=HOME="/home/devuser",WORKSPACE="/home/devuser/workspace"
+autostart=true
+autorestart=true
+startsecs=20
+stopsignal=TERM
+stopwaitsecs=20
+priority=236
+stdout_logfile=/var/log/cad-engine.log
+stderr_logfile=/var/log/cad-engine.error.log
+        '';
+
         supersplatServiceBlock = ''
 [program:supersplat]
 command=${pkgs.bash}/bin/bash -c 'set -e; ${pkgs.coreutils}/bin/mkdir -p ${supersplatRoot}/editor; ${pkgs.rsync}/bin/rsync -a --delete --chmod=Du+w,Fu+w ${supersplatLib.editor}/share/supersplat/ ${supersplatRoot}/editor/; exec ${bgNice}${pkgs.static-web-server}/bin/static-web-server --host 0.0.0.0 --port 8795 --root ${supersplatRoot} --directory-listing false --log-level warn'
@@ -2805,6 +2836,7 @@ stderr_logfile=/var/log/imagemagick-mcp.error.log
 ''}
 ${lib.optionalString (spatialCfg.qgis or false) "\n${qgisServiceBlock}"}
 ${lib.optionalString (spatialCfg.supersplat or false) "\n${supersplatServiceBlock}"}
+${lib.optionalString cadEnabled "\n${cadServiceBlock}"}
 ${lib.optionalString (spatialCfg.blender or false) "\n${blenderServiceBlock}"}
 ${lib.optionalString (dataScienceCfg.jupyter or false) "\n${jupyterServiceBlock}"}
 ${lib.optionalString (desktopCfg.enabled or false) "\n${desktopBlocks}"}
@@ -4197,7 +4229,14 @@ ${ragflowNetworkDecl}
           </fontconfig>
           FONTCFG
           sed -i 's/^[[:space:]]*//' $out/etc/fonts/fonts.conf
-
+          ${lib.optionalString cadEnabled ''
+            # ADR-2195: the CAD engine's Python libraries (ezdxf, build123d) scan
+            # /usr/share/fonts and never ask fontconfig; without it a drawing's text is
+            # empty boxes. Links only, to fonts the image already ships.
+            mkdir -p $out/usr/share/fonts
+            ln -s ${pkgs.dejavu_fonts}/share/fonts $out/usr/share/fonts/dejavu
+            ln -s ${pkgs.liberation_ttf}/share/fonts $out/usr/share/fonts/liberation
+          ''}
           ${lib.optionalString isXorgNvidiaStack ''
           # Xorg + NVIDIA startup script. Auto-detects PCI BusID from the
           # first available NVIDIA GPU, generates xorg.conf, and launches Xorg
@@ -4425,6 +4464,7 @@ ${ragflowNetworkDecl}
           }"
           "ENABLE_QGIS=${boolEnv (spatialCfg.qgis or false)}"
           "ENABLE_BLENDER=${boolEnv (spatialCfg.blender or false)}"
+          "ENABLE_CAD=${boolEnv cadEnabled}"
           "ENABLE_BLENDER_LOCAL=${boolEnv ((spatialCfg.blender or false) && (spatialCfg.blender_local or true))}"
           "ENABLE_PYTORCH=${boolEnv (dataScienceCfg.pytorch or false)}"
           "ENABLE_JUPYTER=${boolEnv (dataScienceCfg.jupyter or false)}"

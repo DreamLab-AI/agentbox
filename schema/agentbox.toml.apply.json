@@ -356,6 +356,16 @@
       "name": "Blender (in-container binary)",
       "summary": "wrapGpuBin pkgs.blender (headless batch); baked only when blender && blender_local (absent = true). Sidecar-first deployments set false and run jobs through skills/blender/tools/blender-job.js."
     },
+    "skills.spatial_and_3d.cad": {
+      "class": "rebuild",
+      "name": "CAD engine (text-to-cad, pinned and offline)",
+      "summary": "ADR-2195: text-to-cad's `cad` command (build123d/OpenCASCADE models, STEP/STL/3MF/GLB/DXF, manufacturability checks, drawings, netgen + CalculiX stress studies, KiCad boards, MuJoCo descriptions, Blender renders), pinned to config/cad/wheels.lock.json and run OFFLINE from a baked hash-verified wheelhouse (about 0.9 GB) by the /bin/cad launcher: telemetry and self-update off, setup/update/uninstall/plugin refused. Adds [program:cad-engine] (127.0.0.1:3245), Xvfb for snapshots and /usr/share/fonts. Skills: cad, cad-drawing, cad-fea, cad-robot, cad-pcb, cad-print, cad-render. REBUILD-class. Default false when absent."
+    },
+    "skills.spatial_and_3d.cad_print": {
+      "class": "rebuild",
+      "name": "OrcaSlicer for cad-print",
+      "summary": "ADR-2195: OrcaSlicer on PATH for the cad-print skill (headless slicing to G-code; no printer is ever contacted). Requires cad. REBUILD-class. Default false when absent."
+    },
     "skills.spatial_and_3d.gaussian_splatting": {
       "class": "rebuild",
       "name": "3DGS stack",

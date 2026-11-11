@@ -381,6 +381,14 @@
               "type": "boolean",
               "description": "Requires gpu.backend=local-cuda (E006)."
             },
+            "cad": {
+              "type": "boolean",
+              "description": "ADR-2195: bake the pinned text-to-cad engine (offline wheelhouse, /bin/cad launcher, [program:cad-engine], Xvfb, /usr/share/fonts). Default false when absent."
+            },
+            "cad_print": {
+              "type": "boolean",
+              "description": "ADR-2195: put OrcaSlicer on PATH for the cad-print skill. Requires cad. Default false when absent."
+            },
             "supersplat": {
               "type": "boolean",
               "description": "ADR-2177: build the pinned SuperSplat editor (served by [program:supersplat] on 0.0.0.0:8795, docker network only) and put splat-transform on PATH. Default false when absent."
