@@ -27,13 +27,13 @@
 
 let
   version = "0.6.0";
-  rev = "7f04644411220ba0d3b9c7bdba58bbf56be790fa";
+  rev = "60259e848795d0cd5c5718ca5d0eb658f69fd0d7";
 
   src = pkgs.fetchFromGitHub {
     owner = "DreamLab-AI";
     repo  = "sidestr-rs";
     inherit rev;
-    hash  = "sha256-6VN3n/RgZlWTglujdLozKWMS+G40p8+3i+bs0RvIpxc=";
+    hash  = "sha256-/uc9VNfRwmN3Wv1I1FfRO3MFp0VDb93IdMuNwD2Us2M=";
   };
 
 in
