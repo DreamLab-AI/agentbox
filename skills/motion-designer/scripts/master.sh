@@ -43,9 +43,9 @@ add() { IN+=(-i "$1"); n=$((n + 1)); }
 fit="aresample=48000,aformat=channel_layouts=stereo,apad,atrim=0:$DUR"
 
 if [ $KEEP = 1 ] && ffprobe -v error -select_streams a:0 -show_entries stream=codec_type -of csv=p=0 "$PIC" | grep -q audio; then
-  add "$PIC"; F+="[$((n-1)):a]$fit[pic];"; BUS+=("[pic]"); SPEECH="pic"; fi
+  add "$PIC"; F+="[$((n-1)):a]${fit}[pic];"; BUS+=("[pic]"); SPEECH="pic"; fi
 if [ -n "$VO" ]; then add "$VO"; F+="[$((n-1)):a]$fit,afade=t=in:d=0.03[vo];"; BUS+=("[vo]"); SPEECH="vo"; fi
-if [ -n "$SFX" ]; then add "$SFX"; F+="[$((n-1)):a]$fit[sfx];"; BUS+=("[sfx]"); fi
+if [ -n "$SFX" ]; then add "$SFX"; F+="[$((n-1)):a]${fit}[sfx];"; BUS+=("[sfx]"); fi
 if [ -n "$MUSIC" ]; then
   add "$MUSIC"; F+="[$((n-1)):a]$fit,volume=${MDB}dB,afade=t=out:st=$(python3 -c "print(max(0,$DUR-1.5))"):d=1.5[mus0];"
   if [ -n "$SPEECH" ]; then

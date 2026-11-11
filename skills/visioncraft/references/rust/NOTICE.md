@@ -11,7 +11,7 @@
 
 The `sources/` digests are verbatim. The three skill bodies have the estate overlay
 added: crypto, publication, feature-set and MSRV rules, the dead-code exception for
-ports, and hand-off into visioncraft's findings intake. Links to upstream paths
+ports, and hand-off into build-with-quality's findings intake. Links to upstream paths
 point at the vendored copies. The Bevy digest, the evals and the benchmark were not
 vendored. To refresh, diff the pinned revision against upstream `main` and re-apply the
 overlay, which is marked as section 0 in `steering.md` and `port.md` and section 6 in
