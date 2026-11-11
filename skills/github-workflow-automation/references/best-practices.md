@@ -1,5 +1,7 @@
 # Best Practices, Debugging, Examples & Command Reference
 
+> **Verified against this image (ruflo v3.63.1):** `claude-flow github …`, `claude-flow skill run …`, `claude-flow sparc pipeline`, `claude-flow diagnostic-run` and `ruv-swarm` do not exist here, and `npx` would fetch an unpinned package at run time. Treat those `npx …` examples as illustrative of intent only. Real equivalents: `gh` (see [plain-gh-fallback](../../github-code-review/references/plain-gh-fallback.md)), `claude-flow hooks|swarm|workflow|hive-mind …` (on PATH, no `npx`), and the `mcp__claude-flow__github_pr_manage` / `github_repo_analyze` tools.
+
 ## Best Practices
 
 ### Workflow Organisation
@@ -365,7 +367,7 @@ npx ruv-swarm actions analytics [options]
 - [ ] GitHub CLI (`gh`) installed and authenticated
 - [ ] Git configured with user credentials
 - [ ] Node.js v16+ installed
-- [ ] `claude-flow@alpha` package available
+- [ ] `claude-flow` on PATH (baked into the image; do not install)
 - [ ] Repository has `.github/workflows` directory
 - [ ] GitHub Actions enabled on repository
 - [ ] Necessary secrets configured
@@ -377,7 +379,7 @@ npx ruv-swarm actions analytics [options]
 # setup-github-automation.sh
 
 # Install dependencies
-npm install -g claude-flow@alpha
+command -v claude-flow   # baked into the image; never npm install -g at run time
 
 # Verify GitHub CLI
 gh auth status || gh auth login

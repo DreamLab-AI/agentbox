@@ -1,5 +1,7 @@
 # Best Practices, Troubleshooting, Metrics & Checklists
 
+> **Verified against this image (ruflo v3.63.1):** `claude-flow github …`, `claude-flow skill run …`, `claude-flow sparc pipeline`, `claude-flow diagnostic-run` and `ruv-swarm` do not exist here, and `npx` would fetch an unpinned package at run time. Treat those `npx …` examples as illustrative of intent only. Real equivalents: `gh` (see [plain-gh-fallback](../../github-code-review/references/plain-gh-fallback.md)), `claude-flow hooks|swarm|workflow|hive-mind …` (on PATH, no `npx`), and the `mcp__claude-flow__github_pr_manage` / `github_repo_analyze` tools.
+
 Release cadence and versioning guidelines, common failure recovery, performance
 expectations, and the full pre/release/post checklist template.
 
@@ -153,8 +155,6 @@ npx claude-flow@alpha github version-sync \
 ### Documentation
 - [GitHub CLI Documentation](https://cli.github.com/manual/)
 - [Semantic Versioning Spec](https://semver.org/)
-- [Claude Flow SPARC Guide](../../docs/sparc-methodology.md)
-- [Swarm Coordination Patterns](../../docs/swarm-patterns.md)
 
 ### Related Skills
 - **github-code-review**: PR review and quality analysis

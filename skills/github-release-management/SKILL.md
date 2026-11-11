@@ -23,6 +23,8 @@ related_skills:
 
 # GitHub Release Management Skill
 
+> **Verified against this image (ruflo v3.63.1):** `claude-flow github …`, `claude-flow skill run …`, `claude-flow sparc pipeline`, `claude-flow diagnostic-run` and `ruv-swarm` do not exist here, and `npx` would fetch an unpinned package at run time. Treat those `npx …` examples as illustrative of intent only. Real equivalents: `gh` (see [plain-gh-fallback](../github-code-review/references/plain-gh-fallback.md)), `claude-flow hooks|swarm|workflow|hive-mind …` (on PATH, no `npx`), and the `mcp__claude-flow__github_pr_manage` / `github_repo_analyze` tools.
+
 Release automation and orchestration — from changelog generation to multi-platform
 deployment with rollback capabilities, optionally coordinated by an AI swarm.
 
@@ -57,7 +59,7 @@ npx claude-flow github release-create \
 
 ### Full automated release
 ```bash
-npx claude-flow swarm init --topology hierarchical
+claude-flow swarm init --topology hierarchical
 npx claude-flow sparc pipeline "Release v2.0.0 with full validation"
 ```
 

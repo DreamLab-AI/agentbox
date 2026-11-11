@@ -20,6 +20,8 @@ capabilities:
 
 # GitHub Code Review Skill
 
+> **Verified against this image (ruflo v3.63.1):** `claude-flow github …`, `claude-flow skill run …`, `claude-flow sparc pipeline`, `claude-flow diagnostic-run` and `ruv-swarm` do not exist here, and `npx` would fetch an unpinned package at run time. Treat those `npx …` examples as illustrative of intent only. Real equivalents: `gh` (see [plain-gh-fallback](references/plain-gh-fallback.md)), `claude-flow hooks|swarm|workflow|hive-mind …` (on PATH, no `npx`), and the `mcp__claude-flow__github_pr_manage` / `github_repo_analyze` tools.
+
 Deploy specialized review agents (security, performance, architecture, style,
 accessibility) to review PRs in parallel and post findings back through the
 GitHub CLI — beyond traditional single-pass static analysis.

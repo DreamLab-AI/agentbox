@@ -1,5 +1,7 @@
 # Advanced Features & Claude-Flow Integration
 
+> **Verified against this image (ruflo v3.63.1):** `claude-flow github …`, `claude-flow skill run …`, `claude-flow sparc pipeline`, `claude-flow diagnostic-run` and `ruv-swarm` do not exist here, and `npx` would fetch an unpinned package at run time. Treat those `npx …` examples as illustrative of intent only. Real equivalents: `gh` (see [plain-gh-fallback](../../github-code-review/references/plain-gh-fallback.md)), `claude-flow hooks|swarm|workflow|hive-mind …` (on PATH, no `npx`), and the `mcp__claude-flow__github_pr_manage` / `github_repo_analyze` tools.
+
 Dynamic test strategies, predictive analysis, custom actions, and MCP-based
 swarm coordination for GitHub workflows.
 
@@ -134,17 +136,17 @@ mcp__claude-flow__task_orchestrate {
 #### GitHub Hooks Integration
 ```bash
 # Pre-task: Setup GitHub context
-npx claude-flow@alpha hooks pre-task \
+claude-flow hooks pre-task \
   --description "PR review workflow" \
   --context "pr-123"
 
 # During task: Track progress
-npx claude-flow@alpha hooks notify \
+claude-flow hooks notify \
   --message "Completed security scan" \
   --type "github-action"
 
 # Post-task: Export results
-npx claude-flow@alpha hooks post-task \
+claude-flow hooks post-task \
   --task-id "pr-review-123" \
   --export-github-summary
 ```
