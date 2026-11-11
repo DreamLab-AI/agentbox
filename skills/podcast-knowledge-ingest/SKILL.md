@@ -1,6 +1,6 @@
 ---
 name: podcast-knowledge-ingest
-description: "Weekly podcast-to-ontology cron: new YouTube episodes, Loom-extracted assertions, Perplexity verification, then Episode evidence-ledger pages, plus a promotion stage. Use for '/podcast-ingest', 'process new podcast episodes into the ontology', debugging the podcast-cron schedule, or promoting ledger evidence into scored proposal dossiers. Not for archiving transcripts as notes (youtube-transcript-archiver) or non-podcast enrichment (ontology-enrich)."
+description: "Weekly podcast-to-ontology cron: new YouTube episodes, Loom-extracted assertions, a local confidence filter, then Episode evidence-ledger pages, plus a promotion stage. Use for '/podcast-ingest', 'process new podcast episodes into the ontology', debugging the podcast-cron schedule, or promoting ledger evidence into scored proposal dossiers. Not for archiving transcripts as notes (youtube-transcript-archiver) or non-podcast enrichment (ontology-enrich)."
 version: 2.0.0
 triggers:
   - /podcast-ingest
