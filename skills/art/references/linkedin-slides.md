@@ -17,7 +17,7 @@ Results decks, launch announcements, research summaries — anything where you n
    ```bash
    mutool draw -o slides/slide-%02d.png -r 200 deck.pdf 1-N
    ```
-   (nix mutool: `/nix/store/*mupdf*-bin/bin/mutool`; nix gs also exists if ImageMagick needs it.)
+   (`mutool` and `gs` are both on PATH in the image; use `gs` if ImageMagick needs it.)
 3. **Upcycle each slide via Nano Banana Pro** (`gemini-3-pro-image`) with the slide PNG as
    `--ref` and the shared **metaprompt** (`tools/slide-upcycle-metaprompt.txt`). The metaprompt
    enforces: *the reference is authoritative — reproduce every word/number/bar EXACTLY; improve
