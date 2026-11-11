@@ -370,7 +370,7 @@ A value for `fixed`, `set` or `draw` can be a number (float), an array of length
 ## 14. Tools
 | Script | Use it for |
 |---|---|
-| `scripts/capture.mjs` | One-shot screenshots: desktop, phone, hover, keys, timed shots, 4× zooms, reduced motion, console check. Chrome starts with WebGL on (SwiftShader allowed), so shaders show. `--times` delays are measured from the first shot; `--key` sends the same key codes as `drive.mjs` (`7` is `Digit7`, `Comma` sends `,`). |
+| `scripts/capture.mjs` | One-shot screenshots: desktop, phone, hover, keys, timed shots, 4× zooms, reduced motion, console check. Chrome starts with WebGL on (SwiftShader allowed), so shaders show. `--times` delays are measured from the first shot; `--key` sends the same key codes as `drive.mjs` (`7` is `Digit7`, `Comma` sends `,`). Needs a local Chrome, so it runs on the operator's host; inside agentbox take the same shots through the `browser` skill. |
 | `scripts/drive.mjs` | Scripted sessions in headless Chrome with WebGL on: scroll, move, click, key, slow, until, eval, shots and contact sheets. `--no-webgl` checks the SVG fallback and `--preload file.js` runs a script before the page's own. Use it for shader transitions and anything with a sequence. See `references/verify.md`. |
 | `scripts/lines.mjs` | The line-end check: every texture line in the card must end on a stroke, a dot or an outline, or under a later fill. `--out` rings the failures; exits 1 on any. The same check is the `["lines"]` action of `drive.mjs`. See `references/verify.md`, "Line ends". |
 | `scripts/inline-kit.mjs` | `kitScript()`, `glScript()` and `turnScript()` return the kit, the WebGL layer and the 3D runtime as plain script, to inline into a standalone page. |
