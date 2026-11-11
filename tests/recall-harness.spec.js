@@ -320,8 +320,13 @@ test('v1 fixture matches its governed corpus rebuild and stored hash', async () 
   const { fixtureHash } = await harness();
   const fx = JSON.parse(readFileSync(join(__dirname, '..', 'scripts', 'recall-fixtures', 'recall-fixture.v1.json'), 'utf8'));
   assert.equal(fixtureHash(fx), fx.fixture_hash);
-  // 5e91a99f9 rebuilt the fixture after the repeated-heading chunker change.
-  assert.equal(fx.fixture_hash, 'sha256-55832e9f582a60b43042ca853f0c8b62b1f7c14062bc0811a8c2d6fdf7acc1fd');
+  // 2026-11-11: refresh after six frozen IDs disappeared during corpus upkeep.
+  // Freeze once before measuring; keep the embedding, sample sizes and floors.
+  assert.equal(fx.fixture_hash, 'sha256-6a67936d175a4c4ab112473ed74be431c226be5a5238eb43df9ea8b5a7e29ff1');
+  assert.equal(fx.self_recall.ids.length, 200);
+  assert.equal(fx.true_recall.ids.length, 120);
+  assert.equal(fx.band.self_recall_min, 175);
+  assert.equal(fx.band.true_recall_min, 102);
 });
 
 // The gate runs as a subprocess against a tmp receipt + tmp fixture, offline.
