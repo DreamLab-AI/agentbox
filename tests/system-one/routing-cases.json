@@ -309,8 +309,8 @@
     },
     {
       "prompt": "Cut a highlight reel out of this two-hour recording, caption it, and render a vertical version for Reels.",
-      "expected_skill": "video-production",
-      "rationale": "Cutting, captioning and re-rendering existing footage for a platform is video-production; clipcannon is not installed here.",
+      "expected_skill": "ffmpeg-processing",
+      "rationale": "Cutting, captioning and re-encoding existing footage to a vertical render is mechanical editing; clipcannon is not installed and video-production is for continuity-held multi-tool films.",
       "class": "near-neighbour",
       "provenance": "directory-derived",
       "late_discriminative": true
@@ -413,9 +413,9 @@
     },
     {
       "prompt": "Harden this Ubuntu box to the CIS benchmark and tell me where we stand on SOC2 compliance.",
-      "expected_skill": "security-testing",
-      "rationale": "Hardening and compliance review falls to security-testing; defense-security is not installed here.",
-      "class": "near-neighbour",
+      "expected_skill": "none",
+      "rationale": "Host hardening and compliance has no installed skill now that defense-security is not installed; security-testing covers application code, not host benchmarks.",
+      "class": "boundary",
       "provenance": "directory-derived",
       "late_discriminative": true
     },
