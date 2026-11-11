@@ -32,7 +32,6 @@ ruflo  = true
 
 [skills.browser]
 agent_browser = true
-playwright    = true
 
 [skills.media]
 ffmpeg      = true

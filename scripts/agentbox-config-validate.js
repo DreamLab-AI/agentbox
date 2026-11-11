@@ -957,7 +957,6 @@ if (observability.metrics_port !== undefined) {
 //   gpu-rocm              │ gpu.backend === "ollama-rocm"
 //   gpu-cuda              │ gpu.backend === "ollama-cuda" OR "local-cuda"
 //   gaussian-splatting    │ skills.spatial_and_3d.gaussian_splatting === true
-//   playwright            │ skills.browser.playwright === true
 //   code-server           │ toolchains.code_server === true
 
 const toolchains = manifest.toolchains || {};
@@ -972,8 +971,6 @@ function isFeatureActive(exceptionName) {
       return gpu.backend === 'ollama-cuda' || gpu.backend === 'local-cuda';
     case 'gaussian-splatting':
       return !!(skills.spatial_and_3d && skills.spatial_and_3d.gaussian_splatting === true);
-    case 'playwright':
-      return !!(skills.browser && skills.browser.playwright === true);
     case 'code-server':
       return toolchains.code_server === true;
     case 'nostr-relay':
@@ -995,7 +992,6 @@ const KNOWN_EXCEPTION_FEATURE_GATES = new Set([
   'gpu-rocm',
   'gpu-cuda',
   'gaussian-splatting',
-  'playwright',
   'code-server',
   'nostr-relay',
   'solid-pod-rs',

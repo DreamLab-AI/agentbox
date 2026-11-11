@@ -58,7 +58,7 @@ function baseValid() {
     desktop: { enabled: false, stack: 'hyprland-wayland', resolution: '1920x1080' },
     observability: { metrics_port: 9091, otlp_endpoint: '', log_level: 'info' },
     skills: {
-      browser: { playwright: true, qe_browser: false },
+      browser: { qe_browser: false },
       media: { ffmpeg: true, imagemagick: true, comfyui_builtin: false },
       spatial_and_3d: { blender: false, qgis: false, gaussian_splatting: false },
       data_science: { pytorch: false, jupyter: false },
@@ -72,14 +72,10 @@ function baseValid() {
       nostr_bridge: false,
       https_bridge: false
     },
-    // playwright=true and pods=local-solid-rs both require security
-    // exception blocks (E021); declare both so the baseline is silent.
+    // pods=local-solid-rs requires a security exception block (E021);
+    // declare it so the baseline is silent.
     security: {
       exceptions: {
-        playwright: {
-          cap_add: ['SYS_ADMIN'],
-          reason: 'chromium sandbox'
-        },
         'solid-pod-rs': {
           writable_volumes: ['/var/lib/solid'],
           reason: 'solid-pod-rs filesystem backend (ADR-010)'
@@ -503,12 +499,12 @@ describe('E020: security exception block declared but feature gate not enabled',
     expect(r.stderr).toMatch(/security\.exceptions\.desktop/);
   });
 
-  test('valid: security.exceptions.playwright declared and skills.browser.playwright=true', () => {
+  test('valid: security.exceptions.code-server declared and toolchains.code_server=true', () => {
     const m = baseValid();
-    m.skills.browser.playwright = true;
+    m.toolchains.code_server = true;
     m.security = {
       exceptions: {
-        playwright: { cap_add: ['SYS_ADMIN'], reason: 'chromium sandbox' }
+        'code-server': { writable_volumes: ['codeserver-config:/home/devuser/.local/share/code-server'], reason: 'config volume' }
       }
     };
     const r = runValidator(m);
@@ -533,7 +529,7 @@ describe('E021: feature enabled but security exception block is missing', () => 
   test('valid: desktop.enabled=true and security.exceptions.desktop is declared', () => {
     const m = baseValid();
     m.desktop = { enabled: true, stack: 'x11-openbox', resolution: '1920x1080' };
-    // Carry the baseValid exceptions (playwright, solid-pod-rs) and add desktop.
+    // Carry the baseValid exceptions (solid-pod-rs) and add desktop.
     m.security.exceptions.desktop = { tmpfs: ['/tmp/.X11-unix', '/run/user/1000'] };
     const r = runValidator(m);
     expect(stderrContains(r, 'E021')).toBe(false);
@@ -548,42 +544,42 @@ describe('E021: feature enabled but security exception block is missing', () => 
 describe('E020/E021 edge case: typo in exception key creates silent non-match', () => {
   test('E021 fires for the correctly-spelled feature; E020 fires for the typo\'d orphan key', () => {
     const m = baseValid();
-    m.skills.browser.playwright = true;
-    // Typo: "playwrigt" instead of "playwright"
+    m.toolchains.code_server = true;
+    // Typo: "code-sever" instead of "code-server"
     m.security = {
       exceptions: {
-        playwrigt: { cap_add: ['SYS_ADMIN'], reason: 'chromium sandbox (typo)' }
+        'code-sever': { writable_volumes: ['codeserver-config:/x'], reason: 'config volume (typo)' }
       }
     };
     const r = runValidator(m);
     expect(r.exitCode).not.toBe(0);
-    // E021 must fire: playwright is enabled but no correctly-spelled exception block exists.
+    // E021 must fire: code-server is enabled but no correctly-spelled exception block exists.
     expect(stderrContains(r, 'E021')).toBe(true);
-    expect(r.stderr).toMatch(/security\.exceptions\.playwright/);
-    // E020 must fire: the typo'd block "playwrigt" has no matching enabled feature.
+    expect(r.stderr).toMatch(/security\.exceptions\.code-server/);
+    // E020 must fire: the typo'd block "code-sever" has no matching enabled feature.
     expect(stderrContains(r, 'E020')).toBe(true);
-    expect(r.stderr).toMatch(/security\.exceptions\.playwrigt/);
+    expect(r.stderr).toMatch(/security\.exceptions\.code-sever/);
   });
 });
 
 // Edge case 2 (QE): multi-feature cap_add deduplication.
-// Both desktop and playwright exceptions are active. If both declare SYS_ADMIN
+// Both desktop and gaussian-splatting exceptions are active. If both declare SYS_ADMIN
 // in cap_add, the validator must accept the manifest without flagging duplicates
 // (union is monotone; the compose generator deduplicates at emit time).
 // This test asserts only the validator acceptance — the Nix eval step is skipped.
 describe('E020/E021 edge case: multi-feature with overlapping cap_add accepted by validator', () => {
-  test.skip('validator accepts manifest with SYS_ADMIN in both desktop and playwright cap_add (Nix eval skipped)', () => {
+  test.skip('validator accepts manifest with SYS_ADMIN in both desktop and gaussian-splatting cap_add (Nix eval skipped)', () => {
     // Skipped: compose deduplication assertion requires a real Nix eval step.
     // Validator-only assertion is covered by the non-skipped sibling below.
   });
 
-  test('validator accepts manifest where both desktop and playwright exceptions declare SYS_ADMIN', () => {
+  test('validator accepts manifest where both desktop and gaussian-splatting exceptions declare SYS_ADMIN', () => {
     const m = baseValid();
     m.desktop = { enabled: true, stack: 'x11-openbox', resolution: '1920x1080' };
-    m.skills.browser.playwright = true;
-    // Replace the desktop+playwright entries; keep the solid-pod-rs entry from baseValid.
-    m.security.exceptions.desktop = { cap_add: ['SYS_ADMIN'], tmpfs: ['/tmp/.X11-unix:mode=1777,rw'], reason: 'test injection — desktop+playwright overlap' };
-    m.security.exceptions.playwright = { cap_add: ['SYS_ADMIN'], reason: 'chromium sandbox' };
+    m.skills.spatial_and_3d.gaussian_splatting = true;
+    // Replace the desktop+gaussian-splatting entries; keep the solid-pod-rs entry from baseValid.
+    m.security.exceptions.desktop = { cap_add: ['SYS_ADMIN'], tmpfs: ['/tmp/.X11-unix:mode=1777,rw'], reason: 'test injection — desktop+gaussian-splatting overlap' };
+    m.security.exceptions['gaussian-splatting'] = { cap_add: ['SYS_ADMIN'], reason: 'test injection' };
     const r = runValidator(m);
     // Neither E020 (orphaned block) nor E021 (missing block) should fire.
     expect(stderrContains(r, 'E020')).toBe(false);
@@ -591,9 +587,9 @@ describe('E020/E021 edge case: multi-feature with overlapping cap_add accepted b
   });
 });
 
-// Edge case 3 (QE): all 7 known exception keys fire E020 when their feature is disabled.
+// Edge case 3 (QE): all known exception keys fire E020 when their feature is disabled.
 // Parametrised loop over the full known-exception set.
-describe('E020 edge case: all 7 exception keys fire E020 when parent feature is disabled', () => {
+describe('E020 edge case: all exception keys fire E020 when parent feature is disabled', () => {
   const EXCEPTION_FIXTURES = [
     {
       exceptionKey: 'desktop',
@@ -620,13 +616,6 @@ describe('E020 edge case: all 7 exception keys fire E020 when parent feature is 
       exceptionBlock: { cap_add: [], reason: 'test' }
     },
     {
-      exceptionKey: 'playwright',
-      featureName: 'playwright',
-      // Override baseValid which has playwright=true — disable it here.
-      manifestPatch: (m) => { m.skills.browser.playwright = false; },
-      exceptionBlock: { cap_add: ['SYS_ADMIN'], reason: 'test' }
-    },
-    {
       exceptionKey: 'code-server',
       featureName: 'code-server',
       manifestPatch: (m) => {
@@ -645,9 +634,6 @@ describe('E020 edge case: all 7 exception keys fire E020 when parent feature is 
       // Declare the exception block with the feature disabled.
       m.security = {
         exceptions: {
-          // playwright must also be handled since baseValid enables it.
-          // Keep the playwright block from baseValid unless we're testing playwright itself.
-          ...(exceptionKey !== 'playwright' ? { playwright: { cap_add: ['SYS_ADMIN'], reason: 'chromium sandbox' } } : {}),
           [exceptionKey]: exceptionBlock
         }
       };

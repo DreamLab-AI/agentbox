@@ -53,8 +53,7 @@ write_files:
 
       # Install agent-browser globally
       echo "[5/8] Installing agent-browser..."
-      sudo npm install -g agent-browser playwright
-      sudo npx playwright install chromium
+      sudo npm install -g agent-browser
 
       echo "[5.5/8] Configuring Zellij..."
       mkdir -p $HOME/.config/zellij

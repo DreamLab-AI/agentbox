@@ -85,7 +85,7 @@ describe('ADR-017 / PRD-007 single-tenant regression guard', () => {
       desktop: { enabled: false, stack: 'hyprland-wayland', resolution: '1920x1080' },
       observability: { metrics_port: 9091, otlp_endpoint: '', log_level: 'info' },
       skills: {
-        browser: { playwright: true, qe_browser: false },
+        browser: { qe_browser: false },
         media: { ffmpeg: true, imagemagick: true, comfyui_builtin: false },
         spatial_and_3d: { blender: false, qgis: false, gaussian_splatting: false },
         data_science: { pytorch: false, jupyter: false },
@@ -100,7 +100,6 @@ describe('ADR-017 / PRD-007 single-tenant regression guard', () => {
       },
       security: {
         exceptions: {
-          playwright: { cap_add: ['SYS_ADMIN'], reason: 'chromium sandbox' },
           'solid-pod-rs': { writable_volumes: ['/var/lib/solid'], reason: 'solid-pod-rs filesystem backend (ADR-010)' }
         }
       }

@@ -331,7 +331,6 @@ webgpu = true
 
 [skills.browser]
 agent_browser = true
-playwright = false   # superseded by the browsercontainer sidecar (browser / browser-automation skills)
 qe_browser = true
 # All browser automation routes through the external browsercontainer sidecar.
 # MCP SSE: http://browsercontainer:8931/sse (chrome-devtools-mcp 40+ tools)
@@ -1787,9 +1786,6 @@ role_isolation = false
 [security.exceptions.solid-pod-rs]
 writable_volumes = ["solid-data:/var/lib/solid"]
 reason = "solid-pod-rs fs-backend requires atomic-rename writable storage under /var/lib/solid"
-
-# [security.exceptions.playwright] intentionally absent — playwright is
-# superseded by the external browsercontainer sidecar (no local chromium).
 
 [security.exceptions.desktop]
 # X11 abstract socket dir (mode 1777 sticky — the canonical X11 perm) and

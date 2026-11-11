@@ -197,7 +197,6 @@ cuda            = false
 
 [skills.browser]
 agent_browser = true
-playwright    = true
 qe_browser    = false
 
 [skills.media]
@@ -244,10 +243,6 @@ enable_did_nostr       = false
 enable_webhook_signing = false
 enable_rate_limit      = false
 enable_quota           = false
-
-[security.exceptions.playwright]
-cap_add = ["SYS_ADMIN"]
-reason = "chromium sandbox; SYS_ADMIN is the minimum privilege for Chromium user-ns sandbox inside a container"
 
 [security.exceptions.solid-pod-rs]
 writable_volumes = ["solid-data:/var/lib/solid"]

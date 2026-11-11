@@ -91,7 +91,6 @@ resolution = "1920x1080"
 
 [skills.browser]
 agent_browser = true
-playwright = true
 qe_browser = false
 
 [skills.media]
@@ -156,7 +155,6 @@ resolution = "1920x1080"
 
 [skills.browser]
 agent_browser = false
-playwright = false
 qe_browser = false
 
 [skills.media]
@@ -219,7 +217,6 @@ resolution = "1920x1080"
 
 [skills.browser]
 agent_browser = false
-playwright = false
 qe_browser = false
 
 [skills.media]
