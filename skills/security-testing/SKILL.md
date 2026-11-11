@@ -1,6 +1,6 @@
 ---
 name: security-testing
-description: "Application security testing: OWASP Top 10 validation, authentication/authorisation testing, API security, dependency vulnerability scanning, secrets detection, injection testing, SAST/DAST workflows. Use for web application and API security validation — not for Linux system hardening (use defense-security for that)."
+description: "Application security testing: OWASP Top 10 validation, authentication/authorisation testing, API security, dependency vulnerability scanning, secrets detection, injection testing, SAST/DAST workflows. Use for web application and API security validation — not for Linux system hardening."
 ---
 
 # Security Testing
@@ -18,9 +18,7 @@ Application-layer security testing for web services, APIs, and codebases.
 
 ## When NOT to use
 
-- Linux system hardening, firewall rules, CIS compliance → use `defense-security`
 - Code quality gates and TDD → use `visioncraft`
-- Infrastructure security scanning → use `defense-security`
 
 ## Core Capabilities
 
@@ -133,6 +131,5 @@ Security testing integrates with `visioncraft` as a quality gate:
 
 ## See also
 
-- `defense-security` — Linux system hardening, CIS/HIPAA/SOC2 compliance
 - `visioncraft` — Full development pipeline with integrated security agents
 - `qe-browser` — Browser-based injection and XSS scanning (after `aqe init`)

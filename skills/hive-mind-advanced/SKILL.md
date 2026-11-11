@@ -65,7 +65,6 @@ Use the Hive Mind when the work genuinely needs:
 - A structured development lifecycle (spec, architecture, TDD, review, deploy)
   → `sparc-methodology` (17 development modes).
 - Full development + quality-engineering pipelines → `visioncraft`.
-- Cloud-based swarm deployment / workflow automation → `flow-nexus-swarm`.
 - GitHub-specific PR review coordination → `github-code-review`.
 
 ## Reference material

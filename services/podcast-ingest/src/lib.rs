@@ -1,8 +1,8 @@
 //! `podcast_ingest_core` — shared library backing the `podcast-ingest`,
 //! `podcast-promote`, and `podcast-bulk-ingest` binaries.
 //!
-//! Rust port of the Python `podcast-knowledge-ingest` and
-//! `podcast-bulk-ingest` skills. Module layout mirrors the three original
+//! Rust port of the Python `podcast-knowledge-ingest` skill and
+//! its bulk-ingest script. Module layout mirrors the three original
 //! scripts:
 //!
 //! - [`common`] — helpers shared verbatim (or near-verbatim) across all

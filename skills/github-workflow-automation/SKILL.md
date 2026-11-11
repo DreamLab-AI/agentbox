@@ -44,7 +44,7 @@ coordination into a repo's automation.
 - Release versioning, changelogs, deployment orchestration → **github-release-management**
 - Cross-repository package synchronisation → **github-multi-repo**
 - Issue tracking and sprint planning → **github-project-management**
-- Non-GitHub workflow automation or cloud swarm orchestration → **flow-nexus-swarm**
+- Non-GitHub workflow automation or cloud swarm orchestration → **swarm-advanced**
 
 ## Quick start
 

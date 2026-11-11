@@ -210,7 +210,6 @@ pub fn run_domain_probe(out_dir: &Path, ontology_dir: Option<&Path>) -> Value {
                 .join(", ")
         );
         println!("\n  RECOMMENDATION: Use OntoCast to bootstrap ontology pages for this domain.");
-        println!("  See: agentbox/skills/podcast-bulk-ingest/SKILL.md § 'New domain detection'");
         println!("\n  To bootstrap with OntoCast:");
         println!("    1. Install: pip install 'ontocast[server,openai]'");
         println!("    2. Configure LLM backend (Loom or external):");

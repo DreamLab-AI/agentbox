@@ -22,7 +22,7 @@ This recommendation follows the seed's existing division of responsibilities:
 | `explainer` | Audience, seven-question comprehension arc, evidence ledger, docs/microsite/video delivery | Select a short animation only after the underlying explanation is accepted |
 | `codebase-video` | Measured narration, generated hero footage, clip assembly, captions and editorial review | Consume the rendered MP4 as an existing video scene |
 | `blender` | Spatial geometry, camera work and 3D production | Retain cinematic/spatial work; use Manim for precise symbolic and quantitative motion |
-| `open-montage` | Video production beyond a codebase brief | Consume completed Manim shots through its asset workflow |
+| `video-production` | Video production beyond a codebase brief | Consume completed Manim shots through its asset workflow |
 
 Seed evidence: [diagram router](../../mermaid-diagrams/SKILL.md),
 [motion contract](../../diagram-design/references/animation.md),
@@ -31,7 +31,7 @@ Seed evidence: [diagram router](../../mermaid-diagrams/SKILL.md),
 [video production](../../codebase-video/references/production.md),
 [compositor implementation](../../codebase-video/scripts/video_project.py),
 [Blender handoff](../../blender/references/explainer-video.md), and
-[open-montage](../../open-montage/SKILL.md).
+[video-production](../../video-production/SKILL.md).
 
 ## What the upstream inspection establishes
 

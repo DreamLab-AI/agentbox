@@ -129,6 +129,6 @@ manifest validation. Publishing is a separate action and needs user authority.
   file:line`) already gathered from its own orientation pass; this skill still
   independently re-verifies runtime behaviour rather than accepting a claim on
   trust.
-- `open-montage` — use it instead for video with no codebase grounding: a
+- `video-production` — use it instead for video with no codebase grounding: a
   trailer, an avatar spokesperson, a podcast repurpose, or any request not
   targeting the current repository.

@@ -2,7 +2,7 @@
 #
 # Nix derivation for `podcast-ingest` — the Rust replacement for the weekly
 # podcast knowledge pipeline previously in skills/podcast-knowledge-ingest
-# (ingest.py, promote.py) and skills/podcast-bulk-ingest (bulk_ingest.py).
+# (ingest.py, promote.py) and the bulk backfill binary (bulk_ingest.py).
 #
 # Three binaries mirroring the three scripts one-for-one: transcript download,
 # transcript parsing, JSON ledger maintenance and dossier assembly (ingest);

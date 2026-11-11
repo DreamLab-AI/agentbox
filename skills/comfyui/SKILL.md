@@ -117,7 +117,7 @@ for rebuilds and independent CPU-only provisioning.
 - 3D modelling and scene creation — use the **blender** skill
 - Video transcoding, editing, or audio extraction — use the **ffmpeg-processing** skill
 - Diagrams, flowcharts, architecture visuals — use the **mermaid-diagrams** skill
-- ML model training (classification, NLP, time series) — use **pytorch-ml** or **flow-nexus-neural**
+- ML model training (classification, NLP, time series) — use **pytorch-ml**
 
 ## References
 

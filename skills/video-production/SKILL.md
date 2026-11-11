@@ -1,6 +1,6 @@
 ---
 name: video-production
-description: "Directs a multi-tool film production where continuity must hold across cuts and revisions: one versioned brief or world drives Blender, ComfyUI, Isaac Sim, speech and FFmpeg jobs over the docker network, with recorded sources, rational-clock timing, scoped re-renders and evidence-backed acceptance. Use for 'video production', stop-motion or animated films, source-faithful characters or products and acceptance gates. Not for a montage from an idea (open-montage), cutting footage you hold (clipcannon), a repo explainer (codebase-video), one clip (comfyui) or transcoding (ffmpeg-processing)."
+description: "Directs a multi-tool film production where continuity must hold across cuts and revisions: one versioned brief or world drives Blender, ComfyUI, Isaac Sim, speech and FFmpeg jobs over the docker network, with recorded sources, rational-clock timing, scoped re-renders and evidence-backed acceptance. Use for 'video production', stop-motion or animated films, source-faithful characters or products and acceptance gates. Not for a repo explainer (codebase-video), one clip (comfyui) or transcoding (ffmpeg-processing)."
 status: live
 compatibility: Portable orchestration guidance for agents with filesystem and media tools. Specialist services are discovered at runtime on the docker network; equivalent tools can substitute for named skills. The Rust runtime in runtime/ is built with cargo and handles hashes, clocks, receipts and gates; GPU work uses the existing job clients.
 ---

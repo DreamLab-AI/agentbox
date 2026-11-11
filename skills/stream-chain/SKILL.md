@@ -35,7 +35,6 @@ output into the next prompt by hand.
 
 - Parallel multi-agent swarm orchestration -> use `swarm-advanced` (this skill is sequential).
 - GitHub-specific CI/CD pipelines -> use `github-workflow-automation`.
-- Cloud workflow automation with Flow Nexus -> use `flow-nexus-swarm`.
 - Simple single-step tasks that need no chaining -> run the task directly.
 
 ## Quick start (MCP tools)

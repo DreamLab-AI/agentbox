@@ -203,23 +203,6 @@
       "x-agentbox-managed-by": "reference",
       "x-agentbox-note": "skill-local mcp-server (needs GOOGLE_API_KEY) — not boot-projected"
     },
-    "notebooklm": {
-      "command": "python3",
-      "args": [
-        "-u",
-        "/opt/agentbox/skills/notebooklm/mcp-server/server.py"
-      ],
-      "type": "stdio",
-      "env": {
-        "NOTEBOOKLM_STORAGE_DIR": "/home/devuser/.notebooklm",
-        "NOTEBOOKLM_TIMEOUT": "300"
-      },
-      "description": "Google NotebookLM: notebooks, sources, chat, audio/video/slides/quiz generation",
-      "protocol": "fastmcp",
-      "version": "1.0.0",
-      "x-agentbox-managed-by": "reference",
-      "x-agentbox-note": "skill-local mcp-server — not boot-projected"
-    },
     "linkedin": {
       "command": "uvx",
       "args": [
@@ -235,25 +218,6 @@
       "version": "1.0.0",
       "x-agentbox-managed-by": "reference",
       "x-agentbox-note": "uvx network installer — not registrable offline"
-    },
-    "defense-security": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "defense-mcp-server"
-      ],
-      "type": "stdio",
-      "env": {
-        "DEFENSE_MCP_DRY_RUN": "${DEFENSE_MCP_DRY_RUN}",
-        "DEFENSE_MCP_REQUIRE_CONFIRMATION": "${DEFENSE_MCP_REQUIRE_CONFIRMATION}",
-        "DEFENSE_MCP_ALLOWED_DIRS": "${DEFENSE_MCP_ALLOWED_DIRS}",
-        "DEFENSE_MCP_LOG_LEVEL": "${DEFENSE_MCP_LOG_LEVEL}"
-      },
-      "description": "Linux defensive security: 31 modules, 250+ actions for hardening, compliance, forensics",
-      "protocol": "stdio",
-      "version": "1.0.0",
-      "x-agentbox-managed-by": "reference",
-      "x-agentbox-note": "npx network installer — not registrable offline"
     },
     "reddit": {
       "command": "npx",
@@ -307,38 +271,6 @@
       "version": "1.0.0",
       "x-agentbox-managed-by": "reference",
       "x-agentbox-note": "external UE CLI — not present in this image"
-    },
-    "clipcannon": {
-      "command": "clipcannon",
-      "args": [
-        "serve"
-      ],
-      "type": "stdio",
-      "env": {
-        "CLIPCANNON_DATA_DIR": "/home/devuser/.clipcannon",
-        "CLIPCANNON_GPU_DEVICE": "cuda:0",
-        "CLIPCANNON_NVENC": "true"
-      },
-      "description": "AI video editor: 51 tools across 12 categories (project, understanding, discovery, editing, rendering, audio, voice, avatar, video gen, billing, disk, config). 22-stage analysis DAG, 14 ML models, 5 embedding spaces, voice clone, lip-sync, AI music, text-to-video, Voice Agent. 626 tests. Local GPU",
-      "protocol": "stdio",
-      "version": "0.1.0",
-      "x-agentbox-managed-by": "reference",
-      "x-agentbox-note": "external clipcannon CLI — not present in this image"
-    },
-    "scrapling": {
-      "command": "scrapling",
-      "args": [
-        "mcp"
-      ],
-      "type": "stdio",
-      "env": {
-        "CURL_CA_BUNDLE": "/etc/ca-certificates/extracted/tls-ca-bundle.pem"
-      },
-      "description": "Adaptive web scraping: 9 MCP tools, anti-bot bypass (Cloudflare Turnstile), stealth browser, spider framework",
-      "protocol": "stdio",
-      "version": "0.4.3",
-      "x-agentbox-managed-by": "reference",
-      "x-agentbox-note": "external scrapling CLI — not present in this image"
     },
     "context7": {
       "command": "npx",

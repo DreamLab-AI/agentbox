@@ -10,7 +10,6 @@ Complete machine learning environment with PyTorch, CUDA, and the data science s
 ## When Not To Use
 
 - Custom CUDA kernel development and GPU profiling — use the **cuda** skill instead
-- Distributed neural network training in cloud sandboxes — use **flow-nexus-neural** instead
 - AgentDB reinforcement learning plugins — use **agentdb-advanced** (RL Plugins section) instead
 - Interactive data exploration in notebooks — use **jupyter-notebooks** instead
 - AI image generation (Stable Diffusion, FLUX) — use **comfyui** instead

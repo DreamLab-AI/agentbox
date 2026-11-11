@@ -26,7 +26,7 @@ the transport is the point, and the window would pull in a GUI toolkit for nothi
 ## Why an agent estate should care
 
 Two of the 21 methods do something none of our existing video skills
-(`ffmpeg-processing`, `clipcannon`, `open-montage`, `codebase-video`) can:
+(`ffmpeg-processing`, `video-production`, `codebase-video`) can:
 
 - **`preview.frame`** composites the true frame at a timeline instant and writes a
   PNG. An agent can *see the edit it just made* — the same verification loop
@@ -87,7 +87,7 @@ prejudge it:
   catalogue row, so no apply class. `AGENTBOX_ENABLE_CONCAT=1` is a stand-in,
   following the `android` sidecar's precedent.
 - **No skill.** It would be a fifth video skill; the routing boundary against
-  `ffmpeg-processing` and `clipcannon` needs stating before it earns a directory row.
+  `ffmpeg-processing` and `video-production` needs stating before it earns a directory row.
 - **No GPU.** `concat-render`'s `gpu` feature (wgpu) is off. The CPU compositor is
   the reference implementation the GPU one must match, so headless export is correct
   either way.

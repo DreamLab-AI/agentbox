@@ -20,7 +20,6 @@ AI-powered CUDA development assistant integrating 4 specialist agents with compr
 ## When Not To Use
 
 - For high-level PyTorch model training that does not need custom kernels -- use the pytorch-ml skill instead
-- For distributed neural network training in cloud sandboxes -- use the flow-nexus-neural skill instead
 - For general Rust or C++ systems programming without GPU involvement -- use the rust-development skill instead
 - For WebAssembly-based compute without GPU -- use the wasm-js skill instead
 - For CPU-only performance profiling of swarm operations -- use the performance-analysis skill instead

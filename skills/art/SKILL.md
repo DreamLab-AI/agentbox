@@ -33,8 +33,8 @@ Complete visual content system supporting **multiple brand aesthetics**.
 
 ## When Not to Use
 
-- AI-generated photoreal images or video -- use `comfyui` (local diffusion) or
-  `clipcannon` (video) instead
+- AI-generated photoreal images or video -- use `comfyui` (local diffusion; video via
+  `video-production`) instead
 - Academic/publication diagrams destined for a LaTeX document -- prefer TikZ via
   `book-publishing` (references/latex-conventions.md); only reach for this skill's `diagram-upcycling.md` path to polish a
   TikZ/Mermaid render, not to author the diagram itself

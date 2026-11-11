@@ -37,7 +37,7 @@ directly into Claude's context. Eliminates hallucination from training data cuto
 
 - For internal codebase understanding — use `codebase-memory`
 - For arbitrary web pages — use `gemini-url-context` or `web-summary`
-- For research synthesis — use `notebooklm` or `perplexity-research`
+- For research synthesis — use `perplexity-research`
 
 ## Setup
 

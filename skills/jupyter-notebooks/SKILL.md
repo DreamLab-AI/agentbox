@@ -35,7 +35,7 @@ Use this skill when you need to:
 - For production code implementation that does not need interactive exploration -- write files directly with Claude Code
 - For LaTeX document preparation and professional typesetting -- use the latex-documents or report-builder skills instead
 - For GPU kernel development and CUDA programming -- use the cuda skill instead
-- For deploying trained models to production -- use the pytorch-ml or flow-nexus-neural skills instead
+- For deploying trained models to production -- use the pytorch-ml skill instead
 - For non-Python data processing pipelines -- use the stream-chain skill or appropriate language-specific tooling
 - For stateful Python execution without notebook structure (no .ipynb, no cell-by-cell narrative) -- use the codeact skill instead
 

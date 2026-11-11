@@ -1,6 +1,6 @@
 ---
 name: motion-designer
-description: "Builds a finished motion-graphics film in code from a short brief: one time-driven HTML canvas, rendered frame-exact, cut on the beat to music and mastered to MP4. Use for a motion piece, motion reel, kinetic type, animated title or logo sting ('make a 15-second motion piece about X'). Not for a narrated or sourced video (open-montage), a repo explainer (codebase-video), teaching a mechanism (manim), editing footage (clipcannon) or UI micro-interactions."
+description: "Builds a finished motion-graphics film in code from a short brief: one time-driven HTML canvas, rendered frame-exact, cut on the beat to music and mastered to MP4. Use for a motion piece, motion reel, kinetic type, animated title or logo sting ('make a 15-second motion piece about X'). Not for a narrated or sourced video (video-production), a repo explainer (codebase-video), teaching a mechanism (manim), editing footage (clipcannon) or UI micro-interactions."
 status: live
 compatibility: Needs the browsercontainer sidecar (frames are drawn there over CDP; no browser is installed in the image), plus the baked motion-render binary (or Node 22 for the fallback script), ffmpeg, yt-dlp and Python 3 with numpy from the image. Plain files and shell only, so it runs the same under Claude Code and Codex.
 ---

@@ -82,4 +82,4 @@ console.log('Loss:', metrics.loss, '| Duration:', metrics.duration, 'ms');
 ```
 
 **When RL is NOT what you need**: For production ML training with PyTorch use `pytorch-ml`;
-for cloud sandbox training use `flow-nexus-neural`; for CUDA kernels use `cuda`.
+for CUDA kernels use `cuda`.

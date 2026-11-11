@@ -66,7 +66,7 @@ Manim sections can illustrate known cases but are not a live browser model.
 ## Presentations and other video owners
 
 Provide MP4 plus poster/static explanation and source to the chosen deck or
-[open-montage](../../open-montage/SKILL.md) workflow. Check playback in the actual
+[video-production](../../video-production/SKILL.md) workflow. Check playback in the actual
 presentation application. Core sections are the first integration choice.
 Manim Slides and Manim Voiceover are optional ecosystem projects; evaluate and
 pin their compatibility separately before adopting them. They are not required

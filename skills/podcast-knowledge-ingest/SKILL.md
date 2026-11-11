@@ -1,6 +1,6 @@
 ---
 name: podcast-knowledge-ingest
-description: "Weekly podcast-to-ontology cron: new YouTube episodes, Loom-extracted assertions, Perplexity verification, then Episode evidence-ledger pages, plus a promotion stage. Use for '/podcast-ingest', 'process new podcast episodes into the ontology', debugging the podcast-cron schedule, or promoting ledger evidence into scored proposal dossiers. Not for one-off historical backfill (podcast-bulk-ingest), archiving transcripts as notes (youtube-transcript-archiver) or non-podcast enrichment (ontology-enrich)."
+description: "Weekly podcast-to-ontology cron: new YouTube episodes, Loom-extracted assertions, Perplexity verification, then Episode evidence-ledger pages, plus a promotion stage. Use for '/podcast-ingest', 'process new podcast episodes into the ontology', debugging the podcast-cron schedule, or promoting ledger evidence into scored proposal dossiers. Not for archiving transcripts as notes (youtube-transcript-archiver) or non-podcast enrichment (ontology-enrich)."
 version: 2.0.0
 triggers:
   - /podcast-ingest
@@ -22,7 +22,7 @@ Implemented as three Rust binaries in [`services/podcast-ingest`](../../services
 (crate `podcast-ingest`, workspace-standalone like `services/dream-engine`):
 `podcast-ingest` (this skill's weekly cron, ports `ingest.py`), `podcast-promote`
 (the promotion stage below, ports `promote.py`), and `podcast-bulk-ingest`
-(the sibling `podcast-bulk-ingest` skill, ports `bulk_ingest.py`). CLI flags
+(one-off archive backfill, no skill; ports `bulk_ingest.py`). CLI flags
 mirror the original Python `argparse` definitions exactly. On-disk JSON/ledger
 formats are byte-compatible with the prior Python implementation — see the
 crate's ledger round-trip tests.
@@ -320,7 +320,6 @@ live E2E test record: [references/promotion.md](references/promotion.md).
 
 ## Relationship to other skills
 
-- **podcast-bulk-ingest**: One-off historical backfill → produces `downloaded` files
 - **podcast-knowledge-ingest** (this skill): Weekly cron → processes `downloaded`
   files into ontology entries, marks `processed`
 - **youtube-transcript-archiver**: Interactive agent-triggered variant
