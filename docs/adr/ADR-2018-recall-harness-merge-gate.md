@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: cbe7335b9
+verified_commit: f7a5ae4ab24d1c4b20e15819c26f3d6b63f84b32
 owner: jjohare
 review_trigger: The pass band (175/102/0) is changed, the fixture is re-frozen, or a new retrieval consumer is added
 repo: agentbox
@@ -16,6 +16,31 @@ lineage: "legacy PRD-020 / ADR-040 D2 (I14)."
 ---
 
 # ADR-2018 — The recall harness is the mandatory merge gate for any retrieval-geometry change
+
+## Fixture upkeep — 2026-11-11
+
+Six of the old 320 fixture IDs no longer resolved to embedded rows. The harness
+correctly refused to score: this was not treated as a recall pass or repaired by
+writing memory rows. The prior fixture (`sha256-413497c5d4ab756c77f2c98969703fc2781ab42bd100edb29a38899d95d4e57b`)
+remains in Git at `21318b600` and in the host recovery copy
+`backups/ruvector-sidecar/recall-fixture-before-20261111.json`.
+
+The canonical deterministic, read-only builder sampled the current corpus once
+(270107 embedded rows, 467 namespaces), and the replacement was frozen **before**
+measurement. Its hash is
+`sha256-6a67936d175a4c4ab112473ed74be431c226be5a5238eb43df9ea8b5a7e29ff1`.
+The model, 384 dimensions, 200/120 sample sizes and entire band are unchanged:
+self ≥175, true ≥102, exact-token delta ≥0, median of three. The sample changed,
+so scores must not be compared directly with the previous fixture's scores.
+
+Both pre/post-auth runs measured self **179/200**, true **105/120** and exact-token
+delta **3**. True recall clears the enforced 102 floor but not the 107 target;
+no threshold was weakened and no index/geometry change was made. The post-run
+receipt `sha256-12-5cb103269640` binds the frozen fixture and live embedding
+fingerprint `emb1-384-cd25d147dcb748fd`. The release gate says **PERMITTED** when
+run under the same governed MCP environment (not bare shell defaults, which
+correctly refuse a feed-retrieval flag mismatch). Harness tests pass **24/24**;
+the pinned-hash check also asserts the sample counts and enforced floors.
 
 ## External review reconciliation — 2026-11-02
 
