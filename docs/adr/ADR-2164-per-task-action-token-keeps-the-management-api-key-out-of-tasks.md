@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 23717873089478ce4b18c6c09bddf4e0adb064f9
+verified_commit: f7a5ae4ab24d1c4b20e15819c26f3d6b63f84b32
 verified_paths: [config/hooks/trajectory-recorder.cjs, config/hooks/routing-label-recorder.cjs, config/entrypoint-unified.sh, management-api/lib/pg-config.js, management-api/lib/routing-label-store.js, management-api/lib/trajectory-store.js, mcp/consultants/shared/consultant-base.js, management-api/lib/task-action-tokens.js, management-api/middleware/auth.js, management-api/lib/agent-event-auth.js, management-api/routes/agent-events.js, management-api/utils/process-manager.js, management-api/adapters/index.js, management-api/adapters/lifecycle.js, management-api/adapters/events/external.js, management-api/server.js, scripts/ruvector-sidecar-update.sh]
 owner: jjohare
 review_trigger: any new reader of the RuVector Postgres password or any new place a connection is assembled, any new route a task needs to call, any change to the Management API auth gate or auth modes, or a hook that gains a way to sign NIP-98
@@ -17,6 +17,19 @@ acceptance_boundary: Jest suites tests/sovereign/task-action-token*.test.js driv
 ---
 
 # ADR-2164 — A per-task action token keeps the Management API key out of tasks
+
+## Scoped credential-consumer check — 2026-11-11
+
+Reviewed `237178730..f7a5ae4ab` over the governed paths: only the post-reload
+password selection in `scripts/ruvector-sidecar-update.sh` changed. It now
+drains the existing credential producer instead of closing its pipe early;
+the same password file, SCRAM verifier, name-only Docker environment forwarding
+and no-secret-output boundary remain. No credential reader, storage location,
+task authority or API gate was added. The maintenance tests pass 48/48,
+including delayed second-credential and no-password-output regressions.
+Live owner/reader connections and negative-password probes succeeded on both
+Docker networks after SCRAM hardening (ADR-2133). Those checks do not establish
+the unrelated per-task acceptance conditions, so status axes remain unchanged.
 
 ## Scoped source check — 2026-11-09
 

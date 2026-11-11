@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: d099266974930d37caac2ab7bcd8799b8877e7ba
+verified_commit: f7a5ae4ab24d1c4b20e15819c26f3d6b63f84b32
 verified_paths: [scripts/ruvector-sidecar-update.sh, tests/config/ruvector-sidecar-ops.test.sh, tests/config/reindex-screen.test.sh]
 owner: jjohare
 review_trigger: a ruvector extension or image bump; a new read-only consumer or readable table; any pg_hba change; `ruvector reader-role --yes` and `hba-harden --yes` run on the live sidecar (activation → live)
@@ -16,6 +16,40 @@ domain: LEARNING-memory
 ---
 
 # ADR-2133 — Rebuild the sidecar HNSW index by swap, and give read-only consumers their own role
+
+## Live auth hardening — 2026-11-11
+
+The existing gated `hba-harden --yes` operation replaced the four Docker-subnet
+trust entries with SCRAM rules, deduplicated rules and reloaded configuration.
+Backup: `pg_hba.conf.agentbox-20261111T201519Z` beside the original on PGDATA.
+No database/container restart, role/password rotation, memory-row change or
+index rebuild was performed. The one-time `hba_scram` gate was re-sealed to
+`false`; the hardened configuration persists on the data volume.
+
+Preflight verified both the container and Agentbox passwords against the stored
+SCRAM verifier without printing them. Host-side checks also verified the
+configured VisionClaw reader credentials. Fresh owner and reader connections
+succeeded through **both** Docker-network addresses, and wrong passwords were
+rejected with SQLSTATE `28P01` on both. The reader's default remains read-only.
+`ruvector status` reports no trust rule outside loopback; Agentbox is ready with
+no degraded services.
+
+The initial helper exited 141 after reload: `head -1` stopped reading before
+the second credential's Docker read returned, causing SIGPIPE under `pipefail`.
+`2743e2a6b` drains all credential output with awk while selecting only the first
+password. Delayed-producer and no-secret-output regression checks bring the
+operator suite to **48/48**. Independent network checks completed the original
+post-reload verification. This source fix will be baked at the next normal
+image build; the checkout's operator command already uses it.
+
+The refreshed recall fixture passed before and after auth hardening at median
+self **179/200**, true **105/120**, exact-token delta **3** (three runs each).
+The release gate permits the post-change receipt with the governed MCP
+environment and matching live embedding fingerprint. See ADR-2018 for fixture
+provenance. This closes the live trust-auth finding only: the record's overall
+activation axis stays staged because its other acceptance boundaries (including
+the pre-swap index screen and full reader-role lifecycle rehearsal) are not
+claimed here.
 
 ## Context
 VisionClaw's live test measured recall@10 of 0.70–0.71 against an exact scan. In that test only 89 of 100 rows found themselves in their own top 10.
