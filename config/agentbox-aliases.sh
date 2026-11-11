@@ -48,11 +48,6 @@ alias aqe-flaky="npx -y agentic-qe flaky"
 alias aqe-gate="npx -y agentic-qe gate"
 alias aqe-mcp="npx -y aqe-mcp"
 
-# === AGENTIC JUJUTSU (git) ===
-alias aj="npx -y agentic-jujutsu"
-alias aj-status="npx -y agentic-jujutsu status"
-alias aj-analyze="npx -y agentic-jujutsu analyze"
-
 # === CLAUDE USAGE ===
 alias cu="claude-usage"
 alias claude-usage="npx -y claude-usage-cli"
