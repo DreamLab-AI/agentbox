@@ -1,6 +1,6 @@
 ---
 name: security-testing
-description: "Application security testing: OWASP Top 10 validation, authentication/authorisation testing, API security, dependency vulnerability scanning, secrets detection, injection testing, SAST/DAST workflows. Use for web application and API security validation — not for Linux system hardening (use defense-security for that)."
+description: "Application security testing with the baked semgrep, gitleaks and trivy: SAST, secrets scanning, dependency and misconfiguration scans, plus OWASP Top 10, authentication, signed-request and API review methods. Use to validate a web service or codebase. Not for Linux system hardening or CIS compliance (use defense-security)."
 ---
 
 # Security Testing
@@ -41,10 +41,10 @@ Application-layer security testing for web services, APIs, and codebases.
 
 ### Tools Used
 
-- **Static analysis**: semgrep, bandit (Python), gosec (Go), eslint-plugin-security
-- **Dependency scanning**: npm audit, pip-audit, cargo audit, trivy
-- **Secrets detection**: gitleaks, trufflehog
-- **Dynamic testing**: OWASP ZAP (via Docker), custom request sequences
+- **Baked in the image** (present after the next image build; `command -v semgrep gitleaks trivy` to check): `semgrep`, `gitleaks`, `trivy`
+- **Not baked**: bandit, gosec, pip-audit, cargo-audit, trufflehog, OWASP ZAP; use them only if already on PATH
+- **Dependency scanning**: `trivy fs`, plus `npm audit` where Node is present
+- **Dynamic testing**: custom request sequences against a running service (ZAP needs Docker, which is denied here)
 - **Browser-based**: `qe-browser` for injection scanner (install with `aqe init`)
 
 ## Signed-request and stateful API reviews
@@ -91,38 +91,44 @@ pre-repair stored fixture so a future-ingest fix cannot conceal migration debt.
 
 ## Quick Start
 
-### Dependency vulnerability scan
+### Network needs (read first)
+
+The binaries are local; some data is not. `semgrep --config auto` and `--config p/...` fetch rules from the semgrep registry, `trivy` downloads its vulnerability DB (and Java DB) on first use, and `npm audit` queries the registry. Offline, use the forms marked offline below.
+
+### Dependency and misconfiguration scan
 ```bash
-# Node.js
-npm audit --audit-level=moderate
+# Offline: misconfiguration and secrets need no vulnerability DB
+trivy fs --scanners misconfig,secret .
 
-# Python
-pip-audit
+# Online (first run downloads the DB): known CVEs in lockfiles
+trivy fs --scanners vuln .
 
-# Rust
-cargo audit
+# Offline only when a DB is already cached under ~/.cache/trivy
+trivy fs --scanners vuln --skip-db-update .
 
-# Container image
-docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
-  aquasec/trivy image <your-image>
+# Container images: scan an exported tarball, no Docker daemon needed
+trivy image --input image.tar
 ```
 
 ### Secrets scan
 ```bash
-# Install gitleaks if not present
-which gitleaks || brew install gitleaks
+# Working tree only (offline)
+gitleaks dir --verbose .
 
-# Scan current repo
-gitleaks detect --source . --verbose
+# Git history (offline)
+gitleaks git --verbose .
 ```
+Older gitleaks releases use `gitleaks detect --source .`; check `gitleaks --help`. Treat any hit as live: report the file and rule, never print the secret value into shared output (`--redact`).
 
 ### SAST with semgrep
 ```bash
-# semgrep is not baked into the image; run only if already on PATH
+# Offline: your own rule files
+semgrep --config rules/ --metrics=off .
 
-# Run OWASP ruleset
-semgrep --config p/owasp-top-ten .
+# Online: registry rulesets (fetches rules at run time)
+semgrep --config p/owasp-top-ten --metrics=off .
 ```
+`--metrics=off` stops telemetry. An offline run only finds what your local rules describe; say so when reporting a clean result.
 
 ## Integration with visioncraft
 

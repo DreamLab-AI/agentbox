@@ -1093,6 +1093,10 @@
           hyperfine       # command benchmarking
           watchexec       # file watcher + command runner
           just            # modern make replacement
+          semgrep         # SAST rules engine — skills/security-testing
+          gitleaks        # secrets scanner for repos and history — skills/security-testing
+          trivy           # dependency, image and misconfig scanner — skills/security-testing
+          jujutsu         # jj, Git-compatible VCS (binary `jj`) — skills/agentic-jujutsu
         ];
 
         nodeEnvPackages = with pkgs; [
