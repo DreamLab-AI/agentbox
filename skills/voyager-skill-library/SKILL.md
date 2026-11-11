@@ -1,6 +1,6 @@
 ---
 name: voyager-skill-library
-status: gated
+gate: skills.voyager_skill_library.enabled
 description: "Stores and retrieves verified, executable Python helpers (a function plus assertions plus an example) in the code-harness procedural memory, gated by the VerificationGate. Use when a parser, validator or algorithm has proved general across tasks and should be kept for reuse, or to retrieve such helpers at task start as a CodeAct prelude. Not for one-off scripts, project-specific logic, code using subprocess, socket or ctypes, or IF/THEN lessons (expel-lesson-extractor)."
 version: 0.1.0
 related_skills:

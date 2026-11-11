@@ -211,8 +211,30 @@ function frontmatterField(md, key) {
  * from a distractor it must never pick (the measurement rig keeps them, so the
  * eval numbers it reports are a floor for this map, not a ceiling).
  */
-function loadCandidates(skillsDir) {
+/**
+ * A skill's manifest gate (`gate: skills.payment_router.enabled` in its frontmatter) read
+ * from `manifest`: true only when the key is literally `true`. A gate that is off, absent
+ * or unreadable keeps the skill out — a gated skill exists because enabling it is a
+ * decision (a payment rail, a phase-2 store), so failing closed is the safe direction.
+ */
+function gateOpen(gate, manifest, cache) {
+  const i = gate.lastIndexOf('.');
+  if (i <= 0) return false;
+  const section = gate.slice(0, i);
+  if (!cache.has(section)) cache.set(section, readTomlSection(manifest, section));
+  return cache.get(section)[gate.slice(i + 1)] === 'true';
+}
+
+/**
+ * The routable skills under `skillsDir`: name → rubric. A skill whose frontmatter names a
+ * `gate:` is offered only while that gate is on in `manifest`, which defaults to the
+ * `agentbox.toml` beside the skills tree (`/opt/agentbox/agentbox.toml` for the baked tree,
+ * the repo's for a checkout). With its gate on, a `status: gated` skill is routed as live,
+ * without the "GATED OFF" note.
+ */
+function loadCandidates(skillsDir, { manifest = path.join(skillsDir, '..', 'agentbox.toml') } = {}) {
   const out = {};
+  const sections = new Map();
   let entries = [];
   try { entries = fs.readdirSync(skillsDir, { withFileTypes: true }); } catch { return out; }
   for (const d of entries) {
@@ -220,6 +242,15 @@ function loadCandidates(skillsDir) {
     const p = path.join(skillsDir, d.name, 'SKILL.md');
     let md;
     try { md = fs.readFileSync(p, 'utf8'); } catch { continue; }
+    const gate = frontmatterField(md, 'gate');
+    if (gate) {
+      if (!gateOpen(gate, manifest, sections)) continue;
+      const desc = description(md);
+      const status = frontmatterField(md, 'status') || 'live';
+      if (!desc || EXCLUDED_STATUS.has(status) || /^deprecated:\s*true/m.test(frontmatterBlock(md))) continue;
+      out[d.name] = desc;
+      continue;
+    }
     // rubricOf also honours the legacy `deprecated: true` stub marker.
     const rubric = rubricOf(md);
     if (rubric) out[d.name] = rubric;

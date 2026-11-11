@@ -902,6 +902,22 @@ describe('router defects — bounded body read, frontmatter-only parsing, baked 
     expect(lib.loadCandidates(dir)).toEqual({ fm: 'Real description.' });
   });
 
+  test('a skill with a manifest gate is offered only while that gate is literally true', () => {
+    const root = fs.mkdtempSync(path.join(tmp, 'gate-'));
+    const dir = path.join(root, 'skills');
+    fs.writeFileSync(path.join(root, 'agentbox.toml'),
+      '[skills.pay]\nenabled = false   # money moves\n\n[skills.lib]\nenabled = true\n');
+    put(path.join(dir, 'pay'), '---\nname: pay\ngate: skills.pay.enabled\ndescription: "Pays."\n---\n# x\n');
+    put(path.join(dir, 'lib'), '---\nname: lib\nstatus: gated\ngate: skills.lib.enabled\ndescription: "Library."\n---\n# x\n');
+    put(path.join(dir, 'nokey'), '---\nname: nokey\ngate: skills.absent.enabled\ndescription: "Absent gate."\n---\n# x\n');
+    put(path.join(dir, 'plain'), '---\nname: plain\ndescription: "Plain."\n---\n# x\n');
+    // The default manifest is the agentbox.toml beside the skills tree; with the gate on, a
+    // `status: gated` skill is routed as live, without the GATED OFF note.
+    expect(lib.loadCandidates(dir)).toEqual({ lib: 'Library.', plain: 'Plain.' });
+    // An unreadable manifest fails closed for gated skills and leaves the rest alone.
+    expect(lib.loadCandidates(dir, { manifest: path.join(root, 'missing.toml') })).toEqual({ plain: 'Plain.' });
+  });
+
   test('a plugin skill reads its name from the frontmatter, not from the body', () => {
     const claudeDir = fs.mkdtempSync(path.join(tmp, 'claude-plug-'));
     const plug = path.join(tmp, 'plug-fm');

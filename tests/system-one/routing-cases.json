@@ -1045,9 +1045,9 @@
     },
     {
       "prompt": "This API answers 402 Payment Required with an L402 challenge. Wire the call so it pays within a capped budget and retries.",
-      "expected_skill": "payment-router",
-      "rationale": "A 402 challenge on a metered API with capped spend is payment-router's row.",
-      "class": "single",
+      "expected_skill": "none",
+      "rationale": "payment-router is offered only while [skills.payment_router].enabled is true, and it is off; with the payment rail disabled no skill should take a request to spend money.",
+      "class": "boundary",
       "provenance": "directory-derived",
       "late_discriminative": false
     },
@@ -1209,7 +1209,7 @@
       "rationale": "Persisting a proven general-purpose function with assertions is voyager; storing an IF/THEN lesson would be expel-lesson-extractor.",
       "class": "near-neighbour",
       "provenance": "directory-derived",
-      "late_discriminative": true
+      "late_discriminative": false
     },
     {
       "prompt": "The canvas animation computes a Voronoi diagram every frame and JavaScript can't keep up. Move the geometry to WebAssembly.",
