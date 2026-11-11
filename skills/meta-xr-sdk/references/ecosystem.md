@@ -178,7 +178,7 @@ Achievements, IAP, Social, Leaderboards, DLC, Cloud Storage, Groups, Parties
 
 ## 3. hzdb CLI + MCP Server (40+ Tools)
 
-The Horizon Debug Bridge provides direct device and app management.
+The Horizon Debug Bridge provides direct device and app management. `hzdb` talks to a headset over USB/ADB, so the operator installs and runs it on the host machine, never inside agentbox; every `npm`/`npx` command in this file is a host-side command.
 
 ```bash
 # Install and run MCP server

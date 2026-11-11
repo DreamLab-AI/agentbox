@@ -135,7 +135,7 @@ field rows (absolute y):
 </foreignObject>
 ```
 
-The HTML namespace declaration on the `<div>` is required for SVG to render the inline content. Browsers and Playwright/Chromium render this faithfully; if your export target doesn't support `<foreignObject>` (some older Inkscape builds), hand-split long values into two `<tspan>` lines instead.
+The HTML namespace declaration on the `<div>` is required for SVG to render the inline content. Browsers (Chromium included) render this faithfully; if your export target doesn't support `<foreignObject>` (some older Inkscape builds), hand-split long values into two `<tspan>` lines instead.
 
 Field labels use the `node-name` role at 11px in ink. Field values use the `sublabel` role in muted. Bucket and field values can be retinted by `color` override (§4).
 

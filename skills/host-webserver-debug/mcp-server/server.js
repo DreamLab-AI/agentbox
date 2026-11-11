@@ -22,7 +22,7 @@ const https = require('https');
 // Import tools
 // NOTE: Screenshot/navigation are delegated to the browsercontainer sidecar
 // (browser-gpu MCP tools). The former local-Playwright screenshot tool was
-// removed from this skill — see references/deprecated-local-playwright-screenshot.js.
+// removed from this skill.
 const { debugCors } = require('../tools/debug-cors.js');
 
 // State

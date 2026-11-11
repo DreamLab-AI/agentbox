@@ -23,7 +23,7 @@ cargo leptos new --git leptos-rs/start-axum-workspace  # bin/lib split (producti
 cargo leptos new --git leptos-rs/start-actix           # Actix backend
 # Trunk CSR SPA: clone leptos-rs/start-trunk
 ```
-Templates ship `rust-toolchain.toml`, Tailwind/SCSS, `end2end/` (Playwright), `.vscode/settings.json`,
+Templates ship `rust-toolchain.toml`, Tailwind/SCSS, `end2end/` (Playwright scaffold; do not run it here), `.vscode/settings.json`,
 and a correctly-wired feature triad.
 
 ### cargo-leptos commands
@@ -33,7 +33,7 @@ and a correctly-wired feature triad.
 | `cargo leptos build [--release]` | One-shot build (`--release` → uses `wasm-release` profile if set) |
 | `cargo leptos serve` | Run the already-built server binary |
 | `cargo leptos test` | `cargo test` on both lib + bin targets |
-| `cargo leptos end-to-end` | Build, start server, run `end2end-cmd` (Playwright) |
+| `cargo leptos end-to-end` | Build, start server, run `end2end-cmd` (Playwright; host only, see §3) |
 | `cargo leptos build --release --split` | Code-split WASM (lazy loading, 0.8) |
 
 ### `[package.metadata.leptos]` (key fields)
@@ -142,7 +142,7 @@ wasm-pack test --headless --firefox     # or: cargo leptos test (native + wasm)
 ```
 
 **E2E (Playwright, in `end2end/`):** templates pre-wire it. `cargo leptos end-to-end` builds,
-starts the server, runs `npx playwright test`.
+starts the server, then runs `end2end-cmd`. That runs Playwright, so it is for the operator's host: no local Playwright is installed in agentbox. For end-to-end checks here, start the dev server and drive it through the `browser` skill (`browser-gpu` MCP: `navigate_page`, `take_snapshot`, `click`, `take_screenshot`), pointing it at an address the sidecar can reach. The test below shows what to assert.
 ```ts
 import { test, expect } from "@playwright/test";
 test("increments", async ({ page }) => {

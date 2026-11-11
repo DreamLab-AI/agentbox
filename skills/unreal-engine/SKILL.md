@@ -52,7 +52,8 @@ Control Unreal Engine 5 from Claude via 60+ MCP tools or CLI. Spawn actors, edit
 `soft-ue-cli` is not baked into this image (`mcp.json`: "not present in this
 image"). Install it and run a UE5 Editor with the bridge plugin host-side —
 the MCP server in this container can only reach that external editor once it
-is up.
+is up. The commands below are installed and run on the operator's host machine,
+never inside agentbox.
 
 ```bash
 # Install

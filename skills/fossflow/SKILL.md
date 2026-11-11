@@ -42,7 +42,8 @@ Two input formats: **compact** (token-efficient, for LLM generation) and
 
 - `scripts/generate-diagram.js` — build/emit a diagram (compact or verbose) programmatically.
 - `scripts/validate-diagram.js` — validate a diagram file against the format rules.
-- `scripts/screenshot-verify.sh` / `scripts/playwright-verify.js` — render and visually verify a diagram.
+- `scripts/screenshot-verify.sh` — validates a diagram file, then captures the X display (`scrot`) for a visual check, or compares two screenshots. It does not render the diagram itself.
+- To render a diagram in a browser, use the `browser` skill (`browser-gpu` MCP): open FossFLOW at an address the sidecar can reach, import the diagram JSON, then `take_screenshot`. Local Playwright is not used.
 
 ## Reference index
 
