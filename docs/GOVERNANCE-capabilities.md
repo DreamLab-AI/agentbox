@@ -1,10 +1,11 @@
 ---
 title: Agentbox Capability Governance
 doc_id: AB-GOVERNANCE
-version: 0.6.18
+version: 0.6.19
 status: draft-for-ratification
 verified_commit: 
 changelog:
+  - "0.6.19 (2026-11-11): ADR-2197 (accepted, complete, staged for rebuild) amends ADR-2024 for non-live repos only. An operator-delegated agent sweep (yolo mode, `/dream sweep`) may merge dream PRs the agent judged correct and green, oldest first, each with a comment stating that no human review is recorded. It may also fix candidate rot, close wrong PRs, answer code-design inbox questions with an agent prefix, dismiss stale alerts, withdraw resolved cases and push the ledger fast-forward outside the night. It never writes review.json, answers owner-fact questions, signs a 31403, touches protected or HANDOFF paths, force-pushes, or touches a repo on the gitignored exclusion list, and with no list it does not run. The engine still merges nothing and ACCEPT still triggers nothing. Invariants: the human-merge-gate invariant gains the sweep exception."
   - "0.6.18 (2026-11-11): ADR-2196: no skill ships half-installed. semgrep, gitleaks, trivy and jj baked; 13 uninstallable or superseded skills deleted with their build wiring; the router honours a skill's manifest gate. 124 skills."
   - "0.6.17 (2026-11-11): ADR-2195 (accepted, complete, staged and gated off): seven `cad-*` skills adapted from text-to-cad 0.11.8 (cad, cad-drawing, cad-fea, cad-robot, cad-pcb, cad-print, cad-render) over a pinned, offline `cad` launcher. New invariants: a third-party tool that installs or updates itself is run only from a hash-locked wheelhouse with its index, telemetry and update feed off; its daemon is a supervised program. 141 skills."
   - "0.6.16 (2026-11-11): ADR-2192 (accepted, complete, staged for rebuild): `[skills.routing].scope` (E084) selects the routing hook's baked candidates; the running value \"all\" offers the whole baked tree, with the SKILL.md path injected for a pick the Skill tool cannot load. One skill is offered once (plugin kept over a synced copy). ADR-2194 (accepted, complete, staged for rebuild): the `motion-designer` skill renders in the browser sidecar over CDP; a holding music track carries a rights record that `master.sh` enforces. 134 skills."
@@ -321,6 +322,17 @@ one. Nights are refused while the legacy temp directory still holds the nights. 
 git identity is a fallback for repositories without one, never an override of a checkout's own
 identity.
 
+**Operator-delegated sweeps (ADR-2197, amending ADR-2024 for non-live repos).** When the operator
+delegates it ("yolo mode"), an agent session may clear the dream backlog on its own judgement
+(`/dream sweep`). It may merge correct, green dream PRs oldest first, each with a comment saying
+no human review is recorded. It may fix rot on PR branches, close wrong PRs, answer code-design
+inbox questions with an `Agent sweep` prefix, dismiss stale alerts, withdraw resolved cases, and
+push the ledger fast-forward outside the night. It never writes `review.json`, answers owner-fact
+questions, signs a 31403, touches protected or HANDOFF paths, or force-pushes. Excluded repos
+(experiments and live repos) are listed under `Dream sweep exclusions (ADR-2197)` in the
+gitignored workspace instruction layer, and with no such heading a sweep does not run. The engine
+is unchanged: ACCEPT triggers nothing and nothing auto-merges.
+
 Shipped-vs-paper inventory of the ADR-052/055–072 band:
 
 | ADR | Subject | State |
@@ -452,6 +464,11 @@ above, enabled but explicitly-invoke-only.
   (`dream.config.json` extraDisciplines / `self-referential`). Since ADR-2141 this is also
   enforced in code: when the target is the engine's own source the night's protected-path
   policy adds `services/dream-engine`, and a patch touching a protected path is a REJECT.
+  One exception (ADR-2197): on a repo not on the operator's exclusion list, an
+  operator-delegated agent sweep may merge a dream PR the agent judged correct and green,
+  with a comment recording that no human review happened. The engine itself never merges,
+  and a sweep never merges a change touching a protected path, so the self-modifying
+  case above still needs a human.
 - **Darwin evaluators must produce surface-dependent output** — any `@metaharness/darwin`
   entrypoint runs `--sandbox mock`/`agent`, never the no-op `real` default.
 - **Governed shared-ontology promotion is required** — `direct_axiom_load = false`
