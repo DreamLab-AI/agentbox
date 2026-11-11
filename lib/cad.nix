@@ -42,8 +42,7 @@ let
     name = w.file;
     path = pkgs.fetchurl {
       name = lib.strings.sanitizeDerivationName w.file;
-      url = w.url;
-      sha256 = w.sha256;
+      inherit (w) url sha256;
     };
   };
 
@@ -90,5 +89,5 @@ let
 in
 {
   inherit wheelhouse launcher xvfb libraryPath;
-  release = lock.release;
+  inherit (lock) release;
 }
