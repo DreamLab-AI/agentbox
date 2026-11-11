@@ -21,7 +21,7 @@ Two doors, both reachable from Bash:
 
 | Door | Authoritative for | How you call it |
 |---|---|---|
-| **`ontomark`** | what a page **says** — frontmatter, types, relations, OKF lifecycle, link integrity | a binary on `PATH` (`/opt/agentbox/bin/ontomark`) |
+| **`ontomark`** | what a page **says** — frontmatter, types, relations, OKF lifecycle, link integrity | a binary on `PATH` (`command -v ontomark`; Nix-baked, ADR-2136) |
 | **the Loom** | what the **reasoner concluded** — the Whelk closure, SPARQL, typed neighbours, shortest paths | HTTP on `http://192.168.2.132:8084` (LAN) |
 
 That split is not an implementation detail you can ignore. `ontomark` reads the
