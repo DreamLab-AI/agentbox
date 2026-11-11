@@ -50,7 +50,9 @@ from the lock: model build, STEP and STL export, the CNC manufacturability check
 drawing with text, a netgen + CalculiX stress solve, `kicad-cli`, MuJoCo, and `bpy` seeing the GPUs
 through OptiX and CUDA.
 
-Not verified until an image is built with the gate on: snapshots (they need the engine's Xvfb with
-Mesa's software GLX, neither of which was in the container), EEVEE drafts, OrcaSlicer, and the Nix
-derivation itself. If `cad <type> snapshot` fails with "no X display for OpenGL" or "Visual does not
-support GL rendering", report it as an image fault and carry on with exports and numbers.
+Also verified, in the image built on 2026-11-11 (live test 42 of 42): snapshots (the engine's Xvfb
+with Mesa's software GLX), the supervised `cad-engine`, and the fonts.
+
+Not yet exercised: OrcaSlicer slicing, EEVEE drafts and real PCB work. If `cad <type> snapshot`
+fails with "no X display for OpenGL" or "Visual does not support GL rendering", report it as an
+image fault and carry on with exports and numbers.
