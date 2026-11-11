@@ -845,3 +845,96 @@ describe('validator — E076 / W074 (ADR-2095 addendum)', () => {
     expect(validate(`[skills.routing]\nrouter = "jev"\ntimeout_ms = 6000\n${OPENJEV}`)).not.toMatch(/W074/);
   });
 });
+
+describe('router defects — bounded body read, frontmatter-only parsing, baked wins, desktop-only skills', () => {
+  const put = (dir, text) => { fs.mkdirSync(dir, { recursive: true }); fs.writeFileSync(path.join(dir, 'SKILL.md'), text); };
+  const syncedClaudeDir = (name, skills) => {
+    const claudeDir = fs.mkdtempSync(path.join(tmp, 'claude-fix-'));
+    const sync = path.join(claudeDir, 'skills', 'synced', 'acct_1');
+    for (const s of skills) put(path.join(sync, s.name), s.md);
+    fs.writeFileSync(path.join(sync, 'manifest.json'), JSON.stringify({ skills: skills.map((s) => ({ name: s.name, description: s.manifest })) }));
+    return claudeDir;
+  };
+
+  test('a judge that sends headers and then stalls is cut off by the timeout, not waited on', async () => {
+    const stall = http.createServer((req, res) => {
+      req.on('data', () => {});
+      req.on('end', () => { res.writeHead(200, { 'Content-Type': 'application/json' }); res.flushHeaders(); res.write('{"model":"jev'); });
+    });
+    await new Promise((r) => stall.listen(0, '127.0.0.1', r));
+    try {
+      const cfg = lib.config(baseEnv({
+        AGENTBOX_SKILL_ROUTE_API: `http://127.0.0.1:${stall.address().port}/v1/systemone`,
+        AGENTBOX_SKILL_ROUTE_TIMEOUT_MS: '400',
+      }));
+      const t0 = Date.now();
+      const r = await Promise.race([
+        lib.route(PROMPT, cfg, { candidates: { 'alpha-diagrams': 'a', 'beta-harden': 'b' } }),
+        new Promise((res) => setTimeout(() => res({ outcome: 'HUNG' }), 3000)),
+      ]);
+      expect(r.outcome).toBe('failed');
+      expect(Date.now() - t0).toBeLessThan(2000);
+    } finally {
+      stall.closeAllConnections && stall.closeAllConnections();
+      await new Promise((r) => stall.close(r));
+    }
+  });
+
+  test('a deprecated synced skill is not resurrected from the manifest description', () => {
+    const claudeDir = syncedClaudeDir('x', [
+      { name: 'old', md: '---\nname: old\nstatus: deprecated\ndescription: "Old synced thing."\n---\n# x\n', manifest: 'Old synced thing.' },
+      { name: 'bare', md: '---\nname: bare\n---\n# no description here\n', manifest: 'From the manifest only.' },
+    ]);
+    const extras = lib.loadLoadableExtras(claudeDir);
+    expect(extras['anthropic-skills:old']).toBeUndefined();
+    expect(extras['anthropic-skills:bare']).toBe('From the manifest only.');
+  });
+
+  test('status, deprecated and description are read from the leading frontmatter only', () => {
+    const body = '# Doc\n\n```yaml\nstatus: superseded\ndeprecated: true\ndescription: from the body\n```\n';
+    const md = `---\nname: fm\ndescription: "Real description."\n---\n${body}`;
+    expect(lib.description(md)).toBe('Real description.');
+    expect(lib.description(`---\nname: nodesc\n---\n${body}`)).toBeNull();
+    const dir = fs.mkdtempSync(path.join(tmp, 'fm-skills-'));
+    put(path.join(dir, 'fm'), md);
+    put(path.join(dir, 'nodesc'), `---\nname: nodesc\n---\n${body}`);
+    put(path.join(dir, 'real-deprecated'), '---\nname: real-deprecated\ndeprecated: true\ndescription: "Stub."\n---\n# x\n');
+    expect(lib.loadCandidates(dir)).toEqual({ fm: 'Real description.' });
+  });
+
+  test('a plugin skill reads its name from the frontmatter, not from the body', () => {
+    const claudeDir = fs.mkdtempSync(path.join(tmp, 'claude-plug-'));
+    const plug = path.join(tmp, 'plug-fm');
+    put(path.join(plug, 'skills', 'dir-name'), '---\ndescription: "Plugin thing."\n---\n```\nname: body-name\n```\n');
+    fs.mkdirSync(path.join(claudeDir, 'plugins'), { recursive: true });
+    fs.writeFileSync(path.join(claudeDir, 'plugins', 'installed_plugins.json'), JSON.stringify({ plugins: { 'pl@m': [{ installPath: plug }] } }));
+    fs.writeFileSync(path.join(claudeDir, 'settings.json'), JSON.stringify({ enabledPlugins: { 'pl@m': true } }));
+    expect(Object.keys(lib.loadLoadableExtras(claudeDir))).toEqual(['pl:dir-name']);
+  });
+
+  test('a baked skill wins over an extra with the same bare name even when the rubric differs', () => {
+    const baked = { 'deep-research': 'Fan-out web research.' };
+    const extras = { 'anthropic-skills:deep-research': 'A different summary of research.', 'p:other': 'Other.' };
+    expect(lib.dedupeExtras(baked, extras)).toEqual({ extras: { 'p:other': 'Other.' }, dropped: ['anthropic-skills:deep-research'] });
+  });
+
+  test('desktop-only synced skills are never offered; their baked-tree or plugin namesakes are unaffected', () => {
+    expect([...lib.DESKTOP_ONLY_SYNCED].sort()).toEqual(['built-in-browser', 'chrome-browser', 'computer-use']);
+    const claudeDir = syncedClaudeDir('d', [
+      ...['computer-use', 'chrome-browser', 'built-in-browser'].map((n) => ({ name: n, md: `---\nname: ${n}\ndescription: "Needs the desktop app."\n---\n# x\n` })),
+      { name: 'docs', md: '---\nname: docs\ndescription: "Editable docs."\n---\n# x\n' },
+    ]);
+    expect(Object.keys(lib.loadLoadableExtras(claudeDir))).toEqual(['anthropic-skills:docs']);
+  });
+
+  test('a symlinked registration that points at a different checkout is reported as unregistered', () => {
+    const registered = fs.mkdtempSync(path.join(tmp, 'reg-'));
+    const other = fs.mkdtempSync(path.join(tmp, 'other-checkout-'));
+    put(path.join(other, 'alpha-diagrams'), '---\nname: alpha-diagrams\ndescription: "x"\n---\n');
+    fs.symlinkSync(path.join(other, 'alpha-diagrams'), path.join(registered, 'alpha-diagrams'));
+    fs.symlinkSync(path.join(skillsDir, 'beta-harden'), path.join(registered, 'beta-harden'));
+    const cfg = { skillsDir, registeredDir: registered };
+    expect(lib.unregisteredPaths(['alpha-diagrams', 'beta-harden'], cfg))
+      .toEqual([`alpha-diagrams → ${path.join(skillsDir, 'alpha-diagrams', 'SKILL.md')}`]);
+  });
+});

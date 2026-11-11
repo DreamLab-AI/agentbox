@@ -245,6 +245,20 @@ T=$(mktemp -d); make_tree "$T"; mkdir -p "$T/abs"
 printf -- '---\nname: abs\ndescription: Documents an install step with an expanded absolute skills path.\n---\ncp x /home/devuser/.claude/skills/abs/\n' > "$T/abs/SKILL.md"
 check "expanded ~/.claude/skills path fails ABSPATH" 1 "ABSPATH" "$T"
 
+# --- 18. FRONTMATTER: a plain scalar holding ": " is not valid YAML ------
+T=$(mktemp -d); make_tree "$T"; mkdir -p "$T/colon"
+printf -- '---\nname: colon\ndescription: Does a thing. Use when: (1) the user asks, (2) it fits.\n---\n# x\n' > "$T/colon/SKILL.md"
+check "unquoted ': ' in a scalar fails FRONTMATTER" 1 "not valid YAML" "$T"
+rm -rf "$T"
+T=$(mktemp -d); make_tree "$T"; mkdir -p "$T/nested"
+printf -- '---\nname: nested\ndescription: Fine.\nmemory:\n  before: tool({query: "x"})\n---\n# x\n' > "$T/nested/SKILL.md"
+check "unquoted ': ' in a nested value fails FRONTMATTER" 1 "not valid YAML" "$T"
+rm -rf "$T"
+T=$(mktemp -d); make_tree "$T"; mkdir -p "$T/quoted"
+printf -- '---\nname: quoted\ndescription: "Does a thing. Use when: (1) the user asks."\nnote: >-\n  folded: text is fine\n---\n# x\n' > "$T/quoted/SKILL.md"
+check "quoted and block scalars holding ': ' pass" 0 "OK — skills estate clean" "$T"
+rm -rf "$T"
+
 echo
 echo "skill-lint: $pass passed, $fail failed"
 [ "$fail" -eq 0 ] || exit 1

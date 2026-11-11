@@ -1,6 +1,7 @@
 ---
 name: relationship-design
-description: Design AI-first interfaces around ongoing user relationships — persistent memory, graduated trust, and human+AI collaborative planning — instead of isolated screens. Use for agentic/relationship-centric UX work: systems that learn and remember across sessions, trust-evolution flows, memory/forgetting controls, or relationship-quality metrics. NOT for general one-off UI/UX tasks, static content sites, or simple transactional flows with no accounts — reserve for when relationship design is genuinely the ask.
+description: >-
+  Design AI-first interfaces around ongoing user relationships — persistent memory, graduated trust, and human+AI collaborative planning — instead of isolated screens. Use for agentic/relationship-centric UX work: systems that learn and remember across sessions, trust-evolution flows, memory/forgetting controls, or relationship-quality metrics. NOT for general one-off UI/UX tasks, static content sites, or simple transactional flows with no accounts — reserve for when relationship design is genuinely the ask.
 when_to_use: agentic UX design, relationship-centric design, or designing for memory, trust evolution, or long-term user relationships. Reserve for when relationship design is genuinely the ask rather than reaching for it on routine UI/UX tasks.
 version: 1.0.0
 ---

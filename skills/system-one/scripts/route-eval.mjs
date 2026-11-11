@@ -15,6 +15,7 @@
 import { readFileSync, readdirSync, existsSync, writeFileSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createRequire } from 'node:module';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SKILLS = resolve(HERE, '..', '..');
@@ -33,13 +34,9 @@ const overrides = argv.filter((a, i) => argv[i - 1] === '--override').map(s => s
 const key = process.env.TYPESAFE_API_KEY;
 if (!key) { console.error('TYPESAFE_API_KEY not set — refusing to run.'); process.exit(2); }
 
-/** Frontmatter `description`, folded block or quoted scalar. */
-function description(md) {
-  const folded = md.match(/^description:\s*(?:>-|>|\|)\s*\n((?:[ \t]+.*\n)+)/m);
-  if (folded) return folded[1].split('\n').map(l => l.trim()).filter(Boolean).join(' ');
-  const scalar = md.match(/^description:\s*"([\s\S]*?)"\s*$/m) || md.match(/^description:\s*(.+)$/m);
-  return scalar ? scalar[1].trim() : null;
-}
+// One frontmatter reader for the rig and the runtime router: the leading `---…---` block only.
+const { description, frontmatterField } = createRequire(import.meta.url)(
+  resolve(HERE, '..', '..', '..', 'config', 'hooks', 'lib', 'skill-route.cjs'));
 
 const criteria = {};
 for (const d of readdirSync(SKILLS, { withFileTypes: true })) {
@@ -53,8 +50,8 @@ for (const d of readdirSync(SKILLS, { withFileTypes: true })) {
   // Availability is part of the contract (frontmatter `status`), but it lives outside
   // the description text. Compose it in at the point of use rather than baking a status
   // sentence into every skill's prose — one source, rendered per consumer.
-  const st = (md.match(/^status:\s*(.+)$/m) || [, 'live'])[1].trim();
-  const rep = (md.match(/^replacement:\s*(.+)$/m) || [, ''])[1].trim();
+  const st = frontmatterField(md, 'status') || 'live';
+  const rep = frontmatterField(md, 'replacement');
   if (st !== 'live' && st !== 'foundation') {
     const note = { superseded: `SUPERSEDED${rep ? ` by \`${rep}\`` : ''} — do not choose for new work.`,
                    deprecated: `DEPRECATED${rep ? ` — use \`${rep}\`` : ''}. Do not choose.`,

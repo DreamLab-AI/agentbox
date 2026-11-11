@@ -42,8 +42,8 @@ tools:
   - Bash
   - Grep
 memory:
-  before: mcp__claude-flow__memory_search({query: "[topic]", namespace: "patterns", limit: 10})
-  after: mcp__claude-flow__memory_store({namespace: "patterns", key: "research-[slug]", value: "[key findings summary]"})
+  before: 'mcp__claude-flow__memory_search({query: "[topic]", namespace: "patterns", limit: 10})'
+  after: 'mcp__claude-flow__memory_store({namespace: "patterns", key: "research-[slug]", value: "[key findings summary]"})'
 provenance: true
 ---
 
