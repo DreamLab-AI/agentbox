@@ -98,7 +98,7 @@ approved decision is applied, not a way to apply one.
 
 - Load `.ingest-state.json` from the output directory. There is one shape,
   `{"videos": {}, "assertions": {}, "created_pages": []}`, shared with
-  `podcast-bulk-ingest`. A legacy flat or hybrid file loads losslessly and is
+  the `podcast-bulk-ingest` binary. A legacy flat or hybrid file loads losslessly and is
   rewritten nested on the next save (the original is kept once as
   `.ingest-state.json.pre-nested.bak`). A file that cannot be parsed stops the
   run and is left untouched; only a missing file means an empty history.

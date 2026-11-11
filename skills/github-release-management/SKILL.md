@@ -43,7 +43,7 @@ deployment with rollback capabilities, optionally coordinated by an AI swarm.
   (multi-repo *releases* are supported here).
 - Issue triage, sprint planning, project boards → **github-project-management**.
 - Non-GitHub release pipelines or cloud deployment orchestration →
-  **flow-nexus-swarm** / **swarm-advanced**.
+  **swarm-advanced**.
 
 ## Quick Start
 

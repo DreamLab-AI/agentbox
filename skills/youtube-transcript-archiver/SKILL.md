@@ -1,6 +1,6 @@
 ---
 name: youtube-transcript-archiver
-description: "Batch-downloads a YouTube channel's transcripts, show notes and links into one markdown file per episode, with Haiku-checked source extraction and optional paper downloads. Use for archiving a podcast or talk series as searchable notes. Not for summarising one video (web-summary) or feeding podcast episodes into the ontology (podcast-bulk-ingest, podcast-knowledge-ingest)."
+description: "Batch-downloads a YouTube channel's transcripts, show notes and links into one markdown file per episode, with Haiku-checked source extraction and optional paper downloads. Use for archiving a podcast or talk series as searchable notes. Not for summarising one video (web-summary) or feeding podcast episodes into the ontology (podcast-knowledge-ingest)."
 version: 1.0.0
 triggers:
   - /youtube-archive

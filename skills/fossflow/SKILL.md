@@ -7,7 +7,7 @@ description: >
   "FossFLOW", "infrastructure map", "architecture visualisation", or converting a
   network/cloud (AWS/Azure/GCP/Kubernetes) layout into an importable diagram.
   NOT for flowcharts, sequence, or other Mermaid-supported diagrams (use
-  mermaid-diagrams), academic publication figures (use paperbanana), or general
+  mermaid-diagrams), or general
   architecture prose docs (use report-builder).
 ---
 
@@ -20,7 +20,6 @@ Two input formats: **compact** (token-efficient, for LLM generation) and
 ## When Not To Use
 
 - Standard flowcharts, sequence diagrams, or Mermaid-supported types → mermaid-diagrams skill
-- Academic publication figures → paperbanana skill
 - General architecture documentation → report-builder skill
 - Editorial HTML/SVG diagrams (architecture, flowcharts, org charts) with a branded design
   system and non-isometric layout → diagram-design skill

@@ -1,6 +1,6 @@
 ---
 name: diagram-design
-description: "Draws one editorial-quality diagram as self-contained branded HTML/SVG or PNG: 28 types, from architecture, flowchart and sequence to ER, swimlane, org chart, funnel and charts. Use for a diagram that will be presented, published or shared, redrawing a .drawio or Mermaid source at publication quality, or onboarding brand tokens from a website. Not for a version-controlled .mmd file (mermaid-diagrams), a repository corpus (diagrams-as-code), isometric topology (fossflow) or journal figures (paperbanana)."
+description: "Draws one editorial-quality diagram as self-contained branded HTML/SVG or PNG: 28 types, from architecture, flowchart and sequence to ER, swimlane, org chart, funnel and charts. Use for a diagram that will be presented, published or shared, redrawing a .drawio or Mermaid source at publication quality, or onboarding brand tokens from a website. Not for a version-controlled .mmd file (mermaid-diagrams), a repository corpus (diagrams-as-code) or isometric topology (fossflow)."
 license: MIT
 metadata:
   version: "2.4"
@@ -58,7 +58,6 @@ Use for any of the 28 visual types (§3) when a reader will learn more from a vi
 - Simple before/after → table.
 - One-shape "diagrams" → just write the sentence.
 - Isometric network/infrastructure/cloud-topology maps → use **fossflow**.
-- VLM-rendered academic figures matching a specific journal's visual convention → use **paperbanana**.
 
 Before drawing, ask: *Would the reader learn more from this than from a well-written paragraph?* If no, don't draw.
 

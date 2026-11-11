@@ -110,7 +110,6 @@
         "latex-documents",
         "report-builder",
         "mermaid-diagrams",
-        "paperbanana",
         "wardley-maps"
       ],
       "env": [

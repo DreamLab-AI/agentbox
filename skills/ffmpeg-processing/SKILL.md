@@ -1,6 +1,6 @@
 ---
 name: ffmpeg-processing
-description: "FFmpeg 8 recipes for transcoding, cutting, concatenating, reframing, subtitling and normalising video and audio, on CPU or CUDA. Use for format conversion, batch transcodes, vertical reframes for Shorts or Reels, burned-in captions, HLS/DASH manifests, thumbnails, storyboards or GIFs. Not for picking highlights from footage (clipcannon), producing a video from an idea (open-montage) or generating clips (comfyui)."
+description: "FFmpeg 8 recipes for transcoding, cutting, concatenating, reframing, subtitling and normalising video and audio, on CPU or CUDA. Use for format conversion, batch transcodes, vertical reframes for Shorts or Reels, burned-in captions, HLS/DASH manifests, thumbnails, storyboards or GIFs. Not for producing a video from an idea (video-production) or generating clips (comfyui)."
 ---
 
 # FFmpeg Processing Skill
@@ -241,4 +241,3 @@ ffmpeg -y -i input.mp4 -c:v libx264 -pix_fmt yuv420p -c:a copy output.mp4
 - **blender** -- 3D scenes
 - **jupyter-notebooks** -- analyse media with Python
 - **playwright** -- verify playback in a browser
-- **clipcannon** -- AI-driven video editing (moment-finding, captions, voice clone, lip-sync); use this skill for plain transcode/mux/filter work instead

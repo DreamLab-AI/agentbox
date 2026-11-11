@@ -5,8 +5,8 @@ Evidence-backed podcast knowledge extraction into the ontology.
 Part of [agentbox](https://github.com/DreamLab-AI/agentbox); the crate lives at `services/podcast-ingest` and is a
 self-contained Cargo workspace.
 
-`podcast-ingest` is the Rust port of the `podcast-knowledge-ingest` and
-`podcast-bulk-ingest` skills. It performs the weekly evidence-backed extraction
+`podcast-ingest` is the Rust port of the `podcast-knowledge-ingest` skill and
+its bulk-ingest script. It performs the weekly evidence-backed extraction
 of podcast knowledge into the ontology, applies the ledger-promotion pre-filter,
 and supports one-off historical backfill.
 

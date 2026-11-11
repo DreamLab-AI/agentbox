@@ -73,8 +73,7 @@ No API key required. The server uses browser-based login with a persistent Chrom
 > LinkedIn ties a session to a **persistent per-site profile** — cookies, device fingerprint, and
 > login state that must survive restarts, or every call re-triggers a login prompt or CAPTCHA. The
 > shared sidecar's session model is not built for that kind of long-lived, single-site auth state
-> shared across unrelated tasks, so it is not a substitute here (see the `notebooklm` skill's
-> equivalent exception for its own OAuth browser). This is a per-site auth-persistence requirement,
+> shared across unrelated tasks, so it is not a substitute here. This is a per-site auth-persistence requirement,
 > not general-purpose scraping or automation, so the container's sidecar-only browser policy does
 > not apply to it. The ToS risk stands regardless of browser choice: LinkedIn prohibits automated
 > scraping and bulk messaging, so keep usage to targeted, low-volume research and

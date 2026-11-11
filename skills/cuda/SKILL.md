@@ -14,7 +14,6 @@ Write, build, tune and debug CUDA kernels with the tools this image bakes: `nvcc
 ## When Not To Use
 
 - High-level PyTorch training without custom kernels -- use the pytorch-ml skill
-- Distributed neural network training in cloud sandboxes -- use the flow-nexus-neural skill
 - General Rust or C++ without GPU involvement -- use the rust-development skill
 - CPU-only profiling of swarm operations -- use the performance-analysis skill
 

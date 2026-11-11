@@ -118,7 +118,7 @@ soft-ue-cli spawn-actor --class StaticMeshActor --location 100,200,50
 |-------|-------------|
 | `game-dev` | Design-level game dev (GDD, mechanics, art direction); unreal-engine for direct editor control |
 | `blender` | Create 3D assets in Blender, import into UE5 via unreal-engine asset tools |
-| `clipcannon` | Capture UE5 gameplay footage, edit with ClipCannon for trailers/reels |
+| `ffmpeg-processing` | Cut and transcode captured UE5 gameplay footage for trailers/reels |
 | `art` | Generate textures/UI art via Nano Banana 2, import into UE5 |
 | `comfyui` | AI-generate textures/sprites via Stable Diffusion for UE5 materials |
 

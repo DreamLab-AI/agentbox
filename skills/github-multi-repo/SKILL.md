@@ -31,7 +31,6 @@ agent orchestration.
 - Release management within one repo → `github-release-management`.
 - GitHub Actions workflow authoring → `github-workflow-automation`.
 - Issue tracking / sprint planning → `github-project-management`.
-- Cloud swarm deployment unrelated to GitHub repos → `flow-nexus-swarm`.
 
 ## Safety — org-wide operations are hard to reverse
 Cross-repo pushes touch many repositories in one sweep and are not locally

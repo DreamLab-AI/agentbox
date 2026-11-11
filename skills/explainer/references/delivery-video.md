@@ -8,8 +8,7 @@ Video is a video, not a page. This reference hands off to the standalone
 The user wants a narrated video explainer, an onboarding film or a product
 walkthrough of the current codebase. For a video with no codebase grounding
 (a trailer, an avatar spokesperson, a podcast repurpose) route to
-`open-montage` instead — that boundary lives in `open-montage`'s own "When Not
-to Use" section, not here.
+`video-production` instead.
 
 ## The handoff
 
