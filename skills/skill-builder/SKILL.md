@@ -1,17 +1,6 @@
 ---
 name: skill-builder
-description: >-
-  Author a new Claude Code / Codex Agent Skill or audit an existing one
-  against the estate's adopted authoring contract: correct frontmatter
-  (name/description rules, which keys are portable vs harness-specific), the
-  SKILL.md + references/ + scripts/ + assets/ progressive-disclosure layout,
-  and the master-copy registration model. Use when scaffolding a new skill
-  directory, writing or reviewing YAML frontmatter, deciding whether a field
-  belongs in shared frontmatter or a Codex agents/openai.yaml sibling, or
-  checking a skill will pass skills/lint-skills.sh. Not for cross-link/prose
-  consistency across an existing corpus (docs-alignment), scaffolding from a
-  PRD (prd2build), empirically tuning a skill's wording against a measured
-  reward (skill-tuning), or general code generation without skill packaging.
+description: "Authors or audits an Agent Skill against the estate's contract: frontmatter rules, progressive-disclosure layout (SKILL.md plus references/scripts/assets), master-copy registration. Use when scaffolding a skill directory, writing or reviewing YAML frontmatter, deciding whether a key belongs in shared frontmatter or a Codex agents/openai.yaml sibling, or making a skill pass skills/lint-skills.sh. Not for tuning a skill's wording against a measured reward (skill-tuning), cross-corpus doc consistency (docs-alignment) or docs from a PRD (prd2build)."
 compatibility: "Targets both harnesses: Claude Code and Codex both parse SKILL.md per the agentskills.io spec. Claude registration is registered-skills.txt -> the harness's personal skills directory (live). Codex registration is codex-registered-skills.txt -> ~/.codex/skills, reconciled at boot by the same reconciler (wired 2026-09-09); Codex caps its always-loaded skill index at about 8,000 characters, so that manifest stays short."
 ---
 

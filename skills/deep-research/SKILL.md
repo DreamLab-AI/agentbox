@@ -1,15 +1,6 @@
 ---
 name: deep-research
-description: >
-  Fan-out multi-agent web research that queries ceramic-search, Perplexity and
-  web-researcher in parallel (native WebSearch as fallback), cross-checks claims against
-  independent sources and produces a cited research brief with a verifier and reviewer
-  pass, then proves it with executable integrity gates — fabricated quotations, dangling
-  citations, sources without URLs, and claims whose citations collapse to a single origin
-  are caught mechanically rather than asked for in prose. Use when the user wants a deep,
-  fact-checked report on a topic that needs multiple sources and provenance. Not for a
-  single quick lookup (use one search skill directly) or the estate's own knowledge graph
-  (ontology-augment).
+description: "Writes a fact-checked, cited research brief by fanning out parallel researcher agents over ceramic-search, Perplexity and web-researcher, then verifying it mechanically. Use when a topic needs several independent sources, cross-checking and provenance: a survey, decision brief or claim that must survive a hostile reviewer. Gates catch fabricated quotations, dangling citations and claims resting on one origin. Not for a single quick lookup (ceramic-search, perplexity-research) or the estate's own knowledge graph (ontology-augment)."
 args: <topic>
 section: Research Workflows
 triggers:

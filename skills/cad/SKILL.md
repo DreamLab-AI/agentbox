@@ -1,6 +1,6 @@
 ---
 name: cad
-description: "Creates and edits parametric CAD parts, assemblies and 2D profiles as Python build123d models built by the pinned text-to-cad engine (`cad` command); exports STEP, STL, 3MF, GLB and DXF; measures geometry, resolves references, checks whether a part can be machined, cut and bent, moulded or printed, and articulates or animates mechanisms. Use for a mechanical part, bracket, enclosure, fixture, assembly or flat pattern, any edit to a model's `.py`, a manufacturability check, or opening a STEP/STL/3MF/GLB/DXF. Not for mesh sculpting or scene art (blender), stress checks (cad-fea), drawings (cad-drawing), boards (cad-pcb), slicing (cad-print) or photoreal images (cad-render)."
+description: "Creates and edits parametric CAD parts and assemblies as build123d Python models (`cad` command); exports STEP, STL, 3MF, GLB and DXF; measures and checks manufacturability. Use for a mechanical part, bracket, enclosure, fixture, assembly or flat pattern, editing a model's .py, opening a STEP or STL, articulating a mechanism, or 'can this be machined, bent, moulded or printed'. Not for mesh sculpting (blender), stress (cad-fea), drawings (cad-drawing), boards (cad-pcb), slicing (cad-print), photoreal images (cad-render) or URDF (cad-robot)."
 license: MIT
 ---
 

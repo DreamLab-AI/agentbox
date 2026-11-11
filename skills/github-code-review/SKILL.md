@@ -1,7 +1,7 @@
 ---
 name: github-code-review
 version: 1.0.0
-description: "Multi-agent code review for GitHub PRs. Use when reviewing a pull request, running security/performance/architecture/style checks on a diff, or coordinating specialized review agents and posting findings back to a PR."
+description: "Reviews a GitHub pull request with parallel specialist agents (security, performance, architecture, style) and posts findings back through gh as inline comments or a verdict. Use for 'review PR #N', OWASP or performance checks on a diff, or wiring auto-review into Actions. Not for releases (github-release-management), workflow YAML (github-workflow-automation), issues and boards (github-project-management) or a whole-project review from diagrams (sealmap-review)."
 category: github
 tags: [code-review, github, swarm, pr-management, automation]
 author: Claude Code Flow

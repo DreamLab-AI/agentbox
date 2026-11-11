@@ -1,16 +1,6 @@
 ---
 name: leptos
-description: >
-  Opinionated playbook and current reference for building full-stack web apps in Leptos
-  (the Rust fine-grained-reactive framework). Use whenever the task involves Leptos: writing
-  or editing components and the view! macro, signals/memos/effects, server functions (#[server]),
-  SSR / hydration / islands, leptos_router, Resources/Actions/Suspense, or scaffolding with
-  cargo-leptos / Trunk. Trigger on "Leptos", "view! macro", "RwSignal", "server function",
-  "hydration mismatch", "signal disposed panic", "cargo leptos", "Thaw / leptos-use / Tailwind
-  in Rust", choosing a Leptos component / styling / chart / icon library, reactive-state design,
-  feature-flag (ssr/hydrate/csr) build breaks, WASM bundle-size tuning, or 0.6→0.7→0.8 migration.
-  Covers tips, best practice, the ecosystem "eye candy", and the common traps. Pairs with
-  open-design / design-audit (which own the visual layer; this skill owns the Rust + reactive layer).
+description: "Playbook and current reference for full-stack Leptos apps in Rust: view! components, signals, #[server] functions, SSR, hydration and islands, routing, cargo-leptos. Use for hydration mismatches, signal-disposed panics, ssr/hydrate/csr build breaks, 0.6 to 0.8 migration, WASM size, choosing a Leptos UI, chart or icon library, or comparing Rust web frameworks. Not for visual design (open-design, design-audit), plain Rust tooling (rust-development) or WASM graphics (wasm-js)."
 ---
 
 # Leptos — Rust Reactive Web Playbook

@@ -1,6 +1,6 @@
 ---
 name: wasm-js
-description: "High-performance WebAssembly graphics with JavaScript interoperability. Use when building performance-critical web graphics, real-time animations, computational geometry, or hybrid JS/WASM architectures."
+description: "Builds performance-critical web graphics in WebAssembly with JavaScript interop: WASM does the maths (computational geometry, real-time animation) while JS owns the DOM, Canvas or WebGL. Use for hybrid JS/WASM rendering where JavaScript alone is too slow. Not for general Rust or non-graphical WASM (rust-development), Leptos web apps (leptos) or server-side GPU compute (cuda)."
 ---
 
 # WASM-JS Interop Skill

@@ -8,6 +8,7 @@ description: >-
   console or network traffic, debugging a web UI, or validating WebGPU/WebGL/GPU
   rendering on hardware. Sends GPU and standard automation to the browsercontainer
   sidecar, raw CDP scripting to chrome-cdp, and AQE injection scanning to qe-browser.
+status: router-only
 ---
 
 # Browser Automation — routing meta-skill

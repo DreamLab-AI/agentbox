@@ -1,13 +1,6 @@
 ---
 name: host-webserver-debug
-description: >
-  Trigger on "https bridge", "CORS error accessing host", "debug host webserver",
-  "reach host dev server from container", or needing a secure-context (HTTPS) origin for a
-  host HTTP server (Vite/Next/Express on the Docker host). Stands up a self-signed HTTPS
-  bridge that proxies container→host so browser secure-context APIs work. NOT for general
-  browser automation, screenshots, form filling, or scraping (use the browser/playwright
-  skills — this skill delegates all browser work to the browsercontainer sidecar), NOT for
-  API testing without a browser (use curl), and NOT for apps that are not on the Docker host.
+description: "Stands up a self-signed HTTPS bridge from the container to a dev server on the Docker host (Vite, Next, Express) so the browser sidecar gets a secure-context origin and CORS works. Use for 'https bridge', 'CORS error accessing host', 'reach the host dev server from the container' or secure-context APIs failing over plain HTTP. Not for general browser automation or screenshots (browser), API testing without a browser (curl) or apps not on the Docker host."
 version: 1.1.0
 author: agentbox-claude
 mcp_server: true

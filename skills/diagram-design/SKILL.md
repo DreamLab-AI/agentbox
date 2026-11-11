@@ -1,6 +1,6 @@
 ---
 name: diagram-design
-description: Create branded architecture, IT current-state, flowchart, sequence, state machine, ER/data model, timeline, swimlane, quadrant, radar/spider, loop/flywheel, nested, tree, org chart, layer stack, Venn, pyramid/funnel, treemap, bar, line, Gantt and scatter charts, high-level, process, medallion, data flow, DP integration, or DP security matrix diagrams as standalone HTML/SVG/PNG. Redraw .drawio/.drawio.png/.drawio.svg or Mermaid .mmd sources at a chosen size/detail; onboard brand tokens from a website; add semantic patterns, callouts, accessible motion, or sketchy/hand-drawn styling.
+description: "Draws one editorial-quality diagram as self-contained branded HTML/SVG or PNG: 28 types, from architecture, flowchart and sequence to ER, swimlane, org chart, funnel and charts. Use for a diagram that will be presented, published or shared, redrawing a .drawio or Mermaid source at publication quality, or onboarding brand tokens from a website. Not for a version-controlled .mmd file (mermaid-diagrams), a repository corpus (diagrams-as-code), isometric topology (fossflow) or journal figures (paperbanana)."
 license: MIT
 metadata:
   version: "2.4"

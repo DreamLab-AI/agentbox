@@ -2,19 +2,7 @@
 skill: terracraft
 name: terracraft
 version: 1.0.0
-description: >-
-  Generate Minecraft Java Edition worlds from real-world geographic data.
-  Converts OpenStreetMap buildings, roads, water, and terrain into playable
-  Minecraft worlds using the arnis Rust engine. Integrates with QGIS for
-  geospatial analysis, Blender for 3D terrain preview, ImageMagick for
-  elevation processing, and perplexity-research for location enrichment.
-  Use when converting a real place (city, landmark, campus) into a Minecraft
-  world, geocoding a location to a bounding box, fetching OSM features for
-  an area, or building test/educational voxel worlds from geography. Triggers:
-  "make a Minecraft world of <place>", "OSM to Minecraft", "arnis", "generate
-  a voxel world from coordinates". NOT for fictional world-building with no
-  geographic basis (use /game-dev), non-Minecraft engines, or live GIS
-  analysis (use /qgis directly).
+description: "Generates Minecraft Java Edition worlds from real geography: OpenStreetMap buildings, roads, water and elevation converted by the arnis Rust engine. Use for 'make a Minecraft world of <place>', 'OSM to Minecraft', arnis, geocoding a place to a bounding box, or educational voxel worlds from real coordinates. Not for fictional worlds (game-dev), other game engines, or live GIS analysis (qgis)."
 tags:
   - minecraft
   - geospatial

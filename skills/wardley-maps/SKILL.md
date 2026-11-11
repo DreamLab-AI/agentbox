@@ -1,6 +1,6 @@
 ---
 name: wardley-maps
-description: "Comprehensive Wardley mapping toolkit that transforms any input (structured data, unstructured text, business descriptions, technical architectures, competitive landscapes, or abstract concepts) into strategic Wardley maps. Default render path is **Mermaid `wardley-beta`** (mmdc 11.15.0+) -- pure code, version-controllable, GitHub-native, no external service. Legacy OnlineWardleyMaps `.owm` and OWM->Mermaid conversion via tractorjuice/wardley-maps-mermaid tooling. Use when creating strategic Wardley maps showing component evolution and value chains for decision-making."
+description: "Builds strategic Wardley maps (value chain plotted against evolution, genesis to commodity) from text, data or an architecture, rendered as Mermaid wardley-beta by default or .owm. Use for competitive positioning, build-versus-buy or outsourcing arguments, technology evolution and strategic analysis, or converting an OnlineWardleyMaps file. Not for software architecture diagrams (mermaid-diagrams) or a full typeset strategy report (report-builder)."
 ---
 
 # Wardley Mapper

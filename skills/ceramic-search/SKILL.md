@@ -1,11 +1,6 @@
 ---
 name: ceramic-search
-description: >
-  Keyword web search that returns long page extracts for grounding an LLM in
-  dense source context rather than a synthesized answer. Use when you need
-  exact-match keyword retrieval over the live web — specific entities, dates,
-  or locations — and want raw source text to feed into a prompt or agent
-  pipeline. Not for conversational/semantic queries or citation verification.
+description: "Keyword web search (Ceramic) returning ten results with long page extracts, for grounding an LLM in dense source text rather than a synthesised answer. Use as the default first web search for exact entities, dates or places, or to feed raw source text into a prompt or pipeline. Not for authoritative gov or academic sources (perplexity-research), verifiable archived citations (web-researcher) or a multi-source fact-checked brief (deep-research)."
 version: 1.0.0
 triggers:
   - /ceramic

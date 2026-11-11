@@ -1,7 +1,6 @@
 ---
 name: swarm-advanced
-description: >-
-  Advanced swarm orchestration patterns for research, development, testing, and complex distributed workflows. Use when: (1) running 3+ parallel agents locally, (2) needing adaptive topology, (3) doing research/dev tasks requiring parallel coordination.
+description: "Runs local multi-agent swarms through claude-flow: three or more parallel agents with adaptive topology for research, development or testing. Use when a task splits into parallel streams that need coordination and fault tolerance. Not for queen-led consensus voting (hive-mind-advanced), pipelines where each output feeds the next (stream-chain), swarm performance tuning (performance-analysis) or cloud swarms."
 version: 2.0.0
 category: orchestration
 tags: [swarm, distributed, parallel, research, testing, development, coordination]

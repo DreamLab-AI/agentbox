@@ -1,12 +1,6 @@
 ---
 name: mermaid-diagrams
-description: >
-  Diagrams-as-code routing hub. Two engines: (1) diagram-design — editorial-quality
-  self-contained HTML/SVG diagrams with 28 visual types, branded design system, semantic
-  patterns, draw.io/Mermaid import, dark/light/terminal variants, animation, and
-  accessible SVG. Preferred for any diagram that will be presented, published, or shared.
-  (2) Mermaid — fast code-first .mmd diagrams rendered to SVG/PNG via Pele (PDF via ImageMagick).
-  Preferred for version-controlled technical diagrams embedded in docs or reports.
+description: "Writes and renders one Mermaid diagram as a plain-text .mmd file (flowchart, sequence, ER, state, class, Gantt) to SVG or PNG via Pele. Use for a quick technical diagram kept in version control or embedded in a README, markdown report or LaTeX document. Not for a whole-repository corpus with citations (diagrams-as-code), a polished branded or published visual (diagram-design), isometric infrastructure maps (fossflow) or Wardley maps (wardley-maps)."
 triggers:
   - /diagram
   - /diagrams

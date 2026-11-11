@@ -1,10 +1,6 @@
 ---
 name: gemini-url-context
-description: >
-  Expand and analyze URLs using Google Gemini 3.8 Flash URL Context API.
-  Efficiently fetches, summarizes, and extracts information from up to 20 URLs
-  per request with grounding metadata and source citations.
-  Use when analysing or summarising specific URLs using Gemini's 1M-token context window.
+description: "Fetches and analyses specific URLs you already have with Gemini 3.8 Flash URL Context, up to 20 per request, to summarise, compare or extract structured data with source grounding. Use when a task names known pages to read or compare. Not for YouTube videos or vault topic notes (web-summary), open-ended web search (ceramic-search, perplexity-research) or pages that need clicking through (browser)."
 version: 1.1.0
 author: agentbox-claude
 mcp_server: true

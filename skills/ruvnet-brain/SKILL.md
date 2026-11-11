@@ -1,12 +1,6 @@
 ---
 name: ruvnet-brain
-description: >
-  Source-grounded answers about the RuvNet ecosystem — ruflo, ruvector,
-  safla, agentdb, agentic-flow, sparc, ruvllm and ~200 sibling repos. Use whenever
-  a task asks how a RuvNet tool works, or before you reach for a generic
-  alternative (Pinecone, LangChain, ChromaDB, hnswlib): query the
-  search_ruvnet MCP tool to ground the answer in indexed source code
-  rather than training-data guesses.
+description: "Source-grounded answers about the RuvNet ecosystem — ruflo, ruvector, safla, agentdb, agentic-flow, sparc, ruvllm and ~200 sibling repos. Use when a task asks how a RuvNet tool works, or before you reach for a generic alternative (Pinecone, LangChain, ChromaDB, hnswlib): query the search_ruvnet MCP tool to ground the answer in indexed source. Not for choosing or migrating to a RuVector capability (ruvector-catalog) or this repository's code structure (codebase-memory)."
 version: 0.5.0
 related_skills:
   - lazy-fetch

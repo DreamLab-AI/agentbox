@@ -2,14 +2,7 @@
 skill: lazy-fetch
 name: lazy-fetch
 version: 1.0.0
-description: >-
-  Context, persistence, and process-tracking companion for single-agent Claude
-  Code sessions. Use when hydrating session context (git/plan/memory), tracking
-  phased read/plan/implement/validate/document task plans, running blueprint
-  workflows, doing progressive file discovery, persisting decisions across
-  sessions, running a quick security scan before committing, or building
-  autonomously from a PRD. Not for multi-agent swarms or hive-mind — use ruflo
-  for those.
+description: "Context, persistence and process tracking for single-agent sessions (lazy-fetch MCP): hydrates git, plan and memory context and tracks phased task plans across sessions. Use when starting or resuming a session, tracking a read/plan/implement/validate/document plan, running blueprint workflows, progressive file discovery, a quick pre-commit security scan, or autonomous building from a PRD. Not for multi-agent swarms (swarm-advanced) or generating a documentation set from a PRD (prd2build)."
 tags:
   - context-management
   - plan-tracking

@@ -1,16 +1,6 @@
 ---
 name: bhil-methodology
-description: >-
-  Pick this over `sparc-methodology` when the deliverable is the ARTEFACT TRAIL —
-  PRD/SPEC/ADR/TASK traceability, AI-native decision records, eval suites and
-  guardrails. `sparc-methodology` is the five-phase build cycle that produces code;
-  this is the governance spine around it. AI-first development methodology with
-  specification-driven artifact traceability. PRD → SPEC → ADR → TASK → CODE → REVIEW
-  → DEPLOY pipeline with AI-native ADRs (model selection, prompt strategy, agent
-  orchestration), LLM evaluation suites, guardrails specifications, and sprint-driven
-  workflows. Optimised for Claude Code and Ruflo/RuVector. Use when you need
-  SPEC/ADR/TASK artifact chain traceability, AI-native ADR categories, or sprint
-  scaffolding.
+description: "Keeps the traceable artefact chain for AI-first development (PRD, SPEC, ADR, TASK, CODE, REVIEW, DEPLOY) with AI-native ADRs, LLM eval suites and guardrail specs. Use when writing a PRD or spec, recording a model-selection or prompt-strategy decision, tracing a bug back to requirements, or scaffolding a sprint. Not for the five-phase code build cycle (sparc-methodology), generating a docs set from a PRD in one go (prd2build) or running tests and gates (visioncraft)."
 version: 1.0.0
 author: Barry Hurd (BHIL)
 tags:

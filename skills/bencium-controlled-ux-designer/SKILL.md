@@ -1,13 +1,6 @@
 ---
 name: bencium-controlled-ux-designer
-description: >-
-  A CONSTRAINED DESIGN PROCESS working to a locked brand spec — not a lookup table. To
-  browse palettes, font pairings or styles before a spec exists choose `ui-ux-pro-max-
-  skill`; for bold unconstrained creative direction choose `bencium-creative`.
-  Collaborative UI/UX design guidance for building unique, accessible, non-generic web
-  interfaces. Use when building or styling web components, pages, or apps and making
-  visual decisions about colour, typography, layout, motion, or accessibility —
-  especially when the goal is to break away from generic AI/SaaS-template aesthetics.
+description: "Collaborative UI/UX design to a locked brand spec: surfaces options on colour, type, layout and motion before committing, accessibility-first, aimed at React, Tailwind and shadcn. Use when building or styling pages or apps where design decisions must be confirmed, accessible and unlike a generic SaaS template, as in enterprise or regulated products. Not for browsing palettes before a spec exists (ui-ux-pro-max-skill), bold unconstrained direction (bencium-creative) or auditing an existing UI (design-audit)."
 metadata:
   version: 1.1.0
 ---

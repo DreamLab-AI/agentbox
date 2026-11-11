@@ -1,12 +1,6 @@
 ---
 name: bencium-creative
-description: >
-  Consolidated creative UI/UX skill combining design vision and production-grade implementation.
-  Two modes: --design (ask-first, bold creative direction) and --build (production frontend code).
-  Anti-AI-slop, distinctive aesthetics, shadcn/Tailwind/Phosphor stack. Replaces
-  bencium-innovative-ux-designer and bencium-impact-designer.
-  Use when building bold creative UX, production frontend, or anti-AI-slop design with shadcn/Tailwind implementation.
-  NOT for enterprise/WCAG-first UI (use bencium-controlled-ux-designer), daisyUI work (use daisyui), auditing existing UI (use design-audit), or generating a brand spec from intake (use open-design).
+description: "Bold creative UI direction plus production frontend code: --design asks first then commits to a distinctive aesthetic; --build writes shadcn, Tailwind and Phosphor code. Use for campaign or landing pages and product UIs that must look distinctive and ship as working code. Not for enterprise or WCAG-first work (bencium-controlled-ux-designer), daisyUI (daisyui), auditing an existing UI (design-audit) or brand-spec artefacts (open-design)."
 version: 1.0.0
 replaces:
   - bencium-innovative-ux-designer

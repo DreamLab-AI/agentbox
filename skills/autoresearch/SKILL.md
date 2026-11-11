@@ -1,9 +1,6 @@
 ---
 name: autoresearch
-description: >
-  Autonomous experiment loop that tries ideas, measures results, keeps what works, and discards what doesn't.
-  Use when the user asks to optimize a metric, run an experiment loop, improve performance iteratively,
-  benchmark GPU kernels, or automate any measure-mutate-repeat workflow.
+description: "Runs an autonomous measure-mutate-repeat loop on code: tries a change, runs your benchmark, keeps what improves the metric and discards what does not, recording experiments in RuVector. Use when optimising latency, throughput, bundle size, GPU kernel time or accuracy iteratively, or for a benchmark sweep. Not web or literature research despite the name (deep-research), nor swarm profiling (performance-analysis)."
 args: <idea or metric to optimize>
 section: Research Workflows
 triggers:

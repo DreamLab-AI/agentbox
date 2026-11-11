@@ -129,7 +129,7 @@
       "rationale": "A single version-controlled .mmd is mermaid-diagrams; diagrams-as-code explicitly excludes the single-diagram case.",
       "class": "near-neighbour",
       "provenance": "directory-derived",
-      "late_discriminative": true
+      "late_discriminative": false
     },
     {
       "prompt": "We're publishing a blog post about our architecture next week and the diagram needs to look like it belongs in a magazine — branded, dark mode, self-contained SVG.",
@@ -137,7 +137,7 @@
       "rationale": "Editorial, branded, shared-publicly output is diagram-design's boundary against mermaid-diagrams.",
       "class": "near-neighbour",
       "provenance": "directory-derived",
-      "late_discriminative": true
+      "late_discriminative": false
     },
     {
       "prompt": "Map our whole VPC and the on-prem racks as one isometric infrastructure picture I can put in the runbook.",
@@ -153,23 +153,23 @@
       "rationale": "Evolution axis and competitive positioning name Wardley mapping; report-builder can render one but the intent is the strategic analysis.",
       "class": "near-neighbour",
       "provenance": "directory-derived",
-      "late_discriminative": true
+      "late_discriminative": false
     },
     {
       "prompt": "Which of the browser tools should I be using for this job? I genuinely don't know where to start.",
-      "expected_skill": "browser-automation",
-      "rationale": "The meta-skill's entire purpose is the \"unsure which browser tool\" turn; picking a concrete browser skill here is the error it exists to prevent.",
+      "expected_skill": "browser",
+      "rationale": "browser is the entry point for all browser work; browser-automation is a router-only index behind it, never offered on its own.",
       "class": "near-neighbour",
       "provenance": "directory-derived",
-      "late_discriminative": true
+      "late_discriminative": false
     },
     {
       "prompt": "Take a screenshot of the staging login page and fill in the demo credentials for me.",
-      "expected_skill": "browser-automation",
-      "rationale": "Navigate/screenshot/form-fill via the sidecar is `browser`; `playwright` is superseded and must never be offered at runtime. | RE-ADJUDICATED 2026-09-21: was `browser`. The `browser` rubric itself states \"for a browser TASK choose `browser-automation`, not this; choose this only when the sidecar connection details themselves are the subject\". A screenshot-and-fill request is a browser task. Two independent judges (openjev 4B cross-encoder, TypeSafe Jev at 0.98) both chose browser-automation; the original label rewarded lexical overlap with the `browser` entry.",
+      "expected_skill": "browser",
+      "rationale": "browser is the entry point for all browser work; browser-automation is a router-only index behind it, never offered on its own.",
       "class": "boundary",
       "provenance": "directory-derived",
-      "late_discriminative": true
+      "late_discriminative": false
     },
     {
       "prompt": "I've got forty tabs open in my logged-in Chrome and I want the console errors out of one of them without restarting the browser.",
@@ -217,7 +217,7 @@
       "rationale": "Multi-source cited brief with integrity gates is deep-research; the single-engine search skills are its tools, not the intent.",
       "class": "near-neighbour",
       "provenance": "directory-derived",
-      "late_discriminative": true
+      "late_discriminative": false
     },
     {
       "prompt": "Summarise these three articles and the conference talk on YouTube, and drop the note links into my vault.",
@@ -225,7 +225,7 @@
       "rationale": "URL and YouTube summarisation with vault note links is web-summary; gemini-url-context is the nearest neighbour but has no vault step.",
       "class": "near-neighbour",
       "provenance": "directory-derived",
-      "late_discriminative": true
+      "late_discriminative": false
     },
     {
       "prompt": "Review PR #482 before I merge it — I want the security and performance problems called out.",
@@ -297,7 +297,7 @@
       "rationale": "Discovery and inspiration before a brand spec exists is explicitly upstream of open-design.",
       "class": "near-neighbour",
       "provenance": "directory-derived",
-      "late_discriminative": true
+      "late_discriminative": false
     },
     {
       "prompt": "Batch-transcode this directory of 4K MOV files to H.264 MP4 with CUDA acceleration, two-pass.",
@@ -401,7 +401,7 @@
       "rationale": "The five named SPARC phases are unambiguous once they are spelled out.",
       "class": "near-neighbour",
       "provenance": "directory-derived",
-      "late_discriminative": true
+      "late_discriminative": false
     },
     {
       "prompt": "Run an OWASP Top 10 pass over our REST API — auth, authorisation, dependency CVEs and secrets.",
@@ -433,7 +433,7 @@
       "rationale": "PAdES signing with a visible panel and timestamping is the real pdf-signing case, paired with the imagemagick boundary above.",
       "class": "boundary",
       "provenance": "directory-derived",
-      "late_discriminative": true
+      "late_discriminative": false
     },
     {
       "prompt": "Did anyone email me an invoice from Hetzner last month? Have a look through my mail.",
@@ -473,7 +473,7 @@
       "rationale": "Execution-gated branching generation where one attempt is insufficient is tree-search-coder's explicit scope.",
       "class": "boundary",
       "provenance": "directory-derived",
-      "late_discriminative": true
+      "late_discriminative": false
     },
     {
       "prompt": "Replace this prompt-and-parse moderation step with a typed decision my code can branch on — TypeSafe Jev style, with a probability distribution.",
@@ -505,7 +505,7 @@
       "rationale": "Authoring a new skill is skill-builder; skill-tuning optimises one that already exists.",
       "class": "near-neighbour",
       "provenance": "directory-derived",
-      "late_discriminative": true
+      "late_discriminative": false
     },
     {
       "prompt": "Our diagrams skill picks the wrong output format half the time. Optimise its description against a measurable score with a held-out A/B.",
@@ -529,7 +529,7 @@
       "rationale": "Distributed deep-learning training is pytorch-ml, the other half of the cuda pair.",
       "class": "near-neighbour",
       "provenance": "directory-derived",
-      "late_discriminative": true
+      "late_discriminative": false
     },
     {
       "prompt": "My Leptos app has a hydration mismatch on the dashboard route and the ssr feature build is broken.",
@@ -537,7 +537,7 @@
       "rationale": "Hydration mismatch and ssr/hydrate build breaks are named in leptos's description; rust-development is the generic neighbour.",
       "class": "near-neighbour",
       "provenance": "directory-derived",
-      "late_discriminative": true
+      "late_discriminative": false
     },
     {
       "prompt": "Port this Python CLI to Rust, clippy and rustfmt clean, cross-compiled for musl.",
@@ -737,6 +737,790 @@
       "rationale": "A trivial factual question with no repo, no artefact and no tool that changes the answer.",
       "class": "none",
       "provenance": "log-shaped",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Sync our AgentDB instances across three nodes over QUIC and shard the collections by tenant.",
+      "expected_skill": "agentdb-advanced",
+      "rationale": "Cross-node QUIC sync and sharding are agentdb-advanced's stated scope; agentdb-vector-search and agentdb-memory-patterns both exclude distributed sync.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": true
+    },
+    {
+      "prompt": "Give our support chatbot long-term memory in AgentDB, with consolidation of old sessions into summaries.",
+      "expected_skill": "agentdb-memory-patterns",
+      "rationale": "Persistent conversation memory and consolidation for a chat system is the 'stateful agents, chat systems' row; not vector-search tuning (agentdb-vector-search).",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Our local AgentDB RAG index has passed four million vectors and queries are slow; tune HNSW and quantisation.",
+      "expected_skill": "agentdb-vector-search",
+      "rationale": "Scaling to millions of vectors and HNSW/quantisation tuning is agentdb-vector-search; not distributed sync (agentdb-advanced).",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "For the blog, make an interactive isometric cutaway that shows a consistent-hash ring as a working machine with live readouts.",
+      "expected_skill": "anatomy",
+      "rationale": "A technical idea drawn as a physical object with truthful readouts is anatomy; not topology (fossflow) or an editorial diagram (diagram-design).",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Run zoning and property due diligence for a four-storey residential building on this NYC lot.",
+      "expected_skill": "architecture-studio",
+      "rationale": "NYC zoning and site due diligence are the physical-building AEC domain; 'architecture' here is not software architecture.",
+      "class": "single",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "I need a hand-drawn looking header illustration for this week's newsletter post about burnout.",
+      "expected_skill": "art",
+      "rationale": "An illustrated blog/newsletter header is the art row; not photoreal generation (comfyui) or a technical diagram (diagram-design).",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Keep trying tweaks to this kernel's tile sizes overnight, benchmark each one, and keep only the changes that cut runtime.",
+      "expected_skill": "autoresearch",
+      "rationale": "Iterative measure-mutate-keep on a benchmark is autoresearch; one-off kernel writing would be cuda.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Rework our FAQ pages so ChatGPT and Google's AI Overviews quote us, with JSON-LD and evidence panels.",
+      "expected_skill": "bencium-aeo",
+      "rationale": "Optimising content for AI citations, not search rankings, is bencium-aeo; a Search Console or keyword audit would be toprank.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "This is my own repo, I'm Bence. Scaffold the new settings module the way I normally lay out my projects.",
+      "expected_skill": "bencium-code-conventions",
+      "rationale": "The skill applies only when the user identifies the repository as Bence's own; the identity is stated here.",
+      "class": "single",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "We're a bank. Design the account settings pages accessibility-first and check each colour and type decision with me before you commit to it.",
+      "expected_skill": "bencium-controlled-ux-designer",
+      "rationale": "Regulated, accessibility-first, confirm-each-decision UX is the controlled designer; not bold unconstrained direction (bencium-creative).",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Build a loud, distinctive launch page for the album with real shadcn code; nothing that looks like a SaaS template.",
+      "expected_skill": "bencium-creative",
+      "rationale": "Distinctive aesthetics AND working code is bencium-creative's row; not a brand-spec artefact (open-design) or an audit (design-audit).",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Write the PRD and the spec for the summariser feature, and record the model-selection decision as an ADR we can trace to tasks.",
+      "expected_skill": "bhil-methodology",
+      "rationale": "A traceable PRD-SPEC-ADR-TASK chain with an AI-native decision record is bhil; not a one-shot docs dump (prd2build) or a phase build (sparc-methodology).",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Go to the supplier portal, log in, fill in the reorder form, and read the accessibility tree to check every field has a label.",
+      "expected_skill": "browser",
+      "rationale": "Live navigation, form filling and an accessibility-tree read are the browser entry point; raw CDP scripting against already-open tabs would be chrome-cdp.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Design a wall-mount bracket for a 40 mm fan with two M4 slots and export it as a STEP file.",
+      "expected_skill": "cad",
+      "rationale": "A parametric mechanical part exported to STEP is cad; mesh sculpting would be blender.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Give me a dimensioned shop drawing of that bracket with hole callouts and a title block on an A3 sheet.",
+      "expected_skill": "cad-drawing",
+      "rationale": "A dimensioned shop drawing is cad-drawing's row, not the part model itself (cad).",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": true
+    },
+    {
+      "prompt": "Will this aluminium bracket hold 30 kg hanging off the end, and how far will it bend?",
+      "expected_skill": "cad-fea",
+      "rationale": "'Will it hold, how far does it bend' is the cad-fea row verbatim in spirit; not making the part (cad).",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": true
+    },
+    {
+      "prompt": "Lay out a small board for an ESP32 with a USB-C connector and run DRC before I send it to the fab.",
+      "expected_skill": "cad-pcb",
+      "rationale": "A circuit board with DRC and fabrication export is cad-pcb; the enclosure would be cad.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": true
+    },
+    {
+      "prompt": "Slice this STL for my Prusa MK4 at 0.2 mm layers and tell me how to get the file onto the printer.",
+      "expected_skill": "cad-print",
+      "rationale": "Slicing a model to G-code is cad-print; whether the part is printable is cad's manufacturability check.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": true
+    },
+    {
+      "prompt": "I want a photoreal hero shot of the enclosure model for the README, plus a slow turntable.",
+      "expected_skill": "cad-render",
+      "rationale": "A README picture and turntable of a CAD model is cad-render; interactive Blender scene work would be blender.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": true
+    },
+    {
+      "prompt": "Generate a URDF for the two-joint arm from the assembly so we can load it in MoveIt.",
+      "expected_skill": "cad-robot",
+      "rationale": "A robot description for ROS/MoveIt from a CAD assembly is cad-robot; running the physics would be isaac-sim.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": true
+    },
+    {
+      "prompt": "Get a second opinion from GPT on this diff before I merge: an adversarial review of the design choices.",
+      "expected_skill": "codex-companion",
+      "rationale": "Cross-model adversarial review via OpenAI is codex-companion; a DeepSeek reasoning trace would be deepseek-reasoning.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Generate a set of FLUX images of a foggy harbour at dawn on the local GPU.",
+      "expected_skill": "comfyui",
+      "rationale": "Text-to-image with FLUX on a local GPU is comfyui; illustrated house-style headers would be art.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Theme the admin panel with the Tailwind component library's 'night' theme and use its drawer and modal components.",
+      "expected_skill": "daisyui",
+      "rationale": "Building with daisyUI's themed Tailwind components specifically is the daisyui row.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Have DeepSeek reason through why this scheduler deadlocks and show me its full chain of thought.",
+      "expected_skill": "deepseek-reasoning",
+      "rationale": "An explicit reasoning trace from DeepSeek on a hard debugging problem; not OpenAI delegation (codex-companion).",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "That debugging session was painful. Distil the general lessons from it and store them so they surface next time.",
+      "expected_skill": "expel-lesson-extractor",
+      "rationale": "Manually extracting generalisable rules after a complex task is the expel row; storing a reusable function would be voyager-skill-library.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": true
+    },
+    {
+      "prompt": "Start a small roguelike in Unity: a sprint plan, art direction, the core loop and a QA pass.",
+      "expected_skill": "game-dev",
+      "rationale": "A full multi-discipline game project is game-dev; one mechanic in one engine would be godot-development or unreal-engine.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Stand up a VM behind IAP in our GCP project and give the deploy service account access to the database secret.",
+      "expected_skill": "gcloud",
+      "rationale": "A VM behind Identity-Aware Proxy and Secret Manager access are the gcloud row.",
+      "class": "single",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Compare what these four vendor pricing pages say about egress fees. Here are the links.",
+      "expected_skill": "gemini-url-context",
+      "rationale": "Analysing several specific known URLs is gemini-url-context; one page into vault notes would be web-summary.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Bump the shared logging library in all nine of our org's repositories and open the PRs together.",
+      "expected_skill": "github-multi-repo",
+      "rationale": "One change landing in many repos at once is github-multi-repo; a single-repo release would be github-release-management.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Break this epic into vertical-slice issues and put them on the project board for next sprint.",
+      "expected_skill": "github-project-management",
+      "rationale": "Issue decomposition and project boards are github-project-management; PR review would be github-code-review.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Set up pre-task and post-task hooks so agents hand off session state and format files automatically.",
+      "expected_skill": "hooks-automation",
+      "rationale": "Persistent pre/post task hooks and session handoffs are hooks-automation; a one-off swarm would be swarm-advanced.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "The Vite server on my host machine won't load in the sidecar Chrome because of CORS, and the camera API needs https.",
+      "expected_skill": "host-webserver-debug",
+      "rationale": "CORS and secure-context failures reaching a host dev server are the HTTPS-bridge job; general page driving would be browser.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Drop six crates onto the conveyor with real gravity and contacts, and hand the trajectories to the animation.",
+      "expected_skill": "isaac-sim",
+      "rationale": "Gravity and contact dynamics producing trajectories for Blender is isaac-sim; a robot description file would be cad-robot.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Build an analysis notebook that loads the sales CSV, runs every cell and exports the result to HTML.",
+      "expected_skill": "jupyter-notebooks",
+      "rationale": "Authoring and executing a .ipynb and exporting it is jupyter-notebooks; a stateful kernel loop with no notebook would be codeact.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": true
+    },
+    {
+      "prompt": "Pick up where we left off yesterday: rebuild the context from git and my plan, and tell me which phase we're in.",
+      "expected_skill": "lazy-fetch",
+      "rationale": "Session context hydration and phased plan tracking is lazy-fetch's row.",
+      "class": "single",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Find recruiters at Graphcore on LI and draft a short connection note to the two most relevant.",
+      "expected_skill": "linkedin",
+      "rationale": "Profile search and messaging on LinkedIn is the linkedin row; generic scraping would be scrapling.",
+      "class": "single",
+      "provenance": "directory-derived",
+      "late_discriminative": true
+    },
+    {
+      "prompt": "Port our Three.js product viewer to the Quest 3 with passthrough and hand tracking.",
+      "expected_skill": "meta-xr-sdk",
+      "rationale": "Quest WebXR with passthrough and hand tracking is meta-xr-sdk; plain 3D rendering is excluded by it.",
+      "class": "single",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Make a fifteen-second kinetic type piece about latency, cut to a music track.",
+      "expected_skill": "motion-designer",
+      "rationale": "Kinetic type film cut to music with no narration or footage is motion-designer; a narrated video from an idea would be open-montage.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "This API answers 402 Payment Required with an L402 challenge. Wire the call so it pays within a capped budget and retries.",
+      "expected_skill": "payment-router",
+      "rationale": "A 402 challenge on a metered API with capped spend is payment-router's row.",
+      "class": "single",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Our eight-agent swarm has slowed to a crawl. Find which agent or channel is the bottleneck.",
+      "expected_skill": "performance-analysis",
+      "rationale": "Profiling a slow Claude Flow swarm is performance-analysis; GPU kernel profiling would be cuda.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "The weekly podcast job landed nothing in the evidence ledger this week. Debug the cron and promote what's waiting.",
+      "expected_skill": "podcast-knowledge-ingest",
+      "rationale": "The standing weekly pipeline and ledger promotion are podcast-knowledge-ingest; a backfill would be podcast-bulk-ingest.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "I've finished the market analysis doc. Add a sidecar that lists each source, whether it was verified, and how confident we are.",
+      "expected_skill": "provenance-tracking",
+      "rationale": "A post-hoc sidecar of sources and confidence on finished research is provenance-tracking; live citation checking would be web-researcher.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "What are people on r/homelab saying about the new mini PCs this month? Pull the top threads and comments.",
+      "expected_skill": "reddit",
+      "rationale": "Subreddit browsing and thread retrieval is the reddit row.",
+      "class": "single",
+      "provenance": "directory-derived",
+      "late_discriminative": true
+    },
+    {
+      "prompt": "Design how our assistant app remembers users across sessions and earns more autonomy over time, with controls to forget.",
+      "expected_skill": "relationship-design",
+      "rationale": "Persistent memory, graduated trust and forgetting controls are relationship-design's stated scope.",
+      "class": "single",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Produce a typeset white paper on UK water-sector challenges with data charts, a bibliography and a Wardley map.",
+      "expected_skill": "report-builder",
+      "rationale": "A researched LaTeX white paper with charts and citations is report-builder; compiling an existing .tex would be latex-documents.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "We're on pgvector and an external embeddings API. What in the RuVector stack could replace them, and what do we delete?",
+      "expected_skill": "ruvector-catalog",
+      "rationale": "Migration from aging tech to a RuVector replacement is ruvector-catalog's row; how a RuvNet repo behaves internally would be ruvnet-brain.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "How does ruflo actually decide swarm topology? Check the source rather than guessing from memory.",
+      "expected_skill": "ruvnet-brain",
+      "rationale": "How a RuvNet tool works, grounded in its indexed source, is ruvnet-brain; choosing a capability would be ruvector-catalog.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Before we take this system over from the other team, give me a pre-mortem from its diagram corpus: what would worry an outsider?",
+      "expected_skill": "sealmap-review",
+      "rationale": "A pre-mortem from an existing diagrams corpus before a takeover is sealmap-review; writing the corpus would be diagrams-as-code.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Embed the trained warehouse splat in our Three.js page with clickable annotations linked to the asset records.",
+      "expected_skill": "spark-scene",
+      "rationale": "A splat inside a Three.js scene with annotations is spark-scene; cleaning the splat would be supersplat.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Is the difference in satisfaction scores between the two groups significant? The data is an SPSS .sav file.",
+      "expected_skill": "statcraft",
+      "rationale": "A significance test on an SPSS .sav is statcraft's row; a notebook would be jupyter-notebooks.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Chain three agents so the extractor's output feeds the transformer and that feeds the validator.",
+      "expected_skill": "stream-chain",
+      "rationale": "Each step's output feeding the next is stream-chain; parallel agents would be swarm-advanced.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Open this trained .ply splat, delete the floaters round the edge, and compress it to SOG for the web.",
+      "expected_skill": "supersplat",
+      "rationale": "Inspecting, cleaning and compressing a finished splat is supersplat; training would be lichtfeld-studio.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": true
+    },
+    {
+      "prompt": "Make a playable Minecraft world of central York from the real streets and buildings.",
+      "expected_skill": "terracraft",
+      "rationale": "A Minecraft world from real geography is terracraft; a fictional game world would be game-dev.",
+      "class": "single",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Fix the straight quotes, double hyphens and line length in the React components that render the article body.",
+      "expected_skill": "typography",
+      "rationale": "Typographic detail in UI code that renders text is typography; a broader visual audit would be design-audit.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "In my running UE5 editor, spawn twenty street lights along the spline and start a PIE session.",
+      "expected_skill": "unreal-engine",
+      "rationale": "Direct UE5 editor control and PIE sessions are unreal-engine; design-level game work would be game-dev.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": true
+    },
+    {
+      "prompt": "Be honest: is event sourcing plus Kafka for a ten-user internal tool just there to look impressive?",
+      "expected_skill": "vanity-engineering-review",
+      "rationale": "Complexity built to impress rather than ship is vanity-engineering-review's whole remit.",
+      "class": "single",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Check that the fixes the changelog claims are still present in the tree against the signed witness manifest.",
+      "expected_skill": "verification-quality",
+      "rationale": "Verifying shipped fixes against the witness manifest is verification-quality's stated scope.",
+      "class": "single",
+      "provenance": "directory-derived",
+      "late_discriminative": true
+    },
+    {
+      "prompt": "Produce a stop-motion short with the same clay character in every shot, versioned revisions and acceptance checks.",
+      "expected_skill": "video-production",
+      "rationale": "Continuity held across shots with acceptance gates is video-production; a montage from an idea would be open-montage.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": true
+    },
+    {
+      "prompt": "This date-range parser has now worked in four projects. Save it as a verified reusable helper with its assertions.",
+      "expected_skill": "voyager-skill-library",
+      "rationale": "Persisting a proven general-purpose function with assertions is voyager; storing an IF/THEN lesson would be expel-lesson-extractor.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": true
+    },
+    {
+      "prompt": "The canvas animation computes a Voronoi diagram every frame and JavaScript can't keep up. Move the geometry to WebAssembly.",
+      "expected_skill": "wasm-js",
+      "rationale": "Performance-critical web graphics with a WASM maths backend is wasm-js; non-graphical WASM would be rust-development.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Archive every talk on this conference's YouTube channel as markdown transcripts with the links they mention.",
+      "expected_skill": "youtube-transcript-archiver",
+      "rationale": "Batch channel transcripts as standalone notes is the archiver; feeding them into the ontology would be podcast-bulk-ingest.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "I only need the gist of this one docs page, no clicking around. Here's the URL.",
+      "expected_skill": "web-summary",
+      "rationale": "Sounds like browser work, but one page summarised without interaction is web-summary; browser is for live interaction.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Run an overnight experiment loop on our bundle size: change the build config, measure, keep the wins.",
+      "expected_skill": "autoresearch",
+      "rationale": "Contains 'experiment' and 'research'-adjacent wording but is metric optimisation, not web research (deep-research).",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Find me two or three recent articles on Rust async cancellation and give me the raw page text to work from.",
+      "expected_skill": "ceramic-search",
+      "rationale": "Sounds like a research brief, but it asks for raw extracts from a quick keyword search; deep-research would be overkill.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Draw the retry flow as a quick .mmd file I can commit next to the handler code.",
+      "expected_skill": "mermaid-diagrams",
+      "rationale": "Sounds like the diagrams corpus by wording, but one committed .mmd is mermaid-diagrams, not diagrams-as-code.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "I need a polished, on-brand architecture diagram for the investor deck, matching our website colours.",
+      "expected_skill": "diagram-design",
+      "rationale": "Sounds like an architecture diagram set, but one branded published visual is diagram-design, not diagrams-as-code or mermaid-diagrams.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Render a product image of this STEP file for the landing page.",
+      "expected_skill": "cad-render",
+      "rationale": "Sounds like Blender rendering, but a photoreal still of a CAD model is cad-render.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": true
+    },
+    {
+      "prompt": "Model a low-poly fantasy cottage I can drop into my game as an asset.",
+      "expected_skill": "blender",
+      "rationale": "Sounds like game development, but authoring one 3D mesh asset is blender; game-dev is the multi-system studio.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": true
+    },
+    {
+      "prompt": "Can the 3 mm walls on this enclosure actually be injection moulded, or do I need to change them?",
+      "expected_skill": "cad",
+      "rationale": "Sounds like a strength question, but manufacturability is cad's check; cad-fea is load and deflection.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Simulate the arm toppling under gravity when the base joint fails, and give me the trajectory.",
+      "expected_skill": "isaac-sim",
+      "rationale": "Sounds like the robot description skill, but running dynamics is isaac-sim; cad-robot only writes URDF/MJCF.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Animate how a token bucket rate limiter refills and drains, precise enough for a lecture.",
+      "expected_skill": "manim",
+      "rationale": "Sounds like motion graphics, but an animation that teaches a mechanism is manim, not motion-designer.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Fix the undefined control sequence error in chapter3.tex so the thesis compiles again.",
+      "expected_skill": "latex-documents",
+      "rationale": "Sounds like the book pipeline, but fixing compilation of an existing .tex is latex-documents.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Agents should each take a module of the migration in parallel, with the coordinator reassigning work if one dies.",
+      "expected_skill": "swarm-advanced",
+      "rationale": "Sounds like hive-mind, but there is no voting or consensus: parallel streams with fault tolerance is swarm-advanced.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Generate the specs, domain model, ADRs and task plan in one go from the requirements doc I just attached.",
+      "expected_skill": "prd2build",
+      "rationale": "Sounds like bhil's artefact chain, but a one-shot documentation set from a PRD is prd2build.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "My RwSignal panics with 'signal disposed' when I navigate away from the route in a view! component. Why?",
+      "expected_skill": "leptos",
+      "rationale": "Sounds like general Rust debugging, but a Leptos reactivity panic is leptos, not rust-development.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Make our marketing page show up in Search Console for the right keywords and fix the meta tags.",
+      "expected_skill": "toprank",
+      "rationale": "Sounds like AI-search optimisation, but Search Console, keywords and meta tags are classic SEO: toprank, not bencium-aeo.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": true
+    },
+    {
+      "prompt": "Before we lock the brand, which chart types suit a dense finance dashboard on a phone screen?",
+      "expected_skill": "ui-ux-pro-max-skill",
+      "rationale": "Sounds like a dashboard build (open-design), but looking up a chart type before a brand exists is the reference database.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Turn my phone video of the garden into a dataset and train a splat from it.",
+      "expected_skill": "lichtfeld-studio",
+      "rationale": "Sounds like cleanup in the browser editor (supersplat) or dataset generation (comfyui), but video-to-COLMAP plus training is lichtfeld-studio.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "As an outside review, not a rewrite: does the auth topic in the diagrams corpus still match the code it cites, and what would worry you?",
+      "expected_skill": "sealmap-review",
+      "rationale": "Sounds like re-verifying the corpus (diagrams-as-code), but a review-only check of a topic against cited code, with no re-stamping, is sealmap-review's inline mode.",
+      "class": "boundary",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Release 2.4 needs a changelog, a version bump across the monorepo packages and a rollback plan.",
+      "expected_skill": "github-release-management",
+      "rationale": "Sounds like multi-repo coordination, but a monorepo release is github-release-management; github-multi-repo is cross-repo sync.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Ask OpenAI's coding agent to take over this failing migration; I'm stuck and want it rescued.",
+      "expected_skill": "codex-companion",
+      "rationale": "Sounds like a reasoning consult, but rescue by delegation to OpenAI is codex-companion, not deepseek-reasoning.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Which RuVector crate gives me hybrid search with metadata filters, and how do I reach it from npm?",
+      "expected_skill": "ruvector-catalog",
+      "rationale": "Sounds like a source question for ruvnet-brain, but finding a capability and its access path is ruvector-catalog.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Our swarm keeps timing out; is the mesh topology the problem, and what concurrency should we use?",
+      "expected_skill": "performance-analysis",
+      "rationale": "Sounds like swarm setup, but tuning topology and concurrency on a slow swarm is performance-analysis.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Harden the login API against injection and check the session tokens can't be forged.",
+      "expected_skill": "security-testing",
+      "rationale": "Sounds like host hardening, but this is application/API security: security-testing, not defense-security.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": true
+    },
+    {
+      "prompt": "Work through this data step by step in a live Python session: load it, run a t-test, and keep the dataframe so the next step can depend on the result.",
+      "expected_skill": "codeact",
+      "rationale": "Sounds like statcraft by its t-test, but state persisting across steps with results driving the next step is codeact; no SPSS syntax or .sav is involved.",
+      "class": "boundary",
+      "provenance": "directory-derived",
+      "late_discriminative": true
+    },
+    {
+      "prompt": "Search this small service for every place we read the DATABASE_URL variable.",
+      "expected_skill": "none",
+      "rationale": "Sounds like code intelligence or web search, but a grep over a small project needs no skill; codebase-memory is for 500+ file repos.",
+      "class": "boundary",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Remember that I prefer UK spelling in everything you write for me.",
+      "expected_skill": "none",
+      "rationale": "Sounds like a memory skill, but storing one preference is a direct memory call; no listed skill owns it.",
+      "class": "boundary",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Is a sequence diagram or a flowchart better for showing retry logic, generally speaking?",
+      "expected_skill": "none",
+      "rationale": "Mentions diagrams but asks for an opinion, not a diagram; drawing nothing means no diagram skill.",
+      "class": "boundary",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Set a reminder for me to ring the dentist tomorrow morning.",
+      "expected_skill": "none",
+      "rationale": "Sounds like a scheduler, but a personal reminder is not a recurring agent task (hermes-scheduler) and no skill owns calendars.",
+      "class": "boundary",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Add a short section to the README explaining how to run the tests locally.",
+      "expected_skill": "none",
+      "rationale": "Sounds like an explainer or docs audit, but a single README edit is excluded by both explainer and docs-alignment.",
+      "class": "boundary",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Fix the typo in the error message on line 40 of main.rs, nothing else.",
+      "expected_skill": "none",
+      "rationale": "Mentions Rust, but a one-word edit needs no toolchain or workflow skill.",
+      "class": "boundary",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "What's the difference between a mutex and a semaphore? A short answer is fine.",
+      "expected_skill": "none",
+      "rationale": "A conceptual question; no reasoning consult (deepseek-reasoning) is warranted for a textbook answer.",
+      "class": "boundary",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Resize the PR description so it fits GitHub's character limit and tidy the wording.",
+      "expected_skill": "none",
+      "rationale": "Mentions GitHub and PRs but is a plain text edit, not review, release or workflow work.",
+      "class": "boundary",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Which of these two headlines reads better for the launch email? Just pick one.",
+      "expected_skill": "none",
+      "rationale": "Sounds like writing help, but choosing between two lines needs no de-slop or design skill.",
+      "class": "boundary",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Explain the output of that benchmark run in plain terms, I just want to understand the numbers.",
+      "expected_skill": "none",
+      "rationale": "Mentions a benchmark, but interpreting one run is not an optimisation loop (autoresearch) or profiling skill.",
+      "class": "boundary",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Rename the variable `cfg` to `config` throughout this one function and keep the behaviour identical.",
+      "expected_skill": "none",
+      "rationale": "A single-function rename is ordinary editing; no skill adds anything and a pick would only cost context.",
+      "class": "none",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Can you explain what this regular expression matches? ^(?:[a-z0-9-]+\\.)+[a-z]{2,}$",
+      "expected_skill": "none",
+      "rationale": "Reading one regex back in prose is a direct answer, not a skill's workflow.",
+      "class": "none",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Bump the timeout in the retry loop from 5 to 10 seconds and update the comment above it.",
+      "expected_skill": "none",
+      "rationale": "A two-line constant change needs no skill; picking one is the false-positive cost the none label measures.",
+      "class": "none",
+      "provenance": "directory-derived",
       "late_discriminative": false
     }
   ]

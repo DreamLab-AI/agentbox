@@ -1,7 +1,7 @@
 ---
 name: github-release-management
 version: 2.0.0
-description: "Orchestrate GitHub releases end-to-end: version bumps, changelog/release-note generation, multi-platform builds, staged deployment, and rollback. Use when cutting a release, generating a changelog, coordinating a multi-package or multi-repo release, or running an emergency hotfix."
+description: "Orchestrate GitHub releases end-to-end: version bumps, changelog/release-note generation, multi-platform builds, staged deployment, and rollback. Use when cutting a release, generating a changelog, coordinating a multi-package or multi-repo release, or running an emergency hotfix. Not for PR review (github-code-review), workflow YAML (github-workflow-automation) or cross-repo dependency sync (github-multi-repo)."
 category: github
 tags: [release, deployment, versioning, automation, ci-cd, swarm, orchestration]
 author: Claude Flow Team

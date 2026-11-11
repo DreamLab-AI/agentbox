@@ -1,6 +1,6 @@
 ---
 name: latex-documents
-description: "Compile LaTeX documents to PDF - academic papers, theses, Beamer presentations, technical docs with math, bibliographies, and multi-file projects. Use when writing or compiling .tex/.bib source, typesetting equations, or building Beamer slides."
+description: "Writes and compiles LaTeX to PDF with TeX Live and latexmk: academic papers, theses, Beamer slides, maths-heavy technical documents, BibTeX or biber bibliographies and multi-file projects. Use when editing .tex or .bib source, fixing a compile error, typesetting equations or building a Beamer deck. Not for a researched multi-agent report with charts (report-builder) or a whole book or arXiv/KDP manuscript pipeline (book-publishing)."
 ---
 
 # LaTeX Documents

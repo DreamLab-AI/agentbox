@@ -1,14 +1,6 @@
 ---
 name: deepseek-reasoning
-description: >
-  Use when the user says "ask deepseek", "consult deepseek", "delegate reasoning
-  to deepseek", or wants a second opinion / an explicit chain-of-thought reasoning
-  trace on a hard problem — root-cause debugging, algorithm design, dependency-aware
-  task planning — from DeepSeek V4.1 Flash via the consultant-deepseek MCP tool
-  (consult / health / cost_estimate). NOT for straightforward code generation or
-  editing (Claude does that directly), web research (use perplexity-research),
-  GitHub PR review (github-code-review), OpenAI delegation (openai-codex /
-  codex-companion), or latency-sensitive calls (DeepSeek adds 2-5s per call).
+description: "Consults DeepSeek V4.1 Flash through the consultant-deepseek MCP tool for a second opinion with an explicit chain-of-thought trace on a hard problem. Use when the user says 'ask deepseek' or 'consult deepseek', or wants a visible reasoning trail for root-cause debugging, algorithm design or dependency-aware planning. Not for routine code edits, web research (perplexity-research), OpenAI or Codex delegation (codex-companion), or latency-sensitive calls (adds 2-5 s)."
 version: 2.0.0
 author: agentbox-claude
 dependencies:

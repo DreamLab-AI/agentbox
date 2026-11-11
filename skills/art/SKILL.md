@@ -1,6 +1,6 @@
 ---
 name: art
-description: "Complete visual content system for Claude Code. Use when generating blog headers, infographics, editorial art, diagrams, or comics. Default aesthetic: light backgrounds, teal/burnt orange accents, hand-drawn sketch style."
+description: "Generates illustrated visuals in a hand-drawn house style (light background, teal and burnt-orange accents): blog headers, editorial art, infographics, sketchnotes and comics. Use for an illustrated header, social card or explanatory illustration where the look matters more than technical precision. Not for photoreal or diffusion images (comfyui), plain resizing or format conversion (imagemagick), or a precise branded technical diagram (diagram-design)."
 user-invocable: true
 triggers:
   - USE WHEN user wants to create visual content, illustrations, or diagrams

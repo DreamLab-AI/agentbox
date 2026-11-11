@@ -1,6 +1,6 @@
 ---
 name: prd2build
-description: "PRD to complete documentation in a single command. Use when you have a PRD and need specs, DDD domain model, ADRs, and an implementation plan generated from it."
+description: "Turns a PRD into a complete cross-referenced documentation set in one command: specifications, DDD domain model, ADRs and an implementation plan, optionally running the build afterwards. Use when you have a product requirements document and want specs, domain model, decision records and task breakdown generated from it. Not for validating existing docs (docs-alignment), a traceable PRD-SPEC-ADR chain kept by hand (bhil-methodology) or implementing with quality gates (visioncraft)."
 version: 3.0.0-simplified
 arguments:
   - name: prd_input

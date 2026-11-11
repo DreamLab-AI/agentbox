@@ -1,15 +1,6 @@
 ---
 name: codex-companion
-description: >
-  OpenAI Codex / GPT-6 Astra integration for Claude Code. Use when the user says
-  "consult with openai", "talk to codex", "ask gpt-6", "get a second opinion
-  from openai", "delegate to codex", "openai review", or "codex rescue". Provides
-  code reviews, adversarial reviews, rescue operations (when Claude is stuck),
-  and GPT-6 Astra task delegation with structured prompting. Runs the baked Codex
-  CLI under the current profile; auth resolves from ~/.codex ([consultants.codex])
-  wired by the entrypoint. NOT for non-code tasks (research/content/design →
-  dedicated skills), simple one-off edits Claude can finish alone, or DeepSeek
-  reasoning (→ deepseek-reasoning). From openai/codex-plugin-cc.
+description: "Delegates to OpenAI Codex (GPT-6 Astra) through the baked Codex CLI for code review, adversarial design review, rescue when Claude is stuck, or substantial task delegation. Use when the user says 'ask codex', 'consult openai', 'get a second opinion from GPT', 'codex review' or 'codex rescue'. Not for non-code work, quick edits Claude can finish, a DeepSeek reasoning trace (deepseek-reasoning) or a GitHub PR review swarm (github-code-review)."
 version: 1.0.0
 author: OpenAI (adapted for Agentbox)
 tags:

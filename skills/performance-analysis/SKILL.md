@@ -1,7 +1,7 @@
 ---
 name: performance-analysis
 version: 1.1.0
-description: "Performance analysis, bottleneck detection, and optimisation for Claude Flow swarms. Use when profiling swarm performance, diagnosing slow agents, or tuning topology and resource allocation."
+description: "Profiles Claude Flow swarms: finds communication, processing, memory and network bottlenecks, diagnoses slow agents and tunes topology, concurrency and caching, with JSON or HTML reports. Use when a multi-agent swarm is slow or its resources need tuning. Not for CUDA kernel profiling (cuda), iterative metric optimisation of code (autoresearch), AgentDB search tuning (agentdb-vector-search) or general swarm setup (swarm-advanced)."
 category: monitoring
 tags: [performance, bottleneck, optimisation, profiling, metrics, analysis]
 author: Claude Flow Team

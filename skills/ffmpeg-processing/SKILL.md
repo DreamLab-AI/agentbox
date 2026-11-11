@@ -1,6 +1,6 @@
 ---
 name: ffmpeg-processing
-description: "Professional video and audio processing - transcode, edit, stream, and analyze media files. Use when transcoding, editing, streaming, or analysing video and audio files."
+description: "FFmpeg 8 recipes for transcoding, cutting, concatenating, reframing, subtitling and normalising video and audio, on CPU or CUDA. Use for format conversion, batch transcodes, vertical reframes for Shorts or Reels, burned-in captions, HLS/DASH manifests, thumbnails, storyboards or GIFs. Not for picking highlights from footage (clipcannon), producing a video from an idea (open-montage) or generating clips (comfyui)."
 ---
 
 # FFmpeg Processing Skill

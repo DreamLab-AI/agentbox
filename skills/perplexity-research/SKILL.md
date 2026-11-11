@@ -1,6 +1,6 @@
 ---
 name: "perplexity-research"
-description: "Live web research through Perplexity's closed synthesis engine — structured web results, deep multi-step investigations with reasoning, and quick sonar answers. Use when you need authoritative primary sources (gov/academic), academic citation discovery, or UK ecology/policy lookups; reach for it as the secondary engine after ceramic-search, or alongside it for important queries."
+description: "Live web research through Perplexity's closed synthesis engine: structured web results, deep multi-step investigations with reasoning, and quick sonar answers. Use when you need authoritative primary sources (gov/academic), academic citation discovery, or UK ecology/policy lookups; the secondary engine after ceramic-search. Not for raw keyword extracts (ceramic-search), auditable citations (web-researcher), known URLs (gemini-url-context) or a full fact-checked brief (deep-research)."
 ---
 
 # Perplexity Research

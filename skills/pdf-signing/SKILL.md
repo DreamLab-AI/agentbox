@@ -1,17 +1,6 @@
 ---
 name: pdf-signing
-description: >-
-  Cryptographically sign PDFs (invoices, contracts, letters, forms) with open-source
-  tooling — pyHanko applying a PAdES/eIDAS-aligned digital signature plus an optional
-  visible signature panel. TRIGGER when the user asks to "digitally sign", "e-sign",
-  "add a digital signature to", "sign this invoice/contract/PDF", "make a signed PDF",
-  "certify a PDF", or needs a signed document because a counterparty requires signed
-  invoices/paperwork. Also covers generating a self-signed signing identity (X.509 key
-  + cert), embedding an RFC-3161 trusted timestamp, verifying a signature (pdfsig), and
-  the trust/upgrade path from self-signed to a fully-trusted (green-tick / eIDAS QES)
-  certificate. SKIP for merely stamping an image of a handwritten signature with no
-  cryptography (use imagemagick/pdftk), for filling form fields (pdftk), or for editing
-  PDF content (pikepdf/pymupdf).
+description: "Cryptographically signs PDFs (invoices, contracts, letters, forms) with pyHanko: a PAdES/eIDAS-aligned digital signature, optional visible panel and RFC-3161 timestamp. Use for 'digitally sign', 'e-sign', 'sign this invoice or contract', 'certify a PDF', creating a self-signed X.509 signing identity, verifying with pdfsig, or when a counterparty requires signed paperwork. Not for stamping a picture of a handwritten signature (imagemagick), filling form fields or editing PDF content."
 ---
 
 # PDF Signing (pyHanko, open-source)

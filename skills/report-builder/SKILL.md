@@ -1,6 +1,6 @@
 ---
 name: report-builder
-description: "Generate publication-quality LaTeX reports — white papers, sector analyses, policy briefs, technical documentation — with data-driven charts, diagrams-as-code, citations, and multi-agent quality review. Use when a document needs professional typesetting with figures, tables, bibliography, and strategic visualisations (Wardley maps, causal diagrams); not for a plain markdown write-up."
+description: "Produces a researched, typeset LaTeX report (white paper, sector analysis, policy brief) through a multi-agent pipeline: research, Python charts, diagrams and citations. Use when a document needs professional typesetting with figures, tables, a bibliography and strategic visuals such as Wardley maps or causal diagrams. Not for compiling existing .tex or Beamer slides (latex-documents), a book manuscript (book-publishing) or a plain markdown write-up."
 ---
 
 # Report Builder — Comprehensive Research Report Generator

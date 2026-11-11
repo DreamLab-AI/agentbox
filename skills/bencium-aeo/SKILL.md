@@ -1,6 +1,6 @@
 ---
 name: bencium-aeo
-description: Generate AEO-optimized content (Answer Engine Optimization) for AI search visibility - ChatGPT, Claude, Gemini, AI Overviews. Use when optimizing websites for AI citations, creating FAQ schemas, evidence panels, or analyzing content for LLM extraction readiness.
+description: "Generate AEO-optimized content (Answer Engine Optimization) for AI search visibility - ChatGPT, Claude, Gemini, AI Overviews. Use when optimizing websites for AI citations, creating FAQ schemas, evidence panels, or analyzing content for LLM extraction readiness. Not for classic SEO audits, Search Console or keyword research (toprank)."
 ---
 
 # AEO Content Optimization Skill

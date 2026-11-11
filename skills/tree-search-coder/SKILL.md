@@ -1,17 +1,6 @@
 ---
 name: tree-search-coder
-description: >
-  Execution-gated branching code generation (ADR-020 Surface 2). Generate N
-  candidate solutions (default ≤5) by invoking `sparc:coder` with varied
-  temperature/framing, execute each in a fresh `KernelSession` via the
-  `code-interpreter` (ADR-018 kernel) MCP, score every branch by assertion-pass
-  count, and select the highest-scoring candidate (tie-break on shortest code).
-  Slow, N× token cost, mandatory `spend_cap_usd` — NEVER auto-routed; only ever
-  invoked explicitly. Use for correctness-critical generation where a single
-  attempt is demonstrably insufficient and the measured +26.9% correctness lift
-  (ORPS) justifies the cost. NOT for a single generation attempt (use
-  `sparc:coder`), depth-on-one QE/TDD (`visioncraft`), one-trajectory
-  stateful loops (`codeact`), or applying a known edit (`Edit`/`aci.edit_file`).
+description: "Execution-gated branching code generation: generates several candidates (by default up to five), executes each in a fresh code-interpreter kernel, keeps the most assertions passed. Use only when explicitly asked for several candidates, or when correctness is critical and one attempt is demonstrably not enough; it costs N times the tokens and needs spend_cap_usd. Not for a single generation, a stateful one-trajectory loop (codeact), test-first feature work (visioncraft) or applying a known edit."
 version: 0.1.0
 triggers:
   - /tree-search-coder

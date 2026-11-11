@@ -1,6 +1,6 @@
 ---
 name: rust-development
-description: "Complete Rust toolchain with cargo, rustfmt, clippy, and WASM support. Use when writing Rust code, running cargo build/test/clippy, compiling to WASM, or debugging Rust compilation errors."
+description: "The Rust toolchain in this container: cargo build and test, rustfmt, clippy, rust-analyzer, cross-compilation and wasm32 targets. Use when writing or porting Rust, running cargo build, test or clippy, compiling to WebAssembly, or fixing Rust compile errors. Not for Leptos apps (leptos), WASM graphics with JS interop (wasm-js), CUDA kernels (cuda) or a feature delivered with tests and evidence gates (visioncraft)."
 ---
 
 # Rust Development Skill

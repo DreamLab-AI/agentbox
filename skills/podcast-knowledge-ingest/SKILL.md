@@ -1,16 +1,6 @@
 ---
 name: podcast-knowledge-ingest
-description: >
-  Trigger on "/podcast-ingest", "weekly podcast ingest", "process new podcast
-  episodes into the ontology", or setting up/debugging the podcast-cron schedule.
-  Weekly cron that downloads new episodes from configured YouTube podcasts,
-  extracts evidence-backed assertions via the Ontology Loom (Qwen 3.8), verifies
-  them with Perplexity, and lands them on `type: Episode` evidence ledger
-  pages under `working/podcast-evidence/`. Also trigger on "promote podcast evidence", "ledger promotion", or "podcast
-  candidate dossiers" — the podcast-promote binary stage that pre-filters
-  accumulated ledger evidence into scored proposal dossiers. NOT for one-off
-  historical backfill (use podcast-bulk-ingest), interactive on-demand transcript
-  fetching (use youtube-transcript-archiver), or non-podcast KG enrichment.
+description: "Weekly podcast-to-ontology cron: new YouTube episodes, Loom-extracted assertions, Perplexity verification, then Episode evidence-ledger pages, plus a promotion stage. Use for '/podcast-ingest', 'process new podcast episodes into the ontology', debugging the podcast-cron schedule, or promoting ledger evidence into scored proposal dossiers. Not for one-off historical backfill (podcast-bulk-ingest), archiving transcripts as notes (youtube-transcript-archiver) or non-podcast enrichment (ontology-enrich)."
 version: 2.0.0
 triggers:
   - /podcast-ingest

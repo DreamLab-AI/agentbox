@@ -1,9 +1,6 @@
 ---
 name: provenance-tracking
-description: >
-  Add provenance tracking to any research or analysis output. Use when you need source
-  verification, citation tracking, or evidence chains. Creates a .provenance.md sidecar
-  documenting sources, verification status, and confidence levels. Integrates with RuVector.
+description: "Add provenance tracking to any research or analysis output. Use when you need source verification, citation tracking, or evidence chains. Creates a .provenance.md sidecar documenting sources, verification status, and confidence levels. Integrates with RuVector. Not for live citation checking during active research (web-researcher)."
 triggers:
   - add provenance
   - track sources

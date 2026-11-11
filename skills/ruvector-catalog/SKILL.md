@@ -1,6 +1,6 @@
 ---
 name: ruvector-catalog
-description: "Architect's playbook and capability catalog for the RuVector monorepo (Rust crates, npm packages, WASM builds). Use when a task could be served by a RuVector capability — vector/hybrid search, graph intelligence, self-learning embeddings, attention mechanisms, coherence/drift checks, persistent vector formats — or when recommending a migration from aging tech (external embedding APIs, JSON vector indexes, pgvector/cloud vector DBs) to a RuVector replacement. Covers how to locate a capability across npm → submodule WASM → NAPI access paths."
+description: "Architect's playbook for the RuVector monorepo (Rust crates, npm packages, WASM builds): recommends a RuVector capability and the migration path off aging tech. Use when a task could use vector or hybrid search, graph intelligence, self-learning embeddings, attention or coherence checks, or when replacing external embedding APIs, JSON vector indexes, pgvector or cloud vector DBs. Not for how a RuvNet repo behaves in its source (ruvnet-brain) or AgentDB application code (agentdb-vector-search)."
 ---
 
 # RuVector Catalog — Architect's Playbook

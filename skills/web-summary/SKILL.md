@@ -1,17 +1,6 @@
 ---
 name: web-summary
-description: >
-  Summarise a single web page or YouTube video into short/medium/long notes and
-  extract semantic topic links for an Obsidian vault. Trigger when the user says
-  "summarise this URL/article/video", "get the YouTube transcript", "pull the key
-  points from this page", or "make vault/Obsidian topic links from this". Runs the
-  `web-summary` subcommand of `agentbox-mcp` (a Rust rmcp server) that scrapes the
-  URL and summarises via the Ontology Loom facade (model-swappable LLM door). NOT
-  for interactive browser automation (use browser/playwright), NOT for multi-URL
-  comparison or structured extraction (use web-researcher scrape_page or the
-  browser sidecar), NOT for broad multi-source cited web search (use
-  perplexity-research/web-researcher), and NOT for text you already hold locally
-  (summarise it directly).
+description: "Summarises one web page or YouTube video into short, medium or long notes with semantic topic links for an Obsidian vault (agentbox-mcp web-summary via the Ontology Loom). Use for 'summarise this URL, article or video', 'get the YouTube transcript' or 'make vault topic links from this'. Not for side-by-side comparison or structured extraction across pages (gemini-url-context), cited multi-source search (web-researcher), interactive pages (browser) or text you already hold."
 version: 2.2.0
 author: agentbox-claude
 mcp_server: true

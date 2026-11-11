@@ -1,6 +1,6 @@
 ---
 name: statcraft
-description: "Run SPSS-compatible statistics headlessly with StatCraft's pure-Rust engine (`statcraft-run`): load CSV, TSV, SAV or XLSX, execute SPSS syntax (DESCRIPTIVES, FREQUENCIES, CROSSTABS, T-TEST independent/paired/one-sample, ONEWAY ANOVA, CORRELATIONS, REGRESSION, FACTOR, RELIABILITY, NPAR TESTS such as Mann-Whitney and Kruskal-Wallis), and read exact results back as JSON. Use when a task needs a significance test, effect size, survey or questionnaire analysis, an SPSS .sav file opened or replicated, or a statistics result an assessor or reviewer can re-run — even if the user only says 'is this difference significant'. Not for model training (pytorch-ml), interactive notebooks (jupyter-notebooks) or plotting (dataviz)."
+description: "Runs SPSS-compatible statistics headlessly with the pure-Rust StatCraft engine (statcraft-run): CSV, SAV or XLSX in, SPSS syntax executed, exact results out as JSON. Use for a significance test, t-test, ANOVA, crosstab, correlation, regression, factor or reliability analysis, Mann-Whitney or Kruskal-Wallis, survey analysis, or opening an SPSS .sav, even if the user only asks 'is this difference significant'. Not for model training (pytorch-ml), interactive notebooks (jupyter-notebooks) or stateful exploratory analysis (codeact)."
 ---
 
 # StatCraft (headless)

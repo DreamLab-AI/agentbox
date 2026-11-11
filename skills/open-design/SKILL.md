@@ -1,6 +1,6 @@
 ---
 name: open-design
-description: "Generate brand-constrained, quality-gated visual artifacts instead of freestyle output. Use when the user asks for a web prototype, landing/marketing page, SaaS dashboard, mobile mockup, slide deck, email template, or any HTML visual artifact that must look professional and stay on-brand. Composes from a design-system library with a structured intake and self-critique gate."
+description: "Generate brand-constrained, quality-gated visual artifacts instead of freestyle output. Use when the user asks for a web prototype, landing/marketing page, SaaS dashboard, mobile mockup, slide deck, email template, or any HTML visual artifact that must look professional and stay on-brand. Composes from a design-system library behind a self-critique gate. Not for browsing palettes before a brand exists (ui-ux-pro-max-skill), critiquing an existing UI (design-audit) or one editorial diagram (diagram-design)."
 ---
 
 # Open Design — Production Design Pipeline

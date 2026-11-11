@@ -1,15 +1,6 @@
 ---
 name: sealmap-review
-description: >-
-  Reviews a whole project or system from its diagrams-as-code corpus: risks,
-  technical due diligence, a pre-mortem, or an outside opinion before running,
-  shipping or taking it over. External mode sends the diagrams only, never code,
-  to Gemini 3.8 Flash under critical and pre-mortem lenses; inline mode has a
-  Claude subagent check topics against the code they cite. Findings are
-  hypotheses for visioncraft triage. Use for "review this project", "what
-  would worry you running this", "pre-mortem this", "have Gemini look at the
-  diagrams", "do the diagrams still match the code". Not for a PR or diff
-  (code-review), writing the corpus (diagrams-as-code), or web research.
+description: "Reviews a whole project from its diagrams-as-code corpus: risks, technical due diligence, a pre-mortem or an outside opinion before running, shipping or taking it over. Use for 'review this project', 'what would worry you running this', 'pre-mortem this', 'have Gemini look at the diagrams'. External mode sends diagrams only to Gemini; inline mode checks topics against cited code. Not for a PR or diff (github-code-review), nor for writing, re-verifying or re-stamping the corpus (diagrams-as-code)."
 compatibility: "Claude Code and Codex. External mode is a zero-dependency Node >= 18 script and needs GEMINI_API_KEY in the environment. Inline mode uses the Agent tool to run a Sonnet reviewer; a Codex session runs the same checklist itself, one topic at a time."
 related_skills: [diagrams-as-code, visioncraft, explainer, consultant]
 ---
