@@ -91,7 +91,7 @@ An operator-delegated backlog pass (ADR-2197, amending ADR-2024 for non-live rep
    - Dismiss stale or superseded alerts.
    - Leave **owner-fact** questions open: money, rates, staffing, legal or IP, personal.
    - Then run `dream-engine governance withdraw` to retract the resolved cases. Never sign a 31403.
-4. **Ledger commits.** Rebase the engine's local ledger-row commits onto the remote and push them, fast-forward only. Do this only in a clean checkout on the default branch, with no `--autostash`. Never do it between 01:00 and 05:00 UTC, or while `<artefact_dir>/.night-running.lock` exists. Otherwise skip the push and report it.
+4. **Ledger commits.** Rebase the engine's local ledger-row commits onto the remote and push them, fast-forward only. Do this only in a clean checkout on the default branch, with no `--autostash`. Never do it between 01:00 and 05:00 UTC, or while a night holds `<artefact_dir>/.night-running.lock` (the file persists between nights; it is held when `flock -n <file> true` fails, as `ledger_io::night_in_progress` checks). Otherwise skip the push and report it.
 5. **Harness repair.** Do this only when a night's receipts show that the harness, not the candidate, decided the verdict. Allowed: opt an existing evaluator into a dream-core fixer (`"fixer": "rustfmt"`), or ignore a file an evaluator writes into the tree. Use an ordinary commit on the default branch that cites the night, and run `dream validate` afterwards. Never remove an evaluator, make a required one advisory, change an evaluator's command, or touch `protected`, thresholds, slots, disciplines or `autoMerge`.
 6. **Never:**
    - write `review.json`, run `review import`, or fill Reviewer/Review-minutes (ADR-2190);
