@@ -3739,7 +3739,6 @@ stderr_logfile_maxbytes=5MB
               || (name == "gpu-rocm"           && gpuBackendKey == "ollama-rocm")
               || (name == "gpu-cuda"           && (gpuBackendKey == "ollama-cuda" || gpuBackendKey == "local-cuda"))
               || (name == "gaussian-splatting" && (spatialCfg.gaussian_splatting or false))
-              || (name == "playwright"         && (browserCfg.playwright or false))
               || (name == "code-server"        && (toolchainCfg.code_server or false))
               || (name == "nostr-relay"        && relayEnabled)
               || (name == "tailscale"         && (networkingCfg.tailscale or false))
@@ -4438,7 +4437,6 @@ ${ragflowNetworkDecl}
           # includes "graphics" and /dev/dri/card0 is mapped in for GPU mode.
           "WLR_BACKENDS=headless"
           "ENABLE_AGENT_BROWSER=${boolEnv (browserCfg.agent_browser or false)}"
-          "ENABLE_PLAYWRIGHT=${boolEnv (browserCfg.playwright or false)}"
           "ENABLE_QE_BROWSER=${boolEnv (browserCfg.qe_browser or false)}"
           "ENABLE_FFMPEG=${boolEnv (mediaCfg.ffmpeg or false)}"
           "ENABLE_IMAGEMAGICK=${boolEnv (mediaCfg.imagemagick or false)}"

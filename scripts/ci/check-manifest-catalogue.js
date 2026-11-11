@@ -71,7 +71,7 @@ const BASELINE = [
       'skills.ruvnet_brain.auto_ingest', 'skills.ruvnet_brain.grounding_hook',
       'skills.ontology.direct_axiom_load',
       'skills.ontology.condense.enabled', 'skills.ontology.condense.schedule_enabled',
-      'skills.browser.playwright', 'skills.browser.qe_browser',
+      'skills.browser.qe_browser',
       // ADR-2085 Stop-hook knob under the catalogued `skills.colloquy` gate: it
       // writes reflect candidates, never knowledge units, and is inert when the
       // parent is off.

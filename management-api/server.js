@@ -1302,8 +1302,6 @@ async function start() {
       const securityExceptions = securityCfg.exceptions || {};
       const gpuBackend = manifest.gpu ? (manifest.gpu.backend || 'none') : 'none';
       const desktopEnabled = manifest.desktop ? (manifest.desktop.enabled === true) : false;
-      const browserPlaywright = manifest.skills && manifest.skills.browser
-        ? (manifest.skills.browser.playwright === true) : false;
       const codeServer = manifest.toolchains
         ? (manifest.toolchains.code_server === true) : false;
       const gaussianSplatting = manifest.skills && manifest.skills.spatial_and_3d
@@ -1315,7 +1313,6 @@ async function start() {
           case 'gpu-rocm':           return gpuBackend === 'ollama-rocm';
           case 'gpu-cuda':           return gpuBackend === 'ollama-cuda' || gpuBackend === 'local-cuda';
           case 'gaussian-splatting': return gaussianSplatting;
-          case 'playwright':         return browserPlaywright;
           case 'code-server':        return codeServer;
           default:                   return false;
         }

@@ -132,14 +132,6 @@ pub fn security_exceptions(s: &Value) -> Vec<String> {
             String::new(),
         ]);
     }
-    if truthy(s, "skills.browser.playwright") {
-        out.extend([
-            "[security.exceptions.playwright]".to_string(),
-            "cap_add = [\"SYS_ADMIN\"]".into(),
-            "reason = \"chromium sandbox; SYS_ADMIN is the minimum privilege for Chromium user-ns sandbox inside a container\"".into(),
-            String::new(),
-        ]);
-    }
     if truthy(s, "toolchains.code_server") {
         out.extend([
             "[security.exceptions.code-server]".to_string(),
@@ -223,7 +215,6 @@ pub fn providers_and_toolchains(s: &Value) -> Vec<String> {
         String::new(),
         "[skills.browser]".into(),
         format!("agent_browser = {}", b(s, "skills.browser.agent_browser")),
-        format!("playwright    = {}", b(s, "skills.browser.playwright")),
         format!("qe_browser    = {}", b(s, "skills.browser.qe_browser")),
         String::new(),
         "[skills.media]".into(),

@@ -122,7 +122,6 @@ for entry in \
   "agentic-qe|agentic-qe" \
   "codebase-memory-mcp|codebase-memory-mcp" \
   "agent-browser|agent-browser" \
-  "playwright|playwright" \
 ; do
   pkg="${entry%|*}"
   npm_pkg="${entry#*|}"

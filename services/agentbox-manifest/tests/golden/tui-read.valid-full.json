@@ -24,7 +24,6 @@
   "toolchains.rust": true,
   "toolchains.cuda": false,
   "skills.browser.agent_browser": true,
-  "skills.browser.playwright": true,
   "skills.browser.qe_browser": true,
   "skills.media.ffmpeg": true,
   "skills.media.imagemagick": true,

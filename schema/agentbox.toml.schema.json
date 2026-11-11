@@ -317,10 +317,6 @@
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "playwright": {
-              "description": "Local Playwright browser. Superseded by the external browser sidecar; leave off.",
-              "type": "boolean"
-            },
             "qe_browser": {
               "description": "QE browser tooling for the agentic-qe fleet. Leave off unless you use that fleet.",
               "type": "boolean"
@@ -2480,31 +2476,6 @@
                 "reason": {
                   "description": "Why Gaussian splatting needs these extra privileges, for the audit trail.",
                   "type": "string"
-                }
-              }
-            },
-            "playwright": {
-              "type": "object",
-              "additionalProperties": false,
-              "description": "Chromium sandbox capability. Enabled when skills.browser.playwright=true.",
-              "properties": {
-                "cap_add": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  },
-                  "description": "Linux capabilities to add (minimum: SYS_ADMIN for Chromium sandbox)."
-                },
-                "writable_volumes": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  },
-                  "description": "Named volume mount strings."
-                },
-                "reason": {
-                  "type": "string",
-                  "description": "Human-readable justification for the privilege."
                 }
               }
             },

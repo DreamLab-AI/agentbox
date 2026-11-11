@@ -54,7 +54,6 @@ const FIELDS: &[F] = &[
     F("toolchains.rust", D::B(true), false),
     F("toolchains.cuda", D::B(false), false),
     F("skills.browser.agent_browser", D::B(true), false),
-    F("skills.browser.playwright", D::B(true), false),
     F("skills.browser.qe_browser", D::B(false), false),
     F("skills.media.ffmpeg", D::B(true), false),
     F("skills.media.imagemagick", D::B(true), false),

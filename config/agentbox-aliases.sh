@@ -101,7 +101,6 @@ alias skills-remove="npx ai-agent-skills remove"
 
 # === MCP SERVERS ===
 alias n8n-mcp="npx -y n8n-mcp"
-alias mcp-playwright="npx -y @playwright/mcp@latest"
 alias mcp-chrome="npx -y chrome-devtools-mcp@latest"
 
 # === CODE-AS-HARNESS (PRD-008) ===
