@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: e2b49adfc22f60123a33c85fb9f456782c557b39
+verified_commit: 23717873089478ce4b18c6c09bddf4e0adb064f9
 verified_paths: [config/entrypoint-unified.sh, services/agentbox-manifest/src/tui_write.rs, mcp/consultants/antigravity/server.js, skills/mcp.json]
 owner: jjohare
 review_trigger: any change to a consultant's default model, a Gemini model retirement, the 2027-01-01 Gemini tariff step, or a wizard that starts exposing the consultant model field; activation — a receipt on the running image for the absent, empty and explicit override cases and a TUI save (explicit case observed live 2026-10-30)
@@ -300,3 +300,5 @@ Re-stamped again at `09067b095`: the one further change to `config/entrypoint-un
 ## Re-verification — 2026-11-01 (`4f3bd5325`)
 
 Governed-path delta since `09067b095`: `config/entrypoint-unified.sh`: the credential-scrub block (`PGSCRUB_MARKER`) now also rewrites Claude Code's backups and the `*.pre-*`/`*.bak*` snapshots of the projected config, writes atomically (sibling temp file, fsync, rename) keeping owner and mode, and scopes its text rules to RuVector's own values (ADR-2164 amendment 4). This record's decision does not concern these changes. Decision unchanged; `verified_commit` bumped. Re-run: `git diff 09067b095..4f3bd5325 -- config/entrypoint-unified.sh`.
+
+Re-verified 2026-11-11 at `237178730` (ADR-2192, ADR-2193, ADR-2194 at `04638a618`; ADR-2195 at this commit). Governed-path delta since `e2b49adfc`: `config/entrypoint-unified.sh` reads `[skills.routing].scope` and, only when it is `all`, adds `AGENTBOX_SKILL_ROUTE_SCOPE=all` to the routing hook command and to `runtime-env.sh` (which also gains one comment line). The changes add a routing scope setting, a launcher for PID 1, one Rust skill tool and a gated-off CAD feature. They add no published port, mount, volume, secret, identity, model route, vault path, registry entry or Nostr kind, and alter no existing gate, so what this record decides is not touched. Run on this commit in the container: the configuration jest suites (294 passed), `skill-lint`, `skill-count-check`, the manifest validator, the egress register check, the secret inventory, the crate licensing check, the role-isolation and runtime-contract shell tests, `python-runtime-path` and `cad-launcher`. The flake was NOT evaluated (no Nix in the container) and no image has been built from it. The decision and status axes are unchanged. Re-run: `git diff e2b49adfc..237178730 -- <verified_paths>`.

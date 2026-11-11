@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: e2b49adfc22f60123a33c85fb9f456782c557b39
+verified_commit: 23717873089478ce4b18c6c09bddf4e0adb064f9
 verified_paths: [services/LICENSING-NOTICE.md, docs/developer/licensing.md, scripts/ci/check-crate-licensing.sh, services/*/Cargo.toml]
 owner: jjohare
 review_trigger: any new crate under services/, any services crate gaining an AGPL dependency, or first publication of a services crate to crates.io
@@ -410,3 +410,5 @@ Re-read at `33c8b3472a7a` (2026-10-16): the only change to a governed path is `s
 ## Re-verification — 2026-10-23
 
 Read `git diff 2305d675e..96a9a925d -- services/dream-engine`. The only governed-path change is `services/dream-engine/Cargo.toml` moving `dream-core` and `dream-gate` from `=0.2.0` to `=0.3.0` (lock checksums updated; two transitive `thiserror` edges move from 2.x to 1.0.69). `dream-engine` still declares `AGPL-3.0-only` and no permissive crate depends on it. The 0.3.0 licences were not independently read from the registry (no network); the lock carries them as registry crates from the same publisher as 0.2.0, and the licence of the published crates is a claim of the dream-engine repository, not of this record. `bash scripts/ci/check-crate-licensing.sh` reports `OK … 10 services/ package directories carry the texts they declare`. The decision holds. Verified at 96a9a925dec7b19b8b75ecb891cce7a0a24d09e4.
+
+Re-verified 2026-11-11 at `237178730` (ADR-2192, ADR-2193, ADR-2194 at `04638a618`; ADR-2195 at this commit). Governed-path delta since `e2b49adfc`: `services/LICENSING-NOTICE.md` gains a row and a sentence for `motion-render`; `services/motion-render/Cargo.toml` is new: `license = "MIT OR Apache-2.0"`, `publish = false`. **Review trigger considered** (a new crate under `services/`). `services/motion-render` declares `MIT OR Apache-2.0`, carries `LICENSE-MIT` and `LICENSE-APACHE`, and is `publish = false`. Its dependencies are `anyhow`, `base64`, `clap`, `png`, `serde_json` and `tungstenite`, none AGPL. `scripts/ci/check-crate-licensing.sh` failed on its README at `04638a618` (no licence section in the expected wording) and passes at this commit: 12 package directories. Run on this commit in the container: the configuration jest suites (294 passed), `skill-lint`, `skill-count-check`, the manifest validator, the egress register check, the secret inventory, the crate licensing check, the role-isolation and runtime-contract shell tests, `python-runtime-path` and `cad-launcher`. The flake was NOT evaluated (no Nix in the container) and no image has been built from it. The decision and status axes are unchanged. Re-run: `git diff e2b49adfc..237178730 -- <verified_paths>`.

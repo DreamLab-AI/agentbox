@@ -59,7 +59,7 @@ detect changes to files it already lists — it is structurally blind to **addit
 is exactly how a new crate landed unlicensed under ADR-2030 while the record still read as
 verified and its `review_trigger` ("any new crate under `services/`") sat unactioned.
 
-_154 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
+_155 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
 
 | ID | Title | Domain | Date | Decision | Impl | Activation | Supersedes | Superseded by | Owner | Repo |
 |----|-------|--------|------|----------|------|------------|------------|---------------|-------|------|
@@ -217,3 +217,4 @@ _154 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
 | [ADR-2192](ADR-2192-the-routing-hook-offers-the-whole-skill-tree-and-each-skill-once.md) | The routing hook offers the whole skill tree, and each skill once | GOVERNANCE-capabilities | 2026-11-11 | accepted | complete | staged | — | — | jjohare | agentbox |
 | [ADR-2193](ADR-2193-pid-1-starts-through-a-launcher-so-python3-is-the-runtime-environment.md) | PID 1 starts through a launcher so that python3 is the runtime environment | BASELINE-container | 2026-11-11 | accepted | complete | staged | — | — | jjohare | agentbox |
 | [ADR-2194](ADR-2194-motion-designer-skill-and-holding-tracks.md) | Motion design films render in the browser sidecar, and a stand-in music track is marked as one | GOVERNANCE-capabilities | 2026-11-11 | accepted | complete | staged | — | — | jjohare | agentbox |
+| [ADR-2195](ADR-2195-cad-skills-over-a-pinned-offline-text-to-cad-engine.md) | CAD, electronics and fabrication skills run over a pinned, offline text-to-cad engine | GOVERNANCE-capabilities | 2026-11-11 | accepted | complete | staged | — | — | jjohare | agentbox |

@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: c7c2f76b93bfe81dadd8e3bb8c3104cda6b57bec
+verified_commit: 23717873089478ce4b18c6c09bddf4e0adb064f9
 verified_paths: [config/egress-policy.json, config/hooks/lib/egress-policy.cjs, config/hooks/nostr-live-mirror.cjs, tests/sovereign/egress-boundary.test.js]
 owner: jjohare
 review_trigger: any change to config/hooks/nostr-live-mirror.cjs or the mobile_bridge digest, or the recipient/relay configuration
@@ -217,3 +217,5 @@ Re-verified 2026-10-29 at `00039efb1e4a70402df86ad19cf76894fe3b9a8f` for ADR-215
 Re-verified 2026-10-31 at `97f298db5`: the only delta on this record's governed paths since the previous verification is the sprint-W7 additive work (ADR-2139 Decision 5 `state_budget_tokens`; ADR-2090 `bypass_projects`): new optional keys that default to today's behaviour, in config/egress-policy.json. None of it touches this record's decision. Re-verified by `git diff ef768e785..97f298db5 -- <governed paths>`; status axes unchanged.
 
 Re-verified 2026-10-31 at `2f15c531b02b8f8393d68d29ce3491712bdd862c` (W7 and W8 integration, `adr-sprint/w78`). Governed-path delta since `97f298db5`: `config/egress-policy.json`: the `skill-router` row's `notes` only, now saying the bypass stops the skill router and not factrail or jev-checkpoints (ADR-2090). Read from the diff and checked against the merged tree's gates (cargo, jest, validator); nothing it changes is a key, table or code path this record decides, so the decision and status axes are unchanged. Re-run: `git diff 97f298db5..2f15c531b -- config/egress-policy.json`.
+
+Re-verified 2026-11-11 at `237178730` (ADR-2192, ADR-2193, ADR-2194 at `04638a618`; ADR-2195 at this commit). Governed-path delta since `c7c2f76b9`: `config/egress-policy.json` re-anchors three `skill-route.cjs` line citations that the router edit moved; no route, host, class or policy field changes. The changes add a routing scope setting, a launcher for PID 1, one Rust skill tool and a gated-off CAD feature. They add no published port, mount, volume, secret, identity, model route, vault path, registry entry or Nostr kind, and alter no existing gate, so what this record decides is not touched. Run on this commit in the container: the configuration jest suites (294 passed), `skill-lint`, `skill-count-check`, the manifest validator, the egress register check, the secret inventory, the crate licensing check, the role-isolation and runtime-contract shell tests, `python-runtime-path` and `cad-launcher`. The flake was NOT evaluated (no Nix in the container) and no image has been built from it. The decision and status axes are unchanged. Re-run: `git diff c7c2f76b9..237178730 -- <verified_paths>`.

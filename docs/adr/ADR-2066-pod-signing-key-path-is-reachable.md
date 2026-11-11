@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: c1b0c700c42596d35a1faba3074b667c1928d8fb
+verified_commit: 23717873089478ce4b18c6c09bddf4e0adb064f9
 verified_paths: [mcp/servers/nostr-bridge.js, scripts/agentbox-config-validate.js, tests/config/semantic-rules.test.js]
 owner: jjohare
 review_trigger: provisioning per-stack nostr key material, changing the profiles root or `$WORKSPACE`, or any new consumer of `loadSigner`
@@ -120,3 +120,5 @@ Re-verified 2026-10-31 at `2f15c531b02b8f8393d68d29ce3491712bdd862c` (W7 and W8 
 Verified source commit `c1b0c700c42596d35a1faba3074b667c1928d8fb`.
 
 The sole governed delta is the W070 Deepsec warning text in agentbox-config-validate.js, replacing build-with-quality with VisionCraft. loadSigner, profiles roots, signing configuration and semantic-rule tests are unchanged. Manifest validation passes. This does not claim new key provisioning or pod-signing activation.
+
+Re-verified 2026-11-11 at `237178730` (ADR-2192, ADR-2193, ADR-2194 at `04638a618`; ADR-2195 at this commit). Governed-path delta since `c1b0c700c`: `scripts/agentbox-config-validate.js` gains one block, E084, rejecting a `[skills.routing].scope` outside `registered` and `all`. The changes add a routing scope setting, a launcher for PID 1, one Rust skill tool and a gated-off CAD feature. They add no published port, mount, volume, secret, identity, model route, vault path, registry entry or Nostr kind, and alter no existing gate, so what this record decides is not touched. Run on this commit in the container: the configuration jest suites (294 passed), `skill-lint`, `skill-count-check`, the manifest validator, the egress register check, the secret inventory, the crate licensing check, the role-isolation and runtime-contract shell tests, `python-runtime-path` and `cad-launcher`. The flake was NOT evaluated (no Nix in the container) and no image has been built from it. The decision and status axes are unchanged. Re-run: `git diff c1b0c700c..237178730 -- <verified_paths>`.

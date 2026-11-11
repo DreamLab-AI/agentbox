@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: e2b49adfc22f60123a33c85fb9f456782c557b39
+verified_commit: 23717873089478ce4b18c6c09bddf4e0adb064f9
 verified_paths: [skills/lint-skills.mjs, skills/gen-routing-table.mjs, skills/SKILL-DIRECTORY.md, skills/system-one/scripts/route-eval.mjs]
 owner: jjohare
 review_trigger: the next time a skill is demoted, merged, or added to a cluster that already shows measured overlap
@@ -193,3 +193,5 @@ Re-verified at `83637b7c3615`. The governed change is the VisionCraft 0.2.0 SKIL
 Re-verified at `cfa535b8c846`. The governed change is the VisionCraft 0.3.0 SKILL-DIRECTORY row gaining "Rune Rust-native desktop/web UI guidance with a verified scaffold". Status vocabulary, linter, routing-table generator and evaluator are unchanged; all 132 skills lint clean and the routing table regenerates current. **Decision unaffected.** `verified_commit` moved to the landing commit.
 
 Re-verified 2026-11-05 at `3beca506c` for ADR-2177: the new `supersplat` skill carries no `status:` field (live by default) and its SKILL-DIRECTORY row carries no unavailability marker; `skills/lint-skills.sh` passes.
+
+Re-verified 2026-11-11 at `237178730` (ADR-2192, ADR-2193, ADR-2194 at `04638a618`; ADR-2195 at this commit). Governed-path delta since `e2b49adfc`: `skills/SKILL-DIRECTORY.md` gains rows and decision-tree branches for `motion-designer` and the seven `cad*` skills, and its count goes from 133 to 141. **Review trigger considered** (a skill added to a cluster with measured overlap). `motion-designer` joins the media cluster beside `open-montage`; both descriptions gained a 'not for' line, and four media prompts routed to the intended skill at scope `all`. The seven `cad*` skills join the 3D cluster beside `blender` and `isaac-sim`; `cad-render` against `blender` and `cad-robot` against `isaac-sim` are disambiguated in their descriptions, and that overlap has NOT been measured. Run on this commit in the container: the configuration jest suites (294 passed), `skill-lint`, `skill-count-check`, the manifest validator, the egress register check, the secret inventory, the crate licensing check, the role-isolation and runtime-contract shell tests, `python-runtime-path` and `cad-launcher`. The flake was NOT evaluated (no Nix in the container) and no image has been built from it. The decision and status axes are unchanged. Re-run: `git diff e2b49adfc..237178730 -- <verified_paths>`.
