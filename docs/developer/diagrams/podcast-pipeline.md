@@ -2,8 +2,9 @@
 
 How podcast episodes become ledger pages and governed ontology proposals. Paths are relative to
 `skills/podcast-knowledge-ingest/` unless noted; the binaries come from `services/podcast-ingest`.
-Last edited 2026-11-11 (ADR-2196), when the weekly run was repaired after three weeks of silent
-failure.
+Last edited 2026-11-11 (ADR-2196), when the code and PATH faults behind three weeks of silent failure
+were fixed. The PATH fix is live at the next image build; YouTube is currently rate-limiting subtitle
+downloads, which still stops new transcripts. Each run is capped at 15 episodes.
 
 ---
 

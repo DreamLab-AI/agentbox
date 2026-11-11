@@ -932,9 +932,8 @@ explicit boundary was written. Item 15 recorded the codex pair "Complete" — it
 | `design-audit` ↔ `ui-ux-pro-max-skill` | 0.69 | cleared | as above |
 | `open-design` ↔ `ui-ux-pro-max-skill` | 0.66 | cleared | as above |
 
-**Resolved by supersession:** `codex-companion` ↔ `openai-codex` (0.76). `openai-codex` now
-carries `status: superseded`, `replacement: codex-companion` — making explicit what item 15
-already recorded in prose.
+**Resolved by supersession, then removal:** `codex-companion` ↔ `openai-codex` (0.76); `openai-codex` was deleted on 2026-11-11 (ADR-2196), after
+carrying `status: superseded`, `replacement: codex-companion`.
 
 **Known blind spot:** the scan compares pairs *within* a routing section. Cross-section
 near-neighbours are invisible to it, and two are known to misroute despite scoring below the

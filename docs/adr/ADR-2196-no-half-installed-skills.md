@@ -51,9 +51,9 @@ forbids), two marked `superseded` but still wired into the build (`playwright`,
    longer offered; `voyager-skill-library` routes as live.
 3. **Deletion is checked for value.** An independent audit of every deletion found no other skill
    to restore, and one passage worth keeping, folded into `bencium-creative`.
-4. **The podcast pipeline runs again.** Its cron PATH carries `flock` and `ontomark`;
+4. **The podcast pipeline's code and PATH faults are fixed; it runs again after the next rebuild.** Its cron PATH carries `flock` and `ontomark`;
    `run-promote.sh` passes `$LOOM_BASE_URL`; the finished EXP-B8 cron block is removed
-   (verdict WITHDRAW, already recorded in ADR-2110).
+   (verdict WITHDRAW, already recorded in ADR-2110). New transcripts still depend on YouTube lifting its current HTTP 429 rate limit on subtitle downloads; each run is capped at 15 episodes (`max_episodes_per_run`).
 
 ## Consequences
 

@@ -14,7 +14,8 @@ All notable changes to agentbox are documented here. Format inspired by [Keep a 
   `qe-browser` rewritten around what the image has. 124 skills.
 - The router offers a gated skill only while its manifest gate is on.
 - Podcast cron: PATH gains flock and ontomark (no ingest had completed since 19 October);
-  promote uses `$LOOM_BASE_URL`; the finished EXP-B8 block is removed.
+  promote uses `$LOOM_BASE_URL`; the finished EXP-B8 block is removed. Runs again after
+  the next rebuild; YouTube's current 429 on subtitles still blocks new transcripts.
 - New diagrams: `docs/developer/diagrams/skill-selection.md`, `podcast-pipeline.md`.
 - Nix changes take effect at the next image build.
 

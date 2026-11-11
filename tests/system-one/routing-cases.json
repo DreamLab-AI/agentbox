@@ -182,7 +182,7 @@
     {
       "prompt": "Scrape the product listings off this supplier site — it's behind Cloudflare Turnstile and rate-limits hard.",
       "expected_skill": "browser",
-      "rationale": "Scraping a bot-protected site needs a real browser; scrapling is not installed here, so the sidecar browser is the route.",
+      "rationale": "Scraping a bot-protected site needs a real browser. The sidecar browser is the route.",
       "class": "near-neighbour",
       "provenance": "directory-derived",
       "late_discriminative": false
@@ -302,7 +302,7 @@
     {
       "prompt": "Batch-transcode this directory of 4K MOV files to H.264 MP4 with CUDA acceleration, two-pass.",
       "expected_skill": "ffmpeg-processing",
-      "rationale": "Mechanical transcode is ffmpeg-processing; clipcannon and open-montage are editorial.",
+      "rationale": "Mechanical transcode is ffmpeg-processing.",
       "class": "near-neighbour",
       "provenance": "directory-derived",
       "late_discriminative": false
@@ -310,7 +310,7 @@
     {
       "prompt": "Cut a highlight reel out of this two-hour recording, caption it, and render a vertical version for Reels.",
       "expected_skill": "ffmpeg-processing",
-      "rationale": "Cutting, captioning and re-encoding existing footage to a vertical render is mechanical editing; clipcannon is not installed and video-production is for continuity-held multi-tool films.",
+      "rationale": "Cutting, captioning and re-encoding existing footage to a vertical render is mechanical editing; video-production is for continuity-held multi-tool films.",
       "class": "near-neighbour",
       "provenance": "directory-derived",
       "late_discriminative": false
@@ -318,7 +318,7 @@
     {
       "prompt": "Make a five-minute explainer video for this repository aimed at a non-technical buyer, with narration and captions.",
       "expected_skill": "codebase-video",
-      "rationale": "Repository-grounded audience video is codebase-video; open-montage is the general video producer with no repo grounding.",
+      "rationale": "Repository-grounded audience video is codebase-video.",
       "class": "near-neighbour",
       "provenance": "directory-derived",
       "late_discriminative": true
@@ -414,7 +414,7 @@
     {
       "prompt": "Harden this Ubuntu box to the CIS benchmark and tell me where we stand on SOC2 compliance.",
       "expected_skill": "none",
-      "rationale": "Host hardening and compliance has no installed skill now that defense-security is not installed; security-testing covers application code, not host benchmarks.",
+      "rationale": "Host hardening and compliance has no installed skill in this estate; security-testing covers application code, not host benchmarks.",
       "class": "boundary",
       "provenance": "directory-derived",
       "late_discriminative": false
@@ -1022,7 +1022,7 @@
     {
       "prompt": "Find recruiters at Graphcore on LI and draft a short connection note to the two most relevant.",
       "expected_skill": "linkedin",
-      "rationale": "Profile search and messaging on LinkedIn is the linkedin row; generic scraping would be scrapling.",
+      "rationale": "Profile search and messaging on LinkedIn is the linkedin row; generic page fetching would be browser.",
       "class": "single",
       "provenance": "directory-derived",
       "late_discriminative": true
@@ -1038,7 +1038,7 @@
     {
       "prompt": "Make a fifteen-second kinetic type piece about latency, cut to a music track.",
       "expected_skill": "motion-designer",
-      "rationale": "Kinetic type film cut to music with no narration or footage is motion-designer; a narrated video from an idea would be open-montage.",
+      "rationale": "Kinetic type film cut to music with no narration or footage is motion-designer; a narrated explainer from footage would be video-production.",
       "class": "near-neighbour",
       "provenance": "directory-derived",
       "late_discriminative": false
@@ -1198,7 +1198,7 @@
     {
       "prompt": "Produce a stop-motion short with the same clay character in every shot, versioned revisions and acceptance checks.",
       "expected_skill": "video-production",
-      "rationale": "Continuity held across shots with acceptance gates is video-production; a montage from an idea would be open-montage.",
+      "rationale": "Continuity held across shots with acceptance gates is video-production.",
       "class": "near-neighbour",
       "provenance": "directory-derived",
       "late_discriminative": true
@@ -1406,7 +1406,7 @@
     {
       "prompt": "Harden the login API against injection and check the session tokens can't be forged.",
       "expected_skill": "security-testing",
-      "rationale": "Sounds like host hardening, but this is application/API security: security-testing, not defense-security.",
+      "rationale": "Sounds like host hardening, but this is application/API security: security-testing; host hardening has no skill here.",
       "class": "near-neighbour",
       "provenance": "directory-derived",
       "late_discriminative": true
