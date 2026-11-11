@@ -1,10 +1,11 @@
 ---
 title: Agentbox Capability Governance
 doc_id: AB-GOVERNANCE
-version: 0.6.17
+version: 0.6.18
 status: draft-for-ratification
 verified_commit: 
 changelog:
+  - "0.6.18 (2026-11-11): ADR-2196: no skill ships half-installed. semgrep, gitleaks, trivy and jj baked; 13 uninstallable or superseded skills deleted with their build wiring; the router honours a skill's manifest gate. 124 skills."
   - "0.6.17 (2026-11-11): ADR-2195 (accepted, complete, staged and gated off): seven `cad-*` skills adapted from text-to-cad 0.11.8 (cad, cad-drawing, cad-fea, cad-robot, cad-pcb, cad-print, cad-render) over a pinned, offline `cad` launcher. New invariants: a third-party tool that installs or updates itself is run only from a hash-locked wheelhouse with its index, telemetry and update feed off; its daemon is a supervised program. 141 skills."
   - "0.6.16 (2026-11-11): ADR-2192 (accepted, complete, staged for rebuild): `[skills.routing].scope` (E084) selects the routing hook's baked candidates; the running value \"all\" offers the whole baked tree, with the SKILL.md path injected for a pick the Skill tool cannot load. One skill is offered once (plugin kept over a synced copy). ADR-2194 (accepted, complete, staged for rebuild): the `motion-designer` skill renders in the browser sidecar over CDP; a holding music track carries a rights record that `master.sh` enforces. 134 skills."
   - "0.6.15 (2026-11-10): ADR-2190 (accepted, complete, staged for rebuild) amends ADR-2087 point 5. The dream ledger's Reviewer / Review-minutes cells come only from a recorded human review (review.json, imported with `dream-engine review import` and backfilled under a per-ledger lock shared with the night's own row append), never from a PR merge event; reviewFromMergeEvent is removed. Night artefacts live in a durable directory that is never pruned, committed and pushed (never forced) when it is a private archive checkout. A start-up guard refuses nights while the nights are still in the legacy temp path. The configured git identity is a fallback, used only where a repository has none of its own. Invariants unchanged."
@@ -504,6 +505,7 @@ above, enabled but explicitly-invoke-only.
   The gate's `no-decision-surface` deny names the tool in its structured result.
 - **An orchestrating skill and its neighbours name each other** (ADR-2150, proposed): A skill that orchestrates other skills names every neighbour it overlaps in its when-not clause, and each neighbour names it back in the same change; measured overlap ≥0.60 with any neighbour, cross-section included, blocks activation. A skill never advertises a command, engine or runtime that is not in the tree.
 - A third-party tool that installs or updates itself (text-to-cad's `cad`, ADR-2195) runs only from a hash-locked wheelhouse baked into the image, offline, with no package index, its telemetry and update feed off, and its self-install subcommands refused by the launcher. Its daemon is a supervised program. Gate: `tests/config/cad-launcher.test.sh`.
+- No skill ships half-installed (ADR-2196): a skill's tool is in the image or the skill is deleted; `not-installed` and `superseded` are not used. A deliberately-off skill names a `gate:`, and the router offers it only while that manifest key is true.
 
 ## Change process
 

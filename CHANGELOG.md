@@ -4,6 +4,20 @@ All notable changes to agentbox are documented here. Format inspired by [Keep a 
 
 ## [Unreleased]
 
+### No half-installed skills; podcast pipeline repaired (2026-11-11, ADR-2196)
+
+- semgrep, gitleaks, trivy and jj baked into the image; `security-testing` and
+  `agentic-jujutsu` use them.
+- 13 skills deleted with their build wiring (tool absent, hosted platform, or superseded):
+  defense-security, scrapling, notebooklm, clipcannon, paperbanana, echoloop,
+  open-montage, flow-nexus x3, playwright, openai-codex. `cuda`, `jupyter-notebooks` and
+  `qe-browser` rewritten around what the image has. 124 skills.
+- The router offers a gated skill only while its manifest gate is on.
+- Podcast cron: PATH gains flock and ontomark (no ingest had completed since 19 October);
+  promote uses `$LOOM_BASE_URL`; the finished EXP-B8 block is removed.
+- New diagrams: `docs/developer/diagrams/skill-selection.md`, `podcast-pipeline.md`.
+- Nix changes take effect at the next image build.
+
 ### Skill estate and router audit (2026-11-11)
 
 - Router fixes (`config/hooks/lib/skill-route.cjs`): the request timer stays armed
