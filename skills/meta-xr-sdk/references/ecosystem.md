@@ -363,7 +363,7 @@ ratk.onMeshAdded = (mesh) => {
 | `blender` | 3D asset creation for XR scenes |
 | `lichtfeld-studio` | 3D Gaussian Splatting for volumetric XR content |
 | `comfyui` | AI-generated textures and assets for XR environments |
-| `playwright` | Automated testing of WebXR UI overlays |
+| `browser` | Automated testing of WebXR UI overlays |
 | `rust-development` | Rust toolchain for WASM modules in XR apps |
 
 ## External References

@@ -31,8 +31,8 @@
 #   ./scripts/prefetch-hashes.sh --dry-run    # print what would change
 #   ./scripts/prefetch-hashes.sh --service <name>   # single target
 #       supported: management-api, mcp, solid-pod-rs, nagual-qe,
-#                  skills/openai-codex/mcp-server, skills/lazy-fetch/mcp-server,
-#                  skills/playwright/mcp-server, skills/comfyui/mcp-server
+#                  skills/lazy-fetch/mcp-server,
+#                  skills/comfyui/mcp-server
 #   ./scripts/prefetch-hashes.sh --cli        # only resolve npm-cli + cargoHash mismatches
 #
 set -euo pipefail
@@ -71,9 +71,7 @@ npm_services=(
   "management-api"
   "mcp"
   "mcp/consultants"
-  "skills/openai-codex/mcp-server"
   "skills/lazy-fetch/mcp-server"
-  "skills/playwright/mcp-server"
   "skills/comfyui/mcp-server"
 )
 
@@ -83,9 +81,7 @@ declare -A svc_attr=(
   ["management-api"]="managementApiPkg"
   ["mcp"]="nostrBridgePkg"
   ["mcp/consultants"]="consultantsPkg"
-  ["skills/openai-codex/mcp-server"]="codexMcpPkg"
   ["skills/lazy-fetch/mcp-server"]="lazyFetchMcpPkg"
-  ["skills/playwright/mcp-server"]="playwrightMcpPkg"
   ["skills/comfyui/mcp-server"]="comfyuiMcpPkg"
 )
 
@@ -93,9 +89,7 @@ declare -A svc_path_by_drvname=(
   ["management-api"]="management-api"
   ["nostr-bridge"]="mcp"
   ["agentbox-consultants"]="mcp/consultants"
-  ["openai-codex-mcp"]="skills/openai-codex/mcp-server"
   ["lazy-fetch-mcp"]="skills/lazy-fetch/mcp-server"
-  ["playwright-mcp"]="skills/playwright/mcp-server"
   ["comfyui-mcp"]="skills/comfyui/mcp-server"
 )
 

@@ -8,12 +8,10 @@
     "skill-router",
     "lazy-fetch",
     "codebase-memory",
-    "openai-codex",
     "codex-companion"
   ],
   "tooling": [
     "claude",
-    "openai-codex",
     "codex-companion",
     "skill-router",
     "lazy-fetch"

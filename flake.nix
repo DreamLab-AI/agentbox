@@ -844,15 +844,6 @@
           npmDepsHash = "sha256-zwQdwR0aVYnmdpxnxwuno9OEhoK/24M0ABWwAkxfMgA=";
         };
 
-        # 3. skills/openai-codex/mcp-server — gated by toolchains.codex
-        codexMcpPkg = npmServicesLib.makeNpmService {
-          name        = "openai-codex-mcp";
-          src         = ./skills/openai-codex/mcp-server;
-          entry       = "server.js";
-          # Prefetched 2026-04-24. Refresh: nix run nixpkgs#prefetch-npm-deps -- skills/openai-codex/mcp-server/package-lock.json
-          npmDepsHash = "sha256-7worjv1rfSn4VzN0uO33OYTwr5kLfstqBAMRyV6a5kw=";
-        };
-
         # 4. skills/lazy-fetch/mcp-server — gated by toolchains.ruflo or claude_flow.
         # TypeScript source: buildPhaseExtra runs tsc; output is dist/mcp-server.js.
         lazyFetchMcpPkg = npmServicesLib.makeNpmService {
@@ -907,8 +898,6 @@
           [ managementApiPkg ]
           # nostr-bridge: when sovereign_mesh.enabled (same gate as supervisord block)
           ++ lib.optionals (sovereignCfg.enabled or false) [ nostrBridgePkg ]
-          # openai-codex MCP server: when toolchains.codex enabled
-          ++ lib.optionals (toolchainCfg.codex or false) [ codexMcpPkg ]
           # lazy-fetch MCP: when ruflo or claude_flow enabled
           ++ lib.optionals ((toolchainCfg.ruflo or false) || (toolchainCfg.claude_flow or false)) [ lazyFetchMcpPkg ]
           # comfyui MCP: when skills.media.comfyui_builtin enabled
@@ -2341,11 +2330,6 @@ default_days = ${toString (relayCfg.retention_days or 30)}
           # rm -rf the source-tree copy first: skillsTree cp above places source
           # files at mcp-server/ already, so cp -rL into an existing dir would
           # nest the package one level too deep ($dir/package/ instead of $dir/).
-          ${lib.optionalString (toolchainCfg.codex or false) ''
-          rm -rf $out/opt/agentbox/skills/openai-codex/mcp-server
-          mkdir -p $out/opt/agentbox/skills/openai-codex
-          cp -rL ${codexMcpPkg}/package $out/opt/agentbox/skills/openai-codex/mcp-server
-          ''}
           ${lib.optionalString ((toolchainCfg.ruflo or false) || (toolchainCfg.claude_flow or false)) ''
           rm -rf $out/opt/agentbox/skills/lazy-fetch/mcp-server
           mkdir -p $out/opt/agentbox/skills/lazy-fetch

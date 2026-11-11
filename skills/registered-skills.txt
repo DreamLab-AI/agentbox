@@ -22,7 +22,7 @@
 # its description in every turn's context.
 
 # --- browser / web automation (GPU browsercontainer sidecar) ---
-# playwright (manifest-disabled, superseded), qe-browser (live via agentic-qe MCP)
+# qe-browser (live via agentic-qe MCP)
 # and browser-automation (router, reached via /route) were demoted 2026-09-09.
 browser
 chrome-cdp

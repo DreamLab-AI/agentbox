@@ -32,7 +32,7 @@ DeepSeek acts as the reasoning planner; Claude executes.
 - Straightforward code generation or editing — Claude handles this directly.
 - Web research or live information — use perplexity-research.
 - Code review on GitHub PRs — use github-code-review.
-- OpenAI model delegation — use openai-codex or codex-companion.
+- OpenAI model delegation — use codex-companion.
 - Latency-sensitive tasks — DeepSeek adds 2-5s per call; use Claude directly.
 
 ## Tools (MCP)

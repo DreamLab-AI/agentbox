@@ -125,7 +125,7 @@ wasm-pack build --target web --release
 
 - `rust-development` - Rust toolchain and patterns
 - `performance-analysis` - Profiling and optimization
-- `playwright` - Visual testing of graphics output
+- `browser` - Visual testing of graphics output
 
 ## References
 

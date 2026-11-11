@@ -12,7 +12,7 @@ description: >
 
 Lightweight Chrome DevTools Protocol CLI. Connects directly via WebSocket to live
 Chrome sessions — no Puppeteer, instant connection to existing tabs. Reach for this
-over the `browser`/`playwright` skills only when you need raw CDP domain calls or the
+over the `browser` skills only when you need raw CDP domain calls or the
 `cdp.mjs` command surface; for ordinary automation those MCP-backed skills are simpler.
 
 ## Chrome target
@@ -82,5 +82,4 @@ The full catalogs and workflows are in [`references/reference.md`](references/re
 - **browser** — canonical sidecar path (chrome-devtools-mcp SSE). Owns the shared
   sidecar setup block; start here for ordinary browser automation.
 - **browser-automation** — meta skill routing to the right browser tool.
-- **playwright** — browser automation via the same sidecar (chrome-devtools-mcp SSE).
 - **host-webserver-debug** — HTTPS bridge for Docker-to-host servers.

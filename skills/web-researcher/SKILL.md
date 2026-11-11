@@ -57,7 +57,7 @@ Verifiable citations needed? → web-researcher (this)
 | **Verifiable, reputation-attached research** — real citations, full sources, you control which domains are searched (lenses), private/local; client work, filings, publications, medical/legal/finance | **`web-researcher`** (this) |
 | **Multi-agent deep report** — fan-out + adversarial verification + cited synthesis (orchestrates searchers; can use any of the above as a backend) | **`deep-research`** |
 | Expand a single known URL | **`scrape_page`** (this skill, full text/PDF/YouTube) ; JS-rendered → **`browser`** sidecar |
-| Interactive browser (login/click/JS render) | **`browser`** / **`playwright`** |
+| Interactive browser (login/click/JS render) | **`browser`** |
 
 ## When To Use
 
@@ -74,7 +74,7 @@ Verifiable citations needed? → web-researcher (this)
 
 - Quick casual lookup, no citing needed → `perplexity-research` or Claude built-in search.
 - Single known URL summary → `scrape_page` (this skill); JS-rendered → `browser` sidecar.
-- Interactive browser flows (login, click, form-fill) → `browser` / `playwright`.
+- Interactive browser flows (login, click, form-fill) → `browser`.
 - WebGPU/WebGL rendering validation → `browser` / `chrome-cdp`.
 - Multi-agent report with adversarial verification → `deep-research` (it can call this skill).
 - Iterative metric-optimisation experiment loops → `autoresearch`.

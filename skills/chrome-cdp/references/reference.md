@@ -9,7 +9,7 @@ end-to-end WebGPU workflow.
 The sidecar exposes Google's `chrome-devtools-mcp` (40+ tools) over SSE at port 8931.
 Each SSE connection spawns a dedicated `chrome-devtools-mcp` subprocess attached to the
 persistent Chrome instance. This is the preferred way for Claude Code agents to interact
-(and is the surface the `browser` / `playwright` skills use).
+(and is the surface the `browser` skills use).
 
 ```bash
 # Health check

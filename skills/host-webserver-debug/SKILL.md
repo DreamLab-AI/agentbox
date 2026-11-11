@@ -22,11 +22,11 @@ Bridge HTTPS→HTTP so a browser can hit a web server running on the Docker **ho
 inside a container, with a proper secure-context origin. This skill owns only the
 container-specific **HTTPS-bridge proxy**; all browser work (navigate, screenshot,
 DevTools) is delegated to the **browsercontainer sidecar** via `chrome-devtools-mcp` — see
-the `browser` and `playwright` skills. There is no local Playwright/Chromium here.
+the `browser` skill. There is no local browser here.
 
 ## When not to use
 
-- General browser automation, form filling, scraping → `browser` / `playwright`.
+- General browser automation, form filling, scraping → `browser`.
 - Summarising page content → `web-summary` / `gemini-url-context`.
 - API testing without a browser → `curl` / `httpx`.
 - Apps not running on the Docker host → standard debugging tools.
@@ -91,5 +91,4 @@ The sidecar Chrome ignores certificate errors, so self-signed bridge certs are a
 ## Related skills
 
 - **browser** — canonical browsercontainer sidecar owner (screenshots, navigation).
-- **playwright** — higher-level automation over the same sidecar.
 - **chrome-cdp** — raw CDP debugging via the sidecar.

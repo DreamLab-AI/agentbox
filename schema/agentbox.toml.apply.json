@@ -539,7 +539,7 @@
     "toolchains.codex": {
       "class": "rebuild",
       "name": "OpenAI Codex CLI + MCP",
-      "summary": "Rust-native codex binary (musl) + openai-codex MCP server; consultant + QE-court provider."
+      "summary": "Rust-native codex binary (musl); consultant + QE-court provider."
     },
     "toolchains.cuda": {
       "class": "rebuild",

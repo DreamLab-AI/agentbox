@@ -47,7 +47,7 @@ searched and citations aren't independently verifiable.
 
 - Known URLs needing expansion → use `gemini-url-context`
 - YouTube transcript summarisation → use `web-summary`
-- Interactive browser automation → use `browser` or `playwright`
+- Interactive browser automation → use `browser`
 - arXiv/PubMed/IEEE structured metadata search → use `web-researcher` (`academic_search`)
 - Patent search → use `web-researcher` (`patent_search`)
 - Multi-agent research with provenance verification → use `deep-research`
