@@ -109,14 +109,14 @@ Comprehensive WCAG 2.1 AA guide (POUR, semantic HTML, ARIA patterns): [accessibi
    - Test at each stage
 
 4. **Validate:**
-   - Use playwright MCP to test visual changes
+   - Use the browser skill (browser-gpu MCP) to test visual changes
    - Check across different screen sizes
    - Verify accessibility
 
 ### Testing Checklist
 
 **Visual Testing:**
-- Use playwright MCP when available for automated testing
+- Use the browser skill (browser-gpu MCP) when available for automated testing
 - Check responsive behavior at common breakpoints
 - Verify touch targets on mobile
 - Test with different content lengths (short, long, edge cases)

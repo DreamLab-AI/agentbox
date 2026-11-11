@@ -419,7 +419,7 @@ export function MobileNav() {
 ### Playwright Testing
 
 ```typescript
-// Use playwright MCP to test responsive breakpoints
+// Use the browser skill (browser-gpu MCP) to test responsive breakpoints
 await page.setViewportSize({ width: 375, height: 667 }); // iPhone SE
 await page.screenshot({ path: 'mobile.png' });
 
