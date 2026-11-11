@@ -1,6 +1,6 @@
 ---
 name: agentic-jujutsu
-description: "Use the baked Jujutsu CLI (`jj`), a Git-compatible VCS with an operation log and automatic working-copy commits, to restructure local work: split, squash, reorder and undo commits safely, colocated with a Git repo. Use when tidying a branch before review or recovering from a bad rebase. Not for PRs, CI or releases (use github-workflow-automation)."
+description: "Restructures a branch's commit history with the baked Jujutsu CLI (`jj`), colocated with a Git repo: split, squash, reorder and rewrite commits, and recover from a bad rebase through its operation log. Use when someone asks for jj or wants a messy commit history tidied before review. Not for undoing a single file edit or a plain git commit or push, nor for PRs, CI or releases (github-workflow-automation)."
 ---
 
 # Jujutsu (`jj`) for agents
