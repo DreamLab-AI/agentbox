@@ -5,8 +5,8 @@ version or debugging registration.
 
 ## Current deployment (verified 2026-08-21)
 
-The deployed Nix binary is **`web-researcher-mcp-1.43.0`** (resolved on `$PATH` from
-`/nix/store/…-web-researcher-mcp-1.43.0/bin`). The full v1.33+ toolset is registered and
+The deployed Nix binary is **`web-researcher-mcp-1.50.3`** (resolved on `$PATH` from
+`/nix/store/…-web-researcher-mcp-1.50.3/bin`). The full v1.33+ toolset is registered and
 live — confirmed against the running server's `tools/list` (21 tools; see SKILL.md table).
 
 > Historical note: an earlier deployment shipped only the original 8 v1.2.2 tools

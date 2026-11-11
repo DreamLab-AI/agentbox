@@ -15,7 +15,7 @@ description: >
   NOT for quick uncited lookups (use perplexity/ceramic), interactive browser
   flows or JS-rendered pages (headless scrape tier DISABLED here → delegate to
   `browser`), or grounding in our own ontology (use ontology-augment).
-version: 1.43.0
+version: 1.50.3
 triggers:
   - /research
   - web search
@@ -28,7 +28,7 @@ triggers:
   - news search
   - multi-source research
 upstream: https://github.com/zoharbabin/web-researcher-mcp
-upstream_version: 1.43.0
+upstream_version: 1.50.3
 license: MIT
 depends_on_mcps:
   - web-researcher
