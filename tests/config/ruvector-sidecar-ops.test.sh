@@ -265,6 +265,23 @@ STUB_VERIFIER="md5abc" STUB_OWNER_PW="pencil" run h-md5 hba-harden --yes
   && _ok "a non-SCRAM owner verifier refuses" || _bad "non-SCRAM refusal" "$(tail -3 "$T/h-md5.out")"
 
 # ═════ status / check: the trust audit ═════
+# A real second credential arrives after a Docker round trip. The selection
+# must consume it even though only the first password is used by the probe.
+selection=$(sed -n '/^cmd_hba_harden() {/,/^}/p' "$SCRIPT" | sed -n '/^    owner_pw=/p')
+SELECTION="$selection" bash -e -o pipefail -c '
+  owner_client_passwords() {
+    printf "container\tpencil\n"
+    sleep 0.1
+    printf "client-file\tpencil\n"
+  }
+  eval "$SELECTION"
+  [[ "$owner_pw" = pencil ]]
+' > "$T/h-drain.out" 2>&1 \
+  && _ok "post-reload credential selection drains a delayed second result without SIGPIPE" \
+  || _bad "post-reload credential selection exited before network verification"
+! grep -q pencil "$T/h-drain.out" \
+  && _ok "credential selection does not print the password" || _bad "credential selection leaked the password"
+
 run s-trust status
 [ "$(rc s-trust)" = 0 ] && _has "$T/s-trust.out" "pg_hba TRUST on a non-loopback address" && _has "$T/s-trust.out" "line 128: host|{all}|{all}|172.18.0.0|trust" \
   && _ok "status warns loudly and names each non-loopback trust rule (exit 0)" || _bad "status trust banner" "$(tail -6 "$T/s-trust.out")"

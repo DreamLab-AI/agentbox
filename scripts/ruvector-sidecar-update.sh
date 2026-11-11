@@ -1817,7 +1817,9 @@ cmd_hba_harden() {
 
     # Network-path proof: connect to the container's own non-loopback address.
     ip=$(docker inspect "$CONTAINER" --format '{{range .NetworkSettings.Networks}}{{.IPAddress}} {{end}}' | awk '{print $1}')
-    owner_pw=$(owner_client_passwords | head -1 | cut -f2)
+    # Drain every credential: head exits before the second Docker read returns,
+    # giving the producer SIGPIPE under pipefail after pg_hba was reloaded.
+    owner_pw=$(owner_client_passwords | awk 'NR == 1 { sub(/^[^\t]*\t/, ""); print }')
     local restore=0
     if ! PGPASSWORD="$owner_pw" docker exec -e PGPASSWORD "$CONTAINER" psql -h "$ip" -U "$PG_USER" -d "$PG_DB" -tAc "SELECT 1;" >/dev/null 2>&1; then
         fail "owner login over ${ip} with its password failed"; restore=1
