@@ -10,7 +10,6 @@ Agent URN: urn:agentbox:agent:claude-core
 
 Tools:
 - claude
-- openai-codex
 - codex-companion
 - skill-router
 - lazy-fetch
@@ -19,7 +18,6 @@ Recommended skills:
 - skill-router
 - lazy-fetch
 - codebase-memory
-- openai-codex
 - codex-companion
 
 Progressive disclosure index: /opt/agentbox/skills/SKILL-DIRECTORY.md

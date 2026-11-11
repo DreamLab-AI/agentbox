@@ -6,7 +6,7 @@ description: >
   anti-bot protections (Cloudflare Turnstile); for internal infrastructure monitoring;
   for authorized client site scraping; or for building spiders. Triggers on: "scrape",
   "crawl", "extract data from website", "bypass cloudflare", "monitor our dashboard",
-  "spider", "bulk scrape". NOT for browser automation (use playwright/browser instead).
+  "spider", "bulk scrape". NOT for browser automation (use the browser skill instead).
 version: "0.4.3"
 author: D4Vinci (Karim Shoair)
 mcp_server: true
@@ -30,7 +30,7 @@ status: not-installed
 
 ## When Not to Use
 
-- For browser automation (clicking, form filling, testing) — use `playwright` or `browser-automation`
+- For browser automation (clicking, form filling, testing) — use `browser` or `browser-automation`
 - For simple URL content fetching — use `web_fetch` or `gemini-url-context`
 - For API testing — use `curl` directly
 - For LinkedIn/Reddit/social scraping — use dedicated `linkedin` or `reddit` skills

@@ -44,7 +44,7 @@ Live meeting transcription + AI coaching. Captures dual audio (system speakers +
 - For pre-recorded audio/video processing — use `ffmpeg-processing`
 - For generating podcasts from text — use `notebooklm` (audio overviews)
 - For video production — use `open-montage`
-- For browser-based meeting automation — use `playwright`
+- For browser-based meeting automation — use `browser`
 
 ## Architecture
 

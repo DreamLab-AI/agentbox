@@ -35,7 +35,7 @@ FFmpeg 8.0 for video/audio transcoding, editing, streaming, and analysis. The re
 - AI-generated images/video from text -- use `comfyui`
 - 3D rendering and scene creation -- use `blender`
 - Diagrams or charts -- use `mermaid-diagrams` or `report-builder`
-- Browser-based playback testing -- use `playwright` or `browser`
+- Browser-based playback testing -- use `browser`
 
 ## Recipe Index
 
@@ -240,5 +240,5 @@ ffmpeg -y -i input.mp4 -c:v libx264 -pix_fmt yuv420p -c:a copy output.mp4
 - **comfyui** -- AI-generated media
 - **blender** -- 3D scenes
 - **jupyter-notebooks** -- analyse media with Python
-- **playwright** -- verify playback in a browser
+- **browser** -- verify playback in a browser
 - **clipcannon** -- AI-driven video editing (moment-finding, captions, voice clone, lip-sync); use this skill for plain transcode/mux/filter work instead

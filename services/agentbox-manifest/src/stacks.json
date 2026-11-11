@@ -1,7 +1,7 @@
 {
   "claude-core": {
-    "tools": ["claude", "openai-codex", "codex-companion", "skill-router", "lazy-fetch"],
-    "skills": ["skill-router", "lazy-fetch", "codebase-memory", "openai-codex", "codex-companion"],
+    "tools": ["claude", "codex-companion", "skill-router", "lazy-fetch"],
+    "skills": ["skill-router", "lazy-fetch", "codebase-memory", "codex-companion"],
     "env": ["ANTHROPIC_API_KEY", "OPENAI_API_KEY", "OPENAI_DEFAULT_MODEL"]
   },
   "ruflo-orchestrator": {
@@ -10,9 +10,9 @@
     "env": ["RUVECTOR_PORT", "RUVECTOR_DATA_DIR", "NOSTR_RELAYS"]
   },
   "qe-fleet": {
-    "tools": ["agentic-qe", "aqe", "playwright", "chromium"],
-    "skills": ["visioncraft", "browser-automation", "playwright", "chrome-cdp"],
-    "env": ["PLAYWRIGHT_TIMEOUT", "DISPLAY", "SCREENSHOT_DIR"]
+    "tools": ["agentic-qe", "aqe", "chromium"],
+    "skills": ["visioncraft", "browser-automation", "browser", "chrome-cdp"],
+    "env": ["DISPLAY", "SCREENSHOT_DIR"]
   },
   "nagual-qe": {
     "tools": ["nagual-qe", "agentic-qe", "aqe"],
@@ -67,8 +67,8 @@
     "extra_dirs": [".config/opencode"]
   },
   "codex": {
-    "tools": ["openai-codex", "codex"],
-    "skills": ["skill-router", "lazy-fetch", "codebase-memory", "openai-codex"],
+    "tools": ["codex"],
+    "skills": ["skill-router", "lazy-fetch", "codebase-memory", "codex-companion"],
     "env": ["OPENAI_API_KEY"],
     "no_claude_settings": true,
     "extra_dirs": [".codex"]

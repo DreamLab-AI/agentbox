@@ -30,7 +30,7 @@ LLM retrieval source where you need dense context, not just snippets.
 - Citation verification, audit, or bibliography formatting → `web-researcher`
 - Conversational/natural-language queries (Ceramic is exact-match, not semantic)
 - Known URL expansion → `gemini-url-context`
-- Interactive browser automation → `browser` / `playwright`
+- Interactive browser automation → `browser`
 - Multi-agent deep research → `deep-research`
 
 ## Quick start

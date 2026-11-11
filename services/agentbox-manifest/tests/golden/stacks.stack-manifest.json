@@ -6,7 +6,6 @@
     "claude-core": {
       "tools": [
         "claude",
-        "openai-codex",
         "codex-companion",
         "skill-router",
         "lazy-fetch"
@@ -15,7 +14,6 @@
         "skill-router",
         "lazy-fetch",
         "codebase-memory",
-        "openai-codex",
         "codex-companion"
       ],
       "env": [
@@ -47,17 +45,15 @@
       "tools": [
         "agentic-qe",
         "aqe",
-        "playwright",
         "chromium"
       ],
       "skills": [
         "visioncraft",
         "browser-automation",
-        "playwright",
+        "browser",
         "chrome-cdp"
       ],
       "env": [
-        "PLAYWRIGHT_TIMEOUT",
         "DISPLAY",
         "SCREENSHOT_DIR"
       ]
@@ -218,14 +214,13 @@
     },
     "codex": {
       "tools": [
-        "openai-codex",
         "codex"
       ],
       "skills": [
         "skill-router",
         "lazy-fetch",
         "codebase-memory",
-        "openai-codex"
+        "codex-companion"
       ],
       "env": [
         "OPENAI_API_KEY"

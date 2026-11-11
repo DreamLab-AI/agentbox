@@ -1364,9 +1364,6 @@ _probe_closure() {
 
 _probe_closure /opt/agentbox/management-api
 _probe_closure /opt/agentbox/mcp
-if [ "${ENABLE_CODEX:-false}" = "true" ]; then
-  _probe_closure /opt/agentbox/skills/openai-codex/mcp-server
-fi
 if [ "${ENABLE_RUFLO:-false}" = "true" ] || [ "${ENABLE_CLAUDE_FLOW:-false}" = "true" ]; then
   _probe_closure /opt/agentbox/skills/lazy-fetch/mcp-server
 fi

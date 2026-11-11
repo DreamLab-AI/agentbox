@@ -33,7 +33,7 @@ response shapes.
 
 - For YouTube video transcript extraction -- use the web-summary skill instead (Gemini does not support YouTube)
 - For broad web search across many sources -- use the perplexity-research skill instead
-- For browser automation, form filling, or interactive page navigation -- use the browser or playwright skills instead
+- For browser automation, form filling, or interactive page navigation -- use the `browser` skill instead
 - For summarising content you already have as text -- no URL expansion tool is needed; process it directly
 - For pages behind paywalls or requiring authentication -- Gemini URL Context cannot access restricted content
 
@@ -159,4 +159,4 @@ curl -s "https://generativelanguage.googleapis.com/v1beta/models?key=$GOOGLE_API
 Combine with:
 - `web-summary`: For YouTube transcript extraction (Gemini doesn't support YouTube)
 - `perplexity-research`: For broader web search before URL expansion
-- `playwright`: For JavaScript-rendered pages that need browser execution
+- `browser`: For JavaScript-rendered pages that need browser execution

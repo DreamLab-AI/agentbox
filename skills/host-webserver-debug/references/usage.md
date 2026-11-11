@@ -35,7 +35,7 @@ and proxies to the host's HTTP server.
 
 This skill owns the **HTTPS-bridge proxy** — the genuinely container-specific piece.
 Anything involving a real browser (navigation, screenshots, DevTools) is delegated to the
-**browsercontainer sidecar** via `chrome-devtools-mcp` (the `browser`/`playwright`
+**browsercontainer sidecar** via `chrome-devtools-mcp` (the `browser`
 skills). Do **not** run a local Playwright/Chromium on `DISPLAY :1` — that pre-sidecar
 path is deprecated and removed from this skill.
 

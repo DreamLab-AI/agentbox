@@ -31,7 +31,7 @@ service on port 9600 is retired; see `references/architecture.md`.
 
 ## When not to use
 
-- Interactive browser automation (clicking, filling forms, live scraping) — use the `browser` or `playwright` skills.
+- Interactive browser automation (clicking, filling forms, live scraping) — use the `browser` skills.
 - Multi-URL comparison or structured data extraction from URLs — use `web-researcher` (`scrape_page` / `search_and_scrape`) or the `browser` sidecar for JS-rendered pages.
 - Broad, multi-source web search with citations — use `perplexity-research` or `web-researcher`.
 - Content you already have as local text — summarise it directly without this pipeline.

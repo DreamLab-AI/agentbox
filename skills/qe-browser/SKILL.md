@@ -31,7 +31,7 @@ aqe init
 |------|-----|
 | QE-grade typed assertions, visual regression | **qe-browser** (this skill) |
 | Quick scraping, form fill, minimal context | `browser` |
-| Full browser automation, screenshots (sidecar) | `playwright` |
+| Full browser automation, screenshots (sidecar) | `browser` |
 | Inspect live logged-in Chromium tabs | `chrome-cdp` |
 | Unsure which browser tool | `browser-automation` |
 | WebGPU/GPU rendering tests | `browsercontainer` (chrome-devtools-mcp SSE) |

@@ -25,7 +25,7 @@ in the agentbox image.
 
 ## Connection (canonical)
 
-This is the canonical sidecar-connection block; the `chrome-cdp`, `playwright`,
+This is the canonical sidecar-connection block; the `chrome-cdp`
 and `browser-automation` skills point here rather than restating it.
 
 ```

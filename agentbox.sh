@@ -1719,11 +1719,6 @@ sudo dnf install -y git nodejs npm python3-pip zellij htop
 echo "Installing VNC desktop..."
 sudo dnf install -y xorg-x11-server-Xvfb x11vnc openbox xterm chromium
 
-# Install agent-browser and playwright
-echo "Installing browser automation tools..."
-sudo npm install -g agent-browser playwright
-sudo npx playwright install chromium
-
 # Create VNC startup script
 cat > ~/start-vnc.sh << 'VNCSCRIPT'
 #!/bin/bash

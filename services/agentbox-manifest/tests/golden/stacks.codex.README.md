@@ -9,13 +9,12 @@ Zellij layout: /tmp/abm-golden-stacks-ws/.config/zellij/layouts/codex.kdl
 Agent URN: urn:agentbox:agent:codex
 
 Tools:
-- openai-codex
 - codex
 
 Recommended skills:
 - skill-router
 - lazy-fetch
 - codebase-memory
-- openai-codex
+- codex-companion
 
 Progressive disclosure index: /opt/agentbox/skills/SKILL-DIRECTORY.md

@@ -132,7 +132,6 @@ behavioural fixes go through the flake overlay, not this skill.
 
 | Skill | Relationship |
 |-------|-------------|
-| `openai-codex` | Legacy MCP bridge — codex-companion is the full-featured replacement |
 | `visioncraft` | BWQ can delegate review phases to Codex for cross-model validation |
 | `github-code-review` | Codex reviews complement Claude reviews for multi-perspective analysis |
 | `vanity-engineering-review` | Run adversarial review first, then vanity check for over-engineering |

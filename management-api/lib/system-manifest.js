@@ -111,7 +111,7 @@ const CATALOGUE = [
     summary: 'ruflo-console (the /ruflo cockpit: overview, swarms, claims, federation, plugins, learning, MetaHarness, memory and cost), ruflo-mods (/ruflo mods) and ruflo-swarm (/ruflo swarm …), baked from the pinned ruflo v3.51.1 tag (flake input rufloConsole, only the three plugin directories) into the `agentbox` marketplace. REBUILD-class: the plugins and the ruflo closure are gated in flake.nix; the entrypoint then registers them at /opt paths, enables them, sets userConfig cli=ruflo (the baked bin; npx-offline fails without a warm npm cache) and keeps CLAUDE_CODE_ENABLE_FUNCTION_HOOKS on. Off unregisters the three ids. Needs Claude Code >= 2.1.287.' },
   { id: 'codex', name: 'OpenAI Codex CLI + MCP', layer: 'module',
     gate: 'toolchains.codex', apply_class: 'rebuild',
-    summary: 'Rust-native codex binary (musl) + openai-codex MCP server; consultant + QE-court provider.' },
+    summary: 'Rust-native codex binary (musl); consultant + QE-court provider.' },
   { id: 'model-routing', name: 'Model routing (Claude/Codex per activity)', layer: 'module',
     gate: 'model_routing.enabled', apply_class: 'boot',
     summary: 'ADR-041: [model_routing.routes] projected every boot into .agentic-qe/llm-config.json agentOverrides (aqe >= 3.13.1, #568) + AQE_LLM_PROVIDER on the aqe MCP env; dual_run stays experimental (ruflo #2766).' },
