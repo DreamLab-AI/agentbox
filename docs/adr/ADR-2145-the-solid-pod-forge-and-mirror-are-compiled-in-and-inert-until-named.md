@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: f475e0b8ee370610132d1920f1e64a82f83311ce
+verified_commit: 5d111477b614d88b2462cd2f04039e5f7c7369c6
 verified_paths: [lib/solid-pod-rs.nix, lib/solid-pod-rs.cargo-lock, flake.nix, agentbox.toml, scripts/ci/check-manifest-catalogue.js]
 owner: jjohare
 review_trigger: the first image rebuilt with this pin; any change to the forge block defaults (open_edit, allow_mainnet, mirror_follow); a solid-pod-rs release that changes the forge feature names; a second operator
@@ -15,6 +15,16 @@ repo: agentbox
 ---
 
 # ADR-2145 — The solid-pod forge and mirror are compiled into the native pod and inert until relays and follows are named
+
+## Scoped source check — 2026-11-11
+
+Solid and bridge pins move to alpha.22 (`bc6d9d8`): hermetic MCP Jev tests,
+cap-primitives/rustix advisory bumps and a dated RUSTSEC-2026-0459 ignore.
+The Cargo.toml delta from alpha.21 is version strings only: forge feature
+names (`forge-full`), crate features and forge-block defaults are unchanged,
+so the inert-until-named claim holds. Upstream CI (stable, beta,
+`--all-features`) is green and the bridge's 219 tests pass against it.
+Runtime acceptance remains with the next image rebuild.
 
 ## Scoped source check — 2026-11-09
 

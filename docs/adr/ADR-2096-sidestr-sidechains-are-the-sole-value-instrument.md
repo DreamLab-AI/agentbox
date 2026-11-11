@@ -27,6 +27,14 @@ and snapshot repairs. The `sidestr-agent` package tests and Nix parsing pass.
 This prepares the next image build and does not change a running chain, fund a
 wallet or relax ADR-2100's real-value settlement gate.
 
+Source refresh, 2026-11-11: `lib/sidestr-agent.nix` moves to
+`60259e848795d0cd5c5718ca5d0eb658f69fd0d7` (verified Nix unpack hash; the
+previous hash was reproduced by the same method first). The delta since
+`7f046444` is test- and doc-only (a reserve attestation test, a `sign_pledge`
+doctest, ledger rows); `Cargo.lock` is byte-identical, so no compiled code
+changes. Upstream fmt, clippy `-D warnings`, tests and docs pass. It changes
+no running chain, wallet or settlement gate.
+
 The estate has a working HTTP 402 economy (sell side `payment-gate.js`, buy side `pay402.js`,
 `spend-policy.js`, `consumer-payer.js`, `receipt-minter.js`) whose balance is a JSON Web Ledger
 in solid-pod-rs, plus two more unsynced ledgers (host `pay_handler.rs`, forum D1). No rail moves

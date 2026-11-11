@@ -35,7 +35,12 @@
 
 let
 
-  # Pin: 27e1899 (v0.5.0-alpha.21 workspace, 2026-11-08). openidconnect 4.1
+  # Pin: bc6d9d8 (v0.5.0-alpha.22, 2026-11-11): hermetic MCP Jev tests (the
+  # fixture clears SOLID_POD_JEV), cap-primitives 3.4.6 (RUSTSEC-2026-0482),
+  # rustix 1.1.6 (RUSTSEC-2026-0486), a dated ignore for RUSTSEC-2026-0459
+  # (libsqlite3-sys via sqlx-sqlite 0.8, review by 2026-12-20) and the
+  # #12-#15 nightly fixes; server code otherwise unchanged since alpha.21.
+  # alpha.21 (27e1899, 2026-11-08): openidconnect 4.1
   # (p256 0.14) takes RUSTSEC-2026-0387 (crypto-bigint 0.5.5) off the OIDC
   # path, actix-web 4.13 -> 4.18 clears RUSTSEC-2026-0177/0178, and the
   # #12-#14 nightly fixes ship (owner-gated pod writes, strict Content-Length,
@@ -58,12 +63,12 @@ let
   #   3. Lockfile: `git -C ../solid-pod-rs show <tag>:Cargo.lock > lib/solid-pod-rs.cargo-lock`
   #      (upstream ships its Cargo.lock since 0.5.0; the vendored copy keeps the
   #      Nix build hermetic and byte-identical to the tag).
-  version = "0.5.0-alpha.21";
+  version = "0.5.0-alpha.22";
 
   # Includes the full external-review follow-up and retains the existing Jev gate.
-  rev     = "27e18995fc20790fa956acb41f7d8420544a13ec";
+  rev     = "bc6d9d837bfb7638a4e7698fba9b8c22f4152cf2";
 
-  srcHash = "sha256-v1caiCMFMpN5SyJ4KFNusq4Dr6kt7E3+IMIIaUvj71w=";
+  srcHash = "sha256-VtAsOF6XKarcwzQu+0fZdCpUTR3GSUWRPL1d7MkX704=";
 
   cargoLockFile = ./solid-pod-rs.cargo-lock;
 
