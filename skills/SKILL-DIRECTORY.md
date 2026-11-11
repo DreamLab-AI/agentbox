@@ -1,6 +1,6 @@
 # Skill Directory -- Comprehensive Inventory and Decision Tree
 
-> **136 active skills**. Categorised inventory (Artefact 1), decision tree (Artefact 2), composition patterns, MCP summary. Skills self-trigger from their frontmatter `description`; the always-loaded subsets are `registered-skills.txt` (Claude Code) and `codex-registered-skills.txt` (Codex); everything else is reached through `skill-router` (`/route`) and its generated `references/routing-table.md`. Facts here are gated: `scripts/skill-count-check.js` (count), `lint-skills.sh` (every skill named here, section map, routing table current).
+> **123 active skills**. Categorised inventory (Artefact 1), decision tree (Artefact 2), composition patterns, MCP summary. Skills self-trigger from their frontmatter `description`; the always-loaded subsets are `registered-skills.txt` (Claude Code) and `codex-registered-skills.txt` (Codex); everything else is reached through `skill-router` (`/route`) and its generated `references/routing-table.md`. Facts here are gated: `scripts/skill-count-check.js` (count), `lint-skills.sh` (every skill named here, section map, routing table current).
 > Updated 2026-09-09 (estate re-audit for Fable 5.1 / GPT-6 Astra workloads; history in `CHANGELOG.md` and `docs/adr/`). Reference this file from CLAUDE.md for intelligent routing.
 
 ---
@@ -32,13 +32,13 @@
 
 ---
 
-## Artefact 1: Categorised Skill Inventory (136 Active Skills)
+## Artefact 1: Categorised Skill Inventory (123 Active Skills)
 
 ### Context, Discovery, and Session Management
 
 | Skill | MCP | Key Capability | When to Choose |
 |-------|-----|----------------|----------------|
-| `skill-router` | No | **Unified dispatcher** for 136 skills. `/route [task]` classifies intent and routes to optimal skill. Single entry point | Don't know which skill to use — describe your task and get routed |
+| `skill-router` | No | **Unified dispatcher** for 123 skills. `/route [task]` classifies intent and routes to optimal skill. Single entry point | Don't know which skill to use — describe your task and get routed |
 | `lazy-fetch` | Yes | 25 MCP tools: context hydration, plan tracking, blueprints, PRD-to-sprints, security scanning, persistent memory | Starting a new session, managing context across tasks, tracking phased plans, running autonomous PRD execution |
 | `skill-builder` | No | Create new Claude Code skills with YAML frontmatter and progressive disclosure | Building new custom skills for the skills directory |
 | `skill-tuning` | No | Empirically optimize an existing skill against a measurable reward via the SkillOpt loop + noise-robust held-out A/B (single-optimizer vs mesh arms). Live harness in skillopt-lab | Tuning a skill by evidence — raising an agent's success rate on a bounded scoreable task, not eyeballing prose |
@@ -71,7 +71,7 @@ Phase 1 surfaces require `[skills.code_interpreter] enabled = true` (kernel MCP)
 | `verification-quality` | No | Truth scoring (0.0-1.0), automatic rollback at 0.95 threshold, CI/CD export | Ensuring code correctness with truth-score verification and auto-rollback |
 | `explainer` | No | **Explain-this-codebase family hub**: shared core (seven-question comprehension arc, claims ledgers to file:line, scope ringfence, stop-before-fixing-product-code rule, gates A–E) plus three delivery references — docs bundle (three audience documents + RuVector `<repo>-kb`), instructional microsite (formerly `repo-education`), video (hands off to `codebase-video`). Microsite chapters are Markdown gated by `voice-lint.sh`, an independent range check and `anatomy-coverage.mjs` (`references/microsite/reader-voice.md`); drafting runs on the connected node model through the Loom façade with the scaffold declined per request (ADR-139), the direct vision path a documented exception | Explaining, onboarding or handing over a repo or product to people who did not build it ("explain this to the CEO", "handover doc", "repo primer", "teaching site", "what does this actually do"); pairs with `docs-alignment` (corpus audit) and `design-audit` (visual polish) |
 | `docs-alignment` | No | 15-agent swarm for documentation validation, Diataxis framework, link coverage, Mermaid diagrams | Validating and modernising project documentation against codebase |
-| `security-testing` | No | OWASP Top 10 validation, auth/authorisation testing, API security, dependency CVE scanning, secrets detection, SAST/DAST | Application-layer security testing for web services and APIs (not Linux hardening — use `defense-security` for that) |
+| `security-testing` | No | OWASP Top 10, auth/authorisation and API testing; baked `semgrep` (SAST), `gitleaks` (secrets) and `trivy` (dependencies, misconfiguration, images) | Application-layer security testing for web services and APIs (host hardening is out of scope) |
 | `prose-sanitiser` | No | Remove LLM writing fingerprints: em-dash overuse, "The X" headings, tier-1 slop vocabulary, sycophantic filler, structural tells. Substance-first editorial method, draft review (keep/revise/ask-author/cut), interview-driven co-writing. Enforces UK English. Deterministic layers run on the `sanitise` binaries from [dreamlab-AI/prose-sanitiser](https://github.com/DreamLab-AI/prose-sanitiser) | Cleaning public-facing content, docs, articles, or presentations that should read as human-authored; reviewing or co-writing drafts; fixing hollow or generic prose |
 
 ### Testing and QA
@@ -94,7 +94,6 @@ Testing is integrated into `visioncraft` (TDD agents) and `sparc-methodology` (T
 |-------|-----|----------------|----------------|
 | `swarm-advanced` | No | Advanced swarm patterns: mesh, hierarchical, adaptive topologies, fault tolerance | Local multi-agent orchestration for research, dev, and testing |
 | `hive-mind-advanced` | No | Queen-led hierarchical coordination, Byzantine consensus, collective memory | When you need consensus-driven multi-agent decisions |
-| `flow-nexus-swarm` | No | Cloud-based AI swarm deployment, event-driven workflows, message queues | Deploying swarms on Flow Nexus cloud infrastructure ⚠️ NOT INSTALLED — requires Flow Nexus account |
 | `stream-chain` | No | Sequential multi-agent pipelines where output chains between steps | When each agent's output feeds the next (sequential, not parallel) |
 | `hooks-automation` | No | Pre/post task hooks, session management, Git hooks, neural training | Automating development operations with intelligent hooks |
 
@@ -114,10 +113,8 @@ Testing is integrated into `visioncraft` (TDD agents) and `sparc-methodology` (T
 | Skill | MCP | Key Capability | When to Choose |
 |-------|-----|----------------|----------------|
 | `pytorch-ml` | No | PyTorch, CUDA GPU, data science stack, distributed training | Deep learning model training and research |
-| `cuda` | Yes | 4 specialist agents, kernel optimisation, compilation, GPU profiling | Custom CUDA kernel development and GPU programming |
-| `flow-nexus-neural` | Yes | Distributed neural network training in E2B sandboxes (feedforward, LSTM, GAN, transformer) | Training models in cloud sandboxes via Flow Nexus ⚠️ NOT INSTALLED — requires Flow Nexus account |
+| `cuda` | No | Four specialist roles, kernel optimisation, `nvcc` builds, `compute-sanitizer`, CUDA-event timing (Nsight runs on the host) | Custom CUDA kernel development and GPU programming |
 | `deepseek-reasoning` | Yes | DeepSeek special model endpoint, structured chain-of-thought, multi-step reasoning | Complex reasoning tasks requiring DeepSeek's reasoning model |
-| `openai-codex` | Yes | GPT-6 Astra code generation and review via MCP bridge | Delegating specific tasks to GPT-6 Astra capabilities |
 | `codex-companion` | No | Full OpenAI Codex plugin: code review, adversarial review, rescue agent, GPT-6 Astra structured prompting, stop-review gate | Cross-model validation, when Claude is stuck, adversarial design review, substantial code delegation |
 | `system-one` | No | Typed AI judgments as programming primitives via TypeSafe's System One API (model Jev): `Choice` / `Score` / `Noul` questions evaluated in parallel against one `state`, returning a typed value plus a probability distribution your code branches on — no prose, no parsing. Live vendor docs are the source of truth and are read per task; `references/` holds the estate's egress boundary, integration map and calibration discipline. **Foundation — no integration wired yet** | Replacing an LLM prompt-and-parse step with a structured decision; routing, reranking, extraction, moderation, guardrails, verification, ML feature extraction, KG annotation; or the user asks for TypeSafe or Jev by name. NOT for generating text or code, and NOT before the egress decision in `references/data-boundary.md` |
 
@@ -127,11 +124,9 @@ Testing is integrated into `visioncraft` (TDD agents) and `sparc-methodology` (T
 |-------|-----|----------------|----------------|
 | `browser-automation` | No | **Meta-skill**: decision framework for choosing between 6 browser tools + Claude in Chrome (official) | Unsure which browser tool to use -- start here |
 | `browser` | No | Browser automation via the external browsercontainer sidecar (chrome-devtools-mcp SSE) | Page navigation, screenshots, form fills, JS eval |
-| `playwright` | No | Browser automation via the external browsercontainer sidecar (chrome-devtools-mcp 40+ tools, Chrome Beta 149+) | Full browser interaction, WebGPU/WebGL validation, visual testing. ⚠️ `[skills.browser] playwright = false` (superseded by `browser`); reference-only, not always-loaded |
-| `qe-browser` | No | **Vibium** (WebDriver BiDi, W3C standard, 10MB vs 300MB Playwright). 16 typed assertion kinds, multi-step batch pre-validation, pixel-perfect visual-diff baselines, 14-pattern prompt-injection scanner, 15-intent semantic element finder (`submit_form`, `accept_cookies`, `primary_cta`, …). Part of AQE fleet — installed via `aqe init`. 11 QE skills delegate to it (a11y, visual, security, localization, etc.) | QE-grade browser testing with typed assertions and visual regression; AQE fleet integration; when Playwright is too heavy ⚠️ NOT INSTALLED — run aqe init to install |
+| `qe-browser` | No | Visual diff, accessibility and URL checks through the live agentic-qe MCP tools, with the `browser` sidecar for navigation and snapshots | QE-grade checks of a running page |
 | `chrome-cdp` | No | CDP CLI for live Chromium sessions, 100+ tabs, no Puppeteer dependency | Inspecting already-open browser tabs, logged-in sessions |
 | `host-webserver-debug` | Yes | HTTPS-to-HTTP bridge for debugging host web servers from Docker | Cross-origin/CORS issues when accessing host dev servers |
-| `scrapling` | Yes (⚠️ NOT BAKED — `pip install "scrapling[all]"` + `scrapling install` first) | Adaptive web scraping: 9 MCP tools, Cloudflare Turnstile bypass, stealth browser, spider framework with pause/resume | Web scraping, internal infra monitoring, authorized client scraping, anti-bot bypass |
 
 > Note: The browsercontainer sidecar (Chrome + CDP + MCP SSE) is Docker infrastructure, not a skill. See `browsercontainer/README.md`.
 
@@ -152,21 +147,18 @@ Testing is integrated into `visioncraft` (TDD agents) and `sparc-methodology` (T
 | `web-researcher` | Yes | **You pick the engine + trusted-domain LENSES; real, verifiable citations.** v1.43.0, 21 live tools: web/image/news/academic/patent/structured search, search_and_scrape, sequential; domain search (clinical/legal-CourtListener/econ-WorldBank+FRED/filing-SEC EDGAR); full scrape (PDF/DOCX/PPTX/YouTube/HN); **citation integrity** (verify_citation, audit_bibliography, citation_graph, archive_source/Wayback, format_bibliography); grounded `answer`; session memory+export. Backends Google PSE/Brave/Serper/SearXNG/SearchAPI/Exa; browser tier OFF → delegates to `browser` sidecar | **Reputation-attached** research needing verifiable citations: client work, filings, publications, legal/medical/finance; restrict to trusted sources via lenses; verify/audit citations |
 | `gemini-url-context` | Yes | Gemini 3.8 Flash URL expansion, up to 20 URLs per request, grounding metadata | Analysing or summarising specific known URLs |
 | `web-summary` | Yes | URL summarisation, YouTube transcript extraction, Obsidian vault topic links | Summarising articles, YouTube videos, generating note links |
-| `notebooklm` | Yes | Google NotebookLM SDK: notebooks, sources, chat, audio/video/slides/quiz/report generation | Research automation, podcast generation, study material creation, knowledge management |
 | `linkedin` | Yes | LinkedIn profile/job/company scraping, messaging, people search via browser automation | LinkedIn research, recruitment, networking, company analysis |
 | `reddit` | Yes | Reddit browsing, search, user analysis, post details with comment threads | Reddit research, community analysis, content discovery |
 | `toprank` | No | 6 SEO sub-skills: GSC audit, E-E-A-T content writing, keyword research, meta tags, schema markup, GEO | SEO audit, content optimisation, keyword research, schema markup, AI search visibility |
 | `context7` | Yes | Version-specific documentation for 800+ libraries (Next.js, Supabase, React, etc.). `resolve-library-id` + `query-docs`. Eliminates hallucination from stale training data | Writing code with external libraries, "use context7", needing current API docs |
 | `email-search` | Yes | Single tool `ask_email` over a local Private Email MCP Gateway (dreamlab-AI/email-mcp-gateway) on the LAN. Local-model synthesis + privacy filter — returns schema-abstracted, PII-masked evidence, never raw mail. Gated by `[skills.email_search] enabled = true` + `AGENTBOX_EMAIL_GATEWAY_TOKEN`; entrypoint auto-registers the streamable-HTTP server when `/health` is reachable | Questions about the owner's **personal** email — invoices, threads, "did X email me", "search for anyone called <name>". NOT for work mail, calendar, or sending |
 | `podcast-knowledge-ingest` | No | Weekly cron ingest of podcast feeds into the vault via the Rust `podcast-ingest`/`podcast-promote` binaries: transcripts, evidence packets, promotion proposals with V2 frontmatter (`[skills.podcast_ingest]`, ADR-2028 `[vault]` paths) | Standing podcast → knowledge-graph pipeline; promoting podcast evidence into pages |
-| `podcast-bulk-ingest` | No | One-off backfill of a whole podcast archive through the same Rust crate (`podcast-bulk-ingest`), with OntoCast bootstrap | Bulk/backfill ingest of an archive, not the weekly cron |
 | `youtube-transcript-archiver` | No | Archive YouTube transcripts and assets to the vault with the `yt-transcript-archive` binary; optional enrichment and summarisation | Capturing talks/interviews as searchable notes |
 
 ### Security and Compliance
 
 | Skill | MCP | Key Capability | When to Choose |
 |-------|-----|----------------|----------------|
-| `defense-security` | Yes | 31 Linux security modules, 250+ actions: firewall, hardening, CIS/HIPAA/SOC2, malware, forensics | Linux security audit, system hardening, compliance checking, incident response |
 
 ### Documentation and Reports
 
@@ -181,7 +173,6 @@ Testing is integrated into `visioncraft` (TDD agents) and `sparc-methodology` (T
 | `sealmap-review` | No | Whole-project review from a diagrams-as-code corpus in two modes. External: diagrams only (never code), one shot to Gemini 3.8 Flash at high thinking under a critical due-diligence lens and a pre-mortem lens (`scripts/external-review.cjs`, zero-dependency, `GEMINI_API_KEY`; pack-first so later lenses hit the cache; `--only` per area past 1M tokens; `--register strip` for a blind run). Inline: a Claude subagent checks topics against the code they cite (fault classes: wrong callee, missing call, invented edge, stale claim, ADR contradiction). Both emit unverified `F-nn` findings for visioncraft triage | "Review this project", an outside opinion, a pre-mortem, due diligence before running or taking over a large system, "do the diagrams still match the code". NOT a diff or PR (`code-review`), writing the corpus (`diagrams-as-code`), or a code security audit (`security-review`) |
 | `mermaid-diagrams` | No | Diagrams-as-code routing hub (routes to diagram-design or Mermaid). Mermaid engine: 25 types, SVG/PNG via Pele (`mmdc` shim), PDF via ImageMagick | Quick technical diagrams in code, version-controlled .mmd files, report/LaTeX embeds. Routes to diagram-design for editorial output |
 | `pdf-signing` | No | Cryptographic PDF signing via **pyHanko** (PAdES/eIDAS-aligned): self-signed identity generation (X.509/RSA-3072), visible signature panel, RFC-3161 timestamps, LTV, `pdfsig` verification, PKCS#11/HSM + eIDAS QES upgrade path. Private key stays in `$PDF_SIGNING_KEYS_DIR`, never in the image | "Digitally sign / e-sign this PDF/invoice/contract", a counterparty requires signed documents, generating a signing identity, verifying or timestamping a signature. NOT for stamping a signature image only (imagemagick) or form-fill (pdftk) |
-| `paperbanana` | No | Publication-quality academic figures via multi-agent VLM pipeline (Gemini/OpenAI) | Research paper figures, methodology diagrams, statistical plots |
 | `art` | No | Nano Banana 2 AI art: 16 workflows (editorial, technical diagrams, comics, maps, stats, sketchnotes), style transfer, text rendering | Blog headers, infographics, technical illustrations, editorial art, image editing |
 | `fossflow` | No | Isometric network/architecture diagrams, compact LLM-optimised format | Network topology diagrams and infrastructure maps |
 | `wardley-maps` | No | Strategic Wardley mapping from any input, component evolution, value chain visualisation | Competitive positioning, strategic analysis, technology evolution mapping |
@@ -218,15 +209,12 @@ Testing is integrated into `visioncraft` (TDD agents) and `sparc-methodology` (T
 | Skill | MCP | Key Capability | When to Choose |
 |-------|-----|----------------|----------------|
 | `ffmpeg-processing` | No | FFmpeg 8.0: transcode, edit, stream, filter, HLS/DASH/RTMP, CUDA acceleration | Video/audio conversion, editing, streaming, batch processing |
-| `echoloop` | No | Real-time meeting copilot: dual audio capture, faster-whisper/Deepgram transcription, Claude/GPT coaching loop, session logging | Live meeting coaching, transcription, meeting recap, negotiation support |
 | `imagemagick` | Yes | Format conversion, resize, crop, filter, batch ops, watermarks, metadata | Image format conversion, thumbnails, batch image processing |
 | `comfyui` | Yes | Stable Diffusion, FLUX, node-based workflows, distributed GPU (Salad Cloud) | AI image/video generation from prompts or workflows |
 | `manim` | No | Precise Python animations for algorithms, queues, graphs, equations and state changes; video, section clips and static frames | A mechanism needs motion; hands clips to codebase-video or embeds them in knowledge pages. Optional pinned runtime |
 | `motion-designer` | No | Code-only motion design film from a brief: one HTML canvas file, every frame a pure function of time, rendered frame-exact in the browser sidecar (determinism check, stills, motion blur, freeze gate), music cut to picture on the beat grid, synthesised SFX, -14 LUFS master. Holding-track path with a rights record when no licensed track exists | Motion graphics piece, motion reel, kinetic type film, animated title, logo sting |
 | `codebase-video` | No | Repository-grounded audience explainer; local ComfyUI footage, screenshots, diagrams, narration, captions and verified MP4 | Explain this codebase to a nominated audience in a complete video |
 | `video-production` | No | Directs a continuity-held multi-tool film: one versioned brief and world drive Blender, ComfyUI, Isaac Sim, speech and FFmpeg jobs with recorded sources, rational-clock timing, scoped re-renders after a changed line, shot or asset, and cross-vendor-audited acceptance. Ships a Rust runtime for hashes, clocks, receipts and gate ledger | Stop-motion or animated films, source-faithful characters or products, versioned revisions and acceptance gates across several tools |
-| `open-montage` | No | Agentic video production: 11 pipelines, 49 tools, TTS, avatar, music, zero-key mode. On-demand clone | "Make a video", explainers, trailers, podcast-to-video, avatar presentations |
-| `clipcannon` | Yes | AI video editor: 51 MCP tools (12 categories), 22-stage analysis DAG, 14 ML models, 5 embedding spaces, voice clone (Qwen3-TTS), lip-sync (LatentSync 1.6), AI music (ACE-Step), text-to-video gen, Voice Agent ("Jarvis"), 7 platform renders, credit billing. Local GPU | Edit existing video, find moments, highlight reels, captions, voice clone, lip-sync, TikTok/Reels render, text-to-video, voice agent |
 
 ### 3D and Game Development
 
@@ -275,7 +263,6 @@ Testing is integrated into `visioncraft` (TDD agents) and `sparc-methodology` (T
 
 | Skill | MCP | Key Capability | When to Choose |
 |-------|-----|----------------|----------------|
-| `flow-nexus-platform` | No | Authentication, sandboxes, app deployment, payments, challenges on Flow Nexus | Managing Flow Nexus accounts, sandboxes, and deployments ⚠️ NOT INSTALLED — requires Flow Nexus account |
 | `hermes-scheduler` | No | Recurring task scheduling, cron jobs for Claude Code agents, routine automation | Scheduling periodic agent tasks, autonomous routines |
 | `dream-machine` | No | Control/inspect the nightly dream-engine loop (ADR-052): `/dream status\|pause\|resume\|standby\|inbox`, ledger + roster + last-night health | "/dream", dream-machine questions, pausing/resuming nightly repo evolution, dream inbox triage |
 | `cost-estimation` | No | GPU endpoint cost tiers, agent job estimate-hold-run-settle lifecycle, DREAM/sats token conversion, COCOMO-hybrid infrastructure valuation, /pay/.estimate integration | Pricing inference/image-gen/analytics endpoints, agent job cost planning, DREAM token economics |
@@ -300,7 +287,7 @@ Testing is integrated into `visioncraft` (TDD agents) and `sparc-methodology` (T
 
 | Skill | MCP | Key Capability | When to Choose |
 |-------|-----|----------------|----------------|
-| `jupyter-notebooks` | No | Full Jupyter MCP: create, execute, manipulate cells, access outputs | Interactive data analysis, ML experiments, reproducible research |
+| `jupyter-notebooks` | No | Build `.ipynb` files, edit cells with NotebookEdit, run code in the `code-interpreter` kernel; no HTML/PDF export | Interactive data analysis, ML experiments, reproducible research |
 | `statcraft` | No | Headless SPSS-compatible statistics (`statcraft-run`): t-tests, ANOVA, crosstabs, regression, factor, reliability, non-parametric tests; JSON out | Significance tests, survey analysis, opening or replicating an SPSS .sav |
 
 ---
@@ -315,7 +302,7 @@ Answer these questions in order. Stop at the first match.
 
 ```
 Q0: Unsure which skill handles your task?
-    --> /route [describe task]  (skill-router — intelligent dispatcher for all 136 skills)
+    --> /route [describe task]  (skill-router — intelligent dispatcher for all 123 skills)
 
 Q1: Is the task about an EXISTING skill that is deprecated?
     YES --> Use its replacement (see Deprecated table above)
@@ -447,10 +434,6 @@ Q3: What coordination pattern?
     +-- Queen-led consensus with Byzantine fault tolerance
     |   --> hive-mind-advanced
     |
-    +-- Cloud-based swarm on Flow Nexus
-    |   --> flow-nexus-swarm
-    |   ⚠️  flow-nexus-swarm not installed — requires Flow Nexus account
-    |
     +-- Sequential pipeline (output of step N feeds step N+1)
     |   --> stream-chain
     |
@@ -481,9 +464,6 @@ Q3: What do you need?
     |
     +-- Summarise articles or YouTube videos for notes
     |   --> web-summary
-    |
-    +-- NotebookLM: ingest sources, generate podcasts/slides/quizzes
-    |   --> notebooklm
     |
     +-- LinkedIn profiles, jobs, companies, messaging
     |   --> linkedin
@@ -528,9 +508,6 @@ Q3: What kind of document?
     |   path:line citations at a declared commit, register of tensions and debt)
     |   --> diagrams-as-code  (generator gates structure, citations, grammar, width)
     |
-    +-- Publication-quality academic figures (methodology, stats plots)
-    |   --> paperbanana
-    |
     +-- Isometric network / infrastructure diagrams
     |   --> fossflow
     |
@@ -570,17 +547,8 @@ Q3: What media type?
     +-- Motion design film in code (motion graphics, kinetic type, title or logo sting, beat-cut to music)
     |   --> motion-designer
     |
-    +-- Full video production (explainers, trailers, podcasts, avatars, TTS)
-    |   --> open-montage
-    |
-    +-- Real-time meeting copilot (transcription, coaching, recap)
-    |   --> echoloop
-    |
     +-- Continuity-held multi-tool production (stop-motion/animated films, source-faithful characters, versioned revisions, acceptance gates)
-    |   --> video-production
-    |
-    +-- AI video editor (51 MCP tools, 12 categories, 14 ML models, voice clone, lip-sync, voice agent, text-to-video)
-        --> clipcannon
+        --> video-production
 ```
 
 ### [G] Browser Automation
@@ -608,10 +576,7 @@ Q3: Do you know which tool you need?
     |   --> chrome-cdp
     |
     +-- Debug host web server from inside Docker (CORS/HTTPS)
-    |   --> host-webserver-debug
-    |
-    +-- Web scraping, crawling, anti-bot bypass, infra monitoring
-        --> scrapling (MCP: 9 tools, or CLI: scrapling extract)
+        --> host-webserver-debug
 ```
 
 ### [H] AI/ML Model Work
@@ -625,10 +590,6 @@ Q3: What ML task?
     +-- Custom CUDA kernels
     |   --> cuda
     |
-    +-- Distributed training in cloud sandboxes
-    |   --> flow-nexus-neural
-    |   ⚠️  flow-nexus-neural not installed — requires Flow Nexus account
-    |
     +-- Interactive notebook-based experiments
     |   --> jupyter-notebooks
     |
@@ -639,7 +600,7 @@ Q3: What ML task?
     |   --> deepseek-reasoning
     |
     +-- Delegate coding to GPT-6 Astra
-        --> openai-codex or codex-companion (/codex:rescue for full Codex plugin)
+        --> codex-companion (/codex:rescue for the full Codex plugin)
 ```
 
 ### [H2] Code Execution and Experiential Learning
@@ -701,10 +662,6 @@ Q3: What memory operation?
 
 ```
 Q3: What infrastructure task?
-    |
-    +-- Flow Nexus account, sandbox, app deployment, payments
-    |   --> flow-nexus-platform
-    |   ⚠️  flow-nexus-platform not installed — requires Flow Nexus account
     |
     +-- Swarm performance profiling and bottleneck detection
     |   --> performance-analysis
@@ -819,9 +776,6 @@ Q3: Which domain?
 ```
 Q3: What security task?
     |
-    +-- Linux system hardening, firewall, compliance audit
-    |   --> defense-security
-    |
     +-- Security testing (OWASP, auth, vulns, dependency scanning, secrets detection)
         --> security-testing (OWASP Top 10, auth/authorisation testing, API security, SAST/DAST)
 ```
@@ -875,22 +829,21 @@ Some tasks benefit from combining skills. Common compositions:
 | Task Pattern | Primary Skill | Supporting Skill(s) |
 |--------------|---------------|---------------------|
 | Feature with tests and PR review | `visioncraft` | `github-code-review` |
-| Research report with diagrams | `report-builder` | `diagram-design`, `mermaid-diagrams`, `paperbanana` |
+| Research report with diagrams | `report-builder` | `diagram-design`, `mermaid-diagrams` |
 | Full game project with 3D assets | `game-dev` | `blender`, `comfyui` |
 | Multi-repo release with CI/CD | `github-release-management` | `github-workflow-automation`, `github-multi-repo` |
 | ML model with custom CUDA kernels | `pytorch-ml` | `cuda` |
 | Ontology pipeline (create + enrich) | `ontology-core` | `ontology-enrich` |
 | PRD to working implementation | `prd2build` | `visioncraft` |
 | Documentation with live web research | `report-builder` | `perplexity-research`, `gemini-url-context` |
-| Visual UI testing after building components | `daisyui` or `ui-ux-pro-max-skill` | `playwright` |
-| Academic paper with AI-generated figures | `latex-documents` | `paperbanana`, `diagram-design`, `mermaid-diagrams` |
+| Visual UI testing after building components | `daisyui` or `ui-ux-pro-max-skill` | `browser` |
+| Academic paper with AI-generated figures | `latex-documents` | `diagram-design`, `mermaid-diagrams` |
 | Creative landing page with proper typography | `bencium-creative` | `typography` |
 | Enterprise app with accessibility audit | `bencium-controlled-ux-designer` | `design-audit` |
 | Architecture review before major refactor | `vanity-engineering-review` | `human-architect-mindset`, `negentropy-lens` |
-| Research with NotebookLM podcast + report | `notebooklm` | `report-builder`, `perplexity-research` |
 | AI-first product with relationship UX | `relationship-design` | `bencium-creative` |
 | Content optimised for AI search engines | `bencium-aeo` | `perplexity-research` |
-| Debug web app from Docker | `host-webserver-debug` | `chrome-cdp`, `playwright` |
+| Debug web app from Docker | `host-webserver-debug` | `chrome-cdp`, `browser` |
 | Swarm with automated hooks | `swarm-advanced` | `hooks-automation` |
 | 3DGS with Blender scene prep | `lichtfeld-studio` | `blender` |
 | Architecture review before feature build | `human-architect-mindset` | `visioncraft` |
@@ -904,24 +857,18 @@ Generated 2026-09-09 from `skills/mcp.json` (the boot-projection registry; 28 se
 | Skill | Status | Command | Gate |
 |---|---|---|---|
 | `blender` | registered in `skills/mcp.json` | `node /opt/agentbox/skills/blender/tools/mcp-blender-client.js` | env:ENABLE_BLENDER |
-| `clipcannon` | registered in `skills/mcp.json` | `clipcannon serve` | always |
 | `codebase-memory` | registered in `skills/mcp.json` | `codebase-memory-mcp` | env:ENABLE_CODEBASE_MEMORY |
 | `comfyui` | registered in `skills/mcp.json` | `node /opt/agentbox/skills/comfyui/mcp-server/server.js` | env:ENABLE_COMFYUI_EXTERNAL |
 | `context7` | registered in `skills/mcp.json` | `npx -y @upstash/context7-mcp@latest` | envset:CONTEXT7_API_KEY |
-| `cuda` | declared in frontmatter only (not in the boot registry) | see SKILL.md | manual |
 | `deepseek-reasoning` | declared in frontmatter only (not in the boot registry) | see SKILL.md | manual |
-| `defense-security` | registered in `skills/mcp.json` | `npx -y defense-mcp-server` | always |
 | `gemini-url-context` | registered in `skills/mcp.json` | `agentbox-mcp gemini-url-context` | always |
 | `host-webserver-debug` | declared in frontmatter only (not in the boot registry) | see SKILL.md | manual |
 | `imagemagick` | registered in `skills/mcp.json` | `agentbox-mcp imagemagick` | env:ENABLE_IMAGEMAGICK |
 | `lazy-fetch` | declared in frontmatter only (not in the boot registry) | see SKILL.md | manual |
 | `linkedin` | registered in `skills/mcp.json` | `uvx linkedin-scraper-mcp` | always |
 | `meta-xr-sdk` | registered in `skills/mcp.json` | `npx @meta-quest/hzdb mcp server` | always |
-| `notebooklm` | registered in `skills/mcp.json` | `python3 -u /opt/agentbox/skills/notebooklm/mcp-server/server.py` | always |
-| `openai-codex` | declared in frontmatter only (not in the boot registry) | see SKILL.md | manual |
 | `qgis` | registered in `skills/mcp.json` | `python3 -u /opt/agentbox/skills/qgis/mcp-server/server.py` | env:ENABLE_QGIS |
 | `reddit` | registered in `skills/mcp.json` | `npx -y reddit-mcp-buddy` | always |
-| `scrapling` | registered in `skills/mcp.json` | `scrapling mcp` | always |
 | `unreal-engine` | registered in `skills/mcp.json` | `soft-ue-cli mcp-serve` | always |
 | `web-researcher` | registered in `skills/mcp.json` | `web-researcher-mcp` | requires |
 | `web-summary` | registered in `skills/mcp.json` | `agentbox-mcp web-summary` | always |
@@ -950,7 +897,7 @@ Generated 2026-09-09 from `skills/mcp.json` (the boot-projection registry; 28 se
 
 **9. Development Meta-Skills**: `visioncraft` vs `sparc-methodology` -- distinct. VisionCraft supplies the quality method, evidence contracts and CLI; SPARC focuses on phased methodology.
 
-**10. Flow Nexus Trio**: `flow-nexus-platform`, `flow-nexus-neural`, `flow-nexus-swarm` -- well-separated by concern (platform admin vs ML training vs swarm deployment). No merge needed.
+**10. Flow Nexus Trio (removed 2026-11-11)**: `flow-nexus-platform`, `flow-nexus-neural`, `flow-nexus-swarm` -- well-separated by concern (platform admin vs ML training vs swarm deployment). No merge needed.
 
 ### 2026-09-09 re-audit outcomes (Fable 5.1 / GPT-6 Astra workloads)
 
