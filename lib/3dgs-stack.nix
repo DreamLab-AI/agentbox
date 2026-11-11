@@ -12,7 +12,9 @@
 #   gs3dLib = import ./lib/3dgs-stack.nix { inherit lib pkgs; };
 #   gauss3dPackages = gs3dLib.makeGaussianSplattingPackages { inherit system; };
 #
-# Returns a list of derivations: [ colmap metis lichtfeld ]
+# Returns a list of derivations: [ colmap metis ]. LichtFeld Studio was a
+# placeholder that failed the build on purpose; it was removed with its skill
+# (ADR-2196), so the switch now bakes COLMAP and METIS only.
 
 { lib, pkgs }:
 
@@ -64,102 +66,6 @@ let
     if !(isSupported system) then unsupportedArch system
     else pkgs.metis;
 
-  # -----------------------------------------------------------------------
-  # lichtfeld — LichtFeld Studio for 3D Gaussian Splatting.
-  #
-  # LichtFeld Studio is NOT in nixpkgs as of 2026-04.
-  #
-  # TODO: resolve upstream repo URL and pin rev + sha256.
-  # The canonical repo is believed to be one of:
-  #   https://github.com/LichtFeld/LichtFeldStudio
-  #   https://github.com/lichtfeld-studio/lichtfeld
-  # Neither could be confirmed at authoring time.  The derivation is
-  # structurally complete; fill in `rev` and `sha256` once confirmed.
-  # -----------------------------------------------------------------------
-  makeLichtfeld = system:
-    if !(isSupported system) then unsupportedArch system
-    else
-      let
-        # Placeholder rev + sha — fail build loudly until pinned, rather than
-        # attempting a fetch that produces an unhelpful "hash mismatch" error.
-        lichtfeldRev    = "0000000000000000000000000000000000000000";
-        lichtfeldSha256 = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
-        _ = if lichtfeldRev == "0000000000000000000000000000000000000000"
-            then throw ''
-              lib/3dgs-stack.nix: LichtFeld Studio upstream is not yet pinned.
-              This derivation is a WIP placeholder. To build it:
-                1. Confirm the upstream repo URL (currently guessed as LichtFeld/LichtFeldStudio).
-                2. Pin a specific commit rev in lib/3dgs-stack.nix.
-                3. Run: nix-prefetch-url --unpack https://github.com/<owner>/<repo>/archive/<rev>.tar.gz
-                4. Replace lichtfeldSha256 with the returned hash.
-              Until then, [skills.spatial_and_3d].gaussian_splatting cannot be enabled.
-            ''
-            else null;
-        src = pkgs.fetchFromGitHub {
-          owner = "LichtFeld";
-          repo  = "LichtFeldStudio";
-          rev    = lichtfeldRev;
-          sha256 = lichtfeldSha256;
-        };
-      in
-        pkgs.stdenv.mkDerivation {
-          pname   = "lichtfeld-studio";
-          version = "0-unstable"; # TODO: set to tagged release once upstream is pinned
-
-          inherit src;
-
-          nativeBuildInputs = with pkgs; [
-            cmake
-            ninja
-            pkg-config
-            python312
-          ] ++ (with pkgs.cudaPackages; [
-            cudatoolkit
-            cuda_nvcc
-            libcublas
-          ]);
-
-          buildInputs = with pkgs; [
-            # Core scene/image dependencies expected by Gaussian Splatting tooling.
-            # TODO: audit actual CMakeLists.txt once upstream repo is confirmed.
-            opencv
-            eigen
-            glfw
-            libGL
-            libGLU
-            freeglut
-            boost
-          ];
-
-          cmakeFlags = [
-            "-DCMAKE_BUILD_TYPE=Release"
-            "-DCUDA_ENABLED=ON"
-            # TODO: set correct CUDA architecture targets for the deployment hardware.
-            "-DCUDA_ARCHS=86"
-          ];
-
-          buildPhase = ''
-            runHook preBuild
-            cmake --build . --config Release -- -j$NIX_BUILD_CORES
-            runHook postBuild
-          '';
-
-          installPhase = ''
-            runHook preInstall
-            cmake --install . --prefix $out
-            runHook postInstall
-          '';
-
-          meta = with pkgs.lib; {
-            description = "LichtFeld Studio — 3D Gaussian Splatting viewer and processing suite";
-            homepage    = "https://github.com/LichtFeld/LichtFeldStudio";
-            # TODO: confirm license from upstream repo
-            license     = licenses.unfreeRedistributable;
-            maintainers = [];
-            platforms   = [ "x86_64-linux" ];
-          };
-        };
-
 in
 {
   # makeGaussianSplattingPackages :: { system: string } -> [ drv ]
@@ -172,7 +78,6 @@ in
     then [
       (makeColmap  system)
       (makeMetis   system)
-      (makeLichtfeld system)
     ]
     else [];
 }

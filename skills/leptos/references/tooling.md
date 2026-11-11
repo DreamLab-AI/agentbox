@@ -7,13 +7,14 @@
 
 ## 1. Setup
 
+In agentbox all of this is baked: the toolchain already has the `wasm32-unknown-unknown`
+target, and `cargo-leptos` (SSR/full-stack orchestrator), `leptosfmt` (formats `view!`),
+`wasm-pack` (wasm-bindgen-test), `trunk` (CSR-only) and `wasm-opt` (binaryen) are on PATH.
+Never `cargo install` or `rustup target add` them here. On another machine:
+
 ```bash
 rustup target add wasm32-unknown-unknown
-cargo install --locked cargo-leptos     # build orchestrator (SSR/full-stack)
-cargo install leptosfmt                  # formats the view! macro
-cargo install wasm-pack                  # for wasm-bindgen-test
-cargo install trunk                      # CSR-only alternative
-# wasm-opt/binaryen: cargo-leptos auto-downloads; manual: brew/pacman install binaryen
+cargo install --locked cargo-leptos leptosfmt wasm-pack trunk
 ```
 
 ### New project

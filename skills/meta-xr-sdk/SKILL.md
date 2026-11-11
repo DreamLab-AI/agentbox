@@ -57,7 +57,7 @@ toolkit APIs, parameter tables, sample apps, repos, platform matrix — lives in
 - Unreal Engine 5 editor automation → `unreal-engine`
 - Full game-studio orchestration → `game-dev`
 - Pure WASM compute graphics without XR → `wasm-js`
-- 3D Gaussian Splatting → `lichtfeld-studio`
+- Inspecting or cleaning a Gaussian splat → `supersplat`
 - Generic non-Meta WebXR — this skill is Meta-ecosystem-specific
 
 ## Quick Path

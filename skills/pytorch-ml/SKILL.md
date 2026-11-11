@@ -1,6 +1,7 @@
 ---
 name: pytorch-ml
 description: "Trains and fine-tunes PyTorch models on CUDA GPUs: nn.Module design, training loops, Dataset and DataLoader, AMP mixed precision, checkpointing, transfer learning from torchvision. Use for 'train a PyTorch model', '.to(device)', 'fine-tune ResNet', 'CUDA out of memory during training' or adding autocast and GradScaler. Not for custom CUDA kernels (cuda), Stable Diffusion or FLUX generation (comfyui), notebook exploration (jupyter-notebooks) or AgentDB RL plugins (agentdb-advanced)."
+gate: skills.data_science.pytorch
 ---
 
 # PyTorch ML Skill
@@ -13,6 +14,14 @@ Complete machine learning environment with PyTorch, CUDA, and the data science s
 - AgentDB reinforcement learning plugins — use **agentdb-advanced** (RL Plugins section) instead
 - Interactive data exploration in notebooks — use **jupyter-notebooks** instead
 - AI image generation (Stable Diffusion, FLUX) — use **comfyui** instead
+
+## In agentbox
+
+With `[skills.data_science].pytorch = true`, the image's `python3` imports PyTorch 2.9.1 and
+torchvision built against CUDA 12.8 (nixpkgs `torch-bin`), loading the host NVIDIA driver at run
+time. The router offers this skill only while that switch is on. Never `pip install torch` here:
+check with the snippet below, and if `import torch` fails the image predates the switch (rebuild).
+The privacy filter's own Python carries a separate CPU-only torch; it is not this one.
 
 ## Quick start
 

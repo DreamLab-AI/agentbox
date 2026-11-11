@@ -5,17 +5,9 @@
 The `arnis` Rust binary is the core world generator. It reads OSM JSON and
 elevation data, then writes Minecraft Java Edition region files (`.mca` format).
 
-If arnis is not installed, build from source:
-
-```bash
-cd /tmp
-git clone https://github.com/louis-e/arnis.git
-cd arnis
-cargo build --release
-cp target/release/arnis /usr/local/bin/
-```
-
-Set a custom path via the `ARNIS_BIN` environment variable.
+arnis is baked into the image (`lib/arnis.nix`, a pinned release built without its GUI) and
+is on PATH as `arnis`. Never build it by hand here. `ARNIS_BIN` overrides the binary for a
+locally built copy.
 
 ### Key arnis flags
 
@@ -52,4 +44,4 @@ gdalwarp -te <lng1> <lat1> <lng2> <lat2> -t_srs EPSG:4326 input.tif clipped.tif
 terracraft generate <bbox> --elevation-file clipped.tif
 ```
 
-GDAL is installed at `/usr/bin/gdalinfo`, `/usr/bin/ogr2ogr`, `/usr/bin/gdalwarp`.
+GDAL's `gdalinfo`, `ogr2ogr` and `gdalwarp` are baked and on PATH.

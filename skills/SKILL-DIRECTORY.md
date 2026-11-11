@@ -1,6 +1,6 @@
 # Skill Directory -- Comprehensive Inventory and Decision Tree
 
-> **124 active skills**. Categorised inventory (Artefact 1), decision tree (Artefact 2), composition patterns, MCP summary. Skills self-trigger from their frontmatter `description`; the always-loaded subsets are `registered-skills.txt` (Claude Code) and `codex-registered-skills.txt` (Codex); everything else is reached through `skill-router` (`/route`) and its generated `references/routing-table.md`. Facts here are gated: `scripts/skill-count-check.js` (count), `lint-skills.sh` (every skill named here, section map, routing table current).
+> **123 active skills**. Categorised inventory (Artefact 1), decision tree (Artefact 2), composition patterns, MCP summary. Skills self-trigger from their frontmatter `description`; the always-loaded subsets are `registered-skills.txt` (Claude Code) and `codex-registered-skills.txt` (Codex); everything else is reached through `skill-router` (`/route`) and its generated `references/routing-table.md`. Facts here are gated: `scripts/skill-count-check.js` (count), `lint-skills.sh` (every skill named here, section map, routing table current).
 > Updated 2026-09-09 (estate re-audit for Fable 5.1 / GPT-6 Astra workloads; history in `CHANGELOG.md` and `docs/adr/`). Reference this file from CLAUDE.md for intelligent routing.
 
 ---
@@ -32,13 +32,13 @@
 
 ---
 
-## Artefact 1: Categorised Skill Inventory (124 Active Skills)
+## Artefact 1: Categorised Skill Inventory (123 Active Skills)
 
 ### Context, Discovery, and Session Management
 
 | Skill | MCP | Key Capability | When to Choose |
 |-------|-----|----------------|----------------|
-| `skill-router` | No | **Unified dispatcher** for 124 skills. `/route [task]` classifies intent and routes to optimal skill. Single entry point | Don't know which skill to use — describe your task and get routed |
+| `skill-router` | No | **Unified dispatcher** for 123 skills. `/route [task]` classifies intent and routes to optimal skill. Single entry point | Don't know which skill to use — describe your task and get routed |
 | `lazy-fetch` | Yes | 25 MCP tools: context hydration, plan tracking, blueprints, PRD-to-sprints, security scanning, persistent memory | Starting a new session, managing context across tasks, tracking phased plans, running autonomous PRD execution |
 | `skill-builder` | No | Create new Claude Code skills with YAML frontmatter and progressive disclosure | Building new custom skills for the skills directory |
 | `skill-tuning` | No | Empirically optimize an existing skill against a measurable reward via the SkillOpt loop + noise-robust held-out A/B (single-optimizer vs mesh arms). Live harness in skillopt-lab | Tuning a skill by evidence — raising an agent's success rate on a bounded scoreable task, not eyeballing prose |
@@ -227,7 +227,6 @@ Testing is integrated into `visioncraft` (TDD agents) and `sparc-methodology` (T
 | `terracraft` | No | OSM + elevation + arnis pipeline: real-world locations to Minecraft Java worlds. QGIS/Blender/GDAL integration | Generating Minecraft worlds from real geography, geospatial-to-game conversion |
 | `blender` | Yes | Meta-skill for AI-driven Blender via BlenderMCP (`execute_code` + introspection loop, port 9876): box/hard-surface/boolean modelling, sculpting, PBR materials, lighting/rendering, scene assembly. 7 technique references + verified-anatomy playbook from 52 pro scenes. Headless GPU batch (`blender-batch.sh`) + interactive via the `gui-tools-service` GPU sidecar | Any 3D modelling, sculpting, texturing, lighting or rendering task in Blender; GPU renders |
 | `isaac-sim` | No | Headless NVIDIA Isaac Sim sidecar: rigid/articulated-body simulation via a typed job API (idempotent submit, lifecycle, cancel), isaac-motion-export/1 contract, verified Blender import (`gui-tools-service` exchange). Stage A only; Isaac Lab pinned, no controllers | Gravity/contact/joint dynamics, reproducible simulated trajectories for Blender, robot or articulated-body simulation |
-| `lichtfeld-studio` | Yes | 3D Gaussian Splatting training, visualisation, editing, export (70+ MCP tools), SplatReady COLMAP | 3DGS scene capture, splat editing, radiance field workflows |
 | `spark-scene` | No | Spark/Three.js splat rendering with registered data annotations and provenance | Capture scenes with semantic overlays, scene reconstruction viewers |
 | `cad` | No | Parametric CAD as Python build123d models built by the pinned, offline text-to-cad engine (`cad`, gated by `[skills.spatial_and_3d] cad`): parts, assemblies, joints and animations; STEP/STL/3MF/GLB/DXF export; geometry inspection; machining, sheet-metal, moulding and printing checks | Mechanical part, bracket, enclosure, fixture, assembly, flat pattern, manufacturability check |
 | `cad-drawing` | No | Engineering drawing PDFs projected from the part: orthographic views, hidden lines, measured dimensions, hole callouts, title block, ISO sheets | Shop drawing, dimensioned sheet, 2D views of a part |
@@ -303,7 +302,7 @@ Answer these questions in order. Stop at the first match.
 
 ```
 Q0: Unsure which skill handles your task?
-    --> /route [describe task]  (skill-router — intelligent dispatcher for all 124 skills)
+    --> /route [describe task]  (skill-router — intelligent dispatcher for all 123 skills)
 
 Q1: Is the task about an EXISTING skill that is deprecated?
     YES --> Use its replacement (see Deprecated table above)
@@ -798,10 +797,9 @@ Q3: What 3D/game/spatial task?
     +-- Programmatic 3D modelling and rendering
     |   --> blender
     |
-    +-- 3D Gaussian Splatting (training, editing, export, COLMAP)
-    |   --> lichtfeld-studio
-    |   --> spark-scene
+    +-- 3D Gaussian Splatting (editing, conversion, web viewing; no trainer is baked)
     |   --> supersplat
+    |   --> spark-scene
     |
     +-- Mechanical part, assembly, enclosure, flat pattern, manufacturability check (CAD as code)
     |   --> cad
@@ -846,7 +844,6 @@ Some tasks benefit from combining skills. Common compositions:
 | Content optimised for AI search engines | `bencium-aeo` | `perplexity-research` |
 | Debug web app from Docker | `host-webserver-debug` | `chrome-cdp`, `browser` |
 | Swarm with automated hooks | `swarm-advanced` | `hooks-automation` |
-| 3DGS with Blender scene prep | `lichtfeld-studio` | `blender` |
 | Architecture review before feature build | `human-architect-mindset` | `visioncraft` |
 
 ---

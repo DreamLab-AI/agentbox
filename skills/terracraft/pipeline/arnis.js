@@ -4,7 +4,7 @@ const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 
-const ARNIS_BIN = process.env.ARNIS_BIN || '/usr/local/bin/arnis';
+const ARNIS_BIN = process.env.ARNIS_BIN || 'arnis';
 
 /**
  * Run the patched arnis binary to generate a Minecraft world.

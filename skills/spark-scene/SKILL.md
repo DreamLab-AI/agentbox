@@ -1,6 +1,6 @@
 ---
 name: spark-scene
-description: "Integrate Spark Gaussian splats into a Three.js browser scene with spatial annotations, evidence links, or graph overlays. Use for viewing trained captures alongside data, splat picking, and scene registration; use lichtfeld-studio for reconstruction/training and blender for mesh authoring."
+description: "Integrate Spark Gaussian splats into a Three.js browser scene with spatial annotations, evidence links, or graph overlays. Use for viewing trained captures alongside data, splat picking, and scene registration; use supersplat to clean or convert a trained splat (no trainer is baked) and blender for mesh authoring."
 ---
 
 # Spark scene integration
@@ -27,7 +27,7 @@ annotation ownership, cleanup, and the hardware acceptance checks.
 - Reuse the host's identifier allocator and durable-state APIs. In Agentbox,
   durable identifiers come from `management-api/lib/uris.js`, and persistence
   uses the configured adapters. The viewer does not introduce a memory store.
-- For reconstruction, export a trained PLY/SPZ from `lichtfeld-studio`; for mesh
+- For reconstruction, bring a trained PLY/SPZ (no splat trainer is baked here; `supersplat` cleans it); for mesh
   modelling use `blender`. Use `browser` for real WebGL2 validation. Loading this
   skill requires neither the CUDA training gate nor a new MCP daemon.
 

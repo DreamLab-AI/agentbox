@@ -52,17 +52,18 @@ images/
   colmap automatic_reconstructor
         |  sparse point cloud + camera poses
         v
-  lichtfeld train
-        |  3DGS scene (*.splat / *.ply)
+  a COLMAP-reading 3DGS trainer (not baked; see below)
+        |  3DGS scene (*.ply / *.splat)
         v
-  lichtfeld viewer / export
+  supersplat (inspect, clean, convert) / spark-scene (view in a web scene)
 ```
 
 1. **Feature extraction** — `colmap feature_extractor --image_path ./images --database_path ./db.db`
 2. **Matching** — `colmap exhaustive_matcher --database_path ./db.db`
 3. **Sparse reconstruction** — `colmap mapper ...`
-4. **Gaussian training** — `lichtfeld train --colmap_path ./sparse/0 --output ./scene`
-5. **View / export** — `lichtfeld viewer ./scene`
+4. **Gaussian training** — no trainer is baked. LichtFeld Studio was planned but never
+   packaged (ADR-2196); train the COLMAP output with a COLMAP-reading trainer on a GPU machine.
+5. **Inspect / export** — the `supersplat` skill (editor and `splat-transform`), then `spark-scene`.
 
 ## Where Outputs Land
 

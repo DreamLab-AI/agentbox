@@ -151,7 +151,7 @@ Bundled runnable assets in this directory:
 - **imagemagick** — post-process generated images
 - **ffmpeg-processing** — assemble/transcode generated video
 - **blender** — 3D-to-2D workflows
-- **lichtfeld-studio** — train the splat dataset this skill builds; **spark-scene** — view it
+- **supersplat** — clean a trained splat; **spark-scene** — view it (no splat trainer is baked: train the dataset with a COLMAP-reading trainer elsewhere)
 - **pytorch-ml** — custom model training
 
 ## Related skills

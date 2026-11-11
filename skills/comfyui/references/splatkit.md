@@ -98,8 +98,9 @@ the pinned sha256.
 
 ## Training and viewing
 
-Train `dataset/` with **lichtfeld-studio** (headless; raise the Gaussian cap to about 3M for
-HiRes Composite datasets), view with **spark-scene**, and edit objects with SpEdE
+No splat trainer is baked into agentbox: train `dataset/` with a COLMAP-reading trainer on a
+GPU machine (raise the Gaussian cap to about 3M for HiRes Composite datasets), view with
+**spark-scene**, and edit objects with SpEdE
 (`references/spede.md`). Any COLMAP-reading trainer works (Brush, gsplat, Postshot).
 
 ## Licences

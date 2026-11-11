@@ -1086,6 +1086,11 @@
           gitleaks        # secrets scanner for repos and history — skills/security-testing
           trivy           # dependency, image and misconfig scanner — skills/security-testing
           jujutsu         # jj, Git-compatible VCS (binary `jj`) — skills/agentic-jujutsu
+          openssl.bin     # `openssl` CLI: certificates and TLS probes — skills/host-webserver-debug
+          gdal            # gdalinfo, gdalwarp, ogr2ogr: DEM clipping — skills/terracraft
+          pngquant        # lossy PNG compression — skills/art (output constraints)
+          bun             # runs skills/art's TypeScript tools (tools/generate-image.ts)
+          manim           # Manim Community CLI (prebuilt in nixpkgs) — skills/manim
         ];
 
         nodeEnvPackages = with pkgs; [
@@ -1202,7 +1207,15 @@
           # it for the TTL EL-profile guard, so it stays on that basis.
           yt-dlp         # YouTube transcript/metadata downloader (podcast-ingest, archiver)
           rdflib         # TTL EL-profile guard — ontology/test_decision_layer.py
-        ]);
+        ]
+        # [skills.data_science].pytorch (ADR-2196): PyTorch importable from the
+        # python3 on PATH, for skills/pytorch-ml. The prebuilt CUDA wheels
+        # (torch-bin, torchvision-bin; allowUnfree is set) avoid compiling
+        # PyTorch, and load libcuda.so.1 from the host driver at run time
+        # (/usr/lib, on the image's LD_LIBRARY_PATH). A bare python package in
+        # the image's package list is never importable, which is why this
+        # lives inside the env.
+        ++ lib.optionals (dataScienceCfg.pytorch or false) [ torch-bin torchvision-bin ]);
 
         # imagemagickMcpPythonEnv is gone. It existed only to give
         # skills/imagemagick/mcp-server/server.py a hermetic mcp/httpx/pydantic
@@ -1268,6 +1281,10 @@
           wasm-pack
           wasm-bindgen-cli
           binaryen
+          trunk          # skills/leptos: client-side (csr) Leptos builds
+          cargo-leptos   # skills/leptos: SSR + hydrate builds, `cargo leptos watch/test`
+          leptosfmt      # skills/leptos: formats the view! macro
+          rust-analyzer  # skills/rust-development: LSP; finds std through the toolchain's rust-src
         ];
 
         # wasm32 cross-compile wiring for the `cc` crate (secp256k1-sys et al).
@@ -1518,7 +1535,7 @@
             (wrapGpuBin pkgs.blender [ "blender" ])
           ]
           # 3DGS stack: only when gaussian_splatting=true (requires local-cuda via E006).
-          # colmap (CUDA SfM/MVS) + lichtfeld (CUDA) need the wrapper; metis is
+          # colmap (CUDA SfM/MVS) needs the wrapper; metis is
           # CPU-only but wrapping is inert for it. Bin names are upstream-versioned,
           # so wrap every executable (wrapGpuAll).
           ++ map wrapGpuAll gauss3dPackages
@@ -1530,10 +1547,7 @@
           ++ lib.optionals (cadEnabled && (spatialCfg.cad_print or false)) [ pkgs.orca-slicer ];
 
         dataSciencePackages =
-          lib.optionals (dataScienceCfg.pytorch or false) [
-            pkgs.python312Packages.torch
-          ]
-          ++ lib.optionals (dataScienceCfg.jupyter or false) [
+          lib.optionals (dataScienceCfg.jupyter or false) [
             pkgs.python312Packages.numpy
             pkgs.python312Packages.pandas
             pkgs.python312Packages.jupyter

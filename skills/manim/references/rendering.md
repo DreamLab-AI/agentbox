@@ -9,21 +9,14 @@ is a separate dependency. Start with text and geometry for the smoke test.
 Check [upstream installation](https://docs.manim.community/en/stable/installation.html)
 when changing the baseline.
 
-Use a pinned environment outside the target source tree. Where Cairo/Pango
-development dependencies already exist:
+The image bakes Manim Community from nixpkgs, with Cairo, Pango and PyAV in its closure
+(`command -v manim`, `manim --version`). Render with that binary; never `pip install` or
+`uv pip install` Manim into a venv here. Record `manim --version` in the shot's notes, because
+the version moves only with the image. `Tex`/`MathTex` additionally need TeX and `dvisvgm` on
+PATH: check with `command -v latex dvisvgm` before writing a shot that uses them, and fall back
+to `Text` (Pango) when they are absent.
 
-```bash
-uv venv /absolute/shot/.venv --python 3.12
-uv pip install --python /absolute/shot/.venv/bin/python 'manim==0.21.0'
-uv pip freeze --python /absolute/shot/.venv/bin/python > /absolute/shot/requirements.freeze.txt
-```
-
-The freeze records a trial environment. For repeated production, resolve and
-commit a `uv.lock` with the shot's project dependencies and use frozen sync.
-Native libraries and fonts need pinning too; a Python lock alone is incomplete.
-If native headers are missing, use the official container instead of repairing
-the running Agentbox environment. The inspection machine had no Manim executable
-and `pkg-config` could not resolve Cairo/Pango.
+For production outside agentbox, the official container below pins the same stack.
 
 The smoke-tested image is:
 

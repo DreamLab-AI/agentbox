@@ -3,7 +3,7 @@
 # Agent-driven headless pipeline. No UI required.
 set -euo pipefail
 
-ARNIS_BIN="${ARNIS_BIN:-/usr/local/bin/arnis}"
+ARNIS_BIN="${ARNIS_BIN:-arnis}"
 OUTPUT_BASE="${TERRACRAFT_OUTPUT:-/tmp/terracraft-worlds}"
 # Resolve through symlinks to find the actual skill directory
 SCRIPT_PATH="$(readlink -f "$0" 2>/dev/null || realpath "$0" 2>/dev/null || echo "$0")"
@@ -39,7 +39,7 @@ cmd_info() {
     if command -v "$ARNIS_BIN" &>/dev/null; then
         echo "[INSTALLED] arnis Minecraft world generator"
     else
-        echo "[NOT INSTALLED] arnis - build with: cd /tmp && git clone https://github.com/louis-e/arnis.git && cd arnis && cargo build --release"
+        echo "[NOT INSTALLED] arnis - it is baked into the agentbox image; this image predates it (rebuild), or set ARNIS_BIN"
     fi
     if command -v gdalinfo &>/dev/null; then
         echo "[INSTALLED] GDAL $(gdalinfo --version 2>&1 | head -1)"
@@ -181,7 +181,7 @@ cmd_generate() {
 
     if ! command -v "$ARNIS_BIN" &>/dev/null; then
         echo "ERROR: arnis binary not found at ${ARNIS_BIN}"
-        echo "Build it with: cd /tmp && git clone https://github.com/louis-e/arnis.git && cd arnis && cargo build --release && cp target/release/arnis /usr/local/bin/"
+        echo "arnis is baked into the agentbox image; this image predates it (rebuild), or set ARNIS_BIN to a local build."
         echo ""
         echo "OSM data has been saved to: ${output_dir}/osm_data.json"
         echo "You can run arnis manually once installed."

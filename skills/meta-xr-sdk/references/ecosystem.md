@@ -361,7 +361,6 @@ ratk.onMeshAdded = (mesh) => {
 | `game-dev` | Full game studio (48 agents) — use for complete game projects |
 | `unreal-engine` | UE5 editor automation — use for Unreal-based Quest apps |
 | `blender` | 3D asset creation for XR scenes |
-| `lichtfeld-studio` | 3D Gaussian Splatting for volumetric XR content |
 | `comfyui` | AI-generated textures and assets for XR environments |
 | `browser` | Automated testing of WebXR UI overlays |
 | `rust-development` | Rust toolchain for WASM modules in XR apps |

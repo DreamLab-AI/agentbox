@@ -349,9 +349,9 @@
     },
     {
       "prompt": "Train a Gaussian splat from this COLMAP capture, clean it up in the viewer and export the scene.",
-      "expected_skill": "lichtfeld-studio",
-      "rationale": "3DGS training, editing and export is lichtfeld-studio; spark-scene is the annotated-viewer neighbour.",
-      "class": "near-neighbour",
+      "expected_skill": "none",
+      "rationale": "No splat trainer is baked in agentbox (lichtfeld-studio was removed, ADR-2196); supersplat only edits a finished splat and spark-scene only views one.",
+      "class": "boundary",
       "provenance": "directory-derived",
       "late_discriminative": false
     },
@@ -1150,7 +1150,7 @@
     {
       "prompt": "Open this trained .ply splat, delete the floaters round the edge, and compress it to SOG for the web.",
       "expected_skill": "supersplat",
-      "rationale": "Inspecting, cleaning and compressing a finished splat is supersplat; training would be lichtfeld-studio.",
+      "rationale": "Inspecting, cleaning and compressing a finished splat is supersplat; no trainer is baked.",
       "class": "near-neighbour",
       "provenance": "directory-derived",
       "late_discriminative": true
@@ -1357,8 +1357,8 @@
     },
     {
       "prompt": "Turn my phone video of the garden into a dataset and train a splat from it.",
-      "expected_skill": "lichtfeld-studio",
-      "rationale": "Sounds like cleanup in the browser editor (supersplat) or dataset generation (comfyui), but video-to-COLMAP plus training is lichtfeld-studio.",
+      "expected_skill": "comfyui",
+      "rationale": "Turning a video into a splat-ready dataset is comfyui's splat pipeline; training itself has no baked tool.",
       "class": "near-neighbour",
       "provenance": "directory-derived",
       "late_discriminative": false

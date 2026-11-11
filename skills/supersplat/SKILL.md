@@ -1,6 +1,6 @@
 ---
 name: supersplat
-description: "Inspect, clean, crop and convert Gaussian splats with the SuperSplat editor (served in-container, driven in the browser sidecar) and the splat-transform CLI. Use to open a trained .ply/.compressed.ply/.sog/.spz for review, delete floaters or crop a region, read splat counts, render a still, or convert/compress a splat for the web. Not for training (lichtfeld-studio or the comfyui splat pipeline) or for embedding a splat in a Three.js app (spark-scene)."
+description: "Inspect, clean, crop and convert Gaussian splats with the SuperSplat editor (served in-container, driven in the browser sidecar) and the splat-transform CLI. Use to open a trained .ply/.compressed.ply/.sog/.spz for review, delete floaters or crop a region, read splat counts, render a still, or convert/compress a splat for the web. Not for training (comfyui builds the dataset; no splat trainer is baked) or for embedding a splat in a Three.js app (spark-scene)."
 ---
 
 # SuperSplat editor and splat-transform

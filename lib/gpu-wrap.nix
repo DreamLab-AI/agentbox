@@ -100,7 +100,7 @@ rec {
   #
   # As wrapGpuBins but wraps *every* regular executable under $out/bin. Use
   # when the binary set is unknown or upstream-versioned (e.g. the 3DGS tools
-  # colmap / lichtfeld-studio, whose bin names are not pinned here).
+  # colmap, whose bin names are not pinned here).
   wrapGpuBinsAll = { pkg, name ? "${pkg.name or "pkg"}-gpuwrapped" }:
     pkgs.symlinkJoin {
       inherit name;
