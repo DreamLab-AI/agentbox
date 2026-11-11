@@ -8,7 +8,8 @@ description: >-
   49 tools; zero-key mode (Piper, Pexels, Remotion, FFmpeg) or premium APIs. Use
   for "make a video", "create an explainer video", "produce a trailer", "animate" or
   "podcast to video". For a continuity-held multi-tool production choose
-  `video-production`. From calesthio/OpenMontage.
+  `video-production`; for a code-only motion design film cut to music, with no
+  narration or sourced footage, choose `motion-designer`. From calesthio/OpenMontage.
 version: 1.0.0
 author: calesthio (OpenMontage)
 tags:
@@ -92,7 +93,7 @@ User: "Make a 45-second explainer about black holes"
 | Pipeline | Description | Key Tools |
 |----------|-------------|-----------|
 | `animated-explainer` | Research-driven explainer with narration | Perplexity → Script → FLUX/Veo → ElevenLabs → Remotion |
-| `animation` | Kinetic typography and motion graphics | Remotion → FFmpeg |
+| `animation` | Kinetic typography and motion graphics as one scene type in a larger video (a standalone motion design film is `motion-designer`) | Remotion → FFmpeg |
 | `avatar-spokesperson` | Talking head presentations | HeyGen/SadTalker → TTS → Composite |
 | `cinematic` | Trailers and mood-driven edits | Runway/Kling → Music (Suno) → Color grade |
 | `clip-factory` | Batch short-form extraction from long video | WhisperX → Scene detect → Auto-trim |

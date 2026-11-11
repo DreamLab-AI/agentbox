@@ -6,9 +6,10 @@
 // hook is not registered at all (byte-identical-when-off), and if it is ever
 // run without that env it does nothing.
 //
-// Puts the user's turn to System One as ONE Choice over every routable skill
-// registered for Claude Code (skills/registered-skills.txt; the whole baked tree
-// only if that manifest is unreadable), plus the claude.ai account skills synced
+// Puts the user's turn to System One as ONE Choice over the routable skills that
+// [skills.routing].scope allows: "registered" = skills/registered-skills.txt (and the
+// whole baked tree only if that manifest is unreadable), "all" = the whole baked
+// tree (ADR-2192). Added to either: the claude.ai account skills synced
 // to ~/.claude/skills/synced and the skills of enabled plugins, under the
 // qualified names the Skill tool lists them by, and injects the pick as context. The
 // model then loads the skill (or not) — this hook recommends, it never dispatches.

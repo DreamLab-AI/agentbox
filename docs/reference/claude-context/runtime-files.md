@@ -102,10 +102,13 @@ keyless) and both plugins' `baseUrl`/`model`/`backendLocal`. Keys: `TYPESAFE_API
 
 Routing is live by default (ADR-2091): `[skills.routing].router = "jev"` registers
 `config/hooks/skill-route.cjs` on `UserPromptSubmit`, one System One Choice over every
-routable description per turn injected as advisory context. The candidates are what the
-Skill tool can load: `registered-skills.txt` from the baked tree, plus claude.ai account
+routable description per turn injected as advisory context. `[skills.routing].scope` sets the
+baked candidates (ADR-2192): `"all"`, the running value, is the whole baked tree, and a pick
+outside `registered-skills.txt` is injected with the path of its `SKILL.md` to Read;
+`"registered"` is that manifest alone. Added under both: claude.ai account
 skills synced to `~/.claude/skills/synced` (`anthropic-skills:<name>`) and enabled plugin
-skills (`<plugin>:<skill>`); `AGENTBOX_SKILL_ROUTE_CLAUDE_DIR=0` drops the latter two. `/route` shares its
+skills (`<plugin>:<skill>`), a second copy of one skill dropped (plugin kept over synced);
+`AGENTBOX_SKILL_ROUTE_CLAUDE_DIR=0` drops the latter two. `/route` shares its
 library; it fails open to `"table"` (the always-loaded descriptions + `routing-table.md`,
 the pre-2091 path) on any failure — never treat the pick's probability as a gate
 (ADR-2090).
@@ -129,6 +132,7 @@ rationale: [docs/archive/skills-upgrade-plan-c5.md](../../archive/skills-upgrade
 - [`voice/`](../../../voice/): voice operator console (ADR-044) — Caddy origin (:8444), console site, `unmute-override.yml`; lifecycle `./agentbox.sh voice`, compose `docker-compose.voice.yml` (see [`voice/README.md`](../../../voice/README.md))
 - [`config/nip98-proxy/`](../../../config/nip98-proxy/): NIP-98-verifying multi-upstream sovereign ingress (named routes only; no default upstream) — LAN-published `:9096`, `/mgmt/` → management-api (PRD-021 WS4/ADR-043 D4.6/ADR-045); overlaid to `/opt/agentbox/nip98-proxy`, supervised as `[program:nip98-proxy]`
 - [`config/harness-wrappers/`](../../../config/harness-wrappers/): `agent_command_override` wrappers (openrouter/zai) that pin profile isolation + assert the `ANTHROPIC_BASE_URL` redirect and hard-fail loudly on mis-billing (PRD-021 F2-4/N-01)
+- [`services/motion-render`](../../../services/motion-render): the `motion-designer` skill's frame renderer (ADR-2194). `motion-render` drives the browser sidecar over raw CDP in a private context and serves the page directory to it under a random token. Its own crate and derivation (`lib/motion-render.nix`); `skills/motion-designer/scripts/render.mjs` is the fallback until the image carrying the binary is live.
 - [`services/explainer-tools`](../../../services/explainer-tools): the `explainer` skill's Rust tooling — today `explainer-loom-draft` (was `skills/explainer/scripts/loom-draft.mjs`). It does **not** reimplement the façade protocol: that comes from the published [`loom-client`](https://crates.io/crates/loom-client) crate, which `services/dream-engine` and `services/podcast-ingest` also use. One place now knows that a façade can answer HTTP 200 with ontology prose instead of calling the model, that a truncated reasoning model returns *empty* content rather than a short answer, and that grounding applied to a non-ontology subject is a wrong answer rather than a good one — three callers each knew a different subset (ADR-139)
 - [`crates/colloquy/`](../../../crates/colloquy/) and [`crates/sidestr/`](../../../crates/sidestr/): see [crates.md](crates.md)
 - [`config/model-router/`](../../../config/model-router/): the ADR-2080 metaharness router console for the session-plane `router` seed — `artefacts.json` is the single pinned source both `flake.nix` (bakes `/opt/agentbox/model-router`) and `scripts/model-router-fetch.sh` (pre-rebuild fallback) read; the console embeds offline and calls ruflo's router directly because the npm tarball omits the artefacts and ruflo's embedder imports a package the closure lacks. `AGENTBOX_MODEL_ROUTER_*` only, never `CLAUDE_FLOW_ROUTER_*` globally; public tier only

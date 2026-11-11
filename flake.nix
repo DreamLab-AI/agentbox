@@ -1213,7 +1213,25 @@
         # — a Rust binary whose closure is its own — so the env has no consumer
         # and the image sheds a whole Python dependency set from the boot path.
 
+        # PID 1 is started through this launcher, not through the `supervisord`
+        # script pythonRuntimeEnv exposes. That script is nixpkgs' wrapper, and it
+        # prepends the BARE interpreter's bin (and the supervisor package's) to
+        # PATH before exec. supervisord hands its environment to every program,
+        # so every supervised process, every tmux session and every agent shell
+        # resolved `python3` to an interpreter with no site-packages: numpy,
+        # pandas and the rest of pythonRuntimeEnv were baked, on PATH further
+        # down, and unimportable by the command everyone types. Running the
+        # module with the runtime env's own interpreter leaves PATH as the image
+        # set it, where the first python3 IS pythonRuntimeEnv. `-s` keeps a
+        # user-site directory out of PID 1. The entrypoint's `exec supervisord`
+        # line is unchanged: this resolves first because it is listed first.
+        # Gate: tests/config/python-runtime-path.test.sh.
+        supervisordLauncher = pkgs.writeShellScriptBin "supervisord" ''
+          exec ${pythonRuntimeEnv}/bin/python3 -s -m supervisor.supervisord "$@"
+        '';
+
         pythonBasePackages = [
+          supervisordLauncher   # must stay ahead of pythonRuntimeEnv (see above)
           pythonRuntimeEnv
         ];
 
@@ -1863,7 +1881,10 @@
         # the sealmap-review skill reviews; see lib/sealmap.nix.
         sealmapPkg = import ./lib/sealmap.nix { inherit lib; pkgs = rustPkgs; };
         visioncraftPkg = import ./lib/visioncraft.nix { inherit lib; pkgs = rustPkgs; };
-        skillToolPackages = [ diagramIrPkg proseSanitiserPkg sealmapPkg visioncraftPkg ];
+        # motion-render — the motion-designer skill's frame renderer (ADR-2194);
+        # see lib/motion-render.nix.
+        motionRenderPkg = import ./lib/motion-render.nix { inherit lib; pkgs = rustPkgs; };
+        skillToolPackages = [ diagramIrPkg proseSanitiserPkg sealmapPkg visioncraftPkg motionRenderPkg ];
         # sidestr-agent — the sidechain faucet's engine ([sidechain].faucet).
         # Baked because a workspace cargo build stops executing after every image
         # rebuild (its glibc store path is collected); see lib/sidestr-agent.nix.

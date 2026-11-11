@@ -1425,6 +1425,21 @@ if (ldEnabled) {
     }
   }
 }
+// ─── E084: the hook's candidate scope (ADR-2192) ────────────────────────────
+//
+// E084 — [skills.routing].scope must be "registered" or "all". The boot projects
+//         only "all"; a typo would silently leave the hook on the registered set
+//         while the manifest claims the whole tree.
+{
+  const rt = (manifest.skills || {}).routing || {};
+  if (rt.scope !== undefined && rt.scope !== 'registered' && rt.scope !== 'all') {
+    errors.push({
+      code: 'E084',
+      message: `E084: [skills.routing].scope must be "registered" or "all" (got ${JSON.stringify(rt.scope)}) — ADR-2192`,
+    });
+  }
+}
+
 // ─── E076 / W074: the local routing cascade and the judge's latency budget ───
 // (ADR-2095 addendum 2026-09-23)
 //

@@ -4,6 +4,28 @@ All notable changes to agentbox are documented here. Format inspired by [Keep a 
 
 ## [Unreleased]
 
+### Whole-tree skill routing, runtime python3, motion design skill (2026-11-11 — staged, ADR-2192/2193/2194)
+
+- `[skills.routing].scope = "all"` lets the routing hook offer every routable baked
+  skill, not only `registered-skills.txt`; a pick the Skill tool cannot load is
+  injected with the path of its `SKILL.md`. On the labelled routing cases exact
+  picks went from 38/90 to 84/90, at about three times the judge input per route.
+  Validator E084. A skill installed both as a plugin and as a synced account skill
+  is now offered once; before, the pair split the judge's probability and took two
+  of the three verify-shortlist slots.
+- `python3` in agent shells is the runtime environment again. nixpkgs' `supervisord`
+  wrapper prepended the bare interpreter to PATH for every supervised process, so
+  numpy and the rest of `pythonRuntimeEnv` were baked and unimportable. PID 1 now
+  starts through `supervisordLauncher`. Gate: `tests/config/python-runtime-path.test.sh`.
+- New skill `motion-designer`: a motion graphics film as one HTML canvas file,
+  rendered frame-exact in the browser sidecar over CDP (no local browser), cut to
+  music on the beat grid and mastered to -14 LUFS. With no licensed track it cuts to
+  a holding track fetched with `yt-dlp`, and `master.sh` refuses an export that does
+  not say `holding`. 134 skills.
+- New crate `services/motion-render` (`lib/motion-render.nix`): the skill's renderer in
+  Rust, synchronous CDP with no async runtime. `render.mjs` remains as the fallback
+  until the next image.
+
 ### Bend 2 toolchain (2026-11-10 — staged, ADR-2191)
 
 - `[toolchains].bend` bakes the pinned Bend 2.0.40 release (`lib/bend.nix`):

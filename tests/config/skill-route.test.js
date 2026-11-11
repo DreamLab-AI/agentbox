@@ -14,7 +14,10 @@
  *     shape Claude Code honours: {hookSpecificOutput:{hookEventName:
  *     "UserPromptSubmit", additionalContext}} — a top-level additionalContext is
  *     silently ignored by the harness, which is how this hook injected nothing;
- *   • the hook ranks only skills/registered-skills.txt (fail-open to the whole
+ *   • [skills.routing].scope decides the hook's baked candidates (ADR-2192): "all"
+ *     is the whole routable tree, anything else the registered set; one skill
+ *     reachable under two qualified names is offered once;
+ *   • under scope "registered" the hook ranks only skills/registered-skills.txt (fail-open to the whole
  *     tree when the manifest is unreadable or disjoint); /route ranks everything
  *     and marks unregistered picks; the injected line stays ≤ 300 chars;
  *   • the candidate map composes ADR-2089 `status` at the point of use —
@@ -408,6 +411,106 @@ describe('hook — synced account and enabled plugin skills', () => {
   });
 });
 
+describe('hook — candidate scope (ADR-2192)', () => {
+  const criteriaSent = () => Object.keys(seen[0].body.questions.skill.criteria).sort();
+
+  test('scope "all" offers the whole routable tree and logs the scope without a reason', async () => {
+    const m = path.join(tmp, 'scope-narrow.txt');
+    fs.writeFileSync(m, 'beta-harden\n');
+    await runHook(PROMPT, baseEnv({ AGENTBOX_SKILL_ROUTE_REGISTERED_MANIFEST: m, AGENTBOX_SKILL_ROUTE_SCOPE: 'all' }));
+    // Status still applies: deprecated, superseded, not-installed and router-only stay out.
+    expect(criteriaSent()).toEqual(['alpha-diagrams', 'beta-harden', 'gamma-gated', 'none']);
+    expect(logLines()[0]).toMatchObject({ outcome: 'routed', candidates: 3, scope: 'all' });
+    expect(logLines()[0].scope_reason).toBeUndefined();
+  });
+
+  test('under "all" a pick outside the Skill tool is injected with its SKILL.md path', async () => {
+    const registered = path.join(tmp, 'scope-registered');
+    fs.mkdirSync(path.join(registered, 'beta-harden'), { recursive: true });
+    const ctx = await runHook(PROMPT, baseEnv({ AGENTBOX_SKILL_ROUTE_SCOPE: 'all', AGENTBOX_SKILL_ROUTE_REGISTERED_DIR: registered }));
+    expect(ctx).toContain(`alpha-diagrams → ${path.join(skillsDir, 'alpha-diagrams', 'SKILL.md')}`);
+    expect(ctx).not.toContain('beta-harden →');
+    expect(ctx.length).toBeLessThanOrEqual(lib.MAX_CONTEXT_CHARS);
+    fs.rmSync(registered, { recursive: true, force: true });
+  });
+
+  test('unset, "registered" and an unrecognised value all mean the registered set', async () => {
+    expect(lib.config({}).scope).toBe('registered');
+    expect(lib.config({ AGENTBOX_SKILL_ROUTE_SCOPE: 'registered' }).scope).toBe('registered');
+    expect(lib.config({ AGENTBOX_SKILL_ROUTE_SCOPE: 'everything' }).scope).toBe('registered');
+    expect(lib.config({ AGENTBOX_SKILL_ROUTE_SCOPE: 'ALL' }).scope).toBe('all');
+    const m = path.join(tmp, 'scope-typo.txt');
+    fs.writeFileSync(m, 'beta-harden\n');
+    await runHook(PROMPT, baseEnv({ AGENTBOX_SKILL_ROUTE_REGISTERED_MANIFEST: m, AGENTBOX_SKILL_ROUTE_SCOPE: 'everything' }));
+    expect(criteriaSent()).toEqual(['beta-harden', 'none']);
+  });
+
+  test('the unbooted-shell fallback reads scope from the manifest', () => {
+    const toml = path.join(tmp, 'scope.toml');
+    fs.writeFileSync(toml, '[skills.routing]\nrouter = "jev"\nscope = "all"\n');
+    expect(lib.config({}, { fallbackToml: toml }).scope).toBe('all');
+  });
+
+  test('entrypoint projects the scope only when it is "all" (byte-identical otherwise)', () => {
+    const src = fs.readFileSync(path.resolve(__dirname, '../../config/entrypoint-unified.sh'), 'utf8');
+    expect(src).toMatch(/_SR_SCOPE_EXPORT=""\n\[ "\$_SR_SCOPE" = "all" \] && _SR_SCOPE_EXPORT="export AGENTBOX_SKILL_ROUTE_SCOPE=all"/);
+    expect(src).toMatch(/process\.env\.SR_SCOPE === 'all' \? ' AGENTBOX_SKILL_ROUTE_SCOPE=all' : ''/);
+    expect(src).toMatch(/SR_SCOPE="\$_SR_SCOPE" node <<'SRJS'/);
+    expect(src).toMatch(/^\$_SR_SCOPE_EXPORT$/m);
+  });
+});
+
+describe('hook — one skill is offered once (ADR-2192)', () => {
+  const criteriaSent = () => Object.keys(seen[0].body.questions.skill.criteria).sort();
+  let claudeDir;
+  const RUBRIC = 'Create new skills and improve existing skills. Use when asked to make a skill.';
+
+  beforeAll(() => {
+    claudeDir = path.join(tmp, 'claude-home-dup');
+    const sync = path.join(claudeDir, 'skills', 'synced', 'acct_1');
+    const put = (dir, fm) => { fs.mkdirSync(dir, { recursive: true }); fs.writeFileSync(path.join(dir, 'SKILL.md'), `---\n${fm}\n---\n# x\n`); };
+    // The same skill twice: synced from the account and installed as a plugin. Whitespace differs.
+    put(path.join(sync, 'skill-maker'), `name: skill-maker\ndescription: "${RUBRIC}"`);
+    put(path.join(sync, 'report'), 'name: report\ndescription: "Write a report from the account."');
+    put(path.join(sync, 'alpha-diagrams'), 'name: alpha-diagrams\ndescription: "Draw architecture diagrams as code. Use when asked for diagrams."');
+    fs.writeFileSync(path.join(sync, 'manifest.json'), JSON.stringify({ skills: [{ name: 'skill-maker' }, { name: 'report' }, { name: 'alpha-diagrams' }] }));
+    const plug = path.join(tmp, 'plugins-dup', 'skill-maker');
+    put(path.join(plug, 'skills', 'skill-maker'), `name: skill-maker\ndescription: >-\n  Create new skills and improve existing skills.\n  Use when asked to make a skill.`);
+    // Same bare name as the synced `report`, different rubric: two skills, both stay.
+    put(path.join(plug, 'skills', 'report'), 'name: report\ndescription: "Write a report from the plugin."');
+    fs.mkdirSync(path.join(claudeDir, 'plugins'), { recursive: true });
+    fs.writeFileSync(path.join(claudeDir, 'plugins', 'installed_plugins.json'), JSON.stringify({ version: 2, plugins: { 'skill-maker@market': [{ installPath: plug }] } }));
+    fs.writeFileSync(path.join(claudeDir, 'settings.json'), JSON.stringify({ enabledPlugins: { 'skill-maker@market': true } }));
+  });
+
+  test('a plugin skill also synced from the account is offered once, as the plugin copy', async () => {
+    const m = path.join(tmp, 'dup-narrow.txt');
+    fs.writeFileSync(m, 'alpha-diagrams\n');
+    await runHook(PROMPT, baseEnv({ AGENTBOX_SKILL_ROUTE_REGISTERED_MANIFEST: m, AGENTBOX_SKILL_ROUTE_CLAUDE_DIR: claudeDir }));
+    expect(criteriaSent()).toEqual(['alpha-diagrams', 'anthropic-skills:report', 'none', 'skill-maker:report', 'skill-maker:skill-maker']);
+    // Two dropped: the synced copy of the plugin skill, and the synced copy of a baked one.
+    expect(logLines()[0]).toMatchObject({ candidates: 4, extras: 3, deduped: 2 });
+  });
+
+  test('the verify shortlist no longer spends two of its slots on one skill', () => {
+    const extras = lib.loadLoadableExtras(claudeDir);
+    const baked = { 'alpha-diagrams': 'Draw architecture diagrams as code. Use when asked for diagrams.' };
+    const text = 'create a new skill and improve the existing skills';
+    const before = lib.shortlist(text, { ...baked, ...extras }, 3);
+    expect(before.filter((n) => n.endsWith(':skill-maker'))).toHaveLength(2);
+    const { extras: kept, dropped } = lib.dedupeExtras(baked, extras);
+    expect(dropped.sort()).toEqual(['anthropic-skills:alpha-diagrams', 'anthropic-skills:skill-maker']);
+    const after = lib.shortlist(text, { ...baked, ...kept }, 3);
+    expect(after.filter((n) => n.endsWith(':skill-maker'))).toEqual(['skill-maker:skill-maker']);
+  });
+
+  test('nothing duplicated means nothing dropped and no log field', async () => {
+    expect(lib.dedupeExtras({ a: 'one' }, { 'p:b': 'two', 'anthropic-skills:c': 'three' })).toEqual({ extras: { 'p:b': 'two', 'anthropic-skills:c': 'three' }, dropped: [] });
+    await runHook(PROMPT, baseEnv({ AGENTBOX_SKILL_ROUTE_CLAUDE_DIR: '0' }));
+    expect(logLines()[0].deduped).toBeUndefined();
+  });
+});
+
 describe('hook — local cascade (ADR-2095 addendum; gated off by default)', () => {
   // Matches no rubric token at all: every BM25 score is 0, margin 0, so it must escalate.
   const VAGUE = 'please could you look into the thing we talked about yesterday afternoon';
@@ -697,6 +800,13 @@ describe('validator — E076 / W074 (ADR-2095 addendum)', () => {
     }
   }
   const OPENJEV = '[features.sovereign_system_one]\nenabled = true\nengine = "openjev"\nendpoint = "http://systemone:8097/v1/systemone"\n';
+
+  test('scope: "registered" and "all" pass; anything else is E084 (or a schema error)', () => {
+    expect(validate('[skills.routing]\nrouter = "jev"\nscope = "all"\n')).not.toMatch(/E084|E016/);
+    expect(validate('[skills.routing]\nrouter = "jev"\nscope = "registered"\n')).not.toMatch(/E084|E016/);
+    expect(validate('[skills.routing]\nrouter = "jev"\n')).not.toMatch(/E084/);
+    expect(validate('[skills.routing]\nrouter = "jev"\nscope = "everything"\n')).toMatch(/E084|E016/);
+  });
 
   test('a non-boolean cascade and an out-of-range cutoff are E076', () => {
     expect(validate('[skills.routing]\nrouter = "jev"\ncascade = "yes"\n')).toMatch(/E076: \[skills\.routing\]\.cascade must be/);

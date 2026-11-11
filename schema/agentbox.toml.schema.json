@@ -616,6 +616,15 @@
               "type": "string",
               "description": "System One model id, e.g. \"jev-latest\" or a pin such as \"jev-1.13.0\"."
             },
+            "scope": {
+              "type": "string",
+              "enum": [
+                "registered",
+                "all"
+              ],
+              "default": "registered",
+              "description": "ADR-2192: which baked skills the hook offers the judge. \"registered\": only skills/registered-skills.txt. \"all\": every routable baked skill; a pick the Skill tool cannot load is injected with the path of its SKILL.md. Synced account skills and enabled plugin skills are offered under both, and /route always ranks the whole tree. BOOT-class; projected into the hook command and runtime-env.sh only when \"all\"."
+            },
             "bypass_projects": {
               "type": "array",
               "default": [],

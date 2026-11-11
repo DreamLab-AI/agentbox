@@ -14,6 +14,12 @@
 # WHY a curated subset and not every baked skill: the native Skill list is always in
 # context, so keeping it small preserves the token budget; heavier/rarer skills are
 # discovered on demand through the router.
+#
+# This list is NOT the router's candidate set. With [skills.routing].scope = "all"
+# (ADR-2192) the routing hook offers every baked skill to the judge and injects the
+# SKILL.md path of a pick that is not listed here, so a skill does not need to be
+# registered to be found. Register one only when it is used often enough to be worth
+# its description in every turn's context.
 
 # --- browser / web automation (GPU browsercontainer sidecar) ---
 # playwright (manifest-disabled, superseded), qe-browser (not installed until `aqe init`)

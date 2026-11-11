@@ -1,10 +1,11 @@
 ---
 title: Agentbox Container Baseline
 doc_id: AB-BASELINE
-version: 0.5.16
+version: 0.5.17
 status: draft-for-ratification
 verified_commit: 
 changelog:
+  - "0.5.17 (2026-11-11): ADR-2193 (accepted, complete, staged for rebuild). PID 1 starts through `supervisordLauncher` (flake.nix), which runs the supervisor module with pythonRuntimeEnv's interpreter. nixpkgs' `supervisord` wrapper prepended the bare interpreter to PATH and every supervised process inherited it, so `python3` in agent shells had no site-packages. New invariant: in a supervised process the first python3 on PATH is pythonRuntimeEnv. The entrypoint exec line is unchanged."
   - "0.5.16 (2026-11-10): ADR-2191 (accepted, partial, staged). [toolchains].bend (rebuild class, on) bakes the pinned Bend 2 release from lib/bend.nix: the checker/compiler with only its ELF interpreter rewritten, a BendTT kernel built at image-build time with the exact Lean release Bend names (Lean is not in the image), and a launcher that pins the kernel, turns the version check off, caches hub packages under $WORKSPACE/.bend/lib and refuses bend update."
   - "0.5.15 (2026-11-05): ADR-2177 (accepted, partial, staged). [skills.spatial_and_3d] supersplat (rebuild class, on) builds the pinned SuperSplat editor and splat-transform CLI; [program:supersplat] serves $WORKSPACE/splats/share read-only on 0.0.0.0:8795 (docker network only, sanctioned listener), and the browser sidecar treats http://agentbox:8795 as secure."
   - "0.5.14 (2026-11-04): ADR-2175 (accepted, partial, staged). Image-to-splat adds a pinned SplatKit dataset stage to the ComfyUI sidecar (build arg SPLATKIT=1): splat_pipeline.py drives pano, geometry, preview and dataset jobs from pinned API graphs; an agentbox_video export node lets the client fetch the hash-checked COLMAP dataset over /view; weights come only from the splat-pano and splat-dataset profiles; training stays in LichtFeld behind its existing gate. No new port, mount or adapter."
@@ -294,6 +295,7 @@ gate. See [the VEX guide](developer/vex.md).
 - Every adapter dispatch wrapped observability → privacy redaction, in that order (`index.js:131`, `observability/metrics.js:125`). JSON-LD encoding is a per-surface gated stage invoked by the owning route, and its ordering is enforced by the privacy marker via `assertPrivacyFilterApplied` — not by wrap position (ADR-2036).
 - Orchestrator connect failure is FATAL — on rejection, timeout and quarantine alike; other slots are quarantined and then swapped to the `off` impl, or left `unavailable` if that replacement cannot be built (`adapters/lifecycle.js:73`, `:274`, `:276-281`, `:292-299`) (ADR-2035).
 - Supervisord is PID 1 root; no agent-facing process runs as root after bootstrap.
+- In a supervised process the first `python3` on `PATH` is `pythonRuntimeEnv` (ADR-2193): PID 1 is started by the `supervisordLauncher` script, never by nixpkgs' `supervisord` wrapper, which prepends the bare interpreter. Gate: `tests/config/python-runtime-path.test.sh`.
 - The session plane has no TCP listener; :9096 retains named NIP-98 operator routes and rejects unknown routes (ADR-2153).
 - GPU wrapping applies only when `gpu.backend == "local-cuda"`; `--suffix` (never `--prefix`) on `LD_LIBRARY_PATH`.
 - Manifest state is always introspected from `agentbox.toml`, never hard-coded in the catalogue (`system-manifest.js:11`).

@@ -1316,6 +1316,19 @@ hook = true                     # register the UserPromptSubmit hook (router = "
 model = "jev-latest"            # resolved server-side; pin (e.g. "jev-1.13.0") to freeze behaviour
 timeout_ms = 4000               # hook budget per call; the hook itself is registered at 8000
 min_prompt_chars = 24           # shorter turns are never sent (and never routed)
+# ADR-2192 — which baked skills the hook offers the judge.
+#   "registered" → only skills/registered-skills.txt (the always-loaded Skill list).
+#   "all"        → every routable baked skill. A pick the Skill tool cannot load is
+#                  injected with the path of its SKILL.md, so it is still usable.
+# Synced account skills and enabled plugin skills are offered under both. /route
+# always ranks the whole tree. Measured 2026-11-11 on the 86 labelled routing cases
+# plus 4 media cases, cloud Jev 1.14.0 through the proxy: registered 38/90 exact
+# (13.1k input tokens, $0.00055 a route), all 84/90 (37.5k tokens, $0.0016, median
+# 0.77 s) with the intent option on; all with intent off 83/90 at 19.0k tokens and
+# $0.0008. The registered set can name only 24 of the 86 expected skills. The cascade
+# cutoff below was fitted on the whole tree, so it applies to "all", not "registered".
+# BOOT-class. Validator: E084.
+scope = "all"
 # ADR-2090 per-project bypass. Absolute project roots whose turns never reach the skill-routing judge (hook and /route only; factrail and the jev-checkpoints plugin still call it): a
 # session whose cwd is one of these or lies beneath it (path-boundary match, symlinks
 # resolved: "/x/proj" covers "/x/proj/sub", never "/x/proj2") is skipped before the request

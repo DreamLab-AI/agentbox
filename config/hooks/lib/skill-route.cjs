@@ -9,9 +9,11 @@
  *   • skills/skill-router/scripts/route.mjs — the /route slash command (on demand)
  *
  * What it does: builds the candidate map from every baked skill's frontmatter
- * `description` (narrowed, for the hook, to the Claude Code registration manifest
- * skills/registered-skills.txt — the /route CLI still sees the whole tree and marks
- * picks the Skill tool cannot load), composes the ADR-2089 `status` field in at the point of use,
+ * `description`. For the hook, `[skills.routing].scope` decides how much of it is offered:
+ * "registered" narrows it to the Claude Code registration manifest
+ * skills/registered-skills.txt, "all" offers the whole baked tree (ADR-2192); the /route
+ * CLI always sees the whole tree. A pick the Skill tool cannot load is injected with the
+ * path of its SKILL.md. Composes the ADR-2089 `status` field in at the point of use,
  * and puts ONE Choice question to System One (model Jev) with the user's turn as
  * state. It returns an OUTCOME, never throws: `routed`, `skipped` (with a reason)
  * or `failed` (with a reason). Fail-open is the contract — the always-loaded
@@ -315,6 +317,37 @@ function loadLoadableExtras(claudeDir) {
   return out;
 }
 
+/** What makes two candidates the same skill: the name without its namespace, and the rubric. */
+function candidateSignature(name, rubric) {
+  return `${String(name).toLowerCase().replace(/^.*:/, '')}\u0000${String(rubric).replace(/\s+/g, ' ').trim()}`;
+}
+
+/**
+ * Drop the extras that are a second copy of a skill already on offer (ADR-2192). One skill
+ * installed twice, as an enabled plugin and as a synced account skill, reaches the judge as
+ * two options with the same rubric: it splits the probability mass between them, and in the
+ * verify shortlist the pair ties and takes two of the three slots. Which copy survives is
+ * fixed, not incidental: a baked skill first, then an enabled plugin (pinned by its install
+ * record), then an account-synced copy. Same bare name with a DIFFERENT rubric is two
+ * skills and both stay. Returns `{ extras, dropped }`; key order of the survivors is kept.
+ */
+function dedupeExtras(criteria, extras) {
+  const seen = new Set(Object.entries(criteria).map(([k, v]) => candidateSignature(k, v)));
+  const isSynced = (k) => k.startsWith(`${SYNCED_NAMESPACE}:`);
+  const keep = new Set();
+  const dropped = [];
+  for (const pass of [(k) => !isSynced(k), isSynced]) {
+    for (const [k, v] of Object.entries(extras)) {
+      if (!pass(k) || k in criteria) continue;
+      const sig = candidateSignature(k, v);
+      if (seen.has(sig)) dropped.push(k); else { seen.add(sig); keep.add(k); }
+    }
+  }
+  const out = {};
+  for (const [k, v] of Object.entries(extras)) if (keep.has(k)) out[k] = v;
+  return { extras: out, dropped };
+}
+
 /** Minimal `[section]` reader for the CLI's unbooted-shell fallback (mirrors _ab_toml_val). */
 function readTomlSection(file, section) {
   const out = {};
@@ -368,11 +401,13 @@ function config(env = process.env, opts = {}) {
   let minChars = env.AGENTBOX_SKILL_ROUTE_MIN_CHARS;
   let cascade = env.AGENTBOX_SKILL_ROUTE_CASCADE;
   let cutoff = env.AGENTBOX_SKILL_ROUTE_CASCADE_CUTOFF;
+  let scope = env.AGENTBOX_SKILL_ROUTE_SCOPE;
   if (!router && opts.fallbackToml) {
     const t = readTomlSection(opts.fallbackToml, 'skills.routing');
     router = t.router; model = model || t.model;
     timeoutMs = timeoutMs || t.timeout_ms; minChars = minChars || t.min_prompt_chars;
     cascade = cascade ?? t.cascade; cutoff = cutoff ?? t.cascade_cutoff;
+    scope = scope || t.scope;
     if (!env.AGENTBOX_SKILL_ROUTE_BYPASS_PROJECTS && t.bypass_projects) {
       env = { ...env, AGENTBOX_SKILL_ROUTE_BYPASS_PROJECTS: t.bypass_projects.replace(/[\[\]"'\s]/g, '').split(',').filter(Boolean).join(path.delimiter) };
     }
@@ -390,11 +425,15 @@ function config(env = process.env, opts = {}) {
     // ADR-2110 (proposed): tag each hook log line with a hashed session id so the
     // routing label recorder can join the router's pick to the teacher's label.
     labelLog: asBool(env.AGENTBOX_SKILL_ROUTE_LABEL_LOG, false),
+    // ADR-2192: which baked skills the HOOK offers the judge. "registered" (the default, and
+    // any unrecognised value) is the registration manifest; "all" is the whole baked tree.
+    // /route ranks the whole tree whatever this says.
+    scope: String(scope || '').toLowerCase() === 'all' ? 'all' : 'registered',
     skillsDir: env.AGENTBOX_SKILL_ROUTE_SKILLS_DIR || env.SKILLS_TREE || DEFAULT_SKILLS_DIR,
     // What the Skill tool can invoke: reconcile-skills.sh projects registered-skills.txt
-    // here at boot. The hook ranks only the registered set, but /route and a fail-open
-    // hook rank the whole baked tree, so a pick outside this set must be loaded by
-    // reading its SKILL.md, and the injected line says where.
+    // here at boot. Under scope "all", in /route and in a fail-open hook the whole baked
+    // tree is ranked, so a pick outside this set must be loaded by reading its SKILL.md,
+    // and the injected line says where.
     registeredDir: env.AGENTBOX_SKILL_ROUTE_REGISTERED_DIR || env.CLAUDE_SKILLS_DIR ||
       path.join(os.homedir(), '.claude', 'skills'),
     // The registration manifest the hook narrows its candidates to. An explicit override
@@ -611,20 +650,26 @@ async function route(prompt, cfg, { retries = 0, candidates, registeredOnly = fa
   if (text.startsWith('/')) return skip('slash-command');
   if (text.length < cfg.minChars) return skip('short-prompt', { chars: text.length });
   let criteria = candidates || loadCandidates(cfg.skillsDir);
-  // The hook routes over what the Skill tool can load; /route and the eval see everything.
+  // The hook routes over what its scope allows; /route and the eval see everything. Under
+  // scope "all" (ADR-2192) the hook keeps the whole tree and the log line says so.
   let scoped = {};
   if (registeredOnly && Object.keys(criteria).length) {
-    const r = restrictToRegistered(criteria, cfg);
-    criteria = r.criteria;
-    scoped = r.scopeReason ? { scope: r.scope, scopeReason: r.scopeReason } : { scope: r.scope };
+    if (cfg.scope === 'all') scoped = { scope: 'all' };
+    else {
+      const r = restrictToRegistered(criteria, cfg);
+      criteria = r.criteria;
+      scoped = r.scopeReason ? { scope: r.scope, scopeReason: r.scopeReason } : { scope: r.scope };
+    }
   }
   // Synced account skills and enabled plugin skills are loadable whatever the manifest says;
-  // an explicit candidate map (the eval rig) is left exactly as given.
+  // an explicit candidate map (the eval rig) is left exactly as given. A second copy of a
+  // skill already on offer is dropped, never offered twice.
   if (!candidates) {
-    const extras = loadLoadableExtras(cfg.claudeDir);
-    const added = Object.keys(extras).filter((k) => !(k in criteria));
+    const { extras, dropped } = dedupeExtras(criteria, loadLoadableExtras(cfg.claudeDir));
+    const added = Object.keys(extras);
     for (const k of added) criteria = { ...criteria, [k]: extras[k] };
     if (added.length) scoped = { ...scoped, extras: added.length };
+    if (dropped.length) scoped = { ...scoped, deduped: dropped.length };
   }
   const n = Object.keys(criteria).length;
   if (!n) return skip('no-candidates', { skillsDir: cfg.skillsDir });
@@ -786,7 +831,7 @@ function unregisteredPaths(names, cfg) {
 function appendLog(cfg, record) {
   if (!cfg.logPath) return;
   const { candidates, chars, truncated, ms, outcome, reason, choice, confidence, usage, usd, usdPerMTokIn,
-    model, consumer, cascade, margin, session, scope, scopeReason, extras, bm25Pick, bm25Score, jev } = record;
+    model, consumer, cascade, margin, session, scope, scopeReason, extras, deduped, bm25Pick, bm25Score, jev } = record;
   const line = JSON.stringify({ ts: new Date().toISOString(), consumer, outcome, reason, model, choice, confidence,
     candidates, chars, truncated, ms, input_tokens: usage && usage.input_tokens,
     // `usd` is only meaningful against the price it was costed at; carry both so a log
@@ -802,6 +847,8 @@ function appendLog(cfg, record) {
     ...(scope ? { scope } : {}), ...(scopeReason ? { scope_reason: scopeReason } : {}),
     // Present only when synced account or plugin skills joined the candidates.
     ...(extras ? { extras } : {}),
+    // Present only when a second copy of an offered skill was dropped (ADR-2192).
+    ...(deduped ? { deduped } : {}),
     // Present only with the Jev option on: question-set version, facet, fit scores, veto and
     // reason. Names and numbers, never prompt text.
     ...(jev ? { jev } : {}) });
@@ -816,6 +863,6 @@ module.exports = {
   description, loadCandidates, readTomlSection, config, clampPrompt, route, formatContext, unregisteredPaths, appendLog,
   tokenise, stripExclusion, bm25, localRank, DEFAULT_CASCADE_CUTOFF,
   readRegisteredManifest, restrictToRegistered, REGISTERED_MANIFEST_CANDIDATES, MAX_CONTEXT_CHARS,
-  loadLoadableExtras, SYNCED_NAMESPACE,
+  loadLoadableExtras, SYNCED_NAMESPACE, dedupeExtras, candidateSignature,
   projectBypassed, jevConfig, jevPlan, applyJev, explicitSkillRequest, shortlist, JEV_SKILL_QUESTION_SET, JEV_FACETS,
 };

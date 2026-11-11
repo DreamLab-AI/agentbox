@@ -59,7 +59,7 @@ detect changes to files it already lists — it is structurally blind to **addit
 is exactly how a new crate landed unlicensed under ADR-2030 while the record still read as
 verified and its `review_trigger` ("any new crate under `services/`") sat unactioned.
 
-_151 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
+_154 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
 
 | ID | Title | Domain | Date | Decision | Impl | Activation | Supersedes | Superseded by | Owner | Repo |
 |----|-------|--------|------|----------|------|------------|------------|---------------|-------|------|
@@ -214,3 +214,6 @@ _151 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
 | [ADR-2177](ADR-2177-supersplat-editor-is-served-in-container-and-driven-in-the-browser-sidecar.md) | The SuperSplat editor is served in-container and driven in the browser sidecar; splat-transform is on PATH | BASELINE-container | 2026-11-05 | accepted | partial | staged | — | — | jjohare | agentbox |
 | [ADR-2190](ADR-2190-dream-ledger-human-cells-come-only-from-recorded-reviews-and-night-artefacts-are-a-durable-archived-record.md) | Dream ledger human cells come only from recorded reviews, and night artefacts are a durable, archived record | GOVERNANCE-capabilities | 2026-11-10 | accepted | complete | staged | — | — | jjohare | agentbox |
 | [ADR-2191](ADR-2191-bend-is-baked-from-the-pinned-release-with-a-prebuilt-proof-kernel.md) | Bend is baked from the pinned upstream release, with the proof kernel built at image-build time | BASELINE-container | 2026-11-10 | accepted | complete | live | — | — | jjohare | agentbox |
+| [ADR-2192](ADR-2192-the-routing-hook-offers-the-whole-skill-tree-and-each-skill-once.md) | The routing hook offers the whole skill tree, and each skill once | GOVERNANCE-capabilities | 2026-11-11 | accepted | complete | staged | — | — | jjohare | agentbox |
+| [ADR-2193](ADR-2193-pid-1-starts-through-a-launcher-so-python3-is-the-runtime-environment.md) | PID 1 starts through a launcher so that python3 is the runtime environment | BASELINE-container | 2026-11-11 | accepted | complete | staged | — | — | jjohare | agentbox |
+| [ADR-2194](ADR-2194-motion-designer-skill-and-holding-tracks.md) | Motion design films render in the browser sidecar, and a stand-in music track is marked as one | GOVERNANCE-capabilities | 2026-11-11 | accepted | complete | staged | — | — | jjohare | agentbox |

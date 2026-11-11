@@ -45,13 +45,14 @@ the files inside each crate's package payload.
 | `agentbox-sessions` | MIT OR Apache-2.0 | `LICENSE-MIT`, `LICENSE-APACHE` | yes (`publish = false`: session-plane infrastructure for this image, not offered on crates.io) |
 | `dream-engine` | **AGPL-3.0-only** (since 2026-09-25) | `LICENSE` (AGPL-3.0 full text) | yes — states NOT dual-licensed |
 | `explainer-tools` | MIT OR Apache-2.0 | `LICENSE-MIT`, `LICENSE-APACHE` | yes |
+| `motion-render` | MIT OR Apache-2.0 | `LICENSE-MIT`, `LICENSE-APACHE` | yes (`publish = false`: not offered on crates.io yet) |
 | `nostr-pod-bridge` | **AGPL-3.0-only** | `LICENSE` (AGPL-3.0 full text) | yes — states NOT dual-licensed |
 | `podcast-ingest` | MIT OR Apache-2.0 | `LICENSE-MIT`, `LICENSE-APACHE` | yes |
 | `secret-backup` | **AGPL-3.0-only** | `LICENSE` (AGPL-3.0 full text) | yes — states NOT dual-licensed |
 | `skill-tools` | MIT OR Apache-2.0 | `LICENSE-MIT`, `LICENSE-APACHE` | yes |
 | `agentbox-vex` | MIT OR Apache-2.0 | `LICENSE-MIT`, `LICENSE-APACHE` | yes (`publish = false`: host tooling, not published) |
 
-Ten package manifests, seven permissive and three AGPL (2026-09-25:
+`motion-render` was added on 2026-11-11 (permissive, ADR-2194) and is not in the count that follows. Ten package manifests, seven permissive and three AGPL (2026-09-25:
 `dream-engine` moved to AGPL-3.0-only; `explainer-tools` had been added without
 a row here). The 2026-09-04 inventory counted eight because `secret-backup` did
 not yet exist (added by `7905d2a64`); the declared texts are on disk for all ten. The

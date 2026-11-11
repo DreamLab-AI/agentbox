@@ -2756,6 +2756,12 @@ if [ -z "$_SR_BYPASS" ] && [ -r "${AGENTBOX_CONFIG:-/etc/agentbox.toml}" ] \
 fi
 _SR_BYPASS_EXPORT=""
 [ -z "$_SR_BYPASS" ] || _SR_BYPASS_EXPORT="export AGENTBOX_SKILL_ROUTE_BYPASS_PROJECTS='$_SR_BYPASS'"
+# ADR-2192: which baked skills the hook offers the judge. Only "all" is projected; anything
+# else is the registered set, where the hook command is byte-identical to what it was and
+# runtime-env.sh gains only a comment line and no variable. The validator (E084) rejects other values.
+_SR_SCOPE="$(_ab_toml_val skills.routing scope)"
+_SR_SCOPE_EXPORT=""
+[ "$_SR_SCOPE" = "all" ] && _SR_SCOPE_EXPORT="export AGENTBOX_SKILL_ROUTE_SCOPE=all"
 _SR_CASCADE_EXPORTS=""
 if [ "$_SR_CASCADE" = "1" ]; then
   _SR_CASCADE_EXPORTS="export AGENTBOX_SKILL_ROUTE_CASCADE=1
@@ -2779,7 +2785,7 @@ if [ "$_SR_ROUTER" = "jev" ] && [ "$_SR_HOOK" = "1" ] \
   SR_API="$_SSO_API" SR_PROXY="$_SR_PROXY" \
   SR_TIMEOUT="$_SR_TIMEOUT" SR_MIN_CHARS="$_SR_MIN_CHARS" \
   SR_CASCADE="$_SR_CASCADE" SR_CASCADE_CUTOFF="$_SR_CASCADE_CUTOFF" \
-  SR_LABEL_LOG="$_SR_LABEL_LOG" SR_BYPASS="$_SR_BYPASS" node <<'SRJS' || true
+  SR_LABEL_LOG="$_SR_LABEL_LOG" SR_BYPASS="$_SR_BYPASS" SR_SCOPE="$_SR_SCOPE" node <<'SRJS' || true
 const fs = require('fs');
 const f = process.env.SETTINGS, hook = process.env.SR_HOOK;
 // ADR-2094: SR_API is the sovereign façade endpoint, empty unless
@@ -2795,6 +2801,8 @@ const pfx = `AGENTBOX_SKILL_ROUTER=jev AGENTBOX_SKILL_ROUTE_MODEL=${process.env.
   (process.env.SR_CASCADE === '1'
     ? ` AGENTBOX_SKILL_ROUTE_CASCADE=1 AGENTBOX_SKILL_ROUTE_CASCADE_CUTOFF=${Number(process.env.SR_CASCADE_CUTOFF) || 0.3718}`
     : '') +
+  // ADR-2192: the hook offers the whole baked tree. Absent for the registered set.
+  (process.env.SR_SCOPE === 'all' ? ' AGENTBOX_SKILL_ROUTE_SCOPE=all' : '') +
   // ADR-2110 (proposed): hashed session tag on log lines, for the label join. Absent when off.
   (process.env.SR_LABEL_LOG === '1' ? ' AGENTBOX_SKILL_ROUTE_LABEL_LOG=1' : '') +
   // ADR-2090 per-project bypass: absent when no project is listed, so the command is unchanged.
@@ -4083,6 +4091,8 @@ $_SSO_EXPORTS
 $_SR_CASCADE_EXPORTS
 # ADR-2090: per-project routing bypass, only when [skills.routing].bypass_projects lists one.
 $_SR_BYPASS_EXPORT
+# ADR-2192: the hook's candidate scope, only when [skills.routing].scope = "all".
+$_SR_SCOPE_EXPORT
 # ADR-2028: the vault path authority. Sourced by every tmux window and
 # interactive shell (bash via /etc/profile.d, fish via conf.d) so the Notes
 # window, the skills and the MCP servers all agree on one corpus root. Empty
