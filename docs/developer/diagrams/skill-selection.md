@@ -82,7 +82,7 @@ about one case, so a change of one case is noise.
 flowchart LR
     CASES["routing-cases.json<br/>184 cases"] --> RT["lib.route<br/>scope all, intent off"]
     RT --> JUDGE["System One judge"]
-    JUDGE --> SCORE["exact-match score<br/>original 86: 83<br/>new 98: 95-96"]
+    JUDGE --> SCORE["exact-match score<br/>original 86: 83<br/>new 98: 98"]
     CASES --> CT["routing-corpus.test.mjs<br/>schema, none share,<br/>late-discriminative flag,<br/>repo = baked descriptions"]
 ```
 
