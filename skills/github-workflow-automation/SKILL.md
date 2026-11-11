@@ -2,7 +2,7 @@
 name: github-workflow-automation
 version: 1.1.0
 category: github
-description: "Automate GitHub Actions workflows and CI/CD pipelines with claude-flow swarm coordination. Use when creating, optimizing, or debugging GitHub Actions workflow YAML, CI/CD pipelines, or GitHub repository automation — not for PR code review, releases, issues, or multi-repo sync (see the github-* sibling skills)."
+description: "Writes, optimises and debugs GitHub Actions workflow YAML and CI/CD pipelines with the gh CLI. Use when creating or fixing a workflow, a CI gate or repository automation. Not for PR review (github-code-review), releases (github-release-management), issues and boards (github-project-management) or multi-repo sync (github-multi-repo)."
 tags:
   - github
   - github-actions

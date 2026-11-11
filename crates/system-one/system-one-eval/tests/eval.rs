@@ -30,6 +30,14 @@ fn corpus_path() -> PathBuf {
     repo_root().join("tests/system-one/routing-cases.json")
 }
 
+/// How many cases the corpus on disk holds, read from the file itself so the tests follow
+/// the corpus as it grows instead of pinning a count.
+fn corpus_len() -> usize {
+    let raw = std::fs::read_to_string(corpus_path()).expect("corpus readable");
+    let v: serde_json::Value = serde_json::from_str(&raw).expect("corpus is JSON");
+    v["cases"].as_array().expect("corpus has cases").len()
+}
+
 /// A skills tree built from the corpus itself: every label becomes a skill
 /// whose description names it, with a late boundary clause for half of them.
 fn synthetic_skills(dir: &Path) -> Vec<String> {
@@ -223,8 +231,8 @@ async fn the_real_corpus_loads_and_splits_into_subgroups() {
 
     assert_eq!(
         loaded.corpus.cases.len(),
-        86,
-        "the corpus on disk is 86 cases"
+        corpus_len(),
+        "every case on disk loads"
     );
     assert!(
         !loaded.corpus.role.is_empty(),
@@ -267,8 +275,8 @@ async fn a_run_reports_accuracy_latency_tokens_cost_and_subgroups() {
         .await
         .unwrap();
 
-    assert_eq!(report.overall.n, 86);
-    assert_eq!(report.overall.answered, 86, "the stub answered everything");
+    assert_eq!(report.overall.n, corpus_len());
+    assert_eq!(report.overall.answered, corpus_len(), "the stub answered everything");
     assert!(report.failures.is_empty());
     assert_eq!(
         report.model, "stub-laya",
@@ -299,7 +307,7 @@ async fn a_run_reports_accuracy_latency_tokens_cost_and_subgroups() {
 
     // The façade's honesty block is summarised rather than ignored.
     let sso = report.sso.as_ref().expect("sso block summarised");
-    assert_eq!(sso.samples, 86);
+    assert_eq!(sso.samples, corpus_len());
     assert!((sso.mean_option_tokens - 37.5).abs() < 1e-9);
     assert_eq!(sso.max_option_tokens, 42);
     assert!((sso.mean_options_to - 8.0).abs() < 1e-9);
@@ -322,7 +330,7 @@ async fn a_run_reports_accuracy_latency_tokens_cost_and_subgroups() {
 
     // And the request really was the router's request.
     let seen = stub.seen.lock().unwrap();
-    assert_eq!(seen.len(), 86);
+    assert_eq!(seen.len(), corpus_len());
     let question = &seen[0]["questions"]["skill"];
     assert_eq!(question["type"], "choice");
     assert!(question["criteria"]["none"]
@@ -533,7 +541,7 @@ async fn the_copy_ceiling_controls_a_run_for_input_exposure() {
     let fair = copy::build(&report, &exposure, &rankers, CeilingMode::Fair);
     let naive = copy::build(&report, &exposure, &rankers, CeilingMode::ConcedeNone);
 
-    assert_eq!(fair.cases, 86);
+    assert_eq!(fair.cases, corpus_len());
     assert_eq!(fair.judge.backend, "sso");
     assert!(fair.rankers[0].oracle_tuned);
     assert!(!naive.rankers[0].oracle_tuned);
@@ -564,7 +572,7 @@ async fn the_copy_ceiling_controls_a_run_for_input_exposure() {
 
     // Per-item gain is a paired statistic over every case, failures included.
     let g = &fair.rankers[0].per_item;
-    assert_eq!(g.n, 86);
+    assert_eq!(g.n, corpus_len());
     assert!(g.ci_low <= g.mean && g.mean <= g.ci_high);
     assert_eq!(
         g.mean,

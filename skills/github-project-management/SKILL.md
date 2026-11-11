@@ -3,7 +3,7 @@ name: github-project-management
 title: GitHub Project Management
 version: 2.1.0
 category: github
-description: "Use when creating GitHub issues, managing project boards, planning sprints, decomposing work into vertical-slice tracer bullets, or triaging an issue backlog with swarm coordination. NOT for PR review (use github-code-review), release versioning (use github-release-management), CI/CD workflows (use github-workflow-automation), or cross-repo sync (use github-multi-repo)."
+description: "Use when creating GitHub issues, managing project boards, planning sprints, decomposing work into vertical-slice tracer bullets, or triaging an issue backlog with the gh CLI. NOT for PR review (use github-code-review), release versioning (use github-release-management), CI/CD workflows (use github-workflow-automation), or cross-repo sync (use github-multi-repo)."
 author: Claude Code
 tags:
   - github

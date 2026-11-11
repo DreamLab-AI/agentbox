@@ -1,6 +1,6 @@
 ---
 name: jupyter-notebooks
-description: "Programmatically build and run Jupyter .ipynb notebooks end-to-end via the jupyter-notebooks MCP server — add/delete/move/update cells, execute cells or whole notebooks, manage kernel state, capture outputs, and export to HTML/PDF/Python. Use when authoring or executing a notebook from Claude (data-analysis or ML pipelines, reproducible research docs, tutorial/educational notebooks), driving cell and kernel operations, or converting a .ipynb to another format. Not for one-off edits to a single already-open notebook (use NotebookEdit) or non-interactive production code."
+description: "Builds and runs Jupyter .ipynb notebooks end to end: adding, moving and updating cells, executing cells or whole notebooks against the baked Python, capturing outputs, and exporting to HTML, PDF or Python. Use when authoring or executing a notebook for data analysis, an ML pipeline, reproducible research or a tutorial. Not for a one-off edit to a single open notebook (NotebookEdit) or production code."
 ---
 
 # Jupyter Notebooks Skill

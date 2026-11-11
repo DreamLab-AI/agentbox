@@ -521,7 +521,7 @@
       "rationale": "Custom kernel development and GPU profiling is cuda; pytorch-ml trains models with existing kernels.",
       "class": "near-neighbour",
       "provenance": "directory-derived",
-      "late_discriminative": false
+      "late_discriminative": true
     },
     {
       "prompt": "Set up distributed PyTorch training for this model across the two GPUs, with mixed precision.",

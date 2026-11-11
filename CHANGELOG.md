@@ -4,6 +4,24 @@ All notable changes to agentbox are documented here. Format inspired by [Keep a 
 
 ## [Unreleased]
 
+### Skill estate and router audit (2026-11-11)
+
+- Router fixes (`config/hooks/lib/skill-route.cjs`): the request timer stays armed
+  until the reply body is parsed; `description`/`status` are read only from the
+  frontmatter; a synced skill excluded by status no longer comes back through its
+  manifest text; a baked skill beats a plugin or synced copy of the same name; the
+  three synced skills that need the Claude desktop app are never offered. 24 new tests.
+- `[system_one.consumers].skill_intent = false`: identical picks, half the cost.
+- 52 descriptions rewritten to name the nearest neighbour; four claimed tools the
+  image lacks. The lint now fails frontmatter a YAML parser rejects.
+- 136 skills: five deprecated stubs deleted; nine skills whose tool is not in the
+  image marked `not-installed`; `browser-automation` router-only behind `browser`.
+  Local-Playwright routes moved to the browser sidecar; host-only tools labelled.
+- Labelled corpus 86 -> 184 cases. Through the runtime router with the shipped
+  config: original 86 cases 80 -> 83, new cases 96 of 98, $0.06 a run.
+- Takes effect at the next rebuild (hook and skills are baked); until then the
+  corpus test's baked-versus-repo comparison fails in the container.
+
 ### Prebuilt agent CLI pins (2026-11-11 — prepared, not activated)
 
 - Claude Code 2.1.322 replaces 2.1.319; both Linux binaries were downloaded and

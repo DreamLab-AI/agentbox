@@ -2,7 +2,7 @@
 skill: cuda
 name: cuda
 version: 1.0.0
-description: "AI-powered CUDA development with 4 specialist agents (General, Optimizer, Debugger, Analyzer) plus an MCP toolset. Use when writing CUDA kernels (.cu/.cuh), optimising GPU code (coalescing, shared memory, occupancy), debugging nvcc compilation or race conditions, or profiling GPU performance with nsys/ncu. NOT for high-level PyTorch training without custom kernels (use pytorch-ml), Rust/C++ systems work without GPU (use rust-development), or CPU-only profiling (use performance-analysis)."
+description: "CUDA kernel development with four specialist agent roles (general, optimiser, debugger, analyser): writing .cu/.cuh kernels, optimising GPU code (coalescing, shared memory, occupancy), and debugging nvcc builds and race conditions. Use when writing or tuning a custom GPU kernel. Not for PyTorch training without custom kernels (pytorch-ml), GPU-free Rust or C++ (rust-development), or CPU profiling (performance-analysis)."
 tags: [cuda, gpu, nvidia, optimisation, kernel, parallel-computing, nvcc, profiling, debugging]
 mcp_server: true
 entry_point: mcp-server/server.py
