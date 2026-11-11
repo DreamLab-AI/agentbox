@@ -30,7 +30,7 @@ crate's ledger round-trip tests.
 ## Architecture
 
 ```
-YouTube ──yt-dlp──► Markdown ──Loom──► Assertions ──Perplexity──► Verified
+YouTube ──yt-dlp──► Markdown ──Loom──► Assertions ──tier filter──► Verified
                         │                                             │
                         ▼                                             ▼
                   ingest-status:           `ontomark find` / `ontomark tree` ◄┘
@@ -45,7 +45,7 @@ YouTube ──yt-dlp──► Markdown ──Loom──► Assertions ──Perp
 |------|------|------|
 | yt-dlp | Download new episodes | Free (local) |
 | Ontology Loom (Qwen 3.8 at :8084) | Extract assertions from transcripts | Free (local LAN) |
-| Perplexity MCP | Verify assertions + resolve URLs | Per-query |
+| Confidence-tier filter | Keep assertions above the per-tier threshold (0.7 / 0.5 / 0.4); local, no external call | Free |
 | `ontomark` CLI | Navigate the corpus, find placement, validate | Free (local, no network) |
 | `vault propose` | Submit a governed proposal for a human signature | Free (local) |
 
@@ -176,38 +176,28 @@ does not lose state; it is dropped the moment the file is rewritten.
 
 ## Pipeline phases
 
-Five phases: delta detection/download, Loom assertion extraction, Perplexity
-verification, ontology placement/integration, then marking each file
+Five phases: delta detection/download, Loom assertion extraction,
+confidence-tier verification, ontology placement/integration, then marking each file
 complete. Full per-phase detail:
 [references/pipeline-and-operations.md](references/pipeline-and-operations.md).
 
 ## Cron setup
 
 The schedule lives in this skill directory, not in a `pipeline` package — there is
-no `--register-cron` flag on `podcast-ingest`. Two registration paths exist:
+no `--register-cron` flag on `podcast-ingest`.
 
-**Canonical (agentbox): supervisord + supercronic.** The image runs a
-`[program:podcast-cron]` supervisor block (`supervisord-podcast-cron.conf`) that
-launches `supercronic` against the sibling `crontab` file. That crontab invokes
-`run-ingest.sh`, which resolves the `podcast-ingest` binary on PATH and runs
-`podcast-ingest --config podcasts.yaml`. No interpreter/capability probe is
-needed any more — the binary is self-contained (statically linked, no
-site-packages) — so `run-ingest.sh` just needs `podcast-ingest` on PATH. To
-deploy, add the block to `/etc/supervisord.conf` at Docker build (see the conf
-header for the supercronic `ADD`/`chmod` lines) — no host crond required.
-Schedule: Monday 06:17 UTC.
+**supervisord + supercronic.** The image runs a `[program:podcast-cron]` block
+(flake.nix) that launches `supercronic` against the sibling `crontab` file. The
+crontab invokes `run-ingest.sh` (Monday 06:17 UTC), `run-promote.sh` (08:17) and
+`submit-proposals.mjs` (08:47). The jobs inherit the PATH that block's
+`environment=` builds from package references: `podcast-ingest`/`podcast-promote`,
+the python env (`yt-dlp`), coreutils (`tee`), util-linux (`flock`, for
+`lib-lock.sh`), node, and `vault`/`ontomark` under `[vault].cli`. A tool missing
+from that PATH fails the job at the first call, so add a new dependency there,
+never as a `PATH=` line in the crontab.
 
-**Legacy (classic crond host only): `cron-setup.sh`.** Installs the same weekly
-line into the user crontab. Do NOT run it inside agentbox — supervisord already
-owns the schedule and you would end up running twice.
-
-```bash
-# Classic-crond host only (never inside agentbox):
-./cron-setup.sh
-```
-
-Files: `supervisord-podcast-cron.conf`, `crontab`, `run-ingest.sh`, `cron-setup.sh`
-— all in this skill directory.
+Files: `crontab`, `run-ingest.sh`, `lib-lock.sh`, `run-catchup.sh`,
+`run-promote.sh`, `submit-proposals.mjs` — all in this skill directory.
 
 ## Manual run
 
@@ -220,10 +210,14 @@ podcast-ingest --config podcasts.yaml --dry-run
 
 # Process a specific episode
 podcast-ingest --config podcasts.yaml --file the-right-way-to-worry-about-ai.md
-
-# Force reprocess already-processed files
-podcast-ingest --config podcasts.yaml --reprocess
 ```
+
+`--reprocess` selects already-processed files but the extract phase still skips
+them, so it makes no Loom call and changes nothing. Do not "fix" that without
+fingerprint dedupe that survives rewording: a forced re-extraction of an episode
+(sandbox, 2026-11-11) appended 10 reworded near-duplicates beside its 12 existing
+ledger bullets. To re-extract one episode on purpose, reset its
+`ingest-status` to `downloaded` and run with `--file`.
 
 ## Catching up on the back catalogue (`run-catchup.sh`)
 
@@ -284,8 +278,8 @@ scored dossiers with assertion-fingerprint provenance, shaped for the
 podcast-promote --pages-dir <graph pages dir> --proposals-dir promotions/proposals --dry-run
 
 # Canonical full run — rejects land as readable news pages in the working graph:
-podcast-promote --pages-dir "$VAULT_PAGES" --proposals-dir promotions/proposals \
-  --working-graph-dir "$VAULT_WORKING_PAGES" --limit 15
+podcast-promote --loom-url "$LOOM_BASE_URL" --pages-dir "$VAULT_PAGES" \
+  --proposals-dir promotions/proposals --working-graph-dir "$VAULT_WORKING_PAGES" --limit 15
 ```
 
 Rejected-from-ontology is not discarded: with `--working-graph-dir`, every

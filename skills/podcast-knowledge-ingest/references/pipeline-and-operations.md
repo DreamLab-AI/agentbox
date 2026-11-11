@@ -128,15 +128,14 @@ For each file with `ingest-status: downloaded`:
 - Filter by `min_confidence` threshold
 - Mark file `ingest-status: pending`
 
-### Phase 3: Verification (Perplexity)
+### Phase 3: Verification (confidence tiers)
 
-For each assertion above threshold:
-
-- `perplexity_search` for the claim + source
-- Check: does external evidence corroborate?
-- Resolve canonical URL for the source
-- Drop assertions that can't be verified
-- Attach URL and verification status
+A local filter, with no external call (`services/podcast-ingest/src/ingest/verify.rs`).
+An assertion survives when its `confidence` reaches its tier's threshold: tier 1
+(hard facts) 0.7, tier 2 0.5, tier 3 0.4; an unknown tier is held to 0.7. The
+Python original's cron path was the same pass-through; Perplexity corroboration was
+only ever an agent-mode option (`perplexity_search` by hand) and the binary never
+calls it.
 
 ### Phase 4: Working-graph placement
 
