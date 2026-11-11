@@ -9,7 +9,7 @@
 > consultant-deepseek, consultant-perplexity, consultant-zai, consultant-antigravity) are
 > not skills; route to them directly via their `consult` tool when a second model opinion is wanted.
 
-Skills: 123 active, 0 deprecated redirects. Sections mirror SKILL-DIRECTORY.md Artefact 1.
+Skills: 124 active, 0 deprecated redirects. Sections mirror SKILL-DIRECTORY.md Artefact 1.
 
 ## How to route
 
@@ -248,6 +248,7 @@ Skills: 123 active, 0 deprecated redirects. Sections mirror SKILL-DIRECTORY.md A
 | `gemini-url-context` | Fetches and analyses specific URLs you already have with Gemini 3.8 Flash URL Context, up to 20 per request, to summarise, compare or extract structured data with source grounding. Use when a task names known pages to read or compare. Not for YouTube videos or vault topic notes (web-summary), open-ended web search (ceramic-search, perplexity-research) or pages that need clicking through (browser). |
 | `linkedin` | LinkedIn integration via MCP for profile scraping, job search, messaging, company analysis, and people search. Uses Patchright browser automation with persistent session for authenticated access without API keys. Use when searching LinkedIn profiles, jobs, companies, or managing LinkedIn messaging. |
 | `perplexity-research` | Live web research through Perplexity's closed synthesis engine: structured web results, deep multi-step investigations with reasoning, and quick sonar answers. Use when you need authoritative primary sources (gov/academic), academic citation discovery, or UK ecology/policy lookups; the secondary engine after ceramic-search. Not for raw keyword extracts (ceramic-search), auditable citations (web-researcher), known URLs (gemini-url-context) or a full fact-checked brief (deep-research). |
+| `podcast-bulk-ingest` | Bulk backfill markdown transcript files for a YouTube podcast series. Downloads transcripts, show notes, and links for all episodes in a date range, then runs source extraction and applies enrichment tables. Designed for one-off historical backfill — for ongoing weekly ingest, see podcast-knowledge-ingest. The optional OntoCast domain bootstrap needs OntoCast, which is not in the image. |
 | `podcast-knowledge-ingest` | Weekly podcast-to-ontology cron: new YouTube episodes, Loom-extracted assertions, Perplexity verification, then Episode evidence-ledger pages, plus a promotion stage. Use for '/podcast-ingest', 'process new podcast episodes into the ontology', debugging the podcast-cron schedule, or promoting ledger evidence into scored proposal dossiers. Not for archiving transcripts as notes (youtube-transcript-archiver) or non-podcast enrichment (ontology-enrich). |
 | `reddit` | Reddit integration for browsing subreddits, searching content, analyzing user profiles, and fetching post details with comment threads. Supports anonymous, app-only, and authenticated modes with tiered rate limits. Use when browsing Reddit, searching posts, or analysing user/subreddit activity. |
 | `toprank` | AI-powered SEO/SEM automation suite with 6 specialised skills. Google Search Console integration, content writing (E-E-A-T), keyword research, meta tag optimisation, JSON-LD schema markup, and GEO (Generative Engine Optimisation) for AI citations. Use when doing SEO audits, keyword research, schema markup, or AI search citation optimisation. |
