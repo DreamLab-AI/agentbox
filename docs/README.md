@@ -109,6 +109,7 @@ You are adding a feature, implementing an adapter, or investigating a regression
 |---|---|
 | [Adapter dispatch sequence](developer/diagrams/adapter-dispatch-sequence.md) | Source-grounded sequence + flow diagrams of the five-slot adapter dispatch pipeline |
 | [Identity & agent comms](developer/diagrams/identity-and-agent-comms.md) | Source-referenced diagrams of did:nostr plumbing, session mirror, and relay flows |
+| [Skill selection](developer/diagrams/skill-selection.md) | Source-cited diagrams of the routing hook, which skills may be candidates (status, gates, extras) and how routing accuracy is measured |
 
 | Tooling & governance | |
 |---|---|
