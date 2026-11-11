@@ -60,8 +60,8 @@ forbids), two marked `superseded` but still wired into the build (`playwright`,
 - 124 skills. `router-only` remains for index skills behind another (`skill-router`,
   `browser-automation`); `gate:` is the only way to ship a deliberately-off skill.
 - The `skills.browser.playwright` switch is removed from the manifest, schema, validator, TUI,
-  flake and goldens. `skills.browser.qe_browser` is now equally dead (it sets an environment
-  variable nothing reads) and is left for a separate cleanup.
+  flake and goldens. `skills.browser.qe_browser`, equally dead (it set an environment variable
+  nothing read), is removed the same way.
 - semgrep's `--config auto` and trivy's vulnerability database fetch data at run time; the
   skill gives offline forms. YouTube currently rate-limits subtitle downloads (HTTP 429), which
   still stops new podcast transcripts; that is not a code fault.

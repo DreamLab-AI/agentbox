@@ -13,6 +13,8 @@ All notable changes to agentbox are documented here. Format inspired by [Keep a 
   open-montage, flow-nexus x3, playwright, openai-codex. `cuda`, `jupyter-notebooks` and
   `qe-browser` rewritten around what the image has. 124 skills.
 - The router offers a gated skill only while its manifest gate is on.
+- The dead manifest switches `skills.browser.playwright` and `skills.browser.qe_browser` are
+  removed from the manifest, schema, validator, setup screen, flake and goldens.
 - Podcast cron: PATH gains flock and ontomark (no ingest had completed since 19 October);
   promote uses `$LOOM_BASE_URL`; the finished EXP-B8 block is removed. Runs again after
   the next rebuild; YouTube's current 429 on subtitles still blocks new transcripts.

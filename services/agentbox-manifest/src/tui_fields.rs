@@ -215,7 +215,6 @@ pub fn providers_and_toolchains(s: &Value) -> Vec<String> {
         String::new(),
         "[skills.browser]".into(),
         format!("agent_browser = {}", b(s, "skills.browser.agent_browser")),
-        format!("qe_browser    = {}", b(s, "skills.browser.qe_browser")),
         String::new(),
         "[skills.media]".into(),
         format!("ffmpeg           = {}", b(s, "skills.media.ffmpeg")),

@@ -317,10 +317,6 @@
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "qe_browser": {
-              "description": "QE browser tooling for the agentic-qe fleet. Leave off unless you use that fleet.",
-              "type": "boolean"
-            },
             "agent_browser": {
               "description": "Marks the external browser sidecar (chrome-devtools-mcp) as in use. The sidecar runs in its own container and is managed at run time with ./agentbox.sh browsercontainer.",
               "type": "boolean"

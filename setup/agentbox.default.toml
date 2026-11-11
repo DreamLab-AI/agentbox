@@ -331,7 +331,6 @@ webgpu = true
 
 [skills.browser]
 agent_browser = true
-qe_browser = true
 # All browser automation routes through the external browsercontainer sidecar.
 # MCP SSE: http://browsercontainer:8931/sse (chrome-devtools-mcp 40+ tools)
 # CDP: browsercontainer:9222 | VNC: :5903

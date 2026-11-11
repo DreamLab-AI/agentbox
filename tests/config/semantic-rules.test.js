@@ -58,7 +58,7 @@ function baseValid() {
     desktop: { enabled: false, stack: 'hyprland-wayland', resolution: '1920x1080' },
     observability: { metrics_port: 9091, otlp_endpoint: '', log_level: 'info' },
     skills: {
-      browser: { qe_browser: false },
+      browser: { agent_browser: false },
       media: { ffmpeg: true, imagemagick: true, comfyui_builtin: false },
       spatial_and_3d: { blender: false, qgis: false, gaussian_splatting: false },
       data_science: { pytorch: false, jupyter: false },

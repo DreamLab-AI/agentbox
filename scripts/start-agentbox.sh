@@ -939,10 +939,9 @@ section_skills() {
 
   # Browser skills
   local raw_br
-  raw_br="$(wt_checklist "Skills — Browser" "Browser automation" 14 78 3 \
-    "skills.browser.agent_browser" "Agent Browser"  "$(on_off skills.browser.agent_browser)" \
-    "skills.browser.qe_browser"    "QE Browser"     "$(on_off skills.browser.qe_browser)")"
-  for k in skills.browser.agent_browser skills.browser.qe_browser; do
+  raw_br="$(wt_checklist "Skills — Browser" "Browser automation" 14 78 1 \
+    "skills.browser.agent_browser" "Agent Browser"  "$(on_off skills.browser.agent_browser)")"
+  for k in skills.browser.agent_browser; do
     echo "${raw_br}" | grep -qw "${k}" && state_set_bool "${k}" "true" || state_set_bool "${k}" "false"
   done
 

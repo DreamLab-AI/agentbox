@@ -197,7 +197,6 @@ cuda            = false
 
 [skills.browser]
 agent_browser = true
-qe_browser    = false
 
 [skills.media]
 ffmpeg           = true

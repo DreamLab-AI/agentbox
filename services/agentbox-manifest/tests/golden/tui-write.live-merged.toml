@@ -107,7 +107,6 @@ webgpu = true
 
 [skills.browser]
 agent_browser = true
-qe_browser = true
 sidecar_mcp_url = "http://browsercontainer:8931/sse"
 sidecar_cdp_host = "browsercontainer"
 sidecar_cdp_port = 9222

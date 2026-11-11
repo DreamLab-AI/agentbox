@@ -91,7 +91,6 @@ resolution = "1920x1080"
 
 [skills.browser]
 agent_browser = true
-qe_browser = false
 
 [skills.media]
 ffmpeg = true
@@ -155,7 +154,6 @@ resolution = "1920x1080"
 
 [skills.browser]
 agent_browser = false
-qe_browser = false
 
 [skills.media]
 ffmpeg = false
@@ -217,7 +215,6 @@ resolution = "1920x1080"
 
 [skills.browser]
 agent_browser = false
-qe_browser = false
 
 [skills.media]
 ffmpeg = false

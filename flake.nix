@@ -4437,7 +4437,6 @@ ${ragflowNetworkDecl}
           # includes "graphics" and /dev/dri/card0 is mapped in for GPU mode.
           "WLR_BACKENDS=headless"
           "ENABLE_AGENT_BROWSER=${boolEnv (browserCfg.agent_browser or false)}"
-          "ENABLE_QE_BROWSER=${boolEnv (browserCfg.qe_browser or false)}"
           "ENABLE_FFMPEG=${boolEnv (mediaCfg.ffmpeg or false)}"
           "ENABLE_IMAGEMAGICK=${boolEnv (mediaCfg.imagemagick or false)}"
           "ENABLE_COMFYUI_BUILTIN=${boolEnv (mediaCfg.comfyui_builtin or false)}"

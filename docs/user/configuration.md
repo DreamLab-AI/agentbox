@@ -229,12 +229,10 @@ Feature flags for the 96-skill catalogue. Only enabled skills contribute to the 
 ```toml
 [skills.browser]
 agent_browser = true    # on by default in the shipped manifest
-qe_browser    = true    # on by default in the shipped manifest
-playwright    = false   # permanently off — superseded by the browsercontainer sidecar
 # All browser automation routes through the external browsercontainer sidecar.
-# There is no local chromium/playwright in the image — agent_browser and
-# qe_browser both dispatch to the sidecar's chrome-devtools-mcp, they don't
-# bundle their own browser.
+# There is no local chromium/playwright in the image — agent_browser
+# dispatches to the sidecar's chrome-devtools-mcp; qe-browser checks use the
+# agentic-qe MCP tools. Neither bundles a browser.
 # MCP SSE: http://browsercontainer:8931/sse (chrome-devtools-mcp 40+ tools)
 # CDP: browsercontainer:9222 | VNC: :5903
 # Start: agentbox.sh browsercontainer up
