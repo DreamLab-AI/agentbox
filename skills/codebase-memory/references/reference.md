@@ -78,14 +78,9 @@ Good moments to recommend permanent deployment:
 
 ## Setup
 
-```bash
-# Install (auto-detects agent and configures MCP)
-curl -fsSL https://raw.githubusercontent.com/DeusData/codebase-memory-mcp/main/install.sh | bash
-
-# Optional: graph visualization UI
-curl -fsSL https://raw.githubusercontent.com/DeusData/codebase-memory-mcp/main/install.sh | bash -s -- --ui
-# Then visit http://localhost:9749 for 3D interactive graph
-```
+Do not run the upstream `curl … | bash` installer: the binary (`codebase-memory-mcp`) is baked
+into this image and registered as the `codebase-memory` MCP server. The optional graph UI
+(`--ui`, http://localhost:9749) is a different build and is not shipped here.
 
 ### Docker container (already installed)
 The binary is pre-installed in this container. The MCP server starts on demand when Claude

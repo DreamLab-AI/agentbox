@@ -91,8 +91,6 @@ Detailed guidance lives in `references/` — load the file for the task at hand:
 ## Related skills
 
 - `swarm-advanced` — general swarm coordination (no consensus required)
-- `consensus-mechanisms` — distributed decision making
-- `memory-systems` — advanced memory management
 - `sparc-methodology` — structured development workflow
 - `github-code-review` — repository PR review and coordination
 

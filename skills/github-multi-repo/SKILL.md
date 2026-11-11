@@ -12,6 +12,8 @@ requires:
 
 # GitHub Multi-Repository Coordination
 
+> **Verified against this image (ruflo v3.63.1):** `claude-flow github …`, `claude-flow skill run …`, `claude-flow sparc pipeline`, `claude-flow diagnostic-run` and `ruv-swarm` do not exist here, and `npx` would fetch an unpinned package at run time. Treat those `npx …` examples as illustrative of intent only. Real equivalents: `gh` (see [plain-gh-fallback](../github-code-review/references/plain-gh-fallback.md)), `claude-flow hooks|swarm|workflow|hive-mind …` (on PATH, no `npx`), and the `mcp__claude-flow__github_pr_manage` / `github_repo_analyze` tools.
+
 Coordinate AI swarms, package synchronisation, and architecture across multiple
 repositories: organisation-wide automation, cross-project changes, and scalable
 repository management. Combines `gh` CLI, `claude-flow` swarm MCP tools, and

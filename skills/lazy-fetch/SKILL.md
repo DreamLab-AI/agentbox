@@ -275,7 +275,12 @@ skills/lazy-fetch/
 
 ## Installation
 
-**Build required -- not ready to run out of the box.** The master copy ships
+**In this image the server is already built:** `/opt/agentbox/skills/lazy-fetch/mcp-server/dist`
+and `node_modules` are baked, and `lazy-fetch-mcp` is on PATH (a stdio wrapper around
+that build). It is not registered as an MCP server by default, so register
+`lazy-fetch-mcp` yourself. The build steps below apply only to a source checkout.
+
+**Source checkout: build required.** The master copy ships
 only `mcp-server/src/` and `package.json`; there is no `dist/` and no
 `node_modules/`, and lazy-fetch is not registered in `skills/mcp.json`
 (verified 2026-09-09 -- only `codebase-memory` is registered there). Build

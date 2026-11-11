@@ -33,6 +33,8 @@ related_skills:
 
 # GitHub Project Management
 
+> **Verified against this image (ruflo v3.63.1):** `claude-flow github …`, `claude-flow skill run …`, `claude-flow sparc pipeline`, `claude-flow diagnostic-run` and `ruv-swarm` do not exist here, and `npx` would fetch an unpinned package at run time. Treat those `npx …` examples as illustrative of intent only. Real equivalents: `gh` (see [plain-gh-fallback](../github-code-review/references/plain-gh-fallback.md)), `claude-flow hooks|swarm|workflow|hive-mind …` (on PATH, no `npx`), and the `mcp__claude-flow__github_pr_manage` / `github_repo_analyze` tools.
+
 Manage GitHub issues, boards, and sprints — optionally coordinated by a claude-flow agent swarm. Issue work goes through the `gh` CLI; swarm orchestration through `mcp__claude-flow__*` tools.
 
 ## When Not To Use
@@ -53,7 +55,7 @@ gh issue create \
   --label "enhancement,swarm-ready"
 
 # Open a coordination swarm for the issue
-npx claude-flow@alpha hooks pre-task --description "Feature implementation"
+claude-flow hooks pre-task --description "Feature implementation"
 ```
 
 Board setup:

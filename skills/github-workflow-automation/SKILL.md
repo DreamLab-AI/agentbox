@@ -16,13 +16,15 @@ authors:
 requires:
   - gh (GitHub CLI)
   - git
-  - claude-flow@alpha
+  - claude-flow (baked ruflo CLI on PATH)
   - node (v16+)
 priority: high
 progressive_disclosure: true
 ---
 
 # GitHub Workflow Automation
+
+> **Verified against this image (ruflo v3.63.1):** `claude-flow github …`, `claude-flow skill run …`, `claude-flow sparc pipeline`, `claude-flow diagnostic-run` and `ruv-swarm` do not exist here, and `npx` would fetch an unpinned package at run time. Treat those `npx …` examples as illustrative of intent only. Real equivalents: `gh` (see [plain-gh-fallback](../github-code-review/references/plain-gh-fallback.md)), `claude-flow hooks|swarm|workflow|hive-mind …` (on PATH, no `npx`), and the `mcp__claude-flow__github_pr_manage` / `github_repo_analyze` tools.
 
 Comprehensive GitHub Actions automation with claude-flow swarm coordination —
 CI/CD pipeline generation, workflow orchestration, and repository automation
@@ -74,7 +76,7 @@ for the full set. Writing/editing the workflow YAML itself is a plain text edit 
 ## Prerequisites
 
 `gh` installed and authenticated · `git` configured · Node.js v16+ ·
-`claude-flow@alpha` available · repo has `.github/workflows` and Actions
+`claude-flow` on PATH (baked, no install) · repo has `.github/workflows` and Actions
 enabled. Full checklist and a setup script: `references/best-practices.md`.
 
 ## Reference detail (progressive disclosure)
