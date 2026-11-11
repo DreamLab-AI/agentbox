@@ -313,7 +313,7 @@
       "rationale": "Cutting, captioning and re-encoding existing footage to a vertical render is mechanical editing; clipcannon is not installed and video-production is for continuity-held multi-tool films.",
       "class": "near-neighbour",
       "provenance": "directory-derived",
-      "late_discriminative": true
+      "late_discriminative": false
     },
     {
       "prompt": "Make a five-minute explainer video for this repository aimed at a non-technical buyer, with narration and captions.",
@@ -417,7 +417,7 @@
       "rationale": "Host hardening and compliance has no installed skill now that defense-security is not installed; security-testing covers application code, not host benchmarks.",
       "class": "boundary",
       "provenance": "directory-derived",
-      "late_discriminative": true
+      "late_discriminative": false
     },
     {
       "prompt": "Stamp our signature PNG onto the bottom right of this PDF invoice. It just needs to look signed for the client.",
