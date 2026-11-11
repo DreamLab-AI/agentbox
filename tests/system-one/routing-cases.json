@@ -349,11 +349,11 @@
     },
     {
       "prompt": "Train a Gaussian splat from this COLMAP capture, clean it up in the viewer and export the scene.",
-      "expected_skill": "none",
-      "rationale": "No splat trainer is baked in agentbox (lichtfeld-studio was removed, ADR-2196); supersplat only edits a finished splat and spark-scene only views one.",
+      "expected_skill": "supersplat",
+      "rationale": "No splat trainer is baked (lichtfeld-studio was removed, ADR-2196), so the training half has no skill; the cleanup half is supersplat, which is the useful pick.",
       "class": "boundary",
       "provenance": "directory-derived",
-      "late_discriminative": false
+      "late_discriminative": true
     },
     {
       "prompt": "Where are my tokens going? I keep hitting plan limits and I think something automated is looping overnight.",
