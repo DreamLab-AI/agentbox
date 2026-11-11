@@ -30,7 +30,10 @@ env_vars:
   - RUNWAY_API_KEY
   - PEXELS_API_KEY
   - PIXABAY_API_KEY
+status: not-installed
 ---
+
+> **Not installed in agentbox.** OpenMontage is not in the image; it installs itself by clone, `pip` and `npm` at run time. The router does not offer this skill; it stays as reference for a project that installs the tool itself.
 
 # Open Montage — Agentic Video Production
 

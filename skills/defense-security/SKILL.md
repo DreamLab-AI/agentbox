@@ -20,7 +20,10 @@ env_vars:
   - DEFENSE_MCP_AUTO_INSTALL
   - DEFENSE_MCP_LOG_LEVEL
   - DEFENSE_MCP_SESSION_TIMEOUT
+status: not-installed
 ---
+
+> **Not installed in agentbox.** `defense-mcp-server` is not in the image and is not registered as an MCP server. The router does not offer this skill; it stays as reference for a project that installs the tool itself.
 
 # Defense Security MCP Skill
 

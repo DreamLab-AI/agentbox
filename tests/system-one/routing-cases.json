@@ -181,8 +181,8 @@
     },
     {
       "prompt": "Scrape the product listings off this supplier site — it's behind Cloudflare Turnstile and rate-limits hard.",
-      "expected_skill": "scrapling",
-      "rationale": "Anti-bot bypass and spidering is scrapling, not general browser automation.",
+      "expected_skill": "browser",
+      "rationale": "Scraping a bot-protected site needs a real browser; scrapling is not installed here, so the sidecar browser is the route.",
       "class": "near-neighbour",
       "provenance": "directory-derived",
       "late_discriminative": false
@@ -309,8 +309,8 @@
     },
     {
       "prompt": "Cut a highlight reel out of this two-hour recording, caption it, and render a vertical version for Reels.",
-      "expected_skill": "clipcannon",
-      "rationale": "Editing existing footage into platform renders is clipcannon's stated scope against ffmpeg's mechanical one.",
+      "expected_skill": "video-production",
+      "rationale": "Cutting, captioning and re-rendering existing footage for a platform is video-production; clipcannon is not installed here.",
       "class": "near-neighbour",
       "provenance": "directory-derived",
       "late_discriminative": true
@@ -413,8 +413,8 @@
     },
     {
       "prompt": "Harden this Ubuntu box to the CIS benchmark and tell me where we stand on SOC2 compliance.",
-      "expected_skill": "defense-security",
-      "rationale": "Linux hardening and compliance is defense-security, the other half of the same explicit split.",
+      "expected_skill": "security-testing",
+      "rationale": "Hardening and compliance review falls to security-testing; defense-security is not installed here.",
       "class": "near-neighbour",
       "provenance": "directory-derived",
       "late_discriminative": true

@@ -22,7 +22,10 @@ env_vars:
   - DEEPGRAM_API_KEY
   - ECHOLOOP_SYSTEM_DEVICE
   - ECHOLOOP_MIC_DEVICE
+status: not-installed
 ---
+
+> **Not installed in agentbox.** Its Python dependencies (`faster_whisper`, `sounddevice`, `anthropic`) are not in the image. The router does not offer this skill; it stays as reference for a project that installs the tool itself.
 
 # EchoLoop — Real-Time Meeting Copilot
 

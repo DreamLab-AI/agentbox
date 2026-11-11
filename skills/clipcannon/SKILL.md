@@ -29,7 +29,10 @@ env_vars:
   - CLIPCANNON_DATA_DIR
   - CLIPCANNON_GPU_DEVICE
   - CLIPCANNON_NVENC
+status: not-installed
 ---
+
+> **Not installed in agentbox.** `clipcannon` is not in the image. The router does not offer this skill; it stays as reference for a project that installs the tool itself.
 
 # ClipCannon -- AI Video Editor via MCP
 

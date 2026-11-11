@@ -2,7 +2,10 @@
 name: agentic-jujutsu
 version: 2.3.2
 description: "Lock-free version control for multiple AI agents committing concurrently to the same repo, built on Jujutsu (jj). Use when several agents need to commit/branch/rebase simultaneously without lock contention, for conflict-free concurrent worktree isolation, or when you want per-agent operation tracking with learned suggestions for repeated jj workflows."
+status: not-installed
 ---
+
+> **Not installed in agentbox.** `jj` and `agentic-jujutsu` are not in the image, and the `ruflo-jujutsu` plugin is disabled. The router does not offer this skill; it stays as reference for a project that installs the tool itself.
 
 # Agentic Jujutsu — AI Agent Version Control
 

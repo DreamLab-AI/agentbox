@@ -18,7 +18,10 @@ dependencies:
   - playwright
 env_vars:
   - NOTEBOOKLM_STORAGE_DIR
+status: not-installed
 ---
+
+> **Not installed in agentbox.** `notebooklm-py` is not in the image, and its login flow needs a local Playwright browser, which this estate does not install. The router does not offer this skill; it stays as reference for a project that installs the tool itself.
 
 # NotebookLM Skill
 

@@ -192,5 +192,5 @@ Before shipping:
 
 LaTeX conventions, memoir class packages, UK typography, and citation patterns
 (formerly the `latex-book` skill) now live in
-[references/latex-conventions.md](references/latex-conventions.md); `latex-book` is a
-deprecated redirect stub.
+[references/latex-conventions.md](references/latex-conventions.md); the `latex-book`
+redirect stub was removed on 2026-11-11.

@@ -13,7 +13,10 @@ triggers:
   - bulk ingest podcast
   - backfill podcast transcripts
   - download podcast series
+status: not-installed
 ---
+
+> **Not installed in agentbox.** `ontocast` is not in the image. The router does not offer this skill; it stays as reference for a project that installs the tool itself.
 
 # Podcast Bulk Ingest Skill
 

@@ -1,6 +1,6 @@
 ---
 name: "gcloud"
-description: "Google Cloud CLI (gcloud/gsutil/bq) for GCP operations from agentbox: Compute Engine VMs, Identity-Aware Proxy (IAP), Secret Manager, Cloud Run, Artifact Registry, Cloud NAT/firewall. Use when a task involves deploying to or operating Google Cloud — standing up a VM behind IAP, granting/impersonating a deploy service account, managing GCP secrets, or the the target repository VPS deployment. Installed via the nix flake (basePackages); auth is interactive (operator-run) and creds live in the writable ~/.config/gcloud."
+description: "Google Cloud CLI (gcloud/gsutil/bq) for GCP operations from agentbox: Compute Engine VMs, Identity-Aware Proxy (IAP), Secret Manager, Cloud Run, Artifact Registry, Cloud NAT/firewall. Use when a task involves deploying to or operating Google Cloud — standing up a VM behind IAP, granting/impersonating a deploy service account, managing GCP secrets, or an application VPS deployment behind IAP. Installed via the nix flake (basePackages); auth is interactive (operator-run) and creds live in the writable ~/.config/gcloud."
 ---
 
 # gcloud — Google Cloud CLI in agentbox
@@ -8,7 +8,7 @@ description: "Google Cloud CLI (gcloud/gsutil/bq) for GCP operations from agentb
 The `google-cloud-sdk` (gcloud, gsutil, bq) is provisioned in the nix image
 (`flake.nix` → `basePackages`), so `gcloud` is on `$PATH` in every shell. This skill
 covers using it correctly **in this container's constraints** and the canonical GCP
-deployment (the `the target repository` VPS behind IAP).
+deployment (the application VPS behind IAP).
 
 ## Environment constraints (read first)
 
@@ -35,18 +35,18 @@ deployment (the `the target repository` VPS behind IAP).
 - **Never commit credentials.** `~/.config/gcloud`, access tokens, and any key material
   stay out of git. Application-default creds and tokens are runtime-only.
 
-## The canonical deployment — `the target repository`
+## The canonical deployment — an application VPS behind IAP
 
-- **Project:** `the target repository-503809` · **Deploy SA (impersonate):**
-  `the target repository-deployer@the target repository-503809.iam.gserviceaccount.com`
+- **Project:** `<project-id>` · **Deploy SA (impersonate):**
+  `<deployer>@<project-id>.iam.gserviceaccount.com`
 - **Identity connector:** the app validates Google **IAP** (`gcp-iap` auth mode) — a
   signed `X-Goog-IAP-JWT-Assertion` verified against Google's fixed JWKS. The deployment
   puts the pod behind an IAP-gated external HTTPS load balancer.
-- **Full runbook:** the `the target repository` repo's `docs/runbooks/gcp-vps-deploy.md` — 10
+- **Full runbook:** the application repository's `docs/runbooks/gcp-vps-deploy.md` — 10
   idempotent phases (VPC + Cloud NAT egress, IAP-range firewall `130.211.0.0/22` +
   `35.191.0.0/16`, GCE `e2-standard-2/4` with no external IP, Secret Manager for
   DB/cookie/model secrets, HTTPS LB + managed cert, IAP enable → derive the audience →
-  feed `CAMPAIGNBUILDER_AUTH_AUD`, e2e verify, snapshot backups).
+  feed `<APP>_AUTH_AUD`, e2e verify, snapshot backups).
 - **Least-privilege grant to ask the project owner for** (impersonation, not a key):
   `roles/compute.admin`, `roles/iam.serviceAccountAdmin` + `roles/iam.serviceAccountUser`,
   `roles/secretmanager.admin`, `roles/serviceusage.serviceUsageAdmin`, and `roles/iap.admin`
@@ -77,7 +77,7 @@ gcloud compute ssh <VM> --zone=<ZONE> --tunnel-through-iap --command '…'
 # Derive the IAP audience for the app's gcp-iap auth mode
 PN=$(gcloud projects describe <PROJECT_ID> --format='value(projectNumber)')
 BID=$(gcloud compute backend-services describe <BACKEND> --global --format='value(id)')
-echo "/projects/${PN}/global/backendServices/${BID}"   # → CAMPAIGNBUILDER_AUTH_AUD
+echo "/projects/${PN}/global/backendServices/${BID}"   # → <APP>_AUTH_AUD
 ```
 
 ## Execution contract for agents
@@ -97,5 +97,5 @@ echo "/projects/${PN}/global/backendServices/${BID}"   # → CAMPAIGNBUILDER_AUT
   package supersedes it once rebuilt.)
 - Not an MCP server — this is a CLI skill (progressive disclosure): the front-matter
   description is the discovery surface; this body is the on-demand detail.
-- Related: the `the target repository` repo (the app + the runbook), and the pod's `gcp-iap`
+- Related: the application repository (the app + the runbook), and the pod's `gcp-iap`
   connector in `control-plane/src/auth/verify.ts`.

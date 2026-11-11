@@ -21,7 +21,10 @@ tags:
   - infrastructure-monitoring
 env_vars:
   - SCRAPLING_PROXY
+status: not-installed
 ---
+
+> **Not installed in agentbox.** `scrapling` is not in the image, its MCP server is not registered, and its browser fetchers need a local Playwright browser, which this estate does not install (use the `browser` skill). The router does not offer this skill; it stays as reference for a project that installs the tool itself.
 
 # Scrapling
 
