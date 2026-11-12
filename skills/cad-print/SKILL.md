@@ -1,5 +1,6 @@
 ---
 name: cad-print
+gate: skills.spatial_and_3d.cad_print
 description: "Slices a model for 3D printing: turns an `.stl`, `.3mf` or `.obj` into printer-ready G-code with OrcaSlicer, headless, with built-in profiles for most FDM printers (Prusa, Bambu Lab, Creality, Voron), and tells the person how to hand it to their printer. Use when a model should be sliced or printed. Never starts a print and never contacts a printer. Whether a part will print is cad's manufacturing check."
 license: MIT
 ---

@@ -1,5 +1,6 @@
 ---
 name: qgis
+gate: skills.spatial_and_3d.qgis
 description: >
   Geospatial analysis and GIS operations via QGIS. 51 MCP tools covering layer
   management, feature editing, processing algorithms, rendering, styling, plugin
@@ -10,10 +11,9 @@ version: 3.0.0
 author: agentbox-claude
 mcp_server: true
 protocol: fastmcp
-entry_point: python3 -u /opt/agentbox/scripts/qgis_mcp_standalone.py
+entry_point: python3 -u /opt/agentbox/skills/qgis/mcp-server/server.py
 port: 9877
 dependencies:
-  - qgis
   - uv
 ---
 
@@ -60,16 +60,20 @@ FastMCP Server (uv run src/qgis_mcp/server.py) -- registered in mcp.json
 qgis-mcp supervisor proxy (/opt/agentbox/scripts/qgis_mcp_standalone.py)
     |  thin TCP-to-TCP bridge: local 0.0.0.0:9877 -> gui-tools-service:9877
     v
-QGIS Desktop on the gui-tools-service GPU sidecar, with qgis_mcp_plugin loaded
+Headless QgsApplication on gui-tools-service, with qgis_mcp_plugin loaded
 ```
 
-QGIS itself runs on the **gui-tools-service GPU sidecar**, not on a local
-Display :1 — nix-built QGIS in the main image cannot reach the nvidia driver
-libraries injected into `/usr/lib`, the same constraint that put Blender's
-interactive path on the same sidecar. `[program:qgis-mcp]` is a supervised,
+QGIS itself runs on the **gui-tools-service GPU sidecar**, not on local
+Display :1. `qgis = true` enables the proxy; `qgis_local = false` is the normal
+sidecar-only configuration. Neither QGIS nor PyQt needs to be installed in
+Agentbox for the client/proxy connection. `[program:qgis-mcp]` is a supervised,
 always-running local proxy (`autostart=true`); it only bridges the socket. If
 the sidecar is down, the proxy accepts the TCP connection and then closes it
 with no reply — bring the sidecar up first with `./agentbox.sh gui-tools up`.
+
+The current sidecar is headless (`iface=None`): layer, feature, processing and
+layout-export operations work, but desktop canvas tools may report unavailable.
+Use a layout export for a map artifact rather than assuming a GUI canvas exists.
 
 The nkarasiak/qgis-mcp plugin uses **length-prefixed binary framing** (4-byte big-endian uint32 header followed by JSON payload), not newline-delimited JSON. The FastMCP server handles this protocol automatically.
 
