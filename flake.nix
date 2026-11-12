@@ -126,6 +126,15 @@
                   });
                   inline-snapshot = pyPrev.inline-snapshot.overridePythonAttrs
                     (_: { doCheck = false; });
+                  # typer 0.27.2 (2026-11-12): 1372 pass, one fails —
+                  # test_file_error expects "cannot-open.txt" in an 80-column
+                  # Rich error panel, but the sandbox tmp path is long enough
+                  # that Rich elides the filename to "...". Cosmetic and
+                  # path-length dependent; skip only that test. Not in the
+                  # binary cache, so every cold build compiles and tests it.
+                  typer = pyPrev.typer.overridePythonAttrs (o: {
+                    disabledTests = (o.disabledTests or [ ]) ++ [ "test_file_error" ];
+                  });
                   # semgrep-core 1.180.0 (2026-11-12): patchelf 0.19.2 and 0.18.0
                   # both abort (shiftFile: `splitIndex == -1`) when postFixup
                   # sets the absolute "$out/bin/libs:<glibc>/lib" rpath on the
