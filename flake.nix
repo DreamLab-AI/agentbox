@@ -115,6 +115,17 @@
                     (old.env.NIX_CFLAGS_COMPILE or "") + " -fpermissive";
                 };
               });
+              # 2026-11-12: gjs 1.88.1's fresh test HOME has no .cache, so
+              # debugger history emits a warning and all 20 debugger tests fail
+              # under fatal-warnings. Keep every test; supply a real cache dir.
+              # Drop when nixpkgs/upstream creates the test cache directory.
+              gjs = if prev.gjs.version != "1.88.1" then prev.gjs else
+                prev.gjs.overrideAttrs (old: {
+                  preCheck = (old.preCheck or "") + ''
+                    export XDG_CACHE_HOME="$TMPDIR/gjs-test-cache"
+                    mkdir -p "$XDG_CACHE_HOME"
+                  '';
+                });
               pythonPackagesExtensions = (prev.pythonPackagesExtensions or [ ]) ++ [
                 (pyFinal: pyPrev: {
                   # reuse 6.2.0 declares a man output, but sphinx-hook reads
