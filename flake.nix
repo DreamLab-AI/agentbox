@@ -126,6 +126,20 @@
                   });
                   inline-snapshot = pyPrev.inline-snapshot.overridePythonAttrs
                     (_: { doCheck = false; });
+                  # semgrep-core 1.180.0 (2026-11-12): patchelf 0.19.2 and 0.18.0
+                  # both abort (shiftFile: `splitIndex == -1`) when postFixup
+                  # sets the absolute "$out/bin/libs:<glibc>/lib" rpath on the
+                  # wheel's binary; the long string forces a section shift the
+                  # tool mishandles. "$ORIGIN/libs" names the same bundled
+                  # directory and fits, so the binary patches and runs
+                  # (`semgrep-core -version` -> 1.180.0, no missing libraries).
+                  # Drop when nixpkgs semgrep-core builds clean.
+                  semgrep = pyPrev.semgrep.override (old: {
+                    semgrep-core = old.semgrep-core.overrideAttrs (o: {
+                      postFixup = builtins.replaceStrings
+                        [ "$out/bin/libs" ] [ "\\$ORIGIN/libs" ] o.postFixup;
+                    });
+                  });
                   # databricks-sql-connector 4.2.4: all 558 unit tests pass,
                   # but pytest cannot exit because feature-flag refresher
                   # threads keep retrying the unreachable test host "foo".
