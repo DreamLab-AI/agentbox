@@ -47,9 +47,9 @@ autostart=true
 const names = (v) => v.map((x) => x.split(' ').find((w) => w.startsWith('[program:')));
 
 // ---------------------------------------------------------------------------
-test('loopback bind passes with no sanction — the aoe-serve shape', () => {
-  const r = checkListeners(block('aoe-serve',
-    '${aoePkg}/bin/aoe serve --auth token --behind-proxy --allowed-host 127.0.0.1 --host 127.0.0.1 --port 9095'));
+test('loopback bind passes with no sanction — a token-authed daemon behind the proxy', () => {
+  const r = checkListeners(block('loopback-daemon',
+    '${daemonPkg}/bin/daemon serve --auth token --behind-proxy --allowed-host 127.0.0.1 --host 127.0.0.1 --port 9095'));
   assert.deepEqual(r.violations, [], 'a loopback listener must not need a sanction');
   assert.deepEqual(r.unresolved, []);
   assert.ok(r.listeners.length >= 1);

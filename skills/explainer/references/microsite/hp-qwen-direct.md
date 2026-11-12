@@ -10,7 +10,7 @@ opt-out retain their existing behaviour. No direct LAN model port or temporary
 CPU model is needed for the currently qualified service.
 
 The profile discovers the served model ID and advertised image/context capability.
-Refresh it with `node scripts/aoe-seed-sessions.mjs --providers-only` from the
+Refresh it with `node scripts/session-provision.mjs` from the
 Agentbox checkout after a model swap, then start a new agent process. Do not infer
 successful vision from the alias or capability flag: qualification exercised an
 image-only review code, an overlapping UI element, image results returned through

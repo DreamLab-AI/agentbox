@@ -27,8 +27,8 @@ describe('owned web-interface contracts', () => {
     // ADR-045/ADR-069: the NIP-98 proxy at :9096 owns the /mgmt/ prefix and
     // strips it itself (proxy.mjs `strip` defaults true) before forwarding to
     // the management API. Caddy must therefore PRESERVE the prefix — a
-    // `handle_path` here would strip it twice and route /mgmt/* to the AoE
-    // upstream instead of management-api.
+    // `handle_path` here would strip it twice and the proxy would no longer
+    // match /mgmt/* to management-api.
     expect(caddy).toMatch(/handle \/mgmt\/\*/);
   });
 

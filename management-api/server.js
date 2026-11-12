@@ -322,7 +322,7 @@ app.register(require('@fastify/swagger'), {
       { name: 'beads', description: 'Beads work-ledger — epics, children, claim, close (ADR-043 D4.3)' },
       { name: 'mandate', description: 'Scoped WAC agent-delegation mandates (ADR-043 D4.5)' },
       { name: 'approvals', description: 'Pending authority-gate approvals — signed 31403 decisions (ADR-043 D4.7)' },
-      { name: 'interaction-plane', description: 'AoE session-boundary identity binding (PRD-021 / ADR-043)' }
+      { name: 'interaction-plane', description: 'Session-boundary identity binding (ADR-043, ADR-2153)' }
     ]
   }
 });
@@ -1258,7 +1258,7 @@ async function start() {
       }
     }
 
-    // ── AoE session-boundary shim endpoint (ADR-043 D4.1-D4.5, PRD-021 WS3) ─
+    // ── Session-boundary endpoint (ADR-043 D4.1-D4.5; caller: agentbox-sessions, ADR-2153)
     {
       try {
         await app.register(require('./routes/sessions-boundary'), { logger, manifest });

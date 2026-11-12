@@ -30,7 +30,7 @@
     "linked_data": { "label": "Linked data", "group": "memory" },
     "ontology_monitor": { "label": "Ontology monitor", "group": "memory" },
     "compression": { "label": "Compression", "group": "memory" },
-    "interaction_plane": { "label": "Interaction plane (AoE)", "group": "agents" },
+    "interaction_plane": { "label": "Interaction plane (sessions)", "group": "agents" },
     "voice": { "label": "Voice console", "group": "agents" },
     "voicelink": { "label": "Voicelink (edge voice)", "group": "agents" },
     "dream_machine": { "label": "Dream machine", "group": "agents" },

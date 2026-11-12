@@ -30,6 +30,10 @@ pub struct ToolSpec {
 pub struct Contract {
     pub worktree_root: String,
     pub worktree_prefix: String,
+    /// Prefixes worktrees were cut under before a rename. A seed's worktree
+    /// found under one of these is adopted (`worktree::adopt`), not re-cut.
+    #[serde(default)]
+    pub legacy_worktree_prefixes: Vec<String>,
     pub settle_seconds: u64,
     pub common_blockers: Vec<String>,
     pub tools: BTreeMap<String, ToolSpec>,
@@ -110,6 +114,20 @@ impl Contract {
         };
         root.join(format!("{}{}", self.worktree_prefix, seed.slug))
     }
+
+    /// Where a worktree seed's checkout sat under each retired prefix.
+    pub fn legacy_session_dirs(&self, seed: &Seed, home: &Path, project: &Path) -> Vec<PathBuf> {
+        if !seed.worktree {
+            return Vec::new();
+        }
+        let current = self.session_dir(seed, home, project);
+        let Some(parent) = current.parent() else { return Vec::new() };
+        self.legacy_worktree_prefixes
+            .iter()
+            .filter(|p| **p != self.worktree_prefix)
+            .map(|p| parent.join(format!("{p}{}", seed.slug)))
+            .collect()
+    }
 }
 
 #[cfg(test)]
@@ -172,7 +190,16 @@ mod tests {
         let c = contract();
         let home = Path::new("/home/devuser");
         let project = Path::new("/home/devuser/workspace/project");
-        assert_eq!(c.session_dir(&seed("codex", "codex", None, true), home, project), Path::new("/home/devuser/workspace/wt/aoe-codex"));
+        assert_eq!(c.session_dir(&seed("codex", "codex", None, true), home, project), Path::new("/home/devuser/workspace/wt/abs-codex"));
         assert_eq!(c.session_dir(&seed("zai", "claude", None, false), home, project), project);
+    }
+
+    #[test]
+    fn legacy_dirs_are_the_retired_aoe_names_for_worktree_seeds_only() {
+        let c = contract();
+        let home = Path::new("/home/devuser");
+        let project = Path::new("/home/devuser/workspace/project");
+        assert_eq!(c.legacy_session_dirs(&seed("codex", "codex", None, true), home, project), vec![PathBuf::from("/home/devuser/workspace/wt/aoe-codex")]);
+        assert!(c.legacy_session_dirs(&seed("zai", "claude", None, false), home, project).is_empty());
     }
 }

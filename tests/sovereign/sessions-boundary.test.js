@@ -3,7 +3,7 @@
 /**
  * ADR-043 D4.1-D4.5 / PRD-021 WS3 — the /v1/sessions/boundary shim. Verifies
  * that a create binds a did:nostr + session URN + beads epic + project-scoped
- * memory namespace, that create is idempotent on the AoE session id, and that
+ * memory namespace, that create is idempotent on the session id, and that
  * turn/close map onto the beads lifecycle. A fake beads adapter isolates the
  * test from SQLite; a temp state + identity dir isolates the registry + keyfiles.
  */
@@ -63,8 +63,8 @@ describe('/v1/sessions/boundary', () => {
   const OPERATOR = 'f'.repeat(64);
 
   beforeAll(async () => {
-    tmpState = fs.mkdtempSync(path.join(os.tmpdir(), 'aoe-state-'));
-    tmpIdentity = fs.mkdtempSync(path.join(os.tmpdir(), 'aoe-ids-'));
+    tmpState = fs.mkdtempSync(path.join(os.tmpdir(), 'session-state-'));
+    tmpIdentity = fs.mkdtempSync(path.join(os.tmpdir(), 'session-ids-'));
     process.env.AGENTBOX_STATE_DIR = tmpState;
     process.env.AGENTBOX_AGENT_IDENTITY_DIR = tmpIdentity;
     process.env.AGENTBOX_X_ONLY_PUBKEY_HEX = OPERATOR;

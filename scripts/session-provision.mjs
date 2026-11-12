@@ -97,7 +97,7 @@ export function selectLoomModel(listing, env = {}) {
   return { id, image, context: agentContext(contextMetadata) };
 }
 
-// OpenCode is a first-class AoE agent, so provider selection stays in its
+// OpenCode is launched natively by the session plane, so provider selection stays in its
 // supported configuration surface instead of inventing custom wrapper agents.
 export function openCodeConfig(env = process.env, home = os.homedir(), existing = {}, selected) {
   if (!selected?.id) throw new Error("A discovered Loom model is required");
@@ -163,8 +163,8 @@ export function openCodeConfig(env = process.env, home = os.homedir(), existing 
         options: { baseURL: deepseekBase, apiKey: '{env:DEEPSEEK_API_KEY}' },
         models: {
           'deepseek-flash': { name: 'DeepSeek V4.1 Flash' },
-          // Existing AoE sessions retain extraArgs at boot. Route their old
-          // selector to the current wire model without killing sessions.
+          // Sessions stored before the ADR-2153 cutover may still name the old
+          // selector; route it to the current wire model.
           'deepseek-chat': { id: 'deepseek-flash', name: 'DeepSeek V4.1 Flash' },
         },
       },

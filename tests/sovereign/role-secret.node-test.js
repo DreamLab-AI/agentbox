@@ -276,7 +276,7 @@ function proxyStartup(extraEnv) {
   return new Promise((resolve, reject) => {
     const env = {
       PATH: process.env.PATH, HOME: os.tmpdir(), NIP98_PROXY_PORT: '0', NIP98_PROXY_HOST: '127.0.0.1',
-      AOE_UPSTREAM: 'http://127.0.0.1:9', NIP98_PROXY_CONFIG_FILE: path.join(tmpdir(), 'absent.json'), ...extraEnv,
+      NIP98_PROXY_CONFIG_FILE: path.join(tmpdir(), 'absent.json'), ...extraEnv,
     };
     const child = spawn(process.execPath, [path.join(ROOT, 'config/nip98-proxy/proxy.mjs')], { env, cwd: os.tmpdir() });
     let out = '';

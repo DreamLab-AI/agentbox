@@ -3977,12 +3977,6 @@ stderr_logfile_maxbytes=5MB
           "agentbox-events:/var/lib/agentbox/events"
           "consultations-data:/var/lib/agentbox/consultations"
           "telemetry-data:/var/lib/agentbox/telemetry"
-          # AoE keeps its session records (profiles/<profile>/sessions.json) under
-          # ~/.config, which is a bounded tmpfs. Without this volume every boot
-          # lost the records while the worktrees they created stayed on the
-          # persistent mount: 18 antigravity-N + 18 loom-N + ... checkouts by
-          # 2026-09-05. Persist the records so seeds reconcile instead of re-create.
-          "aoe-profiles:/home/devuser/.config/agent-of-empires/profiles"
           # The privacy model is ~2.8 GiB. Keep it out of the deliberately
           # bounded XDG cache tmpfs and retain it across rolling rebuilds.
           "hf-cache:/home/devuser/.cache/huggingface"
@@ -4023,7 +4017,7 @@ stderr_logfile_maxbytes=5MB
         # are auto-derived so every volume referenced in the agentbox service's
         # volumes list has a matching top-level declaration. Without this,
         # docker compose rejects the file with "undefined volume <name>".
-        baselineTopLevelVolumeNames = [ "ruvector-data" "solid-data" "sovereign-identities" "agentbox-secrets" "code-harness-data" "agentbox-events" "consultations-data" "telemetry-data" "aoe-profiles" "hf-cache" "local-home" "opencode-store" "codex-home" "codex-packages" ];
+        baselineTopLevelVolumeNames = [ "ruvector-data" "solid-data" "sovereign-identities" "agentbox-secrets" "code-harness-data" "agentbox-events" "consultations-data" "telemetry-data" "hf-cache" "local-home" "opencode-store" "codex-home" "codex-packages" ];
         exceptionVolumeNames = lib.unique (
           map (v: lib.head (lib.splitString ":" v)) exceptionWritableVolumes
         );

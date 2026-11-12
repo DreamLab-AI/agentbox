@@ -2,8 +2,7 @@
 //
 // One self-signed TLS origin (:8444), one credential. Same-origin routes
 // (Caddyfile): /embed + /api/* → Unmute; /feed + /bridge/* → tab0-bridge;
-// /aoe/* → AoE sessions via the NIP-98 sole-ingress proxy (:9096); /approvals/*
-// → management-api governance (:9090).
+// /approvals/* + /mgmt/* → management-api via the NIP-98 sole-ingress proxy (:9096).
 //
 // AUTH MODEL
 //   /bridge/* + /feed  — tab0-bridge bearer (BRIDGE_TOKEN) when set; otherwise
@@ -12,19 +11,18 @@
 //                        for fetch, ?access_token= / ?auth=<signed NIP-98> for the
 //                        WebSocket upgrade (browsers can't set headers on a WS
 //                        handshake).
-//   /aoe/* + /approvals/* — governed. Preferred: a NIP-98 (kind-27235) header
+//   /approvals/* + /mgmt/* — governed. Preferred: a NIP-98 (kind-27235) header
 //                        signed via window.nostr (NIP-07). The proxy/auth layer
 //                        now runs a replay cache (Part A finding 4), so a signed
 //                        token can't be reused → we sign per request. Reads
-//                        (session polling) therefore prefer the break-glass
+//                        (polling) therefore prefer the break-glass
 //                        bearer to avoid a signer prompt on every poll;
 //                        authoritative writes (approve/deny, inject) sign fresh.
 //
-//   NIP-98 `u` tag: the verifier reconstructs the upstream URL AFTER Caddy's
-//   handle_path strips the /aoe and /approvals prefix, and matches with
-//   `u === url || u.endsWith(url)`. So we MUST sign the prefix-stripped path
-//   (location.origin + strippedPath), not the browser-visible path. See
-//   stripPrefix() below.
+//   NIP-98 `u` tag: since ADR-069 every governed route reaches the nip98-proxy
+//   with its prefix intact (Caddy `handle`, not `handle_path`); the proxy
+//   verifies the u-tag against that unstripped path, so we sign the
+//   browser-visible path (location.origin + path).
 
 'use strict';
 
@@ -61,7 +59,7 @@ function refreshAuthBadge() {
     badge.title = 'break-glass bearer set for this tab';
   } else {
     badge.textContent = 'no key';
-    badge.title = 'no operator credential — /aoe and /approvals will be unauthorised';
+    badge.title = 'no operator credential — /approvals and /mgmt will be unauthorised';
   }
 }
 
@@ -71,21 +69,10 @@ async function sha256hex(str) {
   return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
-// Map a browser path to the upstream-visible path Caddy forwards after
-// handle_path strips the route prefix.
-function stripPrefix(path) {
-  // ADR-069: /approvals /bridge /mgmt /feed now reach the nip98-proxy with
-  // their prefixes intact (Caddy `handle`, not `handle_path`) — the proxy
-  // verifies the u-tag against the unstripped path, then strips per its own
-  // route table. Only /aoe is still prefix-stripped by Caddy.
-  if (path.startsWith('/aoe/')) return path.slice(4) || '/';        // /aoe/api/x → /api/x
-  return path;
-}
-
-// Build a NIP-98 Authorization header for a governed request. Signs the
-// prefix-stripped URL so the server-side `u`-tag match succeeds.
+// Build a NIP-98 Authorization header for a governed request, signing the
+// browser-visible URL the proxy verifies the `u` tag against.
 async function signNip98(method, path, bodyString) {
-  const url = location.origin + stripPrefix(path.split('?')[0]);
+  const url = location.origin + path.split('?')[0];
   // Same-second requests must have distinct event IDs under replay protection.
   const tags = [['u', url], ['method', method.toUpperCase()], ['nonce', crypto.randomUUID()]];
   if (bodyString) tags.push(['payload', await sha256hex(bodyString)]);
@@ -101,10 +88,10 @@ async function signNip98(method, path, bodyString) {
 //   preferBearer=true  → reads: use bearer if present (no signer prompt),
 //                        else NIP-98, else nothing.
 //   preferBearer=false → writes: prefer NIP-98 (required for approvals), else
-//                        bearer (works for /aoe via break-glass), else nothing.
+//                        break-glass bearer, else nothing.
 async function authHeader(path, method, bodyString, preferBearer) {
   if (sessionActive) return {}; // ADR-069: HttpOnly session cookie is the credential
-  const governed = path.startsWith('/aoe/') || path.startsWith('/approvals/') || path.startsWith('/mgmt/');
+  const governed = path.startsWith('/approvals/') || path.startsWith('/mgmt/');
   const bearer = getBearer();
   if (!governed) {
     // tab0-bridge surfaces: bearer is the native credential; a NIP-98 header

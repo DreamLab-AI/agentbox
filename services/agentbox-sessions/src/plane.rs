@@ -260,11 +260,47 @@ impl Plane {
         }
     }
 
+    /// Move a seed's worktree from a retired prefix (`aoe-`) to its current
+    /// directory before `ensure` would cut a fresh one beside it. A directory
+    /// cannot be renamed under a running session, so the seed's own old pane
+    /// is closed first when it runs there (it is being restarted anyway).
+    /// Any other session in that directory refuses the start, touching
+    /// nothing: the legacy worktree still holds the seed's branch, so a fresh
+    /// one cannot be cut beside it, and the next pass retries the adoption.
+    /// An adopt error is a note; `ensure` then reports what it finds.
+    fn adopt_legacy<'a>(&self, plan: &Plan, old: Option<&'a Pane>, notes: &mut Vec<String>) -> Result<Option<&'a Pane>> {
+        let mut old = old;
+        for legacy in self.contract.legacy_session_dirs(&plan.seed, &self.cfg.home, &self.cfg.project) {
+            if plan.dir.exists() || !legacy.exists() {
+                continue;
+            }
+            let Ok(canon) = std::fs::canonicalize(&legacy) else { continue };
+            let inside = |p: &Pane| std::fs::canonicalize(&p.path).map(|c| c.starts_with(&canon)).unwrap_or(false);
+            let others: Vec<String> = self.tmux.list()?.iter().filter(|p| inside(p) && old.is_none_or(|o| o.name != p.name)).map(|p| p.name.clone()).collect();
+            if !others.is_empty() {
+                anyhow::bail!("legacy worktree {} left in place: in use by {}; retrying next pass", legacy.display(), others.join(", "));
+            }
+            if let Some(o) = old.filter(|o| inside(o)) {
+                self.emit(Phase::Close, o, plan);
+                self.tmux.kill(&o.name).context("kill old session before adopting its worktree")?;
+                old = None;
+            }
+            match worktree::adopt(&self.cfg.project, &legacy, &plan.dir) {
+                Ok(true) => notes.push(format!("adopted legacy worktree {} as {}", legacy.display(), plan.dir.display())),
+                Ok(false) => {}
+                Err(e) => notes.push(format!("adopting {} failed open: {e:#}", legacy.display())),
+            }
+        }
+        Ok(old)
+    }
+
     /// Start (or restart) one session. Returns notes worth logging.
     fn start(&self, plan: &Plan, old: Option<&Pane>, origin: &str) -> Result<Vec<String>> {
         let mut notes = Vec::new();
         let mut cut = false;
+        let mut old = old;
         if plan.seed.worktree {
+            old = self.adopt_legacy(plan, old, &mut notes)?;
             cut = worktree::ensure(&self.cfg.project, &plan.dir, &plan.seed.slug).context("worktree")?;
         }
         notes.extend(trust::seed(&plan.launch.trust, &plan.dir, &self.cfg.roots()));

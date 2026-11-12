@@ -104,6 +104,100 @@ pub fn ensure(project: &Path, dir: &Path, slug: &str) -> Result<bool> {
     Ok(true)
 }
 
+/// Adopt a worktree cut under a retired name (`from`) as the session's
+/// worktree at `to`, keeping everything in it, uncommitted work included.
+///
+/// `git worktree move` refuses any worktree with initialised submodules, so
+/// this renames the directory, lets `git worktree repair` relink the admin
+/// entry, and then rewrites each submodule's `core.worktree` back-pointer,
+/// which git stores relative to the admin directory and `repair` leaves
+/// pointing at the old path. Returns `Ok(false)` without touching anything
+/// when `to` already exists or `from` is not a registered worktree of
+/// `project`. The caller makes sure no live session runs in `from`.
+pub fn adopt(project: &Path, from: &Path, to: &Path) -> Result<bool> {
+    if to.exists() || !from.exists() {
+        return Ok(false);
+    }
+    let canon_from = std::fs::canonicalize(from)?;
+    let registered_here = registered(project)?.iter().any(|(p, _)| std::fs::canonicalize(p).map(|c| c == canon_from).unwrap_or(false));
+    if !registered_here {
+        return Ok(false);
+    }
+    let admin = std::fs::canonicalize(admin_dir(&canon_from)?)?;
+    if let Some(parent) = to.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    std::fs::rename(&canon_from, to).with_context(|| format!("rename {} to {}", canon_from.display(), to.display()))?;
+    let canon_to = std::fs::canonicalize(to)?;
+    git(project, &["worktree", "repair", &canon_to.display().to_string()])?;
+    relink_submodules(project, &admin.join("modules"), &canon_from, &canon_to)?;
+    Ok(true)
+}
+
+/// The worktree's admin directory (`<project>/.git/worktrees/<name>`), read
+/// from the `gitdir:` line of its `.git` file.
+fn admin_dir(worktree: &Path) -> Result<PathBuf> {
+    let text = std::fs::read_to_string(worktree.join(".git")).with_context(|| format!("read {}/.git", worktree.display()))?;
+    let raw = text.lines().find_map(|l| l.strip_prefix("gitdir: ")).ok_or_else(|| anyhow::anyhow!("{}/.git has no gitdir line", worktree.display()))?;
+    let p = Path::new(raw.trim());
+    Ok(if p.is_absolute() { p.to_path_buf() } else { worktree.join(p) })
+}
+
+/// Collapse `.` and `..` without touching the filesystem (the old target no
+/// longer exists, so `canonicalize` cannot be used).
+fn lexical(p: &Path) -> PathBuf {
+    use std::path::Component;
+    let mut out = PathBuf::new();
+    for c in p.components() {
+        match c {
+            Component::ParentDir => { out.pop(); }
+            Component::CurDir => {}
+            other => out.push(other.as_os_str()),
+        }
+    }
+    out
+}
+
+/// Point every submodule under `modules` (nested ones included) that lived in
+/// `from` at the same place under `to`, keeping the value relative. `git
+/// config` runs from `project`: run inside the module's own git dir, git would
+/// first try to enter the stale `core.worktree` and fail.
+fn relink_submodules(project: &Path, modules: &Path, from: &Path, to: &Path) -> Result<()> {
+    let Ok(rd) = std::fs::read_dir(modules) else { return Ok(()) };
+    let (Some(old_name), Some(new_name)) = (from.file_name(), to.file_name()) else { return Ok(()) };
+    for entry in rd.filter_map(|e| e.ok()) {
+        let module = entry.path();
+        if !module.is_dir() {
+            continue;
+        }
+        let config = module.join("config");
+        // Git names a submodule's git dir after its path, so `vendor/foo`
+        // lives at `modules/vendor/foo`: a directory without `config` or `HEAD`
+        // is a name segment, not a module.
+        if !config.exists() && !module.join("HEAD").exists() {
+            relink_submodules(project, &module, from, to)?;
+            continue;
+        }
+        if config.exists() {
+            let cfg = config.display().to_string();
+            if let Ok(value) = git(project, &["config", "-f", &cfg, "core.worktree"]) {
+                let value = value.trim();
+                let resolved = lexical(&module.join(value));
+                if resolved.starts_with(lexical(from)) {
+                    let rewritten: PathBuf = Path::new(value).components().map(|c| if c.as_os_str() == old_name { new_name } else { c.as_os_str() }).collect();
+                    let check = lexical(&module.join(&rewritten));
+                    if !check.starts_with(lexical(to)) {
+                        bail!("cannot relink submodule {}: {value} does not map under {}", module.display(), to.display());
+                    }
+                    git(project, &["config", "-f", &cfg, "core.worktree", &rewritten.display().to_string()])?;
+                }
+            }
+        }
+        relink_submodules(project, &module.join("modules"), from, to)?;
+    }
+    Ok(())
+}
+
 /// Network-free submodule init for a new worktree, referencing the
 /// superproject's module store (`--dissociate` so the worktree owns its
 /// objects). Fail-open at the caller: a worktree without submodule content is
@@ -234,7 +328,7 @@ mod tests {
     fn ensure_cuts_then_reuses_a_worktree() {
         let p = repo();
         let wt = tempfile::tempdir().unwrap();
-        let dir = wt.path().join("aoe-codex");
+        let dir = wt.path().join("abs-codex");
         assert!(ensure(p.path(), &dir, "codex").unwrap());
         assert!(dir.join("a.txt").exists());
         assert!(!ensure(p.path(), &dir, "codex").unwrap(), "second call reuses it");
@@ -244,7 +338,7 @@ mod tests {
     fn a_dead_directory_is_moved_aside_not_deleted() {
         let p = repo();
         let wt = tempfile::tempdir().unwrap();
-        let dir = wt.path().join("aoe-codex");
+        let dir = wt.path().join("abs-codex");
         std::fs::create_dir_all(&dir).unwrap();
         std::fs::write(dir.join("precious"), "x").unwrap();
         assert!(ensure(p.path(), &dir, "codex").unwrap());
@@ -258,7 +352,7 @@ mod tests {
     fn build_output_does_not_make_a_worktree_dirty_but_work_does() {
         let p = repo();
         let wt = tempfile::tempdir().unwrap();
-        let dir = wt.path().join("aoe-x");
+        let dir = wt.path().join("abs-x");
         ensure(p.path(), &dir, "x").unwrap();
         std::fs::create_dir_all(dir.join("node_modules/pkg")).unwrap();
         std::fs::create_dir_all(dir.join("coverage")).unwrap();
@@ -275,13 +369,73 @@ mod tests {
     fn removal_is_stricter_than_recreation() {
         let p = repo();
         let wt = tempfile::tempdir().unwrap();
-        let dir = wt.path().join("aoe-y");
+        let dir = wt.path().join("abs-y");
         ensure(p.path(), &dir, "y").unwrap();
         std::fs::create_dir_all(dir.join("node_modules")).unwrap();
         std::fs::write(dir.join("node_modules/f"), "x").unwrap();
         assert!(unrecoverable_ignored(&dir).unwrap().is_empty());
         std::fs::write(dir.join("notes.local"), "evidence").unwrap();
         assert_eq!(unrecoverable_ignored(&dir).unwrap(), vec!["notes.local".to_string()]);
+    }
+
+    fn run_allow_file(dir: &Path, args: &[&str]) {
+        let mut a = vec!["-c", "protocol.file.allow=always"];
+        a.extend_from_slice(args);
+        run(dir, &a);
+    }
+
+    /// The live case: an `aoe-` worktree with an initialised submodule and
+    /// uncommitted work, which `git worktree move` refuses outright.
+    #[test]
+    fn adopt_renames_a_worktree_with_submodules_and_keeps_work() {
+        let base = tempfile::tempdir().unwrap();
+        let sub = base.path().join("sub");
+        std::fs::create_dir_all(&sub).unwrap();
+        run(&sub, &["init", "-q", "-b", "main"]);
+        run(&sub, &["commit", "-q", "--allow-empty", "-m", "s"]);
+        let project = base.path().join("project");
+        std::fs::create_dir_all(&project).unwrap();
+        run(&project, &["init", "-q", "-b", "main"]);
+        run_allow_file(&project, &["submodule", "add", "-q", &sub.display().to_string(), "cs"]);
+        // A submodule whose name has a slash: its git dir is modules/vendor/deep.
+        run_allow_file(&project, &["submodule", "add", "-q", &sub.display().to_string(), "vendor/deep"]);
+        run(&project, &["commit", "-q", "-m", "init"]);
+        let wt = base.path().join("wt");
+        let old = wt.join("aoe-codex");
+        assert!(ensure(&project, &old, "codex").unwrap());
+        run_allow_file(&old, &["submodule", "update", "-q", "--init"]);
+        std::fs::write(old.join("cs/wip"), "x").unwrap();
+        std::fs::write(old.join("mine.txt"), "y").unwrap();
+
+        let new = wt.join("abs-codex");
+        assert!(adopt(&project, &old, &new).unwrap());
+        assert!(!old.exists());
+        assert_eq!(std::fs::read_to_string(new.join("mine.txt")).unwrap(), "y");
+        assert_eq!(dirty(&new).unwrap(), vec!["?? mine.txt".to_string()]);
+        let sub_status = git(&new.join("cs"), &["status", "--porcelain"]).expect("submodule still resolves after the rename");
+        assert_eq!(sub_status.trim(), "?? wip");
+        git(&new.join("vendor/deep"), &["status", "--porcelain"]).expect("a slash-named submodule is relinked too");
+        let canon_new = std::fs::canonicalize(&new).unwrap();
+        assert!(registered(&project).unwrap().iter().any(|(p, b)| std::fs::canonicalize(p).unwrap() == canon_new && b.as_deref() == Some("session-plane/codex")));
+        assert!(!ensure(&project, &new, "codex").unwrap(), "the adopted worktree is reused, not re-cut");
+    }
+
+    #[test]
+    fn adopt_leaves_everything_alone_when_it_should_not_act() {
+        let p = repo();
+        let wt = tempfile::tempdir().unwrap();
+        let old = wt.path().join("aoe-codex");
+        let new = wt.path().join("abs-codex");
+        assert!(!adopt(p.path(), &old, &new).unwrap(), "nothing to adopt");
+        std::fs::create_dir_all(&old).unwrap();
+        std::fs::write(old.join("precious"), "x").unwrap();
+        assert!(!adopt(p.path(), &old, &new).unwrap(), "an unregistered directory is not adopted");
+        assert!(old.join("precious").exists());
+        std::fs::remove_dir_all(&old).unwrap();
+        ensure(p.path(), &old, "codex").unwrap();
+        std::fs::create_dir_all(&new).unwrap();
+        assert!(!adopt(p.path(), &old, &new).unwrap(), "an existing target wins");
+        assert!(old.join("a.txt").exists());
     }
 
     #[test]

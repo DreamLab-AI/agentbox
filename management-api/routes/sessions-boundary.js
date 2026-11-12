@@ -1,14 +1,15 @@
 'use strict';
 
 /**
- * POST /v1/sessions/boundary — the AoE session-lifecycle → sovereign-identity
+ * POST /v1/sessions/boundary — the session-lifecycle → sovereign-identity
  * anti-corruption seam (ADR-043 D4.1/D4.2/D4.3/D4.4/D4.5, PRD-021 WS3,
  * DDD-019 §ManagedSession + §Anti-Corruption Layer).
  *
- * Agent of Empires owns the raw session lifecycle; it has no notion of a user,
- * did, pubkey, or namespace. This route is the shim AoE's `[status_hooks]`
- * invoke on a status transition (via scripts/aoe-session-boundary.cjs). It
- * turns an AoE session into a `ManagedSession` by binding, at the boundary, the
+ * The session plane (agentbox-sessions, ADR-2153) owns the raw session
+ * lifecycle; it has no notion of a user, did, pubkey, or namespace. The daemon
+ * posts here on create/turn/close (services/agentbox-sessions/src/boundary.rs;
+ * Agent of Empires' status hooks did before the cutover). This route turns a
+ * session into a `ManagedSession` by binding, at the boundary, the
  * mechanisms agentbox already owns — inventing nothing (mesh-identityGap §5):
  *
  *   phase=create →  loadOrMint a per-session did:nostr keyed on the session
@@ -20,12 +21,12 @@
  *   phase=turn   →  createChild + claim a work unit under the session epic.
  *   phase=close  →  close the session epic with an outcome.
  *
- * Idempotent on the AoE session id (DDD-019 I07): re-materialising a create
+ * Idempotent on the session id (DDD-019 I07): re-materialising a create
  * returns the same ManagedSession and does not open a duplicate epic. Every
  * durable identifier is minted through lib/uris.js (I02, ADR-013); ad-hoc URN
  * construction is prohibited. Fail-open: a missing/off beads slot or an
  * unavailable mandate signer degrades to a note, never a 5xx that would stall
- * the AoE hook.
+ * the session plane.
  *
  * Auth is the global NIP-98/bearer onRequest hook — the shim presents the
  * MANAGEMENT_API_KEY bearer.
@@ -40,7 +41,7 @@ const agentIdentity = require('../lib/agent-identity');
 const { ensureMandate } = require('./mandate');
 const { railConfig } = require('../lib/sidestr-rail');
 
-// ── Session registry (durable, keyed by AoE session id) ──────────────────────
+// ── Session registry (durable, keyed by session id) ─────────────────────────
 
 function _stateDir() {
   return process.env.AGENTBOX_STATE_DIR || '/var/lib/agentbox';
@@ -50,7 +51,7 @@ function _sessionsDir() {
   return path.join(_stateDir(), 'sessions');
 }
 
-// Finding 5: the record filename is the SHA-256 hex of the AoE session id, not a
+// Finding 5: the record filename is the SHA-256 hex of the session id, not a
 // character-sanitised form of it. The old _safeId() collapsed every character
 // outside [A-Za-z0-9._-] to '_' and truncated to 128 chars, so distinct ids
 // (e.g. "a/b" and "a_b", or two long ids sharing a 128-char prefix) mapped to
@@ -166,7 +167,7 @@ async function sessionsBoundaryRoutes(fastify, options) {
 
   fastify.post('/v1/sessions/boundary', {
     schema: {
-      description: 'AoE session-lifecycle callback: bind did:nostr + URN + beads epic + memory namespace (+ eager mandate) at the session boundary',
+      description: 'Session-lifecycle callback: bind did:nostr + URN + beads epic + memory namespace (+ eager mandate) at the session boundary',
       tags: ['interaction-plane'],
       body: {
         type: 'object',
@@ -202,7 +203,7 @@ async function sessionsBoundaryRoutes(fastify, options) {
 
     // ── phase=create ─────────────────────────────────────────────────────
     if (phase === 'create') {
-      // Idempotent on the AoE session id (DDD-019 I07): return the existing
+      // Idempotent on the session id (DDD-019 I07): return the existing
       // ManagedSession without opening a duplicate epic.
       const existing = _readRecord(sessionId);
       if (existing && existing.did) {
@@ -247,6 +248,8 @@ async function sessionsBoundaryRoutes(fastify, options) {
         sessionUrn = uris.mint({
           kind: 'activity',
           pubkey: identity.pubkey,
+          // 'aoe-session' / 'aoe-turn' are stored identifiers kept from the Agent of
+          // Empires era (ADR-2153): durable records carry them, so they are not renamed.
           payload: { type: 'aoe-session', session_id: sessionId, tool: body.tool || null, profile, worktree: body.worktree ?? null, started_at: startedAt },
         });
       } catch (err) {

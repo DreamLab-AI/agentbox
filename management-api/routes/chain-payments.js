@@ -104,7 +104,7 @@ async function chainPaymentsRoutes(fastify, options = {}) {
   const reservations = new Map(); // payer did → sats reserved by the policy, not yet in the store
 
   // The container agent's k_spend is minted beside its k_id when the rail is
-  // on (its spawn is this process's boot); AoE agents get theirs at session
+  // on (its spawn is this process's boot); session-plane agents get theirs at session
   // create (routes/sessions-boundary.js). Fail-open: no key, no payments.
   if (rail.enabled && options.mintAtBoot !== false) {
     try {

@@ -137,7 +137,7 @@ mod tests {
         let r = roots(d.path());
         std::fs::create_dir_all(&r.home).unwrap();
         std::fs::write(r.home.join(".claude.json"), r#"{"theme":"dark","projects":{"/other":{"keep":1}}}"#).unwrap();
-        let dir = Path::new("/home/devuser/workspace/wt/aoe-codex");
+        let dir = Path::new("/home/devuser/workspace/wt/abs-codex");
         let log = seed(&["claude-root".into()], dir, &r);
         assert_eq!(log.len(), 1, "{log:?}");
         let v: Value = serde_json::from_str(&std::fs::read_to_string(r.home.join(".claude.json")).unwrap()).unwrap();
@@ -171,13 +171,13 @@ mod tests {
         let cfg = r.home.join(".codex/config.toml");
         std::fs::create_dir_all(cfg.parent().unwrap()).unwrap();
         std::fs::write(&cfg, "# mine\nmodel = \"x\"\n").unwrap();
-        let dir = Path::new("/home/devuser/workspace/wt/aoe-codex");
+        let dir = Path::new("/home/devuser/workspace/wt/abs-codex");
         assert_eq!(seed(&["codex".into()], dir, &r).len(), 1);
         assert!(seed(&["codex".into()], dir, &r).is_empty());
         let text = std::fs::read_to_string(&cfg).unwrap();
         assert!(text.starts_with("# mine\nmodel = \"x\"\n"));
         let parsed: toml::Value = toml::from_str(&text).expect("still valid TOML");
-        assert_eq!(parsed["projects"]["/home/devuser/workspace/wt/aoe-codex"]["trust_level"].as_str(), Some("trusted"));
+        assert_eq!(parsed["projects"]["/home/devuser/workspace/wt/abs-codex"]["trust_level"].as_str(), Some("trusted"));
     }
 
     #[test]

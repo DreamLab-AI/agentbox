@@ -1,7 +1,7 @@
 /* agentbox · interaction plane — operator cockpit
    Design system: coordination engineering — the VisionFlow / dreamlab-ai palette
    (near-black surfaces, cyan/purple/emerald/amber accents, purple as the agentbox
-   product accent) applied across the voice presence, the AoE session board and
+   product accent) applied across the voice presence, the approval cards and
    inline governance approvals. Evolved from the earlier "Industrial Warmth" set;
    the --agentbox-* semantic token names are the stable cross-surface contract
    (docs/developer/web-interface-design-system.md) — only their values moved.
@@ -612,7 +612,7 @@ button.send:disabled { opacity: .5; cursor: default; }
 
 /* ───────────────────────────────────── touch targets ─────────────────────
    Comfortable desktop density stays compact; on a coarse pointer (phone /
-   tablet — the AoE remote model) every interactive control is lifted to the
+   tablet — the remote-operator model) every interactive control is lifted to the
    44px WCAG target without reflowing the desktop layout. */
 @media (pointer: coarse) {
   .btn-ghost,

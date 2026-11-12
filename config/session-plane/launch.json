@@ -1,7 +1,8 @@
 {
-  "$comment": "ADR-2153 launch contract: how each seed tool is started. {slug}, {model} and {wrapper} are substituted per seed. model_argv is appended only when the seed names a model; model_env is how a tool that has no model flag receives one. blockers are pane texts that mean the session is waiting on a human; ready, where present, is pane text that means the agent can take a prompt. Verified by tests/cli/session-launch-contract.test.mjs against the pinned CLI versions.",
+  "$comment": "ADR-2153 launch contract: how each seed tool is started. {slug}, {model} and {wrapper} are substituted per seed. model_argv is appended only when the seed names a model; model_env is how a tool that has no model flag receives one. blockers are pane texts that mean the session is waiting on a human; ready, where present, is pane text that means the agent can take a prompt. Verified by tests/cli/session-launch-contract.test.mjs against the pinned CLI versions. worktree_prefix matches the daemon's abs_<slug> tmux names; a seed worktree found under a legacy_worktree_prefixes entry (aoe-, from Agent of Empires) is adopted in place by agentbox-sessions, uncommitted work included.",
   "worktree_root": "~/workspace/wt",
-  "worktree_prefix": "aoe-",
+  "worktree_prefix": "abs-",
+  "legacy_worktree_prefixes": ["aoe-"],
   "settle_seconds": 20,
   "common_blockers": [
     "Unrecognized flag",

@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # ============================================================================
-# Agent-of-Empires command-override wrapper — OpenRouter-routed Claude Code
+# Session-plane command-override wrapper — OpenRouter-routed Claude Code
 # ----------------------------------------------------------------------------
-# Registered as an AoE `custom_agents` entry (PRD-021 WS2 / ADR-042 D6): AoE
-# execs this script in the session's tmux pane instead of the bare `claude`
+# Selected by the session plane (agentbox-sessions, ADR-2153) as the `openrouter` seed's
+# wrapper; the daemon execs this script in the session's tmux pane instead of the bare `claude`
 # binary. Its whole job is to make the ADR-025 profile-isolation invariant
 # (N-01) structural rather than a matter of test coverage:
 #

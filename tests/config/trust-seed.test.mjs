@@ -15,7 +15,7 @@ const SCRIPT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..
 function fixture() {
   const home = fs.mkdtempSync(path.join(os.tmpdir(), 'trust-seed-'));
   const ws = path.join(home, 'workspace');
-  const repo = path.join(ws, 'wt', 'aoe-codex');
+  const repo = path.join(ws, 'wt', 'abs-codex');
   fs.mkdirSync(repo, { recursive: true });
   fs.writeFileSync(path.join(repo, '.git'), 'gitdir: elsewhere\n');
   fs.writeFileSync(path.join(home, '.claude.json'), JSON.stringify({ keep: 1 }));

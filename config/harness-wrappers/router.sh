@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # ============================================================================
-# Agent-of-Empires custom-agent wrapper — the model-router console (ADR-2080)
+# Session-plane wrapper — the model-router console (ADR-2080)
 # ----------------------------------------------------------------------------
-# Registered as the AoE `custom_agents.router` entry by scripts/session-provision.mjs
-# (WRAPPER_SLUGS) for the `router` session seed. AoE execs this in the session's
+# Selected by the session plane (agentbox-sessions, ADR-2153) as the wrapper for
+# the `router` session seed (launch contract: config/harness-wrappers/<slug>.sh).
+# The daemon execs this in the session's
 # tmux pane; it asserts the preconditions LOUDLY and then hands off to
 # config/model-router/console.mjs, which embeds each task offline, asks the
 # metaharness router inside the baked ruflo closure for the cheapest model above
@@ -14,9 +15,10 @@
 #     `public`; we pin it here so a session cannot inherit something else.
 #   * The ADR-2026 egress switch is honoured: AGENTBOX_EGRESS=0 forces dry-run.
 #   * No provider credential is minted or printed here. OPENROUTER_API_KEY is
-#     forwarded by AoE's config.toml `environment=` list (PRD-021 WS2); absence
+#     passed through by the session plane (provider keys survive its env scrub);
+#     absence
 #     is a visible launch failure, not a silent fallback to another billing key.
-#   * Nothing in the AoE or ruflo trees is patched; the router env is scoped to
+#   * Nothing in the ruflo tree is patched; the router env is scoped to
 #     this process (never exported by the entrypoint — ADR-2080 D3).
 # ============================================================================
 set -euo pipefail
@@ -70,7 +72,7 @@ _PROVIDER="${AGENTBOX_MODEL_ROUTER_PROVIDER:-openrouter}"
 if [ "$_PROVIDER" = "openrouter" ] && [ -z "${OPENROUTER_API_KEY:-}" ] && [ "${AGENTBOX_EGRESS:-1}" != "0" ]; then
   _die \
     "OPENROUTER_API_KEY is empty in this session's environment." \
-    "Set it in .env and reboot (AoE forwards it via config.toml environment=)," \
+    "Set it in .env and reboot (the session plane passes provider keys through)," \
     "or export AGENTBOX_EGRESS=0 to run the console in dry-run (route only)."
 fi
 

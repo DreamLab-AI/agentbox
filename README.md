@@ -74,7 +74,7 @@ flowchart TB
 
 The five durable-state adapter slots are **beads, pods, memory, events and orchestrator**. Each selects a configured implementation class or `off`. These slots are not universal interception of filesystem writes or arbitrary tool/network calls. Observability and privacy wrap adapter dispatch; linked-data encoding is a separately gated route-level stage. Read [the baseline](docs/BASELINE-container.md) and [adapter guide](docs/developer/adapters.md) for the current contract.
 
-The interaction plane uses Agent of Empires behind the configured identity ingress. Sessions can bind a `did:nostr` identity, URN, task epic and scoped memory namespace. Tool permissions and signing authority remain distinct from an identity label. See [ingress and identity](docs/INGRESS-identity.md).
+The interaction plane is `agentbox-sessions` (ADR-2153), an owned tmux session manager behind the configured identity ingress. Sessions can bind a `did:nostr` identity, URN, task epic and scoped memory namespace. Tool permissions and signing authority remain distinct from an identity label. See [ingress and identity](docs/INGRESS-identity.md).
 
 ## Capabilities
 
@@ -180,6 +180,7 @@ Sessions are `abs_<slug>` with `@agentbox-sessions=1`; `tab0` is the external
 `agentbox:0` coordinator. Window 8 runs `agentbox-sessions pick`. Provider profiles
 are reconciled by `scripts/session-provision.mjs`. AoE, its default upstream,
 `:9095` and the web session board are retired. The NIP-98 proxy on `:9096` keeps
-its named operator routes and returns 404 for unknown routes. The old
-`aoe-profiles` volume remains mounted but unused for recovery and mount-stable
-activation; it must not be pruned as part of delivery.
+its named operator routes and returns 404 for unknown routes. Seed worktrees live at
+`~/workspace/wt/abs-<slug>`; one found under the retired `aoe-` prefix is adopted in
+place. The `aoe-profiles` volume was archived and dropped (2026-11-12); after the
+rebuild that removes its mount, `docker volume rm agentbox-aoe-profiles` on the host.

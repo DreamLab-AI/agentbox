@@ -140,7 +140,6 @@ services:
       - agentbox-events:/var/lib/agentbox/events
       - consultations-data:/var/lib/agentbox/consultations
       - telemetry-data:/var/lib/agentbox/telemetry
-      - aoe-profiles:/home/devuser/.config/agent-of-empires/profiles
       - hf-cache:/home/devuser/.cache/huggingface
       - local-home:/home/devuser/.local
       - opencode-store:/home/devuser/.local/share/opencode
@@ -191,8 +190,6 @@ volumes:
     name: agentbox-consultations-data
   telemetry-data:
     name: agentbox-telemetry-data
-  aoe-profiles:
-    name: agentbox-aoe-profiles
   hf-cache:
     name: agentbox-hf-cache
   local-home:

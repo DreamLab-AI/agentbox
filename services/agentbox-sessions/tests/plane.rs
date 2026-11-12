@@ -53,7 +53,7 @@ impl Fx {
         git(&project, &["add", "."]);
         git(&project, &["commit", "-q", "-m", "init"]);
         let contract = json!({
-            "worktree_root": "~/workspace/wt", "worktree_prefix": "aoe-", "settle_seconds": 1,
+            "worktree_root": "~/workspace/wt", "worktree_prefix": "abs-", "legacy_worktree_prefixes": ["aoe-"], "settle_seconds": 1,
             "common_blockers": ["Unrecognized flag"], "tools": tools,
         });
         std::fs::write(root.join("config/session-plane/launch.json"), contract.to_string()).unwrap();
@@ -212,7 +212,7 @@ fn build_output_does_not_block_a_restart_but_unsaved_work_does() {
     let fx = Fx::new(json!({ "exits": { "argv": ["sh", "-c", "exit 1"] } }), "[[interaction_plane.session_seeds]]\nslug = \"w\"\ntool = \"exits\"\nworktree = true\n");
     let p = fx.plane();
     assert_eq!(decision(&p.reconcile_once(false), "w"), Decision::Create);
-    let wt = fx.home.join("workspace/wt/aoe-w");
+    let wt = fx.home.join("workspace/wt/abs-w");
     assert!(wt.join("a.txt").exists(), "worktree cut under the one worktree root");
 
     std::fs::create_dir_all(wt.join("node_modules/pkg")).unwrap();
@@ -225,6 +225,50 @@ fn build_output_does_not_block_a_restart_but_unsaved_work_does() {
     wait_for("pane to die", 5, || pane_dead(&p, "abs_w"));
     assert_eq!(decision(&p.reconcile_once(false), "w"), Decision::Hold(Hold::DirtyWorktree(1)));
     assert!(wt.join("wip.txt").exists());
+}
+
+/// The AoE-prefix migration: a seed's `aoe-` worktree, with work in it, is
+/// adopted as its `abs-` worktree rather than orphaned beside a fresh one.
+#[test]
+fn a_legacy_aoe_worktree_is_adopted_with_its_work() {
+    let fx = Fx::new(json!({ "sleeper": { "argv": ["sleep", "600"] } }), "[[interaction_plane.session_seeds]]\nslug = \"w\"\ntool = \"sleeper\"\nworktree = true\n");
+    let project = fx.home.join("workspace/project");
+    let legacy = fx.home.join("workspace/wt/aoe-w");
+    git(&project, &["worktree", "add", "-q", "-b", "session-plane/w", legacy.to_str().unwrap(), "HEAD"]);
+    std::fs::write(legacy.join("wip.txt"), "unsaved").unwrap();
+    let p = fx.plane();
+    let out = p.reconcile_once(false);
+    assert_eq!(decision(&out, "w"), Decision::Create);
+    let wt = fx.home.join("workspace/wt/abs-w");
+    assert!(!legacy.exists(), "the legacy directory is moved, not copied");
+    assert_eq!(std::fs::read_to_string(wt.join("wip.txt")).unwrap(), "unsaved");
+    let note = &out.iter().find(|o| o.slug == "w").unwrap().note;
+    assert!(note.contains("adopted legacy worktree"), "the adoption is reported: {note}");
+    let pane = p.tmux.list().unwrap().into_iter().find(|x| x.name == "abs_w").unwrap();
+    assert_eq!(std::fs::canonicalize(&pane.path).unwrap(), std::fs::canonicalize(&wt).unwrap());
+}
+
+/// Someone else's session in the legacy worktree: leave it alone until it goes.
+#[test]
+fn a_legacy_worktree_in_use_by_another_session_is_left_in_place() {
+    let fx = Fx::new(json!({ "sleeper": { "argv": ["sleep", "600"] } }), "[[interaction_plane.session_seeds]]\nslug = \"w\"\ntool = \"sleeper\"\nworktree = true\n");
+    let project = fx.home.join("workspace/project");
+    let legacy = fx.home.join("workspace/wt/aoe-w");
+    git(&project, &["worktree", "add", "-q", "-b", "session-plane/w", legacy.to_str().unwrap(), "HEAD"]);
+    fx.tmux(&["new-session", "-d", "-s", "operator", "-c", legacy.to_str().unwrap(), "sleep", "600"]);
+    let p = fx.plane();
+    let out = p.reconcile_once(false);
+    let o = out.iter().find(|o| o.slug == "w").unwrap();
+    let err = o.error.as_deref().unwrap_or_default();
+    assert!(err.contains("left in place: in use by operator"), "the start is refused and says why: {o:?}");
+    assert!(legacy.join("a.txt").exists(), "the legacy worktree is untouched");
+    assert!(!fx.home.join("workspace/wt/abs-w").exists(), "no second worktree is cut beside it");
+    assert!(p.tmux.list().unwrap().iter().any(|x| x.name == "operator" && !x.dead), "the foreign session survives");
+
+    // Once the other session is gone, the next pass adopts.
+    fx.tmux(&["kill-session", "-t", "operator"]);
+    assert_eq!(decision(&p.reconcile_once(false), "w"), Decision::Create);
+    assert!(!legacy.exists() && fx.home.join("workspace/wt/abs-w/a.txt").exists());
 }
 
 #[test]
@@ -253,7 +297,7 @@ fn trust_is_seeded_before_the_session_starts() {
     let p = fx.plane();
     assert_eq!(decision(&p.reconcile_once(false), "c"), Decision::Create);
     let v: Value = serde_json::from_str(&std::fs::read_to_string(fx.home.join(".claude.json")).unwrap()).unwrap();
-    let dir = fx.home.join("workspace/wt/aoe-c");
+    let dir = fx.home.join("workspace/wt/abs-c");
     assert_eq!(v["projects"][dir.to_str().unwrap()]["hasTrustDialogAccepted"], true);
 }
 

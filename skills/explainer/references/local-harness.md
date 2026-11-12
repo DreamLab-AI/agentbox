@@ -165,7 +165,7 @@ named the old alias `qwen3.8-27B`, the door now advertises `qwen3.8-27b-heretic-
 explicit unknown id is a refusal by design. The seeder said so in one line that nobody read,
 because seeding runs at boot. Check `~/.config/opencode/opencode.json` for a `loom-agent`
 provider before a run. If it is absent, run
-`env -u LOOM_MODEL node <agentbox>/scripts/aoe-seed-sessions.mjs --providers-only` and fix
+`env -u LOOM_MODEL node <agentbox>/scripts/session-provision.mjs` and fix
 the stale variable where it is set. Do not work around it.
 
 ## Hand the session an inventory, not a search

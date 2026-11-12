@@ -1662,7 +1662,7 @@
         "neural": {
           "type": "object",
           "additionalProperties": false,
-          "description": "ADR-2080: metaharness cost-optimal router (KRR/k-NN inside the baked ruflo closure) exposed as the dedicated `router` AoE session. Bakes the pinned artefacts from config/model-router/artefacts.json (rebuild class) and exports AGENTBOX_MODEL_ROUTER_* for that session only. Public-tier work only.",
+          "description": "ADR-2080: metaharness cost-optimal router (KRR/k-NN inside the baked ruflo closure) exposed as the dedicated `router` session seed. Bakes the pinned artefacts from config/model-router/artefacts.json (rebuild class) and exports AGENTBOX_MODEL_ROUTER_* for that session only. Public-tier work only.",
           "properties": {
             "enabled": {
               "type": "boolean",
@@ -3164,7 +3164,7 @@
     "voice": {
       "type": "object",
       "additionalProperties": false,
-      "description": "Voice + AoE operator console (ADR-044). UI/backend sidecars are managed by ./agentbox.sh voice; unified Nemotron ASR + Pocket TTS follow the core lifecycle through docker-compose.speech.yml.",
+      "description": "Voice operator console (ADR-044). UI/backend sidecars are managed by ./agentbox.sh voice; unified Nemotron ASR + Pocket TTS follow the core lifecycle through docker-compose.speech.yml.",
       "properties": {
         "enabled": {
           "type": "boolean",

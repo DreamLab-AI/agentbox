@@ -101,7 +101,7 @@ function _resolveProject(req) {
  *
  * When a project axis is supplied AND the caller carries a user (pubkey) scope,
  * the project segment is inserted: "user:<pubkey>:proj:<repo-slug>:<namespace>"
- * — this is the per-project isolation an AoE session writes under. Without a
+ * — this is the per-project isolation a session writes under. Without a
  * project the grammar is exactly the historic per-user form (backwards
  * compatible); a project supplied by an unscoped permissive bearer caller has
  * no user segment to nest under and is ignored.

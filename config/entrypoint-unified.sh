@@ -551,8 +551,6 @@ for _vol_root in \
     /home/devuser/.local/share/code-server \
     /home/devuser/.local/share/opencode \
     /home/devuser/.config \
-    /home/devuser/.config/agent-of-empires \
-    /home/devuser/.config/agent-of-empires/profiles \
     /home/devuser/.cache \
     /home/devuser/.cache/huggingface \
     /home/devuser/.npm \

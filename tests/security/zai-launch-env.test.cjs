@@ -9,7 +9,7 @@
  *
  *   Paths covered: the `zai` CLI (config/zai-wrapper.sh), the consultant and the
  *   ontology monitor (both build their env with mcp/consultants/shared/zai-env.js and
- *   run through spawn-cli, then the `zai` CLI), the AoE harness wrapper
+ *   run through spawn-cli, then the `zai` CLI), the session-plane harness wrapper
  *   (config/harness-wrappers/zai.sh) and the claude-zai sidecar (claude-zai/wrapper).
  *
  * WHY IT IS THIS WAY
@@ -155,7 +155,7 @@ test('consultant / ontology monitor: both build their child env with zaiChildEnv
   }
 });
 
-test('AoE harness wrapper: ZAI_EFFORT is the only way to set the session effort', () => {
+test('session-plane harness wrapper: ZAI_EFFORT is the only way to set the session effort', () => {
   const s = sandbox();
   const ws = path.join(s.dir, 'ws');
   const claudeDir = path.join(ws, 'profiles', 'zai', '.claude');
@@ -167,7 +167,7 @@ test('AoE harness wrapper: ZAI_EFFORT is the only way to set the session effort'
   assert.equal(s.read().CLAUDE_EFFORT, 'high');
 });
 
-test('AoE harness wrapper: pins its own config dir and strips the caller Claude Code steering', () => {
+test('session-plane harness wrapper: pins its own config dir and strips the caller Claude Code steering', () => {
   const s = sandbox();
   const ws = path.join(s.dir, 'ws');
   const claudeDir = path.join(ws, 'profiles', 'zai', '.claude');
@@ -180,7 +180,7 @@ test('AoE harness wrapper: pins its own config dir and strips the caller Claude 
   });
   assert.equal(r.status, 0, r.stderr);
   const env = s.read();
-  // Steering only: an interactive agent session keeps the estate variables AoE gives it.
+  // Steering only: an interactive agent session keeps the estate variables the session plane gives it.
   assertClean(env, { configDir: claudeDir, keys: STEERING });
   assert.equal(env.ANTHROPIC_API_KEY, '');
   assert.equal(env.HOME, path.join(ws, 'profiles', 'zai'));

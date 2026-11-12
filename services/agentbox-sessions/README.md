@@ -23,7 +23,7 @@ agentbox-sessions close <slug>               close one of those
 agentbox-sessions pick [--list]              tab-8 picker; moves only the client it runs in
 agentbox-sessions resolve [--json]           each seed as the launch contract resolves it
 agentbox-sessions mark <slug> busy|idle      status from an agent's own hook
-agentbox-sessions reap [--dry-run]           remove Agent of Empires' leftover worktrees
+agentbox-sessions reap [--dry-run]           remove Agent of Empires' leftover <project>-worktrees checkouts
 agentbox-sessions call '<json>'              one raw request to the daemon's socket
 ```
 

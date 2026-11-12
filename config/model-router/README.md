@@ -1,14 +1,14 @@
-# model-router — the metaharness cost-optimal router as a dedicated AoE session
+# model-router — the metaharness cost-optimal router as a dedicated session
 
 **Decision record:** [ADR-2080](../../docs/adr/ADR-2080-metaharness-router-console-under-aoe.md)
 (Phase 0 of [ADR-2079](../../docs/adr/ADR-2079-aoe-is-the-dispatch-plane-of-a-fleet-model-router.md)).
-**Gate:** `agentbox.toml [model_routing.neural]`. **Session:** AoE seed `router` (window 8).
+**Gate:** `agentbox.toml [model_routing.neural]`. **Session:** session-plane seed `router` (`agentbox-sessions pick`, window 8).
 
 | File | Role |
 |---|---|
 | `console.mjs` | The session's program. Embeds each task offline (MiniLM q8 via the closure's `@huggingface/transformers`), calls ruflo's `ModelRouter.route(task, embedding)` so the metaharness KRR backend fires, executes the pick through ruflo's OpenRouter branch, prints a labelled receipt, records the bandit outcome and a DRACO-shaped trajectory row. REPL or `--once`, `--dry-run`, `--json`, `--status`. |
 | `artefacts.json` | The single pinned source of truth for every vendored input: the twelve ruflo router artefacts at tag `v3.38.20` (seed corpus, KRR unified + three specialists, calibrators, FastGRNN weights, OpenRouter alternates, provenance) and the five MiniLM embedder files at a pinned Hugging Face revision, each with URL, size and sha256. Read by `flake.nix` (bakes `/opt/agentbox/model-router`, rebuild class) and by `scripts/model-router-fetch.sh` (pre-rebuild fallback `$WORKSPACE/.agentbox/model-router`). |
-| `../harness-wrappers/router.sh` | The AoE `custom_agents.router` entry: asserts artefacts, key, egress switch, pins `AGENTBOX_MODEL_ROUTER_PRIVACY_TIER=public`, execs the console. |
+| `../harness-wrappers/router.sh` | The `router` seed's session-plane wrapper: asserts artefacts, key, egress switch, pins `AGENTBOX_MODEL_ROUTER_PRIVACY_TIER=public`, execs the console. |
 | `retort-benchmarks.json` | Agent-level price-performance data from [adrianco/retort](https://github.com/adrianco/retort) (ingested 2026-09-09). Routine-task cost rankings, hard-task reliability data, effort-level cost scaling, and eight routing heuristics. Not vendored from ruflo — our own reference file. |
 
 ## Why a console, not "just turn ruflo's flag on"
@@ -26,7 +26,7 @@ The console fixes both without patching either tree: it vendors the artefacts an
 ./agentbox.sh model-router fetch                 # once, pre-rebuild: populate the fallback dir (hash-verified)
 ./agentbox.sh model-router status                # backend, artefact dir, provenance
 ./agentbox.sh model-router route "write a jest test for parseUrn" --dry-run   # route only
-# or open the `router` session in AoE (tmux window 8) and type tasks.
+# or open the `router` session (agentbox-sessions pick, tmux window 8) and type tasks.
 ```
 
 Quality bar and cost ceiling come from `[model_routing.neural]` (`quality_bar`, `cost_ceiling_usd_per_mtok`) via the entrypoint's `AGENTBOX_MODEL_ROUTER_*` exports. State (bandit priors, trajectories, the console ledger) lives in `$WORKSPACE/.agentbox/model-router-state/`; ruflo's promotion-gate analyser reads the trajectory file unchanged.

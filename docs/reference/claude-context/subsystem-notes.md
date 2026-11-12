@@ -115,12 +115,13 @@ All minted through `management-api/lib/uris.js`. Three surfaces:
 
 Durable state rides the existing **memory** (primers) and **events** (scans) adapter slots — never a new slot. Primers and GitHub enrichment are the only external hops and are independently gated. Disabled by default. Project tracking is the sixth participant in the `did:nostr` identity mesh.
 
-## Voice Plane (tab0-bridge + Unmute loop + AoE operator console)
+## Voice Plane (tab0-bridge + Unmute loop + operator console)
 
 Fully local voice control of the agent plane, re-homed into **`agentbox/voice/`**
-and re-imagined as a single first-class **operator cockpit** — the voice loop and
-the AoE session board as co-equals, not a voice strip beside a log (Decision D0 /
-ADR-044). It lives in agentbox because everything it wires — tab0-bridge, the AoE
+and re-imagined as a single first-class **operator cockpit** (Decision D0 /
+ADR-044). Its AoE session board retired with Agent of Empires (ADR-2153);
+sessions are managed in terminal tab 8 (`agentbox-sessions pick`) or over Nostr.
+It lives in agentbox because everything it wires — tab0-bridge, the session
 plane, the NIP-98 proxy, management-api governance — is agentbox's. The Kyutai
 Unmute fork stays an external build context (`voice-stack/unmute` clone, 26 GB,
 not vendored). Three cooperating parts, one conversation surface:
@@ -148,12 +149,10 @@ not vendored). Three cooperating parts, one conversation surface:
   ONE credential — a NIP-98 header signed via `window.nostr` (NIP-07) or a
   break-glass bearer, forwarded by Caddy to every upstream. Same-origin routes:
   `/embed` voice strip (forked Unmute frontend, no vendor branding) + `/api/*`
-  (backend), `/feed`+`/bridge/*` (tab0-bridge), **`/aoe/*`** the AoE session
-  board via the NIP-98 proxy (:9096 → :9095) rendered by our own client (AoE's
-  dashboard sets `frame-ancestors 'none'`, so it can't be iframed), and
-  **`/approvals/*`** governance (management-api :9090; Approve/Deny is
-  operator-gated, finding 2). Voice targets ANY session, retargeted by click or
-  spoken intent; injection goes bridge `/tab0/send` → the `tab0` coordinator.
+  (backend), `/feed`+`/bridge/*` (tab0-bridge), and **`/approvals/*`** +
+  **`/mgmt/*`** governance and discovery via the NIP-98 proxy (management-api
+  :9090; Approve/Deny is operator-gated, finding 2). Voice injection goes bridge
+  `/tab0/send` → the `tab0` coordinator.
 - **Lifecycle**: `./agentbox.sh voice <up|down|logs|health|status|certs|rebuild|shell>`
   — a sidecar with its own lifecycle (like browsercontainer). `voice up`
   generates the self-signed cert (certs gitignored, never committed) and

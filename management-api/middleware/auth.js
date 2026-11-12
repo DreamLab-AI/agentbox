@@ -21,7 +21,7 @@ const { taskActionTokens } = require('../lib/task-action-tokens');
 // (…-management-api-0.0.0/lib/node_modules/agentic-flow-management-api), where
 // `../../mcp` points inside the package and does not exist — so the overlay
 // path and an env override are tried as fallbacks. Same relocation class as
-// aoe-seed-sessions.mjs REQUIRE_BASES and nip98-proxy's candidate list.
+// nip98-proxy's candidate list.
 let nostrBridge = null;
 {
   const candidates = [

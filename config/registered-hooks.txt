@@ -50,7 +50,8 @@ own   activity-sink.cjs                PostToolUse,UserPromptSubmit,Stop        
 own   voice-paned                      Stop,Notification                              5
 
 # ── third-party ──
-# Agent of Empires writes its own status/session hooks, each tagged `# aoe-hooks`.
+# Agent of Empires (retired, ADR-2153) wrote status/session hooks tagged `# aoe-hooks`;
+# pruned so a settings file restored from before the cutover is cleaned.
 prune aoe-hooks
 # The resident hook shim (ADR-2034 §1) in workspace project settings; owned and
 # reconciled by `agentbox-hook reconcile`, not by this list.

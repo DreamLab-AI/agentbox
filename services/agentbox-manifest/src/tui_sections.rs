@@ -186,7 +186,7 @@ pub fn render(s: &Value) -> String {
             "packaging         = \"codex:gpt-6-astra\"".into(),
             "release           = \"claude:claude-sonnet-5\"".into(),
             String::new(),
-            // ADR-2080: metaharness cost-optimal router console (AoE `router` seed).
+            // ADR-2080: metaharness cost-optimal router console (`router` session seed).
             "[model_routing.neural]".into(),
             format!(
                 "enabled                   = {}",

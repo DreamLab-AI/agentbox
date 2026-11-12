@@ -8,13 +8,53 @@ activation_status: live
 supersedes: [ADR-2002, ADR-2063, ADR-2079]
 superseded_by: []
 verified_commit: 2c4b365b48d306b90bc36bf113249380e82b9f5c
-verified_paths: [services/agentbox-sessions, config/session-plane, lib/agentbox-sessions.nix, flake.nix, flake.lock, agentbox.toml, config/entrypoint-unified.sh, config/role-accounts.json, config/custody/session-plane-acl.json, config/tab0-bridge, config/nostr-gateway/gateway.cjs, config/nip98-proxy, config/tmux-autostart.sh, config/hooks/session-state.cjs, config/registered-hooks.txt, scripts/session-provision.mjs, scripts/session-control.cjs, scripts/activation/session-plane-cutover.mjs, scripts/activation/session-plane-acceptance.mjs, management-api/lib/system-manifest.js, schema/agentbox.toml.schema.json, services/agentbox-manifest/src/stacks.rs, services/agentbox-manifest/src/stacks_env.rs, tests/cli/session-launch-contract.test.mjs, tests/cli/session-control.test.cjs, tests/config/session-plane-notify.test.sh]
+verified_paths: [services/agentbox-sessions, config/session-plane, lib/agentbox-sessions.nix, flake.nix, flake.lock, agentbox.toml, config/entrypoint-unified.sh, config/role-accounts.json, config/custody/session-plane-acl.json, config/tab0-bridge, config/nostr-gateway/gateway.cjs, config/nip98-proxy, config/tmux-autostart.sh, config/hooks/session-state.cjs, config/registered-hooks.txt, scripts/session-provision.mjs, scripts/session-control.cjs, scripts/activation/session-plane-acceptance.mjs, management-api/lib/system-manifest.js, schema/agentbox.toml.schema.json, services/agentbox-manifest/src/stacks.rs, services/agentbox-manifest/src/stacks_env.rs, tests/cli/session-launch-contract.test.mjs, tests/cli/session-control.test.cjs, tests/config/session-plane-notify.test.sh]
 owner: jjohare
-review_trigger: Antigravity signed in and OpenRouter answering the canned round trip (closes §11 acceptance → implementation complete); the agentbox-aoe-profiles mount migration; any AoE consumer found to have been missed
+review_trigger: Antigravity signed in and OpenRouter answering the canned round trip (closes §11 acceptance → implementation complete); any AoE consumer found to have been missed
 repo: agentbox
 ---
 
 # ADR-2153 — Replace Agent of Empires with an owned, tmux-backed session plane that reconciles to the manifest
+
+## AoE residue retired — 2026-11-12
+
+Closes the two follow-ups this record deferred: the worktree name and the
+`agentbox-aoe-profiles` mount. No decision changes.
+
+- **Worktree prefix `aoe-` → `abs-`.** `config/session-plane/launch.json` sets
+  `worktree_prefix = "abs-"`, matching the `abs_<slug>` tmux names, and lists
+  `legacy_worktree_prefixes = ["aoe-"]`. On a seed's next start the daemon adopts
+  `wt/aoe-<slug>` as `wt/abs-<slug>` (`worktree::adopt`): rename, `git worktree
+  repair`, then each submodule's `core.worktree` is rewritten, because `git
+  worktree move` refuses worktrees with submodules and `repair` leaves that
+  pointer stale. Uncommitted work survives. If any session other than the seed's
+  own runs in the legacy directory, the start is refused and retried, so no second
+  worktree is cut on the same branch. Folder trust is seeded for the new path by
+  the existing step; stale `aoe-` trust entries are inert.
+- **Mount dropped.** The three record files (`profiles/main/{sessions,groups}.json`,
+  `.storage.lock`) were archived and checksum-verified outside the container
+  before removal from compose, the flake volume baseline, the entrypoint ownership
+  list and `compose-persistence.test.cjs`, which now asserts the mount is absent.
+  Removing the host volume itself is an operator step after the rebuild.
+- **Dead wiring removed.** The nip98-proxy `isAoe` branch (always false since the
+  cutover; selftest 133/133), the `_AOE_*` env classes, the voice console's `/aoe`
+  path handling, the one-shot `scripts/activation/session-plane-cutover.mjs` (it
+  calls the retired `aoe` binary), and stale AoE wording in the default template,
+  schema labels, CLI help and wrappers.
+- **Kept on purpose.** The `aoe-session` / `aoe-turn` tags written by
+  `/v1/sessions/boundary` are stored identifiers on durable records; renaming them
+  would split history for any consumer. `prune aoe-hooks` stays so a settings
+  file restored from before the cutover is cleaned. The schema still accepts the
+  retired `port`, `dashboard` and coordinator fields as deprecated. The manifest's
+  golden `live-agentbox.toml` is a historical fixture and is unchanged.
+- **Guard generalised.** `tests/cli/aoe-launch-never-attaches-from-scripts.test.mjs`
+  becomes `scripts-never-switch-operator-tmux.test.mjs`: no tracked script may run
+  `tmux switch-client` or the `aoe` CLI.
+
+Evidence on branch `chore/aoe-retire`: `agentbox-sessions` 64 tests (47 unit, 17
+tmux integration, including adoption with a submodule and a dirty tree, and
+refusal while another session holds the directory), clippy clean;
+nip98-proxy selftest 133 pass / 0 fail / 0 skip; env-secret-inventory PASS.
 
 ## Scoped source check — 2026-11-09
 

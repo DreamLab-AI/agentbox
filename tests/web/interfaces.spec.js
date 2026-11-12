@@ -35,10 +35,6 @@ async function mockCockpit(page) {
   await page.route('**/api/v1/health', (route) => json(route, { ok: true }));
   await page.route('**/bridge/nostr/status', (route) => json(route, { gateway: 'armed', mirrorKey: true }));
   await page.route('**/bridge/nostr/events**', (route) => json(route, { events: [] }));
-  await page.route('**/aoe/api/sessions**', (route) => json(route, { sessions: [
-    { id: 'tab0', title: 'tab0 coordinator', agent: 'claude', state: 'running', branch: 'main', updated_at: new Date().toISOString() },
-    { id: 'codex-1', title: 'web hardening', agent: 'codex', state: 'waiting', branch: 'web-surfaces', updated_at: new Date().toISOString() },
-  ], coordinator: 'tab0' }));
   await page.route('**/approvals/v1/approvals', (route) => json(route, { approvals: [
     { id: 'approval-1', title: 'Publish release manifest', priority: 'high', requester_pubkey: '0123456789abcdef', action_class: 'publish', target: 'release:v1' },
   ] }));

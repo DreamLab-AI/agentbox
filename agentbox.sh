@@ -592,7 +592,7 @@ SYSTEMONE_FILE="${SCRIPT_DIR}/docker-compose.system-one.yml"
 SYSTEMONE_COMPOSE_ARGS=(--project-name agentbox -f "$SYSTEMONE_FILE")
 SPEECH_FILE="${SCRIPT_DIR}/docker-compose.speech.yml"
 SPEECH_COMPOSE_ARGS=(--project-name agentbox-speech -f "$SPEECH_FILE")
-# Voice + AoE operator console sidecar (its own lifecycle, like browsercontainer).
+# Voice operator console sidecar (its own lifecycle, like browsercontainer).
 # The Caddy console lives in docker-compose.voice.yml. The web client/backend
 # sources come from an external checkout and are layered via compose.web.yml plus
 # unmute-override.yml. Nemotron ASR + Pocket TTS are the shared speech plane.
@@ -2339,7 +2339,7 @@ OM_HELP
 }
 
 # ---------------------------------------------------------------------------
-# voice lifecycle — voice + AoE operator console (Caddy :8444/:8443) + the
+# voice lifecycle — voice operator console (Caddy :8444/:8443) + the
 # external web conversation sources. Own lifecycle, like browsercontainer.
 # ---------------------------------------------------------------------------
 
@@ -2384,7 +2384,7 @@ _voice_compose_args() {
 }
 
 cmd_model_router() {
-    # ADR-2080: metaharness cost-optimal router console (AoE `router` seed).
+    # ADR-2080: metaharness cost-optimal router console (`router` session seed).
     local sub="${1:-status}"; shift || true
     local console="${SCRIPT_DIR:-.}/config/model-router/console.mjs"
     case "$sub" in
@@ -2401,7 +2401,7 @@ usage: $0 model-router <fetch|check|status|route "<task>" [--dry-run]|console>
   check    verify the fallback dir against config/model-router/artefacts.json
   status   router backend, artefact dir, corpus provenance
   route    route (and execute) one task; --dry-run routes only
-  console  open the interactive console (what the AoE \`router\` session runs)
+  console  open the interactive console (what the \`router\` session runs)
 USAGE
             exit 2 ;;
     esac
@@ -2760,7 +2760,7 @@ cmd_voice() {
             echo -e "${GREEN}Voice console is up.${NC}"
             echo -e "  ${GREEN}Console  :${NC} https://<host>:8444  (operator cockpit — accept the self-signed cert)"
             echo -e "  ${GREEN}Debug UI :${NC} https://<host>:8443  (stock Unmute demo)"
-            echo -e "  Routes: /embed (voice) · /feed+/bridge (tab0-bridge) · /aoe/* (sessions) · /approvals/* (governance)"
+            echo -e "  Routes: /embed (voice) · /feed+/bridge (tab0-bridge) · /approvals/* (governance) · /mgmt/* (discovery)"
             ;;
         down)
             echo -e "${CYAN}Stopping the voice console + web conversation stack...${NC}"
@@ -2819,7 +2819,7 @@ cmd_voice() {
             ;;
         help|*)
             cat <<VOICE_HELP
-${CYAN}voice — voice + AoE operator console (Caddy :8444) + unified speech plane${NC}
+${CYAN}voice — voice operator console (Caddy :8444) + unified speech plane${NC}
 
 Usage: $0 voice <command>
 
@@ -2834,7 +2834,7 @@ Usage: $0 voice <command>
   ${GREEN}shell${NC}     Shell into the caddy console container
 
 The operator cockpit consolidates every surface same-origin on :8444:
-  /embed voice strip · /feed+/bridge tab0-bridge · /aoe/* AoE sessions ·
+  /embed voice strip · /feed+/bridge tab0-bridge ·
   /approvals/* governance · /mgmt/* discovery · /lo/* objects · /docs/* API.
   :8443 is the stock
   Unmute debug UI. Sign in with a NIP-98 header (window.nostr) or break-glass

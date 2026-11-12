@@ -2,7 +2,7 @@
 	auto_https off
 }
 
-# ── :8444 — THE operator surface (agentbox voice + AoE cockpit) ────────────
+# ── :8444 — THE operator surface (agentbox voice cockpit) ──────────────────
 # Single self-signed TLS origin consolidating every surface the operator
 # cockpit needs, all same-origin so the browser can reach them under one mic
 # secure-context and one NIP-98 / bearer credential:
@@ -13,7 +13,6 @@
 #   /api/*       Unmute backend (health, voices, /v1/realtime websocket)
 #   /feed        tab0-bridge live turn feed (websocket) — Authorization forwarded
 #   /bridge/*    tab0-bridge REST (tabs, tab0/send, nostr/*) — Authorization forwarded
-#   /aoe/*       AoE sessions via the NIP-98 sole-ingress proxy (agentbox:9096)
 #   /approvals/* management-api governance approvals (agentbox:9090)
 #   /mgmt/*      authenticated management API reads used by the cockpit
 #   /lo/*        public linked-object viewer bundle

@@ -289,7 +289,7 @@ const ROUTES = (() => {
     });
     return out;
   } catch (err) {
-    // Fatal, matching invalid AOE_UPSTREAM: a silently dropped route would
+    // Fatal: a silently dropped route would
     // surface as confusing 404s from the wrong upstream at the trust boundary.
     console.error(`[nip98-proxy] invalid routes: ${err.message}`);
     process.exit(1);
@@ -331,7 +331,7 @@ function routeFor(rawUrl) {
       if (isBare) path = url === bare ? '/' : `/${url.slice(bare.length)}`;
       else path = `/${url.slice(r.prefix.length)}`;
     }
-    return { upstream: r.upstream, path, bearer: r.bearer, preserveHost: r.preserveHost, isAoe: false };
+    return { upstream: r.upstream, path, bearer: r.bearer, preserveHost: r.preserveHost };
   }
   return null;
 }
@@ -883,7 +883,7 @@ const server = http.createServer((req, res) => {
     // NIP-98 header passes through untouched — upstreams like management-api
     // re-verify the signature themselves, and governance decisions REQUIRE the
     // operator's signed identity (a bearer alone must never release a gate).
-    if (!route.isAoe && auth.mode === 'nip98') {
+    if (auth.mode === 'nip98') {
       // ADR-2010 title clause: a signed NIP-98 identity ALWAYS reaches the
       // upstream gate. `authorization` is hop-by-hop and was dropped above, so
       // it is re-attached verbatim here — the governance upstream re-verifies
@@ -1013,7 +1013,7 @@ server.on('upgrade', (req, socket, head) => {
     lines.push(`X-Agentbox-Auth-Mode: ${auth.mode}`);
     // ADR-069 credential exchange (WS): the upstream's own bearer, never the
     // browser's; nip98-signed upgrades pass their own header (same rule as HTTP).
-    if (!route.isAoe && auth.mode === 'nip98' && req.headers.authorization) {
+    if (auth.mode === 'nip98' && req.headers.authorization) {
       // ADR-2010 (WS): same gate as HTTP — the signed identity, never a bearer,
       // reaches a named upstream. Covers both carriers: a real Authorization
       // header and the ?auth= query form lifted into it above.

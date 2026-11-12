@@ -2,7 +2,7 @@
 /**
  * Self-test for the NIP-98 ingress proxy (PRD-021 WS4 / ADR-043 D4.6).
  *
- * Spins up a fake AoE upstream, boots proxy.mjs against it, then exercises:
+ * Spins up a fake upstream, boots proxy.mjs against it, then exercises:
  *   A. no credentials            → 401 (fail-closed)
  *   B. break-glass bearer        → 200, upstream sees X-Agentbox-Pubkey + X-Forwarded-For,
  *                                  and the Authorization header is stripped
@@ -32,12 +32,11 @@
  *   J. cookie expiry / restart   → expired cookies and cookies minted under a
  *                                  previous HMAC key are rejected, no upstream call
  *   K. tokenless denial          → no NIP-98, no bearer, no cookie → 401/WS-401 and
- *                                  the AoE daemon token is NOT injected downstream
- *                                  (ADR-2002)
+ *                                  nothing is forwarded downstream (ADR-2002)
  *   L. bearer gated behind NIP-98→ named-route bearer injected only when
  *                                  mode !== nip98; a signed request's own
- *                                  Authorization reaches the upstream gate; AoE
- *                                  still gets its daemon token; a bearer-only
+ *                                  Authorization reaches the upstream gate; a
+ *                                  signed request to any named route keeps it; a bearer-only
  *                                  request cannot reach a mutation route (ADR-2010)
  *   M. hex-canonical identity    → agent-identity helper: lowercase 64-hex x-only,
  *                                  0600 key file, restart stability, persisted:false
@@ -92,7 +91,7 @@ function assert(cond, name, detail) {
 }
 function skip(name, why) { console.log(`  SKIP  ${name} — ${why}`); skips += 1; }
 
-// ─── Fake AoE upstream ─────────────────────────────────────────────────────────
+// ─── Fake upstream ─────────────────────────────────────────────────────────────
 
 let lastReq = null;
 let lastUpgrade = null;
@@ -282,7 +281,6 @@ async function main() {
   process.env.NIP98_PROXY_CONFIG_FILE = '/nonexistent-selftest-isolated.json';
   process.env.NIP98_PROXY_PORT = String(PROXY_PORT);
   process.env.NIP98_PROXY_HOST = '127.0.0.1';
-  process.env.AOE_UPSTREAM = `http://127.0.0.1:${upstreamPort}`;
   // ADR-2010: the /gov/ route names a bearer_env, so the proxy holds a secret the
   // browser never does. bearer_env is fatal at boot when unset — set it first.
   process.env.SELFTEST_GOV_BEARER = GOV_BEARER;
@@ -319,9 +317,8 @@ async function main() {
     assert(lastReq && lastReq.headers['x-agentbox-pubkey'] === 'operator-break-glass',
       'B: upstream received X-Agentbox-Pubkey', JSON.stringify(lastReq && lastReq.headers['x-agentbox-pubkey']));
     assert(lastReq && !!lastReq.headers['x-forwarded-for'], 'B: upstream received X-Forwarded-For');
-    // N-05: the client's Authorization is stripped, and the proxy injects the
-    // AoE daemon's shared-secret token toward the default upstream — the
-    // upstream must see the daemon token, never the client credential.
+    // N-05: the client's break-glass Authorization is stripped; the named
+    // upstream never sees the client credential.
     assert(lastReq && lastReq.headers.authorization === undefined,
       'B: client bearer stripped from named upstream',
       JSON.stringify(lastReq && lastReq.headers.authorization));
@@ -519,7 +516,7 @@ async function main() {
 
   // F7. open-redirect guard on next
   {
-    assert(proxyMod.safeNextPath('/aoe/dash') === '/aoe/dash', 'F7: same-origin path preserved');
+    assert(proxyMod.safeNextPath('/gov/dash') === '/gov/dash', 'F7: same-origin path preserved');
     assert(proxyMod.safeNextPath('https://evil.example/') === '/', 'F7b: absolute URL rejected');
     assert(proxyMod.safeNextPath('//evil.example/') === '/', 'F7c: protocol-relative rejected');
     assert(proxyMod.safeNextPath('/\\evil.example/') === '/', 'F7d: backslash URL rejected');
@@ -756,15 +753,13 @@ module.exports = { NostrBridge: { verifyNip98 } };
   }
 
   // K. TOKENLESS DENIAL (ADR-2002) ----------------------------------------------
-  // No NIP-98, no bearer, no cookie: denied with the documented status, and the
-  // AoE daemon token must NOT be injected downstream — nothing is forwarded at all.
+  // No NIP-98, no bearer, no cookie: denied with the documented status, and
+  // nothing is forwarded downstream at all.
   {
-    const AOE_TOKEN = 'ab'.repeat(32);
     lastReq = null;
     const r = await request('/api/sessions', { accept: 'application/json' }, 'POST');
     assert(r.status === 401, 'K1: tokenless request denied 401 (documented status)', `got ${r.status}`);
-    assert(lastReq === null, 'K1b: AoE upstream never contacted, so no daemon token is injected');
-    assert(!r.body.includes(AOE_TOKEN), 'K1c: the AoE daemon token does not leak into the denial body');
+    assert(lastReq === null, 'K1b: upstream never contacted');
 
     lastUpgrade = null;
     const ws = await wsUpgrade('/sessions/abc/live-ws');
@@ -781,7 +776,7 @@ module.exports = { NostrBridge: { verifyNip98 } };
   // /gov/ is a named route holding a bearer_env secret. The gate: the route
   // bearer is injected ONLY when the caller did not sign; a genuinely signed
   // caller's own Authorization reaches the upstream so it can re-verify the
-  // operator signature itself. AoE keeps its daemon token in every mode.
+  // operator signature itself.
   {
     const url = `http://127.0.0.1:${PROXY_PORT}/gov/approve`;
     const nip98 = buildNip98('POST', url);
@@ -846,21 +841,21 @@ module.exports = { NostrBridge: { verifyNip98 } };
       'L6: WS — non-signing mode receives the route bearer',
       JSON.stringify(lastGovUpgrade && lastGovUpgrade.headers.authorization));
 
-    // The AoE default route is the deliberate exception: daemon token always.
-    const aoeUrl = `http://127.0.0.1:${PROXY_PORT}/api/sessions`;
-    const aoeNip98 = buildNip98('GET', aoeUrl);
-    if (aoeNip98.skip) {
-      skip('L7: named upstream receives the original NIP-98 credential', aoeNip98.skip);
+    // Any named route (here /api/, which declares no bearer) also passes a signed caller's own header.
+    const namedUrl = `http://127.0.0.1:${PROXY_PORT}/api/sessions`;
+    const namedNip98 = buildNip98('GET', namedUrl);
+    if (namedNip98.skip) {
+      skip('L7: named upstream receives the original NIP-98 credential', namedNip98.skip);
     } else {
       lastReq = null;
-      await request('/api/sessions', { authorization: aoeNip98.header });
-      assert(lastReq && lastReq.headers.authorization === aoeNip98.header,
+      await request('/api/sessions', { authorization: namedNip98.header });
+      assert(lastReq && lastReq.headers.authorization === namedNip98.header,
         'L7: named upstream receives the original NIP-98 credential (HTTP)',
         JSON.stringify(lastReq && lastReq.headers.authorization));
       lastUpgrade = null;
-      const wsAoe = buildNip98('GET', `http://127.0.0.1:${PROXY_PORT}/sessions/abc/live-ws`);
-      await wsUpgrade(`/sessions/abc/live-ws?auth=${encodeURIComponent(wsAoe.header.slice('Nostr '.length))}`);
-      assert(lastUpgrade && lastUpgrade.headers.authorization === wsAoe.header,
+      const wsNamed = buildNip98('GET', `http://127.0.0.1:${PROXY_PORT}/sessions/abc/live-ws`);
+      await wsUpgrade(`/sessions/abc/live-ws?auth=${encodeURIComponent(wsNamed.header.slice('Nostr '.length))}`);
+      assert(lastUpgrade && lastUpgrade.headers.authorization === wsNamed.header,
         'L7b: named upstream receives the original NIP-98 credential (WS)',
         JSON.stringify(lastUpgrade && lastUpgrade.headers.authorization));
     }
@@ -934,7 +929,6 @@ module.exports = { NostrBridge: { verifyNip98 } };
       ['session HMAC secret', SESSION_SECRET],
       ['break-glass token', BREAK_GLASS],
       ['route bearer', GOV_BEARER],
-      ['AoE daemon token', 'ab'.repeat(32)],
     ].filter(([, v]) => logs.includes(v)).map(([n]) => n);
     assert(leaked.length === 0, 'M8: no credential material appears in proxy stdout/stderr', leaked.join(', '));
     assert(logs.length > 0, 'M8b: child proxy logs were actually captured (the check is not vacuous)');

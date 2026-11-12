@@ -28,7 +28,7 @@
  * offered set — resolves `null` and the route behaves exactly as before. Never throws.
  *
  * Not delivered here: choosing the INTENDED SESSION. At HEAD the bridge has a single
- * coordinator (`config/tab0-bridge/server.mjs` pins one AoE session id) and the route's target
+ * coordinator (`config/tab0-bridge/server.mjs` pins one session id) and the route's target
  * is the caller-supplied `actor_did`; there is no multi-session choice to refine.
  */
 

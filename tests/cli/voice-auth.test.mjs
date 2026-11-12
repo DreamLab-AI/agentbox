@@ -25,7 +25,7 @@ function client(signEvent = async event => event) {
     },
   });
   vm.runInContext(source.slice(0, source.indexOf('// ── toast')), context);
-  vm.runInContext(source.slice(source.indexOf('let feedWs ='), source.indexOf('// ── AoE session board')), context);
+  vm.runInContext(source.slice(source.indexOf('let feedWs ='), source.indexOf('// ADR-2153: the web session board retired')), context);
   return { context, sockets, storage, timers, run: code => vm.runInContext(code, context) };
 }
 

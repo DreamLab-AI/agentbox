@@ -133,8 +133,8 @@
     },
     "model_routing.neural.enabled": {
       "class": "rebuild",
-      "name": "Metaharness cost-optimal router console (AoE `router` session)",
-      "summary": "ADR-2080: bakes the pinned ruflo router artefacts + MiniLM embedder (config/model-router/artefacts.json) into /opt/agentbox/model-router and exports AGENTBOX_MODEL_ROUTER_* at boot for the dedicated AoE `router` seed; the console embeds offline, routes via @metaharness/router KRR inside the ruflo closure, executes through OpenRouter, public-tier work only. Pre-rebuild fallback: ./agentbox.sh model-router fetch."
+      "name": "Metaharness cost-optimal router console (`router` session seed)",
+      "summary": "ADR-2080: bakes the pinned ruflo router artefacts + MiniLM embedder (config/model-router/artefacts.json) into /opt/agentbox/model-router and exports AGENTBOX_MODEL_ROUTER_* at boot for the dedicated `router` session seed; the console embeds offline, routes via @metaharness/router KRR inside the ruflo closure, executes through OpenRouter, public-tier work only. Pre-rebuild fallback: ./agentbox.sh model-router fetch."
     },
     "networking.tailscale": {
       "class": "rebuild",
@@ -608,8 +608,8 @@
     },
     "voice": {
       "class": "live",
-      "name": "Voice + AoE operator console",
-      "summary": "ADR-044: same-origin operator cockpit (Caddy :8444) unifying the web voice loop and AoE session board. The UI/backend sidecar uses ./agentbox.sh voice; shared Nemotron ASR + Pocket TTS follow the core AgentBox lifecycle through docker-compose.speech.yml."
+      "name": "Voice operator console",
+      "summary": "ADR-044: same-origin operator cockpit (Caddy :8444) unifying the web voice loop and governance approvals (the AoE session board retired with ADR-2153). The UI/backend sidecar uses ./agentbox.sh voice; shared Nemotron ASR + Pocket TTS follow the core AgentBox lifecycle through docker-compose.speech.yml."
     },
     "voicelink": {
       "class": "rebuild",

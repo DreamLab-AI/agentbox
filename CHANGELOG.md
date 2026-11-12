@@ -4,6 +4,19 @@ All notable changes to agentbox are documented here. Format inspired by [Keep a 
 
 ## [Unreleased]
 
+### Agent of Empires residue retired (2026-11-12, ADR-2153)
+
+- Seed worktrees move from `wt/aoe-<slug>` to `wt/abs-<slug>`. agentbox-sessions adopts
+  each existing worktree in place on the seed's next start, keeping uncommitted work and
+  submodules; it refuses while another session uses the old directory.
+- The `agentbox-aoe-profiles` volume mount is removed (records archived first). After the
+  rebuild, remove the host volume with `docker volume rm agentbox-aoe-profiles`.
+- Dead code removed: the nip98-proxy `isAoe` branch, `_AOE_*` env classes, the voice
+  console's `/aoe` routing, and the one-shot cutover script.
+- `setup/agentbox.default.toml` describes the owned session plane instead of `aoe serve`.
+- The tmux-hijack guard is now general: no tracked script may run `tmux switch-client`.
+- Takes effect at the next image build.
+
 ### No half-installed skills; podcast pipeline repaired (2026-11-11, ADR-2196)
 
 - semgrep, gitleaks, trivy and jj baked into the image; `security-testing` and

@@ -77,7 +77,7 @@ dependency? A gate that silently passes when the API is unreachable is worse tha
 gate, and a gate that blocks when it is unreachable is an availability coupling.
 
 ### 4. Model routing
-**Where** — the ADR-041 per-activity model routing, the AoE `router` seed.
+**Where** — the ADR-041 per-activity model routing, the `router` session seed.
 **Judgments** — classify intent and domain, Score difficulty and risk, Noul for "needs
 escalation to an expensive model".
 **Replaces** — static routing rules.

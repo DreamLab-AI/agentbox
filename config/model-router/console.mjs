@@ -18,7 +18,7 @@
 // ruflo's task-embedder imports '@xenova/transformers', which the closure does
 // not carry — so ruflo's neural path silently falls back to the bandit. This
 // console embeds the task itself with the closure's @huggingface/transformers
-// and calls the router directly. Nothing in the AoE or ruflo trees is patched.
+// and calls the router directly. Nothing in the ruflo tree is patched.
 //
 // Privacy (ADR-2079 §4): this console dispatches to an EXTERNAL provider. It
 // refuses to start unless the privacy tier is `public`, and refuses to execute
@@ -145,7 +145,7 @@ fs.mkdirSync(STATE_DIR, { recursive: true });
 
 // ---------------------------------------------------------------------------
 // Gate the ruflo router for THIS process only (never exported globally —
-// ADR-2080: the router is scoped to the dedicated AoE session).
+// ADR-2080: the router is scoped to the dedicated `router` session).
 // ---------------------------------------------------------------------------
 const setDefault = (k, v) => { if (process.env[k] === undefined || process.env[k] === '') process.env[k] = String(v); };
 setDefault('CLAUDE_FLOW_ROUTER_NEURAL', '1');
@@ -161,7 +161,7 @@ setDefault('CLAUDE_FLOW_SWARM_DIR', STATE_DIR);
 const PROVIDER = process.env.CLAUDE_FLOW_ROUTER_PROVIDER;
 if (PROVIDER === 'openrouter' && !process.env.OPENROUTER_API_KEY && !DRY) {
   die('OPENROUTER_API_KEY is not set — the console cannot execute through OpenRouter.',
-    'Set it in .env (AoE forwards it via config.toml environment=) or use --dry-run to route only.');
+    'Set it in .env (the session plane passes provider keys through) or use --dry-run to route only.');
 }
 
 // ---------------------------------------------------------------------------

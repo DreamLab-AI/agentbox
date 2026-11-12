@@ -10,7 +10,7 @@ vector_db = "ruvector-embedded"
 # for the full matrix and trade-offs.
 [adapters]
 # beads: flipped off → local-sqlite for PRD-021 WS3 / ADR-043 D4.3. Activating the
-# work-ledger slot binds every AoE session boundary to a durable beads epic
+# work-ledger slot binds every session boundary to a durable beads epic
 # (session create → createEpic, task/turn units → createChild/claim, session end →
 # close), each id minted through management-api/lib/uris.js. REBUILD-class: adapter
 # selection is resolved at Nix image composition, so this only takes effect after
@@ -383,7 +383,7 @@ comfyui_builtin = false
 # This flag is baked at Nix build time into MEMORY_ADMIN_ACCESS_MODE.
 # Changing it requires a `nix build` + container recreate.
 #
-# PRD-021 WS3 / ADR-043 D4.4: flipped permissive → scoped so one AoE session
+# PRD-021 WS3 / ADR-043 D4.4: flipped permissive → scoped so one session
 # cannot read another session's per-project namespace
 # (user:<pubkey>:proj:<repo-slug>:<ns>). The operator keeps a documented
 # break-glass path — in scoped mode the bearer admin maps to the operator's own
@@ -1789,7 +1789,7 @@ diagram-narrative = "claude:claude-sonnet-5-5 -> claude:claude-opus-5-5"    # T2
 diagram-synthesis = "claude:claude-opus-5-5 -> claude:claude-fable-5-1"     # T3
 seal-review       = "zai:glm-5.3 -> claude:claude-fable-5-1"                # T3 cross-family
 
-# ── ADR-2080: metaharness cost-optimal router as a dedicated AoE session ─────
+# ── ADR-2080: metaharness cost-optimal router as a dedicated session ─────────
 # Phase 0 of ADR-2079. The baked ruflo closure carries @metaharness/router
 # (KRR / k-NN, optional FastGRNN) but the npm tarball ships NO router artefacts
 # and ruflo's task-embedder imports a package the closure lacks, so the
@@ -2216,7 +2216,7 @@ worktree      = true
 eager_mandate = false
 
 [[interaction_plane.session_seeds]]
-slug          = "antigravity"         # native AoE antigravity agent (was tab 10); model aligned to gemini-3.8-flash (F2-8)
+slug          = "antigravity"         # native Antigravity agent (was tab 10); model aligned to gemini-3.8-flash (F2-8)
 tool          = "antigravity"         # @google/gemini-cli is SUNSET (2026-06-18); flake pins the Antigravity CLI (binary agy, lib/antigravity-cli.nix — NOT nixpkgs antigravity, which is the IDE); agy state lives in ~/.gemini (tmpfs)
 model         = "gemini-3.8-flash"
 worktree      = true
@@ -2237,7 +2237,7 @@ env_allowlist = ["ANTHROPIC_BASE_URL", "ANTHROPIC_AUTH_TOKEN"]
 eager_mandate = false
 
 [[interaction_plane.session_seeds]]
-slug          = "deepseek"            # AoE first-class OpenCode connector → DeepSeek Responses API
+slug          = "deepseek"            # native OpenCode agent → DeepSeek Responses API
 tool          = "opencode"
 model         = "deepseek-agent/deepseek-flash"
 worktree      = true

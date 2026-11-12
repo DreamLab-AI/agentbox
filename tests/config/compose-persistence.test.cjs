@@ -14,7 +14,6 @@ const expected = {
   '/var/lib/agentbox/code-harness': 'agentbox-code-harness-data',
   '/var/lib/agentbox/consultations': 'agentbox-consultations-data',
   '/var/lib/agentbox/telemetry': 'agentbox-telemetry-data',
-  '/home/devuser/.config/agent-of-empires/profiles': 'agentbox-aoe-profiles',
   '/home/devuser/.cache/huggingface': 'agentbox-hf-cache',
   '/home/devuser/.local': 'agentbox-local-home',
   '/home/devuser/.local/share/code-server': 'agentbox-codeserver-config',
@@ -30,6 +29,9 @@ for (const [target, name] of Object.entries(expected)) {
   assert.equal(mount?.type, 'volume', target);
   assert.equal(model.volumes[mount.source]?.name, name, target);
 }
+// Agent of Empires is retired (ADR-2153); its records volume was archived and dropped.
+assert.ok(!model.services.agentbox.volumes.some(v => String(v.target).includes('agent-of-empires')), 'no Agent of Empires mount');
+assert.ok(!Object.values(model.volumes).some(v => v?.name === 'agentbox-aoe-profiles'), 'no agentbox-aoe-profiles volume');
 assert.equal(model.volumes['agentbox-claude-home'].external, true);
 const instructions = model.services.agentbox.volumes.find(v => v.target === '/etc/agentbox/instructions');
 assert.equal(instructions?.read_only, true);

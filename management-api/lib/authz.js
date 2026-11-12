@@ -127,7 +127,7 @@ function authenticatedPubkey(request) {
 // ── Session-agent binding ────────────────────────────────────────────────────
 //
 // The sessions-boundary registry (routes/sessions-boundary.js) writes one JSON
-// record per AoE session, each carrying the session's bound `did`/`pubkey` and
+// record per session, each carrying the session's bound `did`/`pubkey` and
 // its original `session_id`. isSessionAgent scans that registry and matches on
 // the ORIGINAL id stored inside the record — deliberately independent of the
 // on-disk filename scheme, so it stays correct across the finding-5 change that
@@ -153,7 +153,7 @@ function _readSessionRecord(sessionId) {
 }
 
 /**
- * True iff `pubkey` is the did:nostr bound to AoE session `sessionId` at the
+ * True iff `pubkey` is the did:nostr bound to session `sessionId` at the
  * session boundary. Matches either the record's `pubkey` field or the hex inside
  * its `did` (`did:nostr:<hex>`).
  */

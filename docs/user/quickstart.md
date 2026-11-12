@@ -588,9 +588,10 @@ Sessions are `abs_<slug>` with `@agentbox-sessions=1`; `tab0` is the external
 `agentbox:0` coordinator. Window 8 runs `agentbox-sessions pick`. Provider profiles
 are reconciled by `scripts/session-provision.mjs`. AoE, its default upstream,
 `:9095` and the web session board are retired. The NIP-98 proxy on `:9096` keeps
-its named operator routes and returns 404 for unknown routes. The old
-`aoe-profiles` volume remains mounted but unused for recovery and mount-stable
-activation; it must not be pruned as part of delivery.
+its named operator routes and returns 404 for unknown routes. Seed worktrees live at
+`~/workspace/wt/abs-<slug>`; one found under the retired `aoe-` prefix is adopted in
+place. The `aoe-profiles` volume was archived and dropped (2026-11-12); after the
+rebuild that removes its mount, `docker volume rm agentbox-aoe-profiles` on the host.
 
 Declare codex, antigravity, openrouter, zai, deepseek, loom-raw and router in
 `agentbox.toml`. OpenRouter and Z.AI keep isolated Claude profiles and hard-fail

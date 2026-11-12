@@ -913,7 +913,7 @@ Docs: docs/reference/prd/PRD-001-capabilities-and-adapters.md §Toolchains" \
     "toolchains.nagual_qe"       "Nagual QE"              "$(on_off toolchains.nagual_qe)" \
     "toolchains.antigravity_cli" "Antigravity CLI (agy)"  "$(on_off toolchains.antigravity_cli)" \
     "toolchains.codex"           "OpenAI Codex Rust CLI"  "$(on_off toolchains.codex)" \
-    "toolchains.opencode"        "OpenCode (AoE native)"   "$(on_off toolchains.opencode)" \
+    "toolchains.opencode"        "OpenCode (native agent)" "$(on_off toolchains.opencode)" \
     "toolchains.code_server"     "code-server (VS Code)"  "$(on_off toolchains.code_server)" \
     "toolchains.codebase_memory" "Codebase Memory MCP"    "$(on_off toolchains.codebase_memory)" \
     "toolchains.rust"            "Rust toolchain"         "$(on_off toolchains.rust)" \
