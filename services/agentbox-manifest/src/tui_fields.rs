@@ -238,6 +238,10 @@ pub fn providers_and_toolchains(s: &Value) -> Vec<String> {
             b(s, "skills.spatial_and_3d.qgis")
         ),
         format!(
+            "qgis_local         = {}",
+            b(s, "skills.spatial_and_3d.qgis_local")
+        ),
+        format!(
             "gaussian_splatting = {}",
             b(s, "skills.spatial_and_3d.gaussian_splatting")
         ),

@@ -13,6 +13,11 @@ Two pinned tools from PlayCanvas (MIT, ADR-2177), gated by
 | SuperSplat 3.6.0 | `http://agentbox:8795/editor/` (static, served by `[program:supersplat]`) | Look at a splat, select and delete splats, crop, render, export |
 | `splat-transform` 3.10.3 | on PATH | Headless conversion, compression, filtering, merging |
 
+For splats that need Blender cameras, animation, compositing or scene integration,
+use the Blender skill’s [5.3 workflow](../blender/references/blender-5.3.md). Native
+PLY/SPZ import and rendering do not provide a Blender splat export path; retain
+SuperSplat/splat-transform for conversion and web delivery.
+
 ## Before you start
 
 Probe the server; a gate that is on but not yet built into the image shows up here:

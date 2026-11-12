@@ -207,6 +207,7 @@ comfyui_builtin  = false
 blender            = false
 blender_local      = true
 qgis               = false
+qgis_local         = true
 gaussian_splatting = false
 supersplat         = false
 

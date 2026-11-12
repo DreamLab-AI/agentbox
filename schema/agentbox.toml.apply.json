@@ -354,7 +354,7 @@
     "skills.spatial_and_3d.blender_local": {
       "class": "rebuild",
       "name": "Blender (in-container binary)",
-      "summary": "wrapGpuBin pkgs.blender (headless batch); baked only when blender && blender_local (absent = true). Sidecar-first deployments set false and run jobs through skills/blender/tools/blender-job.js."
+      "summary": "GPU-wrapped Blender (lib/blender.nix; shared upstream release pin on Linux x64); baked only when blender && blender_local (absent = true). Sidecar-first deployments set false and run jobs through skills/blender/tools/blender-job.js."
     },
     "skills.spatial_and_3d.cad": {
       "class": "rebuild",
@@ -374,7 +374,12 @@
     "skills.spatial_and_3d.qgis": {
       "class": "rebuild",
       "name": "QGIS MCP",
-      "summary": "Geospatial MCP server (:9877 plugin protocol); gated package + supervisor block."
+      "summary": "Geospatial MCP proxy to gui-tools-service (:9877 plugin protocol); the in-container binary is gated separately by qgis_local."
+    },
+    "skills.spatial_and_3d.qgis_local": {
+      "class": "rebuild",
+      "name": "QGIS (in-container binary)",
+      "summary": "Local QGIS and PyQt package set, including QtWebEngine; baked only when qgis && qgis_local (absent = true for compatibility). Sidecar proxy needs no local QGIS."
     },
     "skills.spatial_and_3d.supersplat": {
       "class": "rebuild",

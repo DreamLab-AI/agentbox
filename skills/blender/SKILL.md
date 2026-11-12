@@ -27,6 +27,7 @@ check, because errors compound when the next piece snaps or parents to a wrong o
 
 ## When to use
 
+- For Blender 5.3 splats, dispersion, panoramic EEVEE, animation conversion or EXR/OTIO pipelines, read [references/blender-5.3.md](references/blender-5.3.md), including driver and VirtualGL limits.
 - For an explainer-video shot, read [references/explainer-video.md](references/explainer-video.md): editable scene, PNG sequence and a timed handoff to `codebase-video` or ComfyUI.
 - Create or edit 3D models, sculpts, or scenes programmatically
 - Author PBR materials / shader node graphs
@@ -93,10 +94,12 @@ with no reply (the health check reports `silent-close`, not `refused`).
   `blender-job.js`. Nix binaries don't search `/usr/lib` (where the nvidia-container-runtime
   injects the driver), which is why that script prepends it; the sidecar needs no such trick.
 
-Run `node tools/blender-health.js` to confirm the sidecar is live before using it. The
-sidecar Blender and any local one can be different builds (5.2.0 LTS vs 5.2.2 LTS
-measured): run `blender-introspect.js version` against the one you use. The sidecar prints a
-harmless `bl_pkg ... already registered` warning in headless jobs.
+Run `node tools/blender-health.js` to confirm the sidecar is live before using it.
+Both x86_64 Linux build paths pin the official Blender 5.3.0 archive through
+`lib/blender-release.json`. Older running images can still have an earlier version;
+run `blender-introspect.js version` against the actual instance. Other platforms retain
+their native nixpkgs package. The GUI launcher explicitly selects OpenGL for VirtualGL;
+5.3's default Vulkan backend is a separate, unverified viewport path here.
 
 **Native MCP tools are optional (on-demand).** The supervised proxy already exposes the
 socket on `localhost:9876`, so you can drive Blender through it directly (or via
@@ -191,7 +194,7 @@ The same queries are packaged as `node tools/blender-introspect.js op mesh.primi
 `... path context.scene.render` (read-only except `enum`, which briefly assigns each candidate value and restores the original, so it can mark the file modified; names are validated). Enum item lists are
 dynamic (see the render-engine note above): the `enum` command tests assignment and restores
 the original value, because a listing alone can be wrong. The interactive sidecar and the
-headless nix Blender can be different builds (5.2.0 LTS and 5.2.2 LTS measured 2026-10-15):
+headless Blender can differ until their respective images are rebuilt:
 run `version` on the one you are using. Do this once per unfamiliar API per session; it is
 the main defence against the 4.x-to-5.x drift this skill documents.
 

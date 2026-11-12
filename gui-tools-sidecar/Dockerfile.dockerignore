@@ -1,0 +1,8 @@
+# The root build context is needed for the shared Blender pin, not host state.
+**
+!lib/
+!lib/blender-release.json
+!gui-tools-sidecar/
+!gui-tools-sidecar/**
+gui-tools-sidecar/**/__pycache__/
+gui-tools-sidecar/**/*.pyc

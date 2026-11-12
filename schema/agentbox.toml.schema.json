@@ -366,8 +366,12 @@
               "description": "Bake the in-container Blender binary (headless batch). Default true when absent. false = sidecar-only: the blender-mcp proxy and the blender skill stay on; scripted builds and renders run in the gui-tools-service sidecar. Ignored unless blender = true."
             },
             "qgis": {
-              "description": "Bake QGIS and register its MCP server (plugin protocol on port 9877) for geospatial work.",
+              "description": "Register the QGIS MCP proxy to the GUI sidecar (plugin protocol on port 9877). The optional local package is controlled by qgis_local.",
               "type": "boolean"
+            },
+            "qgis_local": {
+              "type": "boolean",
+              "description": "Bake local QGIS and PyQt, including QtWebEngine. Default true when absent for compatibility. Set false for the sidecar-only MCP proxy. Ignored unless qgis = true."
             },
             "gaussian_splatting": {
               "type": "boolean",

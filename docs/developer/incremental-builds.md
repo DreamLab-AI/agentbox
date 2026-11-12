@@ -105,6 +105,16 @@ Use the existing `up` workflow for first-time stack provisioning/dependencies.
 
 ## Cache retention and measurements
 
+Cold-build cost traps: local QGIS brings QtWebEngine, and OrcaSlicer brings
+WebKitGTK. The checked-in configuration keeps QGIS's sidecar MCP proxy enabled
+with `qgis_local = false`, and disables `cad_print` (core CAD remains enabled).
+The base package set no longer includes `diff-pdf`, another WebKitGTK consumer;
+PDF visual review uses the browser sidecar and retained Poppler tools instead.
+These embedded browser engines can dominate a cold build for hours; this is a
+dependency-cost warning, not a measured per-layer duration. Always inspect the
+remaining derivation plan before estimating time. These gates do not stop or
+rebuild the independent GUI/browser sidecars.
+
 Successful candidate preparation keeps Nix roots for the latest and previous
 candidate plus the last candidate activated by this workflow. Older successful
 generation root symlinks are released; receipts remain. Failed preparations

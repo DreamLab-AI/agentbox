@@ -24,24 +24,45 @@ Set in `agentbox.toml`:
 ```toml
 [skills.spatial_and_3d]
 blender = true
-blender_local = false   # sidecar-first (this deployment); omit or true to also bake pkgs.blender
+blender_local = false   # sidecar-first (this deployment); omit or true to also bake the local binary
 ```
 
 `blender = true` adds the supervised `blender-mcp` program (priority 231), the skill and
 `ENABLE_BLENDER=true`. `blender_local` (schema: boolean, default true when absent) decides
-whether `pkgs.blender` is also baked into the image; `ENABLE_BLENDER_LOCAL` reports the
+whether the pinned local Blender is also baked into the image; `ENABLE_BLENDER_LOCAL` reports the
 result. With `blender_local = false` the toolchain test `tests/toolchains/blender-present.sh`
 skips, and `blender-batch.sh` exits 2 pointing at `blender-job.js`. Revert by setting
 `blender_local = true` and rebuilding.
 
 ## Version
 
-Agentbox uses `pkgs.blender` from the pinned nixpkgs input. The current image ships
-**Blender 5.1.2**. Note this is a 5.x series: `bpy` snippets written for the 4.x tutorials
-in the wild will drift — e.g. the EEVEE engine enum is `BLENDER_EEVEE` (the 4.2–4.5 name
-`BLENDER_EEVEE_NEXT` does not exist on 5.x), and `Material.use_nodes` / `World.use_nodes`
-are deprecated (removal expected in 6.0). The skill's SKILL.md carries the full list of
-5.1.2 API corrections, all verified headless against the shipped binary.
+Both x86_64 Linux build paths use the official **Blender 5.3.0** archive and
+SHA-256 in `lib/blender-release.json`: the sidecar installer and
+`lib/blender.nix` share that pin. Other platforms keep their native nixpkgs
+package. The local binary remains gated by `blender_local`; enabling the proxy
+alone does not add it.
+
+The sidecar's build context is the repository root, using
+`gui-tools-sidecar/Dockerfile`, so Compose can include the shared manifest.
+Build from the host checkout with
+`docker compose --project-name agentbox -f docker-compose.gui-tools.yml build`.
+Prepare Agentbox with `./agentbox.sh prepare`; activate it separately when ready.
+Test the optional local binary independently with `nix build .#blender` on the
+host, even when `blender_local` is false; its install check imports the bundled
+Python modules. The standalone derivation still needs host build verification.
+A source pin is not proof that a running image has been upgraded: query each
+instance with `blender --version` or `blender-introspect.js version`.
+
+5.3 adds native Gaussian splats, Cycles dispersion, EEVEE panoramic cameras and
+bundled OpenEXR/OpenTimelineIO Python modules. The
+[5.3 workflow reference](../../skills/blender/references/blender-5.3.md) covers
+API changes and limits. DLSS viewport denoising needs NVIDIA driver 620+; the
+current host driver 615.78.08 does not qualify. The sidecar explicitly selects
+OpenGL for its tested VirtualGL path despite 5.3's default Vulkan backend.
+
+Run the Blender skill's `tools/examples/release-smoke.py` as a background job
+to verify the actual version, native splat import, new APIs, GPU rendering and
+save/reopen. Check the interactive bridge and viewport separately.
 
 ## Two ways Blender is driven
 

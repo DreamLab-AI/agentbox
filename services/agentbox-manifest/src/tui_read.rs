@@ -60,6 +60,7 @@ const FIELDS: &[F] = &[
     F("skills.spatial_and_3d.blender", D::B(false), false),
     F("skills.spatial_and_3d.blender_local", D::B(true), false),
     F("skills.spatial_and_3d.qgis", D::B(false), false),
+    F("skills.spatial_and_3d.qgis_local", D::B(true), false),
     F(
         "skills.spatial_and_3d.gaussian_splatting",
         D::B(false),
@@ -346,6 +347,26 @@ mod tests {
         assert_eq!(s["federation.mode"], "client");
         assert_eq!(s["federation.external_url"], "https://hub");
         assert_eq!(s["desktop.enabled"], true);
+    }
+
+    #[test]
+    fn qgis_sidecar_only_setting_survives_setup_roundtrip() {
+        let cfg = tomlval::parse(
+            "[skills.spatial_and_3d]\nqgis = true\nqgis_local = false\n",
+        )
+        .unwrap();
+        let state = build_state(&cfg);
+        assert_eq!(state["skills.spatial_and_3d.qgis"], true);
+        assert_eq!(state["skills.spatial_and_3d.qgis_local"], false);
+        let rendered = crate::tui_fields::providers_and_toolchains(&state).join("\n");
+        let restored = build_state(&tomlval::parse(&rendered).unwrap());
+        assert_eq!(restored["skills.spatial_and_3d.qgis"], true);
+        assert_eq!(restored["skills.spatial_and_3d.qgis_local"], false);
+        assert_eq!(
+            build_state(&tomlval::parse("[skills.spatial_and_3d]\nqgis = true\n").unwrap())
+                ["skills.spatial_and_3d.qgis_local"],
+            true
+        );
     }
 
     #[test]

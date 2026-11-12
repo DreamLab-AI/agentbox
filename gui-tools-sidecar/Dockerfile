@@ -26,7 +26,6 @@ ENV DISPLAY=:2 \
     VGL_DISPLAY=egl
 
 RUN pacman -Syu --noconfirm && pacman -S --noconfirm --needed \
-        blender \
         qgis \
         python \
         python-pip \
@@ -47,6 +46,7 @@ RUN pacman -Syu --noconfirm && pacman -S --noconfirm --needed \
         ttf-liberation \
         curl \
         unzip \
+        xz \
         socat \
         iproute2 \
         base-devel \
@@ -54,6 +54,12 @@ RUN pacman -Syu --noconfirm && pacman -S --noconfirm --needed \
         sudo \
     && pacman -Scc --noconfirm \
     && rm -rf /var/cache/pacman/pkg/* /root/.npm /tmp/*
+
+# Same checksum-pinned upstream Blender as the optional Nix package. The official
+# build includes OpenEXR/OpenTimelineIO and the upstream GPU feature set.
+COPY lib/blender-release.json /opt/gui-tools/blender-release.json
+COPY gui-tools-sidecar/install-blender.sh /opt/gui-tools/install-blender.sh
+RUN bash /opt/gui-tools/install-blender.sh
 
 # devuser with passwordless sudo (needed for AUR builds)
 RUN groupadd -g 1000 devuser \
@@ -127,18 +133,18 @@ RUN curl --fail --location --retry 3 \
     && ln -s /opt/gui-tools/rhubarb/rhubarb /usr/local/bin/rhubarb \
     && rm /tmp/rhubarb.zip
 
-COPY --chown=devuser:devuser blendermcp-addon.py /opt/gui-tools/blendermcp-addon.py
-COPY --chown=devuser:devuser launch-blender.py /opt/gui-tools/launch-blender.py
-COPY --chown=devuser:devuser launch-blender.sh /opt/gui-tools/launch-blender.sh
-COPY --chown=devuser:devuser launch-qgis.sh /opt/gui-tools/launch-qgis.sh
+COPY --chown=devuser:devuser gui-tools-sidecar/blendermcp-addon.py /opt/gui-tools/blendermcp-addon.py
+COPY --chown=devuser:devuser gui-tools-sidecar/launch-blender.py /opt/gui-tools/launch-blender.py
+COPY --chown=devuser:devuser gui-tools-sidecar/launch-blender.sh /opt/gui-tools/launch-blender.sh
+COPY --chown=devuser:devuser gui-tools-sidecar/launch-qgis.sh /opt/gui-tools/launch-qgis.sh
 # Real headless QGIS MCP server (QgsApplication + qgis_mcp_plugin QgisMCPServer) —
 # replaces the old HTTP placeholder stub qgis-mcp-server.py — plus the plugin it runs,
 # installed into the default QGIS profile so `import qgis_mcp_plugin` resolves.
-COPY --chown=devuser:devuser qgis-mcp-headless.py /opt/gui-tools/qgis-mcp-headless.py
-COPY --chown=devuser:devuser qgis_mcp_plugin /home/devuser/.local/share/QGIS/QGIS3/profiles/default/python/plugins/qgis_mcp_plugin
-COPY --chown=devuser:devuser forecast_quartz.py /opt/gui-tools/forecast_quartz.py
-COPY --chown=devuser:devuser healthcheck.sh /opt/gui-tools/healthcheck.sh
-COPY supervisord.conf /etc/supervisord.conf
+COPY --chown=devuser:devuser gui-tools-sidecar/qgis-mcp-headless.py /opt/gui-tools/qgis-mcp-headless.py
+COPY --chown=devuser:devuser gui-tools-sidecar/qgis_mcp_plugin /home/devuser/.local/share/QGIS/QGIS3/profiles/default/python/plugins/qgis_mcp_plugin
+COPY --chown=devuser:devuser gui-tools-sidecar/forecast_quartz.py /opt/gui-tools/forecast_quartz.py
+COPY --chown=devuser:devuser gui-tools-sidecar/healthcheck.sh /opt/gui-tools/healthcheck.sh
+COPY gui-tools-sidecar/supervisord.conf /etc/supervisord.conf
 RUN chmod +x /opt/gui-tools/launch-blender.sh /opt/gui-tools/launch-qgis.sh /opt/gui-tools/healthcheck.sh \
     && ln -s /opt/gui-tools/dcc-python/bin/dcc-mcp-server /usr/local/bin/dcc-mcp-server \
     && dcc-mcp-server --version

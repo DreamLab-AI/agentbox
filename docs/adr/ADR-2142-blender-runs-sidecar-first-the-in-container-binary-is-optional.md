@@ -205,3 +205,32 @@ Re-verified 2026-11-11 at `0ed05167b` (ADR-2196, removal of the dead `skills.bro
 Re-verified 2026-11-11 at `f475e0b8e` (ADR-2196, removal of the dead `skills.browser.qe_browser` switch). Governed-path delta since `0ed05167b`: `agentbox.toml` removes `[skills.browser].qe_browser`; `flake.nix` drops `ENABLE_QE_BROWSER` from the image environment (nothing read it). No published port, mount, secret, identity, route, vault path or registry entry changes, so what this record decides is not touched. Run on this commit: the manifest validator (live and default manifests), manifest catalogue, configuration jest (301), the TUI non-interactive validation (5), agentbox-manifest cargo tests (235). The flake edit is one whole-line deletion, not evaluated. The decision and status axes are unchanged.
 
 Re-verified 2026-11-11 at `2c4b365b4` (ADR-2196, second pass). Governed-path delta since `f475e0b8e`: `flake.nix` puts `torch-bin` and `torchvision-bin` inside `pythonRuntimeEnv` behind `[skills.data_science].pytorch` (replacing a bare, unimportable package), adds `openssl.bin`, `gdal`, `pngquant`, `bun` and `manim` to `basePackages`, `trunk`, `cargo-leptos`, `leptosfmt` and `rust-analyzer` to `wasmPackages`, `arnisPkg` (lib/arnis.nix, pinned v3.4.0) to `skillToolPackages`, and drops the lichtfeld comment from the GPU-wrap list. No published port, mount, secret, identity, route, vault path or registry entry changes, so what this record decides is not touched. Run on this commit: skill lint (123), skill-count, routing-table, manifest validator and catalogue, configuration jest (301), corpus and parity tests (the baked-versus-repo comparison fails in-container until the rebuild), system-one-eval. arnis's source hash was reproduced independently with scripts/nar-hash.py, which also reproduces the pinned StatCraft hash. The Nix is not evaluated or built. The decision and status axes are unchanged.
+
+
+## Blender 5.3 release parity — 2026-11-12
+
+The sidecar installer and optional x86_64 Linux Nix package now consume the same
+official archive and published SHA-256 from `lib/blender-release.json` (5.3.0).
+Other platforms retain native nixpkgs Blender. `nix build .#blender` provides a
+standalone packaging gate even with `blender_local = false`; the package's
+install check imports bundled OpenEXR and OpenTimelineIO. The proxy/local gate
+separation remains as decided above.
+
+Compose builds from the repository root with a Dockerfile-specific context
+allowlist. The GUI explicitly uses OpenGL for VirtualGL despite 5.3's Vulkan
+default. The current NVIDIA driver 615.78.08 is below upstream's DLSS minimum
+620, so the skill keeps DLSS out of the available workflow.
+
+Live activation: the official archive was hash-verified and installed in the
+sidecar's writable layer, restarting only Blender after saving a copy of the
+default scene. QGIS and the exchange volume were retained. BlenderMCP health,
+NVIDIA OpenGL viewport capture, DCC-MCP initialize/discovery, and the background
+`release-smoke.py` job passed. The fixture imported a native Gaussian PLY,
+checked colour interop and dispersion inputs, imported bundled modules, rendered
+using OptiX on three GPUs, and saved/reopened the scene. The job exited 0.
+Evidence: exchange `blender-upgrade-5.3/` and `jobs/blender-53-release-gate/`.
+
+Build activation remains staged: replacement images and standalone Nix packaging
+have not been built. The live installation is lost on container recreation until
+the host builds the updated sidecar image. This amendment records working-tree
+evidence; it does not renew unrelated verified-path claims in this ledger.

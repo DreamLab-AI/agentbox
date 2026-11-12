@@ -53,6 +53,10 @@ Use an explicit image digest when you need an identified deployment. `latest` is
 
 Image-scoped SBOM/VEX evidence is described in [the vulnerability guide](docs/developer/vex.md). Its scope is the identified image, not the host, mounted secrets, sidecars or every service reachable from an agent.
 
+The checked-in configuration uses sidecar-only QGIS (`qgis_local = false`),
+with core CAD on and local CAD printing off. PDF visual review uses the browser
+sidecar rather than a local embedded browser. See [build costs](docs/developer/incremental-builds.md).
+
 ## How it fits together
 
 ```mermaid

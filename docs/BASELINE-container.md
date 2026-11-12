@@ -76,6 +76,13 @@ pinned code and model manifests; model provisioning runs independently into the
 retained model volume with runtime credentials, resumable transfers and hash
 verification. See [media preparation](developer/media-model-preparation.md).
 
+Blender release parity (ADR-2142, 5.3 amendment): `lib/blender-release.json` pins the official
+5.3.0 Linux x64 archive for both the sidecar installer and optional local Nix
+package. Other platforms keep native nixpkgs Blender. The GUI explicitly uses
+OpenGL for VirtualGL. Live sidecar GPU/API/control-plane checks passed; image
+builds and standalone Nix packaging verification remain pending. DLSS requires
+a newer host NVIDIA driver. See [Blender configuration](user/blender.md).
+
 Image-to-splat (ADR-2175, staged until the host rebuild): the ComfyUI sidecar
 bakes a pinned SplatKit dataset stage (`SPLATKIT=1`). `splat_pipeline.py` drives
 pano, geometry, preview and dataset jobs from pinned API graphs, and an
@@ -133,6 +140,12 @@ Supervisord runs as PID 1 root; every long-running program drops to `user=devuse
 | `podcast-cron` / `forum-backup-cron` | scheduled jobs | — |
 | `diagram-review-cron` | GLM triage and review of diagram corpora, Gemini audit behind an interval, change and USD-cap gate (gated `[diagram_review]`, shipped on, rebuild-class; ADR-2131). Its crontab is rendered at boot into `/run/agentbox`; the program holds no secret file | — |
 | `sidestr-producer` / `sidestr-mirror` / `sidestr-faucet` | sidestr:dreamlab chain, Pages mirror, DREAM faucet (gated `[sidechain]`, rebuild-class). The producer runs the read-only Nix bake of `config/sidechain/upstream-pins` (`/opt/agentbox/sidestr/upstream`), never a workspace checkout unless `SIDESTR_ALLOW_UNPINNED=1` | `127.0.0.1:3450` |
+
+QGIS's `qgis` gate keeps the proxy to the GUI sidecar; `qgis_local` independently
+controls the optional in-image QGIS/PyQt/QtWebEngine packages. The checked-in
+configuration is sidecar-only (`qgis = true`, `qgis_local = false`). Core CAD
+remains enabled with OrcaSlicer (`cad_print`) off. PDF visual review uses the
+browser sidecar plus Poppler rasterisation, not a local `diff-pdf` GUI.
 
 Readiness (`server.js:508`) requires `bootstrap.done`, `adapters:healthy`, and `paths:accessible`; `bootstrap-seal` is a one-shot at `priority=99` — if it times out `/ready` stays 503.
 

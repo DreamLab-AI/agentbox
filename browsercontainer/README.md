@@ -14,6 +14,12 @@ volume stays for other hand-offs. The removal takes effect at your next rebuild 
 this sidecar; an already-running older image still serves `/render-mermaid` until then,
 and nothing in Agentbox calls it.
 
+PDF visual comparison is also routed here rather than to a local `diff-pdf`
+GUI in Agentbox. Poppler rasterises selected pages in Agentbox; the existing
+`gui-tools-exchange` volume carries them to Chrome for browser-gpu review.
+No new endpoint, renderer installation or sidecar restart is required. See the
+[PDF review workflow](../skills/browser/references/latex-diagram-workflows.md).
+
 ## Architecture
 
 Agentbox's browser-use instructions are owned by `config/instructions/workspace.claude.md` and its private local layer (ADR-2118), projected at boot. Edit the source layers, not the generated workspace `CLAUDE.md`. This does not change browsercontainer's own mounts or lifecycle.

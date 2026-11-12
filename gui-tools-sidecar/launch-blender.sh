@@ -16,8 +16,9 @@ done
 # If VirtualGL is unavailable, fall back to a direct launch (software GL) so the
 # socket server still comes up (degraded, CPU render) rather than the program dying.
 if command -v vglrun >/dev/null 2>&1; then
-  exec vglrun -d egl blender --factory-startup --python /opt/gui-tools/launch-blender.py
+  # 5.3 defaults to Vulkan. Keep the tested Xvfb/VirtualGL OpenGL path.
+  exec vglrun -d egl blender --gpu-backend opengl --factory-startup --python /opt/gui-tools/launch-blender.py
 else
   echo "[launch-blender] WARNING: vglrun not found; starting with software GL (no GPU viewport)"
-  exec blender --factory-startup --python /opt/gui-tools/launch-blender.py
+  exec blender --gpu-backend opengl --factory-startup --python /opt/gui-tools/launch-blender.py
 fi

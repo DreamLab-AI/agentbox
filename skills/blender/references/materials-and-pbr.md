@@ -1,5 +1,7 @@
 # PBR Material Authoring & Shader Nodes
 
+For 5.3 dispersion, EEVEE changes and driver limits, read the [5.3 workflow](blender-5.3.md).
+
 ## When this applies
 
 The agent needs to give a mesh a physically-plausible surface: wiring texture

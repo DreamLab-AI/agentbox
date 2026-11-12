@@ -4,6 +4,24 @@ All notable changes to agentbox are documented here. Format inspired by [Keep a 
 
 ## [Unreleased]
 
+### Sidecar-first cold-build footprint and CLI pins (2026-11-12, ADR-2200)
+
+- QGIS retains its sidecar MCP proxy with `qgis_local = false`; no duplicate
+  local QGIS/PyQt/QtWebEngine package set. Schema and setup round-trip support
+  the new rebuild-class gate. Core CAD stays on, local OrcaSlicer stays off.
+- Remove base `diff-pdf` and its WebKitGTK closure. PDF visual review now routes
+  through the browser skill and shared exchange volume, using retained Poppler
+  rasterisation. This is not a replacement for a pixel-equality exit status.
+- Refresh Codex 0.167.2, RuVector CLI 0.3.18, metaharness 0.4.22,
+  metaharness/darwin 0.13.1, agentic-qe 3.15.19, Wrangler 4.159.0 and
+  deepsec 2.3.12. npm updates retain the 72-hour cool-off and locked hashes.
+  Claude Code is already at its upstream latest; Ruflo stays at 3.63.1 because
+  resolving 3.74.1 hit the host npm remote-fetch policy.
+- Share the checksum-pinned official Blender 5.3.0 archive across the optional
+  Nix package and GUI sidecar; constrain its new root build context with a
+  Dockerfile-specific allowlist. Live sidecar changes still require an image
+  rebuild to persist across recreation (ADR-2142).
+
 ### Agent of Empires residue retired (2026-11-12, ADR-2153)
 
 - Seed worktrees move from `wt/aoe-<slug>` to `wt/abs-<slug>`. agentbox-sessions adopts

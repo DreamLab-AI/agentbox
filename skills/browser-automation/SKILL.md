@@ -26,6 +26,9 @@ registration, and management details are owned by the **`browser`** skill
   Setup: see the `browser` skill or `references/sidecar.md`.
 - **Raw CDP scripting** against live tabs → `chrome-cdp` skill (`cdp-sidecar.sh`).
 - **AQE visual regression, accessibility and URL validation** → `qe-browser` skill.
+- **PDF visual comparison** → `browser` skill's
+  [PDF workflow](../browser/references/latex-diagram-workflows.md); use the
+  existing sidecar, not local `diff-pdf`.
 
 ## When not to use
 

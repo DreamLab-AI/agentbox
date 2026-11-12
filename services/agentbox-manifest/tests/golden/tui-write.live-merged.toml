@@ -121,6 +121,7 @@ qgis = true
 blender = true
 gaussian_splatting = false
 blender_local = true
+qgis_local = true
 supersplat = false
 
 [skills.data_science]

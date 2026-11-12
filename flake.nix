@@ -535,10 +535,10 @@
         #    nix-prefetch-url https://registry.npmjs.org/ruvector/-/ruvector-0.3.3.tgz
         ruvectorPkg = mkNpmCli {
           pkgName         = "ruvector";
-          version         = "0.3.3";
-          packageLock = ./config/npm-locks/ruvector-0.3.3.package-lock.json;
-          sha256          = "sha256-dR/OqeNlvF2Q57Oumepn3ljG096o2YKKWeSr+3sivvA=";
-          nodeModulesHash = "sha256-ekqSne1s5NKbVdzk/ujm+DtY2F7lwaG5BaKp3tmsDLU=";
+          version         = "0.3.18";
+          packageLock = ./config/npm-locks/ruvector-0.3.18.package-lock.json;
+          sha256          = "sha256-Kg/6dKDzWXvii9dzHp3YD3xB02eVAQdVR1Sg0MKV6l4=";
+          nodeModulesHash = "sha256-lxuLAmTdunXLS9Xu4uBdWNnkkX4WtWHVVWob+H3nCns=";
           bin             = "ruvector";
         };
 
@@ -646,10 +646,10 @@
         #    nix-prefetch-url https://registry.npmjs.org/metaharness/-/metaharness-0.4.17.tgz
         metaharnessPkg = mkNpmCli {
           pkgName         = "metaharness";
-          version         = "0.4.17";
-          packageLock = ./config/npm-locks/metaharness-0.4.17.package-lock.json;
-          sha256          = "sha256-fGWihB4ViFAmVNCzs31KTOAVLmR2jDcwTjbBN8LWkDo=";
-          nodeModulesHash = "sha256-CgD8ddZnJVpohVL5dJmy3yHqjuieVtW9eMC8MPd6a7E=";
+          version         = "0.4.22";
+          packageLock = ./config/npm-locks/metaharness-0.4.22.package-lock.json;
+          sha256          = "sha256-pgTcwnWKhPt9QUgbA1ofFXz7dpyemdzDnMy1losRp/Q=";
+          nodeModulesHash = "sha256-CT8ChXOixP3DcezZivSRSUUPZr/pvvS5JGbmob5QfI8=";
           bin             = "metaharness";
           extraBins = {
             # own-package bin — path is package-root-relative (dependency bins
@@ -660,10 +660,10 @@
         #    nix-prefetch-url https://registry.npmjs.org/%40metaharness/darwin/-/darwin-0.10.3.tgz
         metaharnessDarwinPkg = mkNpmCli {
           pkgName         = "@metaharness/darwin";
-          version         = "0.12.0";
-          packageLock = ./config/npm-locks/metaharness-darwin-0.12.0.package-lock.json;
-          sha256          = "sha256-Gjd52xYa4M+NRpmwgT+HSiUBwgjVyO+ybFiU4G4vXOg=";
-          nodeModulesHash = "sha256-o1wNQvQHX92/CZFosuigzK7cjMZECjBQ6XSk1tilM9Q=";
+          version         = "0.13.1";
+          packageLock = ./config/npm-locks/metaharness-darwin-0.13.1.package-lock.json;
+          sha256          = "sha256-+EwzuptmMjOwYKM11wr3ZLi80Z940DAf9dnotzJRakM=";
+          nodeModulesHash = "sha256-xdsXUB385CESQrGdgh0wHAWxTFdhhe+up51iiHF0/wQ=";
           bin             = "metaharness-darwin";
         };
 
@@ -687,10 +687,10 @@
           # opt-in qe-browser engine) moved from a dependency to an optional
           # peer (^26.8.21), so the closure no longer carries vibium 0.1.8;
           # qe-browser remains outside this adoption; no init/template dump.
-          version         = "3.15.10";
-          packageLock = ./config/npm-locks/agentic-qe-3.15.10.package-lock.json;
-          sha256          = "sha256-R4YOKC7XfGiv25OL4u/vOoFqbWz7kuL8un7r3QVYgYg=";
-          nodeModulesHash = "sha256-JfQM4Vu4gLT0JF+Qd9C9abErZC9AsDUJRqlTfilKG5w=";
+          version         = "3.15.19";
+          packageLock = ./config/npm-locks/agentic-qe-3.15.19.package-lock.json;
+          sha256          = "sha256-vg3jkXH2UoGLmwg/y18v7lNi7Dnx10800AKoOxsApfg=";
+          nodeModulesHash = "sha256-wYoycUp3dfDQBuV+ZAqD5ps2RNyR0/qEIQpJqUoT1YM=";
           bin             = "aqe";
         };
 
@@ -764,10 +764,10 @@
           pkgName         = "wrangler";
           # 4.151.3 (2026-10-20T12:05Z): newest release beyond the 72-hour
           # cool-off on the 23 October estate-wide upgrade.
-          version         = "4.151.3";
-          packageLock = ./config/npm-locks/wrangler-4.151.3.package-lock.json;
-          sha256          = "sha256-0j3PYgho4t7E9GdKWY9y7blv9vBFch7wmyMV2kbddlk=";
-          nodeModulesHash = "sha256-k4ATTp+r9ux0tiJ90TEBI1QlrXO7l01RhLCqj0NPR4w=";
+          version         = "4.159.0";
+          packageLock = ./config/npm-locks/wrangler-4.159.0.package-lock.json;
+          sha256          = "sha256-iTBflFo5BxGGJEaNG3NclnzBKrCamMAocro6lnW8DzI=";
+          nodeModulesHash = "sha256-7IXwNPnm8KJyMBvhGVcMFHa+2tRencC4DRxFuzZZtDM=";
           bin             = "wrangler";
           # wrangler's devDependencies reference private @cloudflare/*
           # packages not on the public npm registry — strip them so npm
@@ -791,10 +791,10 @@
         #    drive the baked `claude` binary instead of resolving its own copy.
         deepsecPkg = mkNpmCli {
           pkgName         = "deepsec";
-          version         = "2.3.10";
-          packageLock = ./config/npm-locks/deepsec-2.3.10.package-lock.json;
-          sha256          = "sha256-D1h7Q+azOEOEcW/6vxSitFbYvHFYvw5r8iv3K0NeFGE=";
-          nodeModulesHash = "sha256-ly86uyyw1PJVHDAt3ZIRzd/drtQZnV9+UGUvILPxKuo=";
+          version         = "2.3.12";
+          packageLock = ./config/npm-locks/deepsec-2.3.12.package-lock.json;
+          sha256          = "sha256-ZGS2E5C4+8xORFqMb6LWIc2V5PLpoy8NRM3rTcQiZ7o=";
+          nodeModulesHash = "sha256-TgyCyUatFtHLyo6ITY++UVrrscDfQM4kiZaH5haUvzI=";
           bin             = "deepsec";
           extraEnv        = { CLAUDE_CODE_EXECUTABLE = "claude"; };
           # deepsec's published tarball keeps its own monorepo build-only
@@ -1106,7 +1106,8 @@
           pdfgrep        # grep across PDF text content
           pdftk          # merge, split, rotate, watermark, fill forms, attach files
           pdfcpu         # Go PDF processor — validate, optimize, trim, booklet, stamp
-          diff-pdf       # visual diff between two PDFs (pixel comparison)
+          # PDF visual review uses browsercontainer, not diff-pdf's wxWidgets /
+          # WebKitGTK closure. Keep poppler-utils above for page rasterisation.
           exiftool       # read/write EXIF & XMP metadata on PDFs and images
           djvulibre      # djvuextract, ddjvu, djvutxt — DjVu ↔ PDF conversion
           tabula-java    # extract tables from PDFs into CSV/TSV/JSON
@@ -1575,7 +1576,7 @@
           ++ comfyuiPackages;
 
         spatialPackages =
-          lib.optionals (spatialCfg.qgis or false) [
+          lib.optionals ((spatialCfg.qgis or false) && (spatialCfg.qgis_local or true)) [
             # QGIS GL viewport routes through glvnd → injected NVIDIA GLX.
             (wrapGpuBin pkgs.qgis [ "qgis" ])
             pkgs.python312Packages.pyqt5
@@ -1587,7 +1588,7 @@
             # Blender Cycles CUDA/OptiX + GL viewport — the reference case: bare
             # nix Blender reports "CUEW initialization failed" and sees 0 GPUs;
             # wrapped it enumerates all CUDA devices (verified live 2026-08-31).
-            (wrapGpuBin pkgs.blender [ "blender" ])
+            (wrapGpuBin (import ./lib/blender.nix { inherit pkgs; }) [ "blender" ])
           ]
           # 3DGS stack: only when gaussian_splatting=true (requires local-cuda via E006).
           # colmap (CUDA SfM/MVS) needs the wrapper; metis is
@@ -4816,6 +4817,8 @@ ${ragflowNetworkDecl}
         # shell; operators use Docker Desktop to pull the published multi-arch
         # image (see docs/guides/platforms.md).
         packages = lib.optionalAttrs pkgs.stdenv.isLinux {
+          # Standalone gate for the optional local Blender, even in sidecar-only profiles.
+          blender = import ./lib/blender.nix { inherit pkgs; };
           security-tools = securityTools;
           agentbox-vex = vexPkg;
           agentbox-sessions = agentboxSessionsPkg;

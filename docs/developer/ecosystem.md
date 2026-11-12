@@ -8,6 +8,11 @@ Host image preparation and activation are separate (ADR-2132). The loopback-only
 build registry is a delivery cache, not an estate service, identity participant
 or sixth adapter. [Operator contract](incremental-builds.md).
 
+QGIS and PDF visual review delegate to the existing GUI/browser sidecars:
+`qgis_local = false` retains the QGIS proxy without its local embedded-browser
+closure; the browser skill replaces local `diff-pdf`. These image choices do not
+couple sidecar lifecycles to Agentbox preparation or activation (ADR-2200).
+
 The image's SBOM/OpenVEX evidence is also a host build artefact (ADR-2137),
 scoped to shipped image paths and immutable image identity. It does not assess
 other repositories, the host kernel or separately deployed sidecars. The

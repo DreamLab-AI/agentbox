@@ -1,5 +1,7 @@
 # Scene Building, Lighting & Rendering (BlenderMCP reference)
 
+For 5.3 dispersion, EEVEE changes and driver limits, read the [5.3 workflow](blender-5.3.md).
+
 Distilled from: `blender-scene-building-and-rendering-with-claude-code` (prompt
 transcript + one product-shot reference render), plus `bpy` first principles
 for two video-only courses (`illuminating-mastery-advanced-lighting-techniques`,

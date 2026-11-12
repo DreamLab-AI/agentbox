@@ -5,8 +5,8 @@ services:
     # localhost:9876 -> gui-tools-service:9876 (GUI_CONTAINER_HOST default).
     hostname: gui-tools-service
     build:
-      context: ./gui-tools-sidecar
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: gui-tools-sidecar/Dockerfile
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "bash", "/opt/gui-tools/healthcheck.sh"]

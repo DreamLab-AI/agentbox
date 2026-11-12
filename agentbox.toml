@@ -623,7 +623,10 @@ announce_relays = []               # relays the forge publishes its own 30617/30
 # AGENTBOX_FORGE_ANNOUNCE_RELAYS (comma-separated).
 
 [skills.spatial_and_3d]
+# Keep the MCP proxy to gui-tools-service, without a second local QGIS install.
+# Local QGIS pulls in QtWebEngine; absent qgis_local retains legacy local installs.
 qgis = true
+qgis_local = false
 blender = true
 # Sidecar-first (2026-10-15): the gui-tools-service GPU sidecar is the default Blender.
 # false = do not bake the in-container Blender binary; the blender-mcp proxy and the
@@ -643,7 +646,9 @@ gaussian_splatting = false
 cad = true
 # OrcaSlicer on PATH for the cad-print skill (headless slicing; no printer is contacted).
 # Requires cad. REBUILD-class.
-cad_print = true
+# Off for cold-cache builds: OrcaSlicer's GUI closure pulls in WebKitGTK.
+# Core CAD remains enabled above; slicing is unavailable until re-enabled.
+cad_print = false
 # SuperSplat Gaussian-splat editor (ADR-2177): the static build served by
 # [program:supersplat] on :8795 (docker network only) over $WORKSPACE/splats/share,
 # plus the splat-transform CLI on PATH. Open http://agentbox:8795/editor/ in the

@@ -6,6 +6,10 @@ separate, disruptive replacement step. Neither updates sidecars or prunes data.
 See [incremental builds](../developer/incremental-builds.md); first-time stack
 provisioning still uses the `up` workflow below.
 
+QGIS access stays available through the GUI sidecar with `qgis_local = false`;
+the default image omits local QGIS and OrcaSlicer. PDF visual comparison routes
+through the browser skill instead of `diff-pdf`. See [configuration](configuration.md).
+
 New to headless agent runtimes? Start with the [glossary](glossary.md) first.
 
 This guide reflects the current Agentbox runtime.

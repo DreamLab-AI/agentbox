@@ -12,6 +12,12 @@ Host deployment helpers: `scripts/runtime-delivery.{sh,cjs}` implement locked
 `prepare`/`activate`; `lib/image-layers.nix` excludes earlier dependency closures.
 Preparation leaves running agents untouched. See [incremental builds](../../developer/incremental-builds.md).
 
+Spatial/browser delegation: `qgis` enables the proxy to gui-tools-service,
+while `qgis_local` controls the independent local package closure. The checked-in
+configuration keeps only the proxy. PDF visual comparison is routed through the
+browser skill and existing exchange volume; Poppler stays local, `diff-pdf` does
+not. Core CAD and optional OrcaSlicer (`cad_print`) remain separate capabilities.
+
 Image security evidence: `.#<variant>.securityEvidence` enumerates shipped
 layer paths; `.#security-tools`, `scripts/security-scan.sh` and the private
 Rust `services/agentbox-vex` generate host-side SBOM/OpenVEX bundles. Preparation
