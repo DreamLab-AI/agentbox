@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: a1b5e62dce3e0d34644f5ac11acdacfb0ce0f38d
+verified_commit: d0fe1e147367ca068ff5e5e296d842ec689a3330
 verified_paths: [agentbox.toml, flake.nix, management-api/lib/system-manifest.js, schema/agentbox.toml.schema.json, services/agentbox-manifest/src/tui_read.rs, services/agentbox-manifest/src/tui_fields.rs, skills/browser/references/latex-diagram-workflows.md]
 owner: jjohare
 review_trigger: Re-enable local QGIS or CAD printing; change PDF comparison workflow or nixpkgs pin
@@ -61,3 +61,9 @@ Agentbox was rasterised with Poppler into the shared exchange volume, loaded
 in a fresh browsercontainer CDP tab and screenshotted (992 by 1404 raster).
 The temporary tab was closed; existing tabs and sidecar profiles were untouched.
 This proves the file handoff, not pixel-equality or replacement-image health.
+
+Re-verified at the commit above after the sole subsequent governed-path change:
+`flake.nix` gives gjs 1.88.1 a writable XDG cache during checks. All 77 upstream
+GJS tests then passed, with none disabled. This changes no GIS/PDF gate, proxy,
+mount or image package selection; the earlier gate and handoff evidence still
+applies. Original implementation: `a1b5e62dce3e0d34644f5ac11acdacfb0ce0f38d`.
