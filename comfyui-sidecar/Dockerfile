@@ -4,9 +4,9 @@
 # major mismatch, so nvcc must be 13.x to match the cu130 wheels. The host driver must support
 # CUDA 13.0 (NVIDIA_REQUIRE_CUDA=cuda>=13.0 in this base; the host reports 615.78).
 FROM nvidia/cuda:13.0.3-devel-ubuntu24.04@sha256:b7ae301dea2c162444795462ce17a05f6a516e5a75944b57af5b88540a1a2266
-# Pinned 2026-10-21: native MOSS, LTX-2.5 and current partner API nodes.
-# Weights: Comfy-Org/MOSS-Image in the models volume.
-ARG COMFYUI_REV=faa7e494f3a0c9e45e1c3db8d20ee48fd5fe1b52
+# Pinned 2026-11-12 to release v0.45.0: native MOSS (edit LoRAs, bare-path LoRA keys), LTX-2.5
+# and current partner API nodes. Weights: Comfy-Org/MOSS-Image and lodestones/Kromoss in the models volume.
+ARG COMFYUI_REV=989d93d0d968e704c589ce0146bb18c77f6b50cc
 ARG LTXVIDEO_REV=220e1d45aa0469f518e982102fca4dca92a61862
 ARG BFSNODES_REV=1ff7c1c9e13ec63211723725848bebb9f90ba58b
 ENV DEBIAN_FRONTEND=noninteractive PIP_DISABLE_PIP_VERSION_CHECK=1

@@ -66,7 +66,7 @@ does not establish that a model is distributed between them.
 
 ## October 2026 stop-motion update
 
-The Dockerfile pins ComfyUI `faa7e494f3a0c9e45e1c3db8d20ee48fd5fe1b52`.
+The Dockerfile pins ComfyUI `989d93d0d968e704c589ce0146bb18c77f6b50cc` (v0.45.0, 2026-11-12).
 The existing H3 baseline and `h3-clay` profile are the reproduced endpoint
 route. `ltx25-layout` pins the official INT8 model, Gemma4 encoder, VAEs,
 spatial upscaler and layout adapter; it requires accepted Hugging Face access

@@ -115,6 +115,15 @@ dependency-cost warning, not a measured per-layer duration. Always inspect the
 remaining derivation plan before estimating time. These gates do not stop or
 rebuild the independent GUI/browser sidecars.
 
+PyTorch's binary wheel can still have expensive native dependencies. On
+2026-11-12, CUDA 13.4's NVSHMEM 3.8.0-0 spent over an hour compiling its
+examples/performance-test estate with `ninja -j8` for ten GPU architectures.
+PyTorch consumes its runtime `out` output, not those separate diagnostic
+outputs, but Nix builds the derivation's outputs together. Keep this closure
+cached and treat PyTorch/CUDA-set bumps as expensive, not routine cheap CLI
+updates. This is an observed package cost, not an image-layer timing or a claim
+that those GPU tests were executed (`doCheck` is already false upstream).
+
 Successful candidate preparation keeps Nix roots for the latest and previous
 candidate plus the last candidate activated by this workflow. Older successful
 generation root symlinks are released; receipts remain. Failed preparations
