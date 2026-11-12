@@ -13,7 +13,7 @@ section: Automation
 # Dream Machine
 
 Thin router skill: the operational contract lives in [commands/dream.md](commands/dream.md),
-which defines `/dream status|pause|resume|standby|inbox` behaviour. Engine source:
+which defines `/dream status|pause|resume|standby|inbox|sweep` behaviour (`sweep` is the operator-delegated yolo-mode backlog pass, ADR-2197). Engine source:
 `services/dream-engine/` is the AGPL-3.0 estate adapter; the gate and loop mechanism are the
 permissive `dream-gate` and `dream-core` crates of `DreamLab-AI/dream-engine` (ADR-2141;
 consumed from crates.io, pinned `=0.1.0`). The earlier TypeScript fork

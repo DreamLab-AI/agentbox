@@ -75,8 +75,32 @@ Plain English, composed from the engine's night-health record: every scheduled r
 
 Confirm the repo exists under `/home/devuser/workspace/`, then author a `dream.config.json` in its root following the schema in `docs/developer/dream-engine.md`. Non-negotiables: `autoMerge: false` (the default; the file is protected, so a candidate patch cannot switch it on); every `evaluatorEntrypoints` command must be **provably live** (run it once and check it produces surface-dependent output — a silent no-op evaluator is the #1 historical failure); slots reflect the repo's OWN surfaces; anything owned by an upstream/downstream repo is fenced out via an `extraDisciplines` handoff rule. If the roster already has 5 active repos, warn that the cap will skip the excess.
 
+## `/dream sweep` (yolo mode)
+
+An operator-delegated backlog pass (ADR-2197, amending ADR-2024 for non-live repos). Run it **only** when the operator has delegated it: in this session ("yolo mode", "clear the dream backlog with your own judgement"), or as a standing delegation, which is the line `standing: yes` under the exclusions heading. Otherwise refuse and point at `/dream harvest`.
+
+1. **Exclusions first, fail closed.** Read the `Dream sweep exclusions (ADR-2197)` heading in `~/workspace/AGENTS.md` (projected from the gitignored `config/instructions/local/workspace.md`). If the heading is missing, stop: no sweep. Skip every listed repo, and any repo you are unsure about, and say so in the report.
+2. **PRs, oldest first.** For each open dream PR: read the diff and judge it. Then do one of:
+   - **merge** it if it is correct and its checks are green on the head. Mark a draft ready first; never force-push. Post this comment: `Merged under operator-delegated agent sweep (yolo mode, <YYYY-MM-DD>). No human review recorded; this merge is not review evidence and the ledger's Reviewer/Review-minutes cells stay empty (ADR-2190, ADR-2197).` Name any fixup SHAs you pushed;
+   - **fix rot** (fmt, clippy, a trivial rebase) with ordinary commits on the PR branch, then re-judge it;
+   - **close** it with a comment giving the reason if it is wrong.
+
+   Never merge or edit anything touching the dream-gate guard's protected set (ADR-2141), except ledger rows (step 4) and harness repairs (step 5). That set is its built-ins (`.github/**`, `.cargo/**`, manifests and lockfiles, `dream.config.json`, and gate, safety, threshold, receipt and witness paths), plus the ledger, the evaluator-command paths, the config's `protected` globs and `policy.rs`'s extras. Also never touch a path the repo's `AGENTS.md` protects, or a surface that a `HANDOFF` discipline assigns to another repo.
+3. **Inbox.** Use `node /home/devuser/workspace/project/agentbox/scripts/dream-inbox.mjs answer|dismiss`.
+   - Answer **code-design** questions on your judgement. Prefix every answer `Agent sweep (yolo mode, <YYYY-MM-DD>):`.
+   - Dismiss stale or superseded alerts.
+   - Leave **owner-fact** questions open: money, rates, staffing, legal or IP, personal.
+   - Then run `dream-engine governance withdraw` to retract the resolved cases. Never sign a 31403.
+4. **Ledger commits.** Rebase the engine's local ledger-row commits onto the remote and push them, fast-forward only. Do this only in a clean checkout on the default branch, with no `--autostash`. Never do it between 01:00 and 05:00 UTC, or while a night holds `<artefact_dir>/.night-running.lock` (the file persists between nights; it is held when `flock -n <file> true` fails, as `ledger_io::night_in_progress` checks). Otherwise skip the push and report it.
+5. **Harness repair.** Do this only when a night's receipts show that the harness, not the candidate, decided the verdict. Allowed: opt an existing evaluator into a dream-core fixer (`"fixer": "rustfmt"`), or ignore a file an evaluator writes into the tree. Use an ordinary commit on the default branch that cites the night, and run `dream validate` afterwards. Never remove an evaluator, make a required one advisory, change an evaluator's command, or touch `protected`, thresholds, slots, disciplines or `autoMerge`.
+6. **Never:**
+   - write `review.json`, run `review import`, or fill Reviewer/Review-minutes (ADR-2190);
+   - set `autoMerge`;
+   - touch an excluded repo.
+7. **Report:** merged, closed, fixed, answered, dismissed, withdrawn and skipped (with reasons), and what is left for the operator.
+
 ## Guardrails
 
 - Never delete a repo's `dream.config.json`, ledger, or reports to "prune" it — standby markers and streaks are the only parking mechanisms.
-- Never set `autoMerge: true` — merges are human-only (or explicitly guarded per repo by the user).
+- Never set `autoMerge: true`. The engine never merges. A merge is a human act, or an agent act under an operator-delegated `/dream sweep` (ADR-2197) on a non-excluded repo, carrying the sweep comment.
 - `ZAI_ANTHROPIC_API_KEY` is required for the default provider; if missing, cycles degrade to INCONCLUSIVE — check env before diagnosing "broken" nights.
