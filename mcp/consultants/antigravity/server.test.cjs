@@ -35,7 +35,7 @@ function load(env = {}) {
 test('default and explicit override reach the actual CLI argv', async () => {
   for (const model of [undefined, 'gemini-3.5-flash']) {
     const { options, calls } = load(model ? { AGENTBOX_ANTIGRAVITY_MODEL: model } : {});
-    const expected = model || 'gemini-3.8-flash';
+    const expected = model || 'gemini-4-hydrogen';
     assert.equal(options.model, expected);
     const result = await options.callConsult({ question: 'hello' });
     assert.equal(calls[0].args[1], expected);
@@ -49,8 +49,22 @@ test('default and explicit override reach the actual CLI argv', async () => {
 });
 
 test('published introductory tariff expires at the UTC year boundary', () => {
-  const { context } = load();
+  const { context } = load({ AGENTBOX_ANTIGRAVITY_MODEL: 'gemini-3.8-flash' });
   assert.equal(vm.runInContext("rates(new Date('2026-12-31T23:59:59Z')).prompt", context), 0.00075);
   assert.equal(vm.runInContext("rates(new Date('2027-01-01T00:00:00Z')).prompt", context), 0.0015);
   assert.equal(vm.runInContext("rates(new Date('2027-01-01T00:00:00Z')).completion", context), 0.0075);
+});
+
+test('Hydrogen tariff stays flat and API key provider reaches calls and discovery', async () => {
+  const { options, calls, context } = load({ GEMINI_API_KEY: 'test-only', GOOGLE_API_KEY: 'other-alias' });
+  assert.equal(vm.runInContext("rates(new Date('2027-01-01')).prompt", context), 0.0015);
+  await options.callConsult({ question: 'hello' });
+  await options.healthCheck();
+  for (const call of calls) assert.equal(call.env.GEMINI_API_KEY, 'test-only');
+  for (const call of [calls[0], calls[2]]) {
+    const settings = JSON.parse(call.args[call.args.indexOf('--settings') + 1]);
+    assert.equal(settings.modelProvider, 'gemini');
+    assert.equal(settings.customModelsConfig.customModels['gemini-4-hydrogen'].modelName,
+      'gemini-api://models/gemini-4-hydrogen');
+  }
 });

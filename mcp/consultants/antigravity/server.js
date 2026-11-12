@@ -8,7 +8,8 @@
  * in the agentbox image). Antigravity replaces @google/gemini-cli
  * (sunset 2026-06-18) with a Go-native binary and Pro tier web login.
  *
- * Auth: GOOGLE_API_KEY (canonical) or web-based login via `agy auth login`.
+ * Auth: GEMINI_API_KEY with session-only modelProvider=gemini, or interactive
+ * OAuth when no key is supplied. GOOGLE_* aliases remain backwards-compatible.
  * HOME points at the antigravity home dir so cached session tokens are honoured.
  */
 
@@ -17,11 +18,30 @@ const { spawnCli } = require('../shared/spawn-cli');
 
 const AGY_BIN = process.env.AGENTBOX_ANTIGRAVITY_BIN || 'agy';
 const AGY_HOME = process.env.AGENTBOX_ANTIGRAVITY_HOME || '/home/devuser/.antigravity';
-const MODEL = process.env.AGENTBOX_ANTIGRAVITY_MODEL || 'gemini-3.8-flash';
+const MODEL = process.env.AGENTBOX_ANTIGRAVITY_MODEL || 'gemini-4-hydrogen';
+
+function cliAuth() {
+  const key = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.GOOGLE_GEMINI_API_KEY || '';
+  const settings = {
+    modelProvider: 'gemini',
+    customModelsConfig: { customModels: { 'gemini-4-hydrogen': {
+      // CLI 1.5.7 forwards this remainder as the SDK model, not a base URL.
+      modelName: 'gemini-api://models/gemini-4-hydrogen',
+      label: 'Gemini 4 Hydrogen',
+      toolFormatterType: 'TOOL_FORMATTER_TYPE_NONE',
+    } } },
+  };
+  return {
+    args: key ? ['--settings', JSON.stringify(settings)] : [],
+    env: { HOME: AGY_HOME, GEMINI_API_KEY: key },
+  };
+}
 
 // API-equivalent estimate, not an Antigravity subscription invoice. Published
 // introductory rates double on 2027-01-01; select by call time for long-lived MCPs.
 function rates(now = new Date()) {
+  // Hydrogen launch pricing is flat across the 1M context; no dated increase.
+  if (MODEL === 'gemini-4-hydrogen') return { prompt: 0.0015, completion: 0.0075 };
   if (MODEL !== 'gemini-3.8-flash') return null;
   const multiplier = now >= new Date('2027-01-01T00:00:00Z') ? 2 : 1;
   return { prompt: 0.00075 * multiplier, completion: 0.00375 * multiplier };
@@ -35,15 +55,15 @@ function combinedPrompt(question, context) {
 
 async function callConsult({ question, context_excerpt }) {
   const prompt = combinedPrompt(question, context_excerpt);
+  const auth = cliAuth();
   const result = await spawnCli({
     cmd: AGY_BIN,
     // agy >= 1.1 : --prompt is an alias for --print (single non-interactive
     // turn). The old --no-input flag no longer exists and made every consult
     // exit 2 ("flag provided but not defined").
-    args: ['--model', MODEL, '--print', prompt, '--output-format', 'text', '--print-timeout', '170s'],
+    args: ['--model', MODEL, ...auth.args, '--print', prompt, '--output-format', 'text', '--print-timeout', '170s'],
     env: {
-      HOME:               AGY_HOME,
-      GOOGLE_API_KEY:     process.env.GOOGLE_API_KEY || process.env.GOOGLE_GEMINI_API_KEY || '',
+      ...auth.env,
       AGENTBOX_AGENT_ID:  'consultant-antigravity',
     },
     timeout_ms: 180_000,
@@ -70,16 +90,15 @@ async function callConsult({ question, context_excerpt }) {
 }
 
 async function healthCheck() {
-  // agy authenticates with Google OAuth stored under $HOME (AGY_HOME), not an
-  // API key. `agy --version` succeeds even when logged out, so it is not a
-  // liveness signal; `agy models` fails fast ("Please sign in ...") when the
-  // credential is missing and lists models when it is present. An unauthenticated
-  // --print call would otherwise print an OAuth URL and block for 60 s.
-  const key = process.env.GOOGLE_API_KEY || process.env.GOOGLE_GEMINI_API_KEY || '';
+  // --version alone does not establish readiness. Discover models with the
+  // same provider settings used for inference. This is a non-billable CLI
+  // readiness check, not proof of key validity/quota; deployment smoke runs an
+  // actual inference. Without a key, discovery checks the cached OAuth session.
+  const auth = cliAuth();
   const v = await spawnCli({
     cmd: AGY_BIN,
     args: ['--version'],
-    env: { HOME: AGY_HOME, GOOGLE_API_KEY: key },
+    env: auth.env,
     timeout_ms: 10_000,
   });
   if (v.code !== 0) {
@@ -87,15 +106,17 @@ async function healthCheck() {
   }
   const m = await spawnCli({
     cmd: AGY_BIN,
-    args: ['models'],
-    env: { HOME: AGY_HOME, GOOGLE_API_KEY: key },
+    args: [...auth.args, 'models'],
+    env: auth.env,
     timeout_ms: 25_000,
   });
   if (m.code !== 0) {
     const why = (m.stderr || m.stdout).replace(/\s+/g, ' ').trim().slice(0, 200);
     return {
       ok: false, model: MODEL, version: v.stdout.trim(),
-      last_error: `agy not authenticated in ${AGY_HOME}: ${why} — run: HOME=${AGY_HOME} agy   (interactive OAuth, once)`,
+      last_error: auth.env.GEMINI_API_KEY
+        ? `agy API-key model discovery failed: ${why}`
+        : `agy not authenticated in ${AGY_HOME}: ${why} — run: HOME=${AGY_HOME} agy   (interactive OAuth, once)`,
     };
   }
   return { ok: true, model: MODEL, last_error: null, version: v.stdout.trim() };

@@ -1566,9 +1566,9 @@ auth_mode = "api_key"
 
 [providers.gemini]
 enabled = true
-env_var = "GOOGLE_API_KEY"
-optional_env_vars = ["GOOGLE_GEMINI_API_KEY"]
-auth_mode = "web_login"
+env_var = "GEMINI_API_KEY"
+optional_env_vars = ["GOOGLE_API_KEY", "GOOGLE_GEMINI_API_KEY"]
+auth_mode = "api_key"
 
 [providers.deepseek]
 enabled = true
@@ -1717,7 +1717,7 @@ timeout_ms = 180000
 
 [consultants.antigravity]
 enabled = true
-model   = "gemini-3.8-flash"
+model   = "gemini-4-hydrogen"
 home    = "/home/devuser/.antigravity"
 timeout_ms = 180000
 
@@ -2221,9 +2221,9 @@ worktree      = true
 eager_mandate = false
 
 [[interaction_plane.session_seeds]]
-slug          = "antigravity"         # native Antigravity agent (was tab 10); model aligned to gemini-3.8-flash (F2-8)
+slug          = "antigravity"         # native Antigravity CLI; Hydrogen verified in the Gemini API catalogue
 tool          = "antigravity"         # @google/gemini-cli is SUNSET (2026-06-18); flake pins the Antigravity CLI (binary agy, lib/antigravity-cli.nix — NOT nixpkgs antigravity, which is the IDE); agy state lives in ~/.gemini (tmpfs)
-model         = "gemini-3.8-flash"
+model         = "gemini-4-hydrogen"
 worktree      = true
 eager_mandate = false
 

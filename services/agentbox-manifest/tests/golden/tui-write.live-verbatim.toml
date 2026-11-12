@@ -44,7 +44,7 @@ timeout_ms = 180000
 
 [consultants.antigravity]
 enabled = true
-model      = "gemini-3.8-flash"
+model      = "gemini-4-hydrogen"
 home       = "/home/devuser/.antigravity"
 timeout_ms = 180000
 

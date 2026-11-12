@@ -210,6 +210,27 @@ optional_env_vars = ["OPENAI_BASE_URL"]
 
 Supported out of the box: `anthropic`, `openai`, `gemini`, `deepseek`, `perplexity`, `openrouter`, `context7`, `brave`, `github`, `zai`, `ollama`.
 
+Gemini / Antigravity (verified 2026-11-12): create a key in
+[Google AI Studio](https://aistudio.google.com/apikey), then add it privately to
+`.env` as `GEMINI_API_KEY`. Keep `GOOGLE_API_KEY` and `GOOGLE_GEMINI_API_KEY`
+equal to it for other bundled Gemini clients. Never commit or paste the key.
+The default `[providers.gemini]` uses `auth_mode = "api_key"`; boot sets
+`modelProvider = "gemini"` in the CLI's ephemeral settings for both interactive
+and consultant homes, preserving other settings and never writing the key.
+Antigravity does not load dotenv itself: Compose must recreate Agentbox to
+pick up changed environment values. CLI 1.5.7 and the consultant/session model
+`gemini-4-hydrogen` are pinned. Consultants also select the API provider per call
+and register Hydrogen through `customModelsConfig`: 1.5.7's built-in model list
+does not yet include it. The tested model URI is
+`gemini-api://models/gemini-4-hydrogen` with native tool formatting; this version
+forwards the URI remainder as the SDK model name, so the full base-URL form
+currently shown in Google's settings docs returns 404. Recheck on CLI upgrades.
+Consultants use `--settings`, rather than depending on prior interactive login. Set
+`auth_mode = "oauth"` and remove the consultant's key environment to retain
+subscription-based login instead. API usage is separate from subscription quota.
+See [Google's authentication guide](https://antigravity.google/docs/install?tab=cli)
+and [Hydrogen announcement](https://blog.google/innovation-and-ai/models-and-research/gemini-models/introducing-gemini-4-hydrogen/).
+
 The `ollama` provider routes local LLM traffic to the host's ollama endpoint (or an optional sidecar). It is enabled in the default manifest so `OPENAI_BASE_URL` can be pointed at `http://host.docker.internal:11434` without extra config:
 
 ```toml

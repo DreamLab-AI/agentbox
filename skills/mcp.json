@@ -340,9 +340,9 @@
       ],
       "type": "stdio",
       "env": {
-        "AGENTBOX_ANTIGRAVITY_MODEL": "${AGENTBOX_ANTIGRAVITY_MODEL:-gemini-3.8-flash}"
+        "AGENTBOX_ANTIGRAVITY_MODEL": "${AGENTBOX_ANTIGRAVITY_MODEL:-gemini-4-hydrogen}"
       },
-      "description": "Antigravity consultant (PRD-005 / ADR-011): 1M-token context, long-document analysis via Google Antigravity CLI (agy). Tools: consult, health, cost_estimate. Inherits GOOGLE_API_KEY from session env or uses web-based Pro login.",
+      "description": "Antigravity consultant (PRD-005 / ADR-011): 1M-token context via Google Antigravity CLI (agy). Tools: consult, health, cost_estimate. Uses GEMINI_API_KEY (GOOGLE_* aliases accepted), otherwise interactive Google OAuth.",
       "protocol": "stdio",
       "version": "0.2.0",
       "x-agentbox-managed-by": "projector",

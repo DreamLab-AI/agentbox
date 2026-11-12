@@ -45,7 +45,7 @@ fn tui_model_precedence_is_state_then_existing_then_default() {
     let existing = s.join("existing.toml");
     let out = s.join("out.toml");
     for (state_text, existing_text, expected) in [
-        ("{}", "[core]\nx = 1", "gemini-3.8-flash"),
+        ("{}", "[core]\nx = 1", "gemini-4-hydrogen"),
         (
             "{}",
             "[consultants.antigravity]\nmodel = 'operator-model'",

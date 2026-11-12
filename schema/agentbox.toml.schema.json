@@ -1373,6 +1373,7 @@
             "model": {
               "type": "string",
               "enum": [
+                "gemini-4-hydrogen",
                 "gemini-3.8-flash",
                 "gemini-3.5-flash",
                 "gemini-3.5-pro",
@@ -1381,8 +1382,8 @@
                 "gemini-2.0-flash",
                 "gemini-1.5-pro"
               ],
-              "default": "gemini-3.8-flash",
-              "description": "Gemini model used by the Antigravity CLI subprocess. gemini-3.8-flash is the current recommended default."
+              "default": "gemini-4-hydrogen",
+              "description": "Gemini model used by the Antigravity CLI subprocess. Hydrogen requires the boot-projected API-key custom-model registration on CLI 1.5.7."
             },
             "home": {
               "type": "string",

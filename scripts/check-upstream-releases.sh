@@ -70,9 +70,9 @@ pinned=$(grep -oE 'bendVersion\s*=\s*"[^"]+"' lib/bend.nix | head -1 | sed 's/.*
 latest=$(latest_gh_release "bendlang/bend" "v")
 print_row "bendlang/bend" "${pinned:-???}" "$latest"
 
-section "Antigravity CLI (google-antigravity/antigravity-cli)"
-pinned_agy=$(nix eval --raw nixpkgs#antigravity.version 2>/dev/null || echo "???")
-latest=$(latest_gh_release "google-antigravity/antigravity-cli" "v")
+section "Antigravity CLI (official updater manifest, not the IDE)"
+pinned_agy=$(sed -n 's/.*agyVersion = "\([^"]*\)";.*/\1/p' lib/antigravity-cli.nix)
+latest=$(curl -fsSL --max-time 20 https://antigravity-cli-auto-updater-974169037036.us-central1.run.app/manifests/linux_amd64.json | jq -r '.version' || echo "???")
 print_row "antigravity" "${pinned_agy:-???}" "$latest"
 
 section "Claude Code (@anthropic-ai/claude-code)"

@@ -128,7 +128,7 @@ pub fn render(s: &Value) -> String {
             format!("enabled = {}", b(s, "consultants.antigravity.enabled")),
             format!(
                 "model      = {}",
-                q(s, "consultants.antigravity.model", "gemini-3.8-flash")
+                q(s, "consultants.antigravity.model", "gemini-4-hydrogen")
             ),
             "home       = \"/home/devuser/.antigravity\"".into(),
             "timeout_ms = 180000".into(),

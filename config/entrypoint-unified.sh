@@ -3336,6 +3336,16 @@ unset _RC_MARKET
 # /opt/agentbox/scripts). Perms: writeFileSync preserves the existing mode (600).
 _MCP_PROJECTOR="/opt/agentbox/scripts/project-mcp-servers.mjs"
 _MCP_REGISTRY="${SKILLS_TREE:-/opt/agentbox/skills}/mcp.json"
+# 2026-11-12: API keys alone do not select Antigravity's API provider. Project
+# both writable homes after tmpfs creation; never persist the credential itself.
+if [ "${ENABLE_ANTIGRAVITY_CLI:-0}" = 1 ] && command -v agentbox-manifest >/dev/null 2>&1; then
+  _AGY_AUTH_MODE="$(agentbox-manifest toml-string --manifest "${AGENTBOX_CONFIG:-/etc/agentbox.toml}" \
+    --path providers.gemini.auth_mode 2>/dev/null || true)"
+  node /opt/agentbox/scripts/provision-antigravity.cjs "$_AGY_AUTH_MODE" \
+    /home/devuser /home/devuser/.antigravity || true
+  chown 1000:1000 /home/devuser/.gemini/antigravity-cli{,/settings.json} \
+    /home/devuser/.antigravity/.gemini{,/antigravity-cli,/antigravity-cli/settings.json} 2>/dev/null || true
+fi
 # Explicit environment selection wins; otherwise project the manifest's model.
 # Missing/invalid values stay empty so the registry's default applies.
 if [ -z "${AGENTBOX_ANTIGRAVITY_MODEL:-}" ] && command -v agentbox-manifest >/dev/null 2>&1; then

@@ -4,6 +4,15 @@ All notable changes to agentbox are documented here. Format inspired by [Keep a 
 
 ## [Unreleased]
 
+### Gemini / Antigravity provisioning (2026-11-12)
+
+- Pin official Antigravity CLI 1.5.7 for both architectures; release checks now
+  read its updater manifest rather than the unrelated nixpkgs IDE.
+- Select Gemini API-key authentication explicitly, forward `GEMINI_API_KEY`
+  to consultants, and project non-secret settings into both ephemeral homes.
+- Use API-catalogue-verified `gemini-4-hydrogen` for the consultant and session
+  seed, with flat launch API-equivalent cost estimates ($1.50/$7.50 per 1M).
+
 ### Sidecar-first cold-build footprint and CLI pins (2026-11-12, ADR-2200)
 
 - QGIS retains its sidecar MCP proxy with `qgis_local = false`; no duplicate
