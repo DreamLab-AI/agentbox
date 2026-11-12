@@ -135,6 +135,38 @@
                   typer = pyPrev.typer.overridePythonAttrs (o: {
                     disabledTests = (o.disabledTests or [ ]) ++ [ "test_file_error" ];
                   });
+                  # 2026-11-12 cold build (none of these are in the binary
+                  # cache). Each override is pinned to the interpreter that
+                  # failed, so variants that already build keep their hashes.
+                  #  - cuda-bindings 13.4.3 pins cython <3.3 as a build
+                  #    requirement; nixpkgs ships 3.3.0. Drop the upper bound.
+                  #  - uvloop 0.22.1 (3.14): test_issue39_regression reports
+                  #    "deadlocked in libuv" under a loaded builder; 411 pass.
+                  #  - httpcore2 2.13.1 (3.12): test_h2_timeout_during_request
+                  #    [trio] is timing-dependent; 243 pass.
+                  #  - mypy 2.1.0 (3.12): the mypyc irbuild golden testListCopy
+                  #    differs; 13659 pass.
+                  cuda-bindings = if pyPrev.python.pythonVersion != "3.12" then pyPrev.cuda-bindings
+                    # overrideAttrs, not overridePythonAttrs: torch-bin calls
+                    # cuda-bindings.override, which the latter drops.
+                    else pyPrev.cuda-bindings.overrideAttrs (o: {
+                      postPatch = (o.postPatch or "") + ''
+                        substituteInPlace pyproject.toml \
+                          --replace-fail '"cython>=3.2.5,<3.3",' '"cython>=3.2.5",'
+                      '';
+                    });
+                  uvloop = if pyPrev.python.pythonVersion != "3.14" then pyPrev.uvloop
+                    else pyPrev.uvloop.overridePythonAttrs (o: {
+                      disabledTests = (o.disabledTests or [ ]) ++ [ "test_issue39_regression" ];
+                    });
+                  httpcore2 = if pyPrev.python.pythonVersion != "3.12" then pyPrev.httpcore2
+                    else pyPrev.httpcore2.overridePythonAttrs (o: {
+                      disabledTests = (o.disabledTests or [ ]) ++ [ "test_h2_timeout_during_request" ];
+                    });
+                  mypy = if pyPrev.python.pythonVersion != "3.12" then pyPrev.mypy
+                    else pyPrev.mypy.overridePythonAttrs (o: {
+                      disabledTests = (o.disabledTests or [ ]) ++ [ "testListCopy" ];
+                    });
                   # semgrep-core 1.180.0 (2026-11-12): patchelf 0.19.2 and 0.18.0
                   # both abort (shiftFile: `splitIndex == -1`) when postFixup
                   # sets the absolute "$out/bin/libs:<glibc>/lib" rpath on the
