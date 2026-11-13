@@ -269,7 +269,7 @@ const TOOLS = [
   },
   {
     name: 'memory_retrieve',
-    description: 'Retrieve one memory entry by key from ruvector-postgres. Always returns the whole value — use it to expand a memory_search snippet.',
+    description: 'Retrieve one memory entry by key from ruvector-postgres. Always returns the whole value. Call it on a promising memory_search hit BEFORE answering: a search snippet is usually cut before the fact you need.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -292,7 +292,7 @@ const TOOLS = [
   },
   {
     name: 'memory_search',
-    description: `Semantic vector search (bge-small cosine) over ruvector-postgres memory, best match first. Returns up to ${DEFAULT_SEARCH_LIMIT} results by default, drops results scoring below min_score (default ${DEFAULT_MIN_SCORE}), and trims each value to a ~${DEFAULT_SNIPPET_CHARS}-char snippet (truncated:true, chars = full length) — fetch the whole value with memory_retrieve {key, namespace}, or pass full:true. namespace "*" searches every namespace except the protected reference corpora (e.g. ruvnet-kb, governance-precedents); name one explicitly to search it.`,
+    description: `Semantic vector search (bge-small cosine) over ruvector-postgres memory, best match first. Returns up to ${DEFAULT_SEARCH_LIMIT} results by default, drops results scoring below min_score (default ${DEFAULT_MIN_SCORE}), and trims each value to a ~${DEFAULT_SNIPPET_CHARS}-char snippet (truncated:true, chars = full length) — fetch the whole value with memory_retrieve {key, namespace}, or pass full:true. namespace "*" searches every namespace except the protected reference corpora (e.g. ruvnet-kb, governance-precedents); name one explicitly to search it. Do not answer from a snippet: retrieve the entry first. If nothing relevant comes back, search again in different words before concluding it is not stored. Entries are dated; when two disagree the most recent is current.`,
     inputSchema: {
       type: 'object',
       properties: {

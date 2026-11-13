@@ -113,6 +113,19 @@ curl -sf http://localhost:9091/metrics | head -5    # 5. reachable on host
 
 First step that fails is where to fix.
 
+## An agent searched memory and still got the answer wrong
+
+Symptom: `memory_search` returns the right entry, but the agent's answer is
+missing the detail or states an older value.
+
+A search hit is a snippet of about 300 characters. Measured on 80 questions over
+`project-state` (ADR-2201): with the right entry in the first five hits, an
+answer taken from the snippet was right 30% of the time, and 91% after
+`memory_retrieve` of that entry. Have the agent retrieve the key before
+answering, search again in different words if the first results miss, and take
+the most recent dated entry when two disagree. `full: true` on the search
+returns whole values in one call.
+
 ## MCP memory tools fail with `pg unavailable`
 
 Symptom: every `memory_store` / `memory_search` call returns

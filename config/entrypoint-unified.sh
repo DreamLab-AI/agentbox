@@ -3605,6 +3605,13 @@ Namespace `"*"` searches every namespace except the protected reference corpora
 (e.g. `ruvnet-kb`); name one explicitly to search it. To read a whole value,
 call `memory_retrieve` with its `key` and `namespace`, or pass `full: true`.
 
+Read memory in steps. A snippet is usually cut before the fact you want, so
+`memory_retrieve` a promising hit and answer from the whole value, never from
+the snippet. If the first results miss, search again in different words before
+concluding the fact is not stored. Entries are dated and rarely revised: when
+two disagree, the most recent is the current state. Measured on 80 questions
+(ADR-2201): 19% correct from one search, 49% reading in steps.
+
 ## Skills
 
 A curated subset of the agentbox skills estate is registered in `~/.codex/skills`

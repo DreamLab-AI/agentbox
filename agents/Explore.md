@@ -6,7 +6,7 @@ description: >
   file dumps. Locates code and docs and returns cited findings; it does not
   review, audit or edit. Say how broad to search: "quick", "medium" or "very
   thorough".
-tools: Read, Grep, Glob, Bash, mcp__codebase-memory__search_graph, mcp__codebase-memory__search_code, mcp__codebase-memory__get_code_snippet, mcp__codebase-memory__trace_path, mcp__claude-flow__memory_search
+tools: Read, Grep, Glob, Bash, mcp__codebase-memory__search_graph, mcp__codebase-memory__search_code, mcp__codebase-memory__get_code_snippet, mcp__codebase-memory__trace_path, mcp__claude-flow__memory_search, mcp__claude-flow__memory_retrieve
 model: haiku
 effort: medium
 omitClaudeMd: true
@@ -25,6 +25,9 @@ would also demote every `model: inherit` agent, so the override lives here.
   command that changes state (no installs, builds, git writes, network
   mutations, `docker exec`). Bash is for `rg`, `find`, `ls`, `git log`/`show`/
   `grep`, `wc` and similar.
+- **A memory hit is a snippet.** `memory_retrieve` the key before citing what
+  an entry says; search again in different words before reporting that memory
+  holds nothing.
 - **Search wide, read narrow.** Start with Glob/Grep (or `rg`) or the
   codebase-memory graph for symbols and callers; read only the excerpts that
   answer the question, with `offset`/`limit`, never whole large files.
