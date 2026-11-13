@@ -138,6 +138,32 @@ function toolDeps(pool) {
     assert.ok(rec.stats().dropped >= 5000 - rec.stats().max_pending);
   }));
 
+  await test('gate on: a rejecting store AND a throwing logger still cannot reject the recorder', withGate(true, async () => {
+    const m = mockPool({ fail: () => true });
+    const rec = createReadRecorder({ pool: m.pool, log: () => { throw new Error('logger down'); } });
+    await rec.record([{ namespace: 'a', key: 'k' }], 'retrieve');
+    await rec.forget('a', 'k');
+  }));
+
+  await test('gate on: hostile input and a throwing clock cannot make record or forget throw', withGate(true, async () => {
+    const m = mockPool();
+    const hostile = { get namespace() { throw new Error('getter'); }, key: 'k' };
+    const rec = createReadRecorder({ pool: m.pool, log: () => {} });
+    await rec.record([hostile], 'retrieve');
+    const rec2 = createReadRecorder({ pool: m.pool, log: () => {}, now: () => { throw new Error('clock'); } });
+    await rec2.record([{ namespace: 'a', key: 'k' }], 'retrieve');
+    await rec2.forget('a', 'k');
+  }));
+
+  await test('gate on: a pool that throws synchronously on CREATE TABLE also triggers the backoff', withGate(true, async () => {
+    let calls = 0;
+    const pool = { query: () => { calls++; throw new Error('sync boom'); } };
+    const rec = createReadRecorder({ pool, log: () => {} });
+    for (let i = 0; i < 10; i++) await rec.record([{ namespace: 'a', key: `k${i}` }], 'retrieve');
+    assert.strictEqual(calls, 1);
+    assert.strictEqual(rec.stats().paused, true);
+  }));
+
   // ── integration with the memory tools ─────────────────────────────────────
   await test('memRetrieve of a found row records one retrieve; the response is unchanged', withGate(true, async () => {
     const m = mockPool();

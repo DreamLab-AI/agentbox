@@ -153,7 +153,7 @@ function deleteAndWithdrawSql(where) {
   ),
   upd AS (
     UPDATE memory_entries m
-       SET metadata = m.metadata || jsonb_build_object(
+       SET metadata = COALESCE(m.metadata, '{}'::jsonb) || jsonb_build_object(
              'evidence', (
                SELECT jsonb_agg(
                         CASE WHEN e->>'kind' = 'memory' AND e->>'namespace' = $1 AND e->>'key' = $2
@@ -192,9 +192,18 @@ function deadPredicate(hasSteps) {
  * `evidence_state`, which the metadata GIN serves. As in the delete
  * statement, the new array is computed from the row being updated.
  *
+ * A citing row rewritten in the last RECONCILE_SETTLE_SECONDS is skipped. Under
+ * READ COMMITTED a row that changes while this statement waits on its lock is
+ * re-read in its new version, but the lookups for its sources still use the
+ * statement's snapshot: a source inserted by the same concurrent transaction is
+ * invisible, and a valid reference would be withdrawn. The settle window makes
+ * the re-check fail for such a row; the next sweep handles it.
+ *
  * @param {boolean} hasSteps whether the trajectory_steps table exists; without
  *   it step references cannot be checked and are left as they are.
  */
+const RECONCILE_SETTLE_SECONDS = 60;
+
 function reconcileSql(hasSteps) {
   const dead = deadPredicate(hasSteps);
   return `
@@ -205,6 +214,7 @@ function reconcileSql(hasSteps) {
                FROM jsonb_array_elements(${EVIDENCE_OF_M}) WITH ORDINALITY AS x(e, ord)),
            'evidence_state', 'partial')
    WHERE (m.metadata @> '{"evidence_state":"complete"}'::jsonb OR m.metadata @> '{"evidence_state":"partial"}'::jsonb)
+     AND m.updated_at < (NOW() - INTERVAL '${RECONCILE_SETTLE_SECONDS} seconds')::timestamp
      AND EXISTS (SELECT 1 FROM jsonb_array_elements(${EVIDENCE_OF_M}) AS y(e) WHERE ${dead})`;
 }
 

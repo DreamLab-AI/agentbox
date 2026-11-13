@@ -58,12 +58,19 @@ function createReadRecorder({ pool, log = () => {}, now = () => Date.now() }) {
   let pending = 0;
   let dropped = 0;
 
+  // Nothing the recorder is given may break it: not the logger, not the clock.
+  const safeLog = (lvl, msg) => { try { log(lvl, msg); } catch { /* a broken logger is not the reader's problem */ } };
+  const clock = () => { try { const t = now(); return Number.isFinite(t) ? t : Date.now(); } catch { return Date.now(); } };
+  const paused = () => clock() < disabledUntil;
+
   function ensure() {
     if (!ensured) {
-      ensured = pool.query(DDL).catch((e) => {
+      // Promise.resolve().then: a pool that throws synchronously is handled
+      // exactly like one that returns a rejected promise.
+      ensured = Promise.resolve().then(() => pool.query(DDL)).catch((e) => {
         ensured = null;
-        disabledUntil = now() + DDL_BACKOFF_MS;
-        throw new Error(`cannot create ${READS_TABLE} (${e.message}); read counting paused for ${DDL_BACKOFF_MS / 60000} min`);
+        disabledUntil = clock() + DDL_BACKOFF_MS;
+        throw new Error(`cannot create ${READS_TABLE} (${e && e.message}); read counting paused for ${DDL_BACKOFF_MS / 60000} min`);
       });
     }
     return ensured;
@@ -72,12 +79,12 @@ function createReadRecorder({ pool, log = () => {}, now = () => Date.now() }) {
   // The recorder's writes run one at a time (so it holds at most one pool
   // connection and idle() can wait for all of them), behind a bounded queue.
   function enqueue(work) {
-    if (now() < disabledUntil) return Promise.resolve();
+    if (paused()) return Promise.resolve();
     if (pending >= MAX_PENDING) { dropped++; return Promise.resolve(); }
     pending++;
     tail = tail
-      .then(() => (now() < disabledUntil ? undefined : work()))
-      .catch((e) => { log('WARN', `memory read counter failed (ignored): ${e.message}`); })
+      .then(() => (paused() ? undefined : work()))
+      .catch((e) => { safeLog('WARN', `memory read counter failed (ignored): ${e && e.message}`); })
       .finally(() => { pending--; });
     return tail;
   }
@@ -86,40 +93,53 @@ function createReadRecorder({ pool, log = () => {}, now = () => Date.now() }) {
    * Count one read of each distinct (namespace, key) in `rows`.
    * @param {{namespace?: string, key?: string}[]} rows
    * @param {'retrieve'|'search_hit'} action
-   * @returns {Promise<void>} never rejects
+   * @returns {Promise<void>} never rejects, never throws
    */
   function record(rows, action) {
-    if (!readCountsEnabled() || !pool || !ACTIONS.has(action) || !Array.isArray(rows)) return Promise.resolve();
-    const seen = new Map();
-    for (const r of rows) {
-      if (!r || typeof r.namespace !== 'string' || typeof r.key !== 'string' || !r.namespace || !r.key) continue;
-      seen.set(`${r.namespace}\u0000${r.key}`, r);
+    try {
+      if (!readCountsEnabled() || !pool || !ACTIONS.has(action) || !Array.isArray(rows)) return Promise.resolve();
+      const seen = new Map();
+      for (const r of rows) {
+        if (!r || typeof r.namespace !== 'string' || typeof r.key !== 'string' || !r.namespace || !r.key) continue;
+        seen.set(`${r.namespace}\u0000${r.key}`, { namespace: r.namespace, key: r.key });
+      }
+      if (!seen.size) return Promise.resolve();
+      // Sorted, so two processes upserting overlapping rows lock them in the
+      // same order and cannot deadlock.
+      const ordered = [...seen.keys()].sort().map((id) => seen.get(id));
+      const namespaces = ordered.map((r) => r.namespace);
+      const keys = ordered.map((r) => r.key);
+      return enqueue(async () => {
+        await ensure();
+        await pool.query(UPSERT, [namespaces, keys, action]);
+      });
+    } catch (e) {
+      safeLog('WARN', `memory read counter failed (ignored): ${e && e.message}`);
+      return Promise.resolve();
     }
-    if (!seen.size) return Promise.resolve();
-    // Sorted, so two processes upserting overlapping rows lock them in the
-    // same order and cannot deadlock.
-    const ordered = [...seen.keys()].sort().map((id) => seen.get(id));
-    const namespaces = ordered.map((r) => r.namespace);
-    const keys = ordered.map((r) => r.key);
-    return enqueue(async () => {
-      await ensure();
-      await pool.query(UPSERT, [namespaces, keys, action]);
-    });
   }
 
-  /** Remove every counter for a deleted entry. Never rejects. */
+  function guarded(work) {
+    try {
+      if (!readCountsEnabled() || !pool) return Promise.resolve();
+      return enqueue(work);
+    } catch (e) {
+      safeLog('WARN', `memory read counter failed (ignored): ${e && e.message}`);
+      return Promise.resolve();
+    }
+  }
+
+  /** Remove every counter for a deleted entry. Never rejects, never throws. */
   function forget(namespace, key) {
-    if (!readCountsEnabled() || !pool) return Promise.resolve();
-    return enqueue(async () => {
+    return guarded(async () => {
       await ensure();
       await pool.query(`DELETE FROM ${READS_TABLE} WHERE namespace = $1 AND key = $2`, [namespace, key]);
     });
   }
 
-  /** Remove counters whose entry no longer exists (after a TTL sweep). Never rejects. */
+  /** Remove counters whose entry no longer exists (after a TTL sweep). Never rejects, never throws. */
   function forgetOrphans() {
-    if (!readCountsEnabled() || !pool) return Promise.resolve();
-    return enqueue(async () => {
+    return guarded(async () => {
       await ensure();
       await pool.query(
         `DELETE FROM ${READS_TABLE} r
@@ -132,7 +152,7 @@ function createReadRecorder({ pool, log = () => {}, now = () => Date.now() }) {
   function idle() { return tail; }
 
   /** Queue depth and how many reads went uncounted. */
-  function stats() { return { pending, dropped, max_pending: MAX_PENDING, paused: now() < disabledUntil }; }
+  function stats() { return { pending, dropped, max_pending: MAX_PENDING, paused: paused() }; }
 
   return { record, forget, forgetOrphans, idle, stats };
 }

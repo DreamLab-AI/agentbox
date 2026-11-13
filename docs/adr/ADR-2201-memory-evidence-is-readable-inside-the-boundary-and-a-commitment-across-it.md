@@ -156,7 +156,7 @@ Clauses 1, 5, 7 and 9 are implemented and gated; clauses 3 and 6 are not built. 
 image build, because the memory server runs from the baked tree.
 
 - `node mcp/servers/lib/memory-evidence.test.js` (20) and `node mcp/servers/lib/memory-reads.test.js`
-  (14): validation, rejection, gate-off behaviour, withdrawal and the fail-open recorder, against a
+  (17): validation, rejection, gate-off behaviour, withdrawal and the fail-open recorder, against a
   scripted pool. `node mcp/servers/lib/memory-tools.test.js` (35) is unchanged.
 - `node tests/integration/memory-evidence-sql.check.cjs`: the same paths on the live Postgres
   engine against temporary tables that shadow the real ones inside a rolled-back transaction,
@@ -176,5 +176,12 @@ image build, because the memory server runs from the baked tree.
   every read. Accepted and stated above: the cross-namespace existence check, the single-commit
   registration rule not detecting an amended unshared commit, the live corpus under the fixture,
   and no multiplicity correction across the two floors.
+- A cross-vendor closure check (a different model family, 2026-11-13) confirmed the delete
+  statement's snapshot behaviour, its parameter order at both call sites and the array guards, and
+  reported four defects, each fixed with a failing test first: the reconcile could withdraw a valid
+  reference from a row rewritten while it waited on a lock (rows rewritten in the last 60 seconds
+  are now skipped); a row with SQL NULL metadata swallowed new evidence; the read recorder could
+  reject when the logger threw, or throw on hostile input; a pool throwing synchronously on
+  `CREATE TABLE` bypassed the backoff.
 - Not established: behaviour of either gate in a running container, and anything about clause 3.
   The registered fixture run is recorded in `docs/LEARNING-memory.md` when it completes.

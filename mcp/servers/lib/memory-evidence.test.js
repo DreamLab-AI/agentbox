@@ -74,7 +74,8 @@ function withGate(on, fn, { typed = false } = {}) {
     }
   };
 }
-const STRIP = /metadata = \(memory_entries\.metadata - 'evidence' - 'evidence_state'\) \|\| EXCLUDED\.metadata/;
+// COALESCE: a row whose metadata is SQL NULL must not swallow the new evidence (NULL || x is NULL).
+const STRIP = /metadata = \(COALESCE\(memory_entries\.metadata, '\{\}'::jsonb\) - 'evidence' - 'evidence_state'\) \|\| EXCLUDED\.metadata/;
 
 const MEM = { kind: 'memory', namespace: 'project-state', key: 'note-2026-10-01' };
 const STEP = { kind: 'step', id: 'traj-1:step-3' };
@@ -270,6 +271,7 @@ const STEP = { kind: 'step', id: 'traj-1:step-3' };
     assert.ok(rec, 'reconcile ran');
     assert.match(rec.sql, /trajectory_steps/);
     assert.match(rec.sql, /m\.metadata->'evidence'/, 'the new array is computed from the row being updated, not from a snapshot');
+    assert.match(rec.sql, /m\.updated_at < /, 'a row rewritten during the statement is skipped: its new sources may be invisible to this snapshot');
   }));
 
   await test('reconcile without a trajectory_steps table leaves step references alone and does not fail', withGate(true, async () => {

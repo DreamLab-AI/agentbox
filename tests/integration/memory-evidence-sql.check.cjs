@@ -75,7 +75,13 @@ const { createMemoryTools } = require(path.join(wt, 'mcp/servers/lib/memory-tool
     let meta = (await c.query(`SELECT metadata FROM memory_entries WHERE key = 'ttl-row'`)).rows[0].metadata;
     assert.strictEqual(meta.expires_at, '2099-01-01T00:00:00.000Z'); assert.deepStrictEqual(meta.tags, ['keep']);
     assert.strictEqual(meta.evidence, undefined); assert.strictEqual(meta.evidence_state, undefined);
-    // review finding 6/7: with the evidence gate OFF, a delete still withdraws and a rewrite still strips
+    // cross-vendor finding: a row whose metadata is SQL NULL still takes new evidence on a rewrite
+    await t.memStore('null-meta', 'v1', 'ns/a');
+    await c.query(`UPDATE memory_entries SET metadata = NULL WHERE key = 'null-meta'`);
+    r = await t.memStore('null-meta', 'v2', 'ns/a', { evidence: [B] }); assert.strictEqual(r.evidence_refs, 1);
+    r = await t.memRetrieve('null-meta', 'ns/a'); assert.strictEqual(r.evidence.length, 1);
+    await t.memDelete('null-meta', 'ns/a');
+        // review finding 6/7: with the evidence gate OFF, a delete still withdraws and a rewrite still strips
     await t.memStore('cites-b', 'v', 'ns/a', { evidence: [B] });
     delete process.env.RUVECTOR_EVIDENCE_REFS;
     await t.memStore('gateoff-src', 'x', 'ns/a');
@@ -91,6 +97,11 @@ const { createMemoryTools } = require(path.join(wt, 'mcp/servers/lib/memory-tool
     // sweep: expire note:2 and prune the step, then reconcile through the sweep
     await c.query(`UPDATE memory_entries SET metadata = metadata || '{"expires_at":"2020-01-01T00:00:00.000Z"}' WHERE key = 'note:2'`);
     await c.query(`DELETE FROM trajectory_steps`);
+    // cross-vendor finding: a row rewritten moments ago is skipped by the reconcile (its new
+    // sources may be invisible to the statement's snapshot); it is picked up once it has settled.
+    const { reconcile } = require(path.join(wt, 'mcp/servers/lib/memory-evidence.js'));
+    assert.strictEqual(await reconcile(pool), 0, 'a freshly written citing row is left alone');
+    await c.query(`UPDATE memory_entries SET updated_at = updated_at - interval '10 minutes'`);
     r = await t.memSweepEpisodic('ns/a');
     assert.strictEqual(r.swept, 1); assert.strictEqual(r.evidence_withdrawn_from, 1, JSON.stringify(r));
     r = await t.memRetrieve('topic', 'ns/a');

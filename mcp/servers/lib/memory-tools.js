@@ -378,7 +378,7 @@ function createExternalPgBackend(deps) {
       await pool.query(
         `INSERT INTO memory_entries (id, namespace, key, value, source_type, metadata, embedding)
          VALUES ($1, $2, $3, $4::jsonb, $5, ${metaClause}, ${embeddingClause})
-         ON CONFLICT (id) DO UPDATE SET value = EXCLUDED.value, metadata = (memory_entries.metadata - 'evidence' - 'evidence_state') || EXCLUDED.metadata, embedding = EXCLUDED.embedding, updated_at = NOW()`,
+         ON CONFLICT (id) DO UPDATE SET value = EXCLUDED.value, metadata = (COALESCE(memory_entries.metadata, '{}'::jsonb) - 'evidence' - 'evidence_state') || EXCLUDED.metadata, embedding = EXCLUDED.embedding, updated_at = NOW()`,
         params,
       );
     }
