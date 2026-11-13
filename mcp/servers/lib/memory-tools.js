@@ -31,6 +31,8 @@
 const crypto = require('crypto');
 const { gates, boolGate } = require('./ruvector-gates');
 const { buildMetadata, VALID_TYPES, notExpiredPredicate, expiredPredicate } = require('./memory-metadata');
+const { normaliseEvidence, findUnresolved, withdrawProbe, DELETE_AND_WITHDRAW_SQL, RECONCILE_SQL } = require('./memory-evidence');
+const { createReadRecorder } = require('./memory-reads');
 
 // ── ADR-2014 searchable-write guarantee (closeout 2026-09-05) ───────────────
 // The store no longer degrades silently when the embedding transport fails.
@@ -246,10 +248,36 @@ function createExternalPgBackend(deps) {
   // run — so the on-state is observable without spamming every search.
   let _paramTuningNotified = false;
 
+  // ADR-2201 clause 9: reads are counted in a side table, never on the row.
+  const reads = createReadRecorder({ pool, log });
+
   async function memStore(key, value, namespace = 'default', options = {}) {
     const guard = checkProtectedNamespace(namespace);
     if (guard) return guard;
     if (!getPgOk() || !pool) return { success: false, error: 'pg unavailable', storage: 'none' };
+
+    // ADR-2201 clause 1 (gate RUVECTOR_EVIDENCE_REFS): validate and resolve the
+    // evidence references before anything is embedded or written. A reference
+    // that is malformed or does not resolve rejects the whole write, so the
+    // previous row, if any, is left exactly as it was.
+    const evidenceOn = gates.evidenceRefs();
+    let evidence = [];
+    if (evidenceOn) {
+      const norm = normaliseEvidence(options && options.evidence, { namespace, key });
+      const refused = (reason, error, extra = {}) => ({
+        success: false, action: 'store', key, namespace, stored: false, error, reason, ...extra, storage: 'none',
+      });
+      if (!norm.ok) return refused('evidence-invalid', `evidence rejected (ADR-2201): ${norm.error}`);
+      evidence = norm.evidence;
+      if (evidence.length) {
+        const unresolved = await findUnresolved(pool, evidence, log);
+        if (unresolved.length) {
+          return refused('evidence-unresolved',
+            `${unresolved.length} evidence reference(s) do not resolve — write rejected (ADR-2201)`,
+            { unresolved, remedy: 'cite only entries and trajectory steps that exist, or store without evidence' });
+        }
+      }
+    }
     const id = entryId(namespace, key);
     const jsonValue = typeof value === 'object' ? JSON.stringify(value) : value;
     let pgValue;
@@ -300,8 +328,11 @@ function createExternalPgBackend(deps) {
     // A REPAIR-mode unembedded write always carries metadata regardless of the
     // gate: the pending marker is what makes the row enumerable and repairable,
     // so it is not optional.
+    // With the evidence gate on, metadata is always rewritten: evidence belongs
+    // to one version of a value, so a rewrite without references must clear
+    // the references of the version it replaces.
     const typed = gates.typedMetadata();
-    const needsMetadata = typed || !embedded;
+    const needsMetadata = typed || !embedded || evidenceOn;
     let metadata = null;
     if (needsMetadata) {
       metadata = typed ? buildMetadata(options || {}) : {};
@@ -318,6 +349,10 @@ function createExternalPgBackend(deps) {
         metadata.embedding_state = 'pending';
         metadata.embedding_pending_since = new Date().toISOString();
         metadata.embedding_pending_reason = embedFailure;
+      }
+      if (evidence.length) {
+        metadata.evidence = evidence;
+        metadata.evidence_state = 'complete';
       }
     }
 
@@ -341,6 +376,12 @@ function createExternalPgBackend(deps) {
     notifyMemoryFlash({ key, namespace, action: 'store' });
     const out = { success: true, action: 'store', key, namespace, stored: true, embedded, storage: 'ruvector-postgres' };
     if (typed) out.metadata = metadata;
+    if (evidence.length) out.evidence_refs = evidence.length;
+    if (!evidenceOn && options && Array.isArray(options.evidence) && options.evidence.length) {
+      // Never let a caller believe it cited something when the gate is off.
+      out.evidence_ignored = true;
+      out.hint = 'evidence was not stored: RUVECTOR_EVIDENCE_REFS is off (ADR-2201)';
+    }
     if (!embedded) {
       // Explicit durable repair state — never presented as a normal success.
       out.repair_pending = true;
@@ -449,14 +490,25 @@ function createExternalPgBackend(deps) {
   async function memRetrieve(key, namespace = 'default') {
     if (!getPgOk() || !pool) return { success: false, error: 'pg unavailable' };
     const res = await pool.query(
-      `SELECT key, value, source_type FROM memory_entries
+      `SELECT key, value, source_type,
+              metadata->'evidence' AS evidence, metadata->>'evidence_state' AS evidence_state
+         FROM memory_entries
         WHERE namespace = $1 AND key = $2 AND ${NOT_EXPIRED}
         ORDER BY updated_at DESC LIMIT 1`,
       [namespace, key],
     );
     if (!res.rows.length) return { success: true, action: 'retrieve', key, namespace, value: null, found: false };
     notifyMemoryFlash({ key, namespace, action: 'retrieve' });
-    return { success: true, action: 'retrieve', key, namespace, value: parseVal(res.rows[0].value), found: true, source_type: res.rows[0].source_type, storage: 'ruvector-postgres' };
+    void reads.record([{ namespace, key }], 'retrieve');
+    const row = res.rows[0];
+    const out = { success: true, action: 'retrieve', key, namespace, value: parseVal(row.value), found: true, source_type: row.source_type, storage: 'ruvector-postgres' };
+    // ADR-2201: what the entry says it was written from. Present only on rows
+    // that carry references, so every other retrieve is unchanged.
+    if (Array.isArray(row.evidence) && row.evidence.length) {
+      out.evidence = row.evidence;
+      out.evidence_state = row.evidence_state || 'complete';
+    }
+    return out;
   }
 
   async function memList(namespace = 'default', limit = 100) {
@@ -681,8 +733,22 @@ function createExternalPgBackend(deps) {
     if (guard) return { ...guard, action: 'delete' };
     if (!getPgOk() || !pool) return { success: false, error: 'pg unavailable' };
     const id = entryId(namespace, key);
+    if (gates.evidenceRefs()) {
+      // ADR-2201 clause 7: the delete and the withdrawal of every reference to
+      // the deleted entry are one statement, so no reader can see a reference
+      // to an entry that is gone. What a citing summary already says is not
+      // recalled by this, and neither is anything that already left the
+      // container.
+      const res = await pool.query(DELETE_AND_WITHDRAW_SQL,
+        [id, namespace, key, new Date().toISOString(), withdrawProbe(namespace, key)]);
+      const row = (res.rows && res.rows[0]) || {};
+      notifyMemoryFlash({ key, namespace, action: 'delete' });
+      void reads.forget(namespace, key);
+      return { success: true, action: 'delete', key, namespace, deleted: Number(row.deleted) || 0, withdrawn: Number(row.withdrawn) || 0, storage: 'ruvector-postgres' };
+    }
     const res = await pool.query(`DELETE FROM memory_entries WHERE id = $1`, [id]);
     notifyMemoryFlash({ key, namespace, action: 'delete' });
+    void reads.forget(namespace, key);
     return { success: true, action: 'delete', key, namespace, deleted: res.rowCount, storage: 'ruvector-postgres' };
   }
 
@@ -727,11 +793,25 @@ function createExternalPgBackend(deps) {
           ${typeClause} ${nsClause} ${protClause}`,
       params,
     );
-    return {
+    const out = {
       success: true, action: 'sweep', namespace: namespace || '*',
       types: types || Array.from(VALID_TYPES),
       swept: res.rowCount, storage: 'ruvector-postgres',
     };
+    // ADR-2201 clause 7: a swept entry may have been cited. Withdraw every
+    // reference whose source no longer exists. A failure here is reported, not
+    // hidden: the sweep itself has already happened.
+    if (gates.evidenceRefs() && res.rowCount > 0) {
+      try {
+        const rec = await pool.query(RECONCILE_SQL, [new Date().toISOString()]);
+        out.evidence_withdrawn_from = rec.rowCount || 0;
+      } catch (e) {
+        log('WARN', `evidence reconcile after sweep failed: ${e.message}`);
+        out.evidence_reconcile_error = e.message;
+      }
+    }
+    if (res.rowCount > 0) void reads.forgetOrphans();
+    return out;
   }
 
   // ── ADR-040 D4 — SONA health (read-only diagnostics, §3.3) ──────────────────
@@ -792,7 +872,12 @@ function createExternalPgBackend(deps) {
     }
   }
 
-  return { memStore, memRetrieve, memList, memSearch, memDelete, memSweepEpisodic, memRepairEmbeddings, memSonaHealth };
+  // Read counters for results a caller shaped itself (search hits), and a way
+  // for tests and shutdown paths to wait for the recorder.
+  const memRecordReads = (rows, action) => reads.record(rows, action);
+  const memReadsIdle = () => reads.idle();
+
+  return { memStore, memRetrieve, memList, memSearch, memDelete, memSweepEpisodic, memRepairEmbeddings, memSonaHealth, memRecordReads, memReadsIdle };
 }
 
 // ── delegating (in-memory / sqlite) backend ─────────────────────────────────

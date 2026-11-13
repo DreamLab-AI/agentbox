@@ -1,10 +1,11 @@
 ---
 title: "Agentbox Memory & Learning — Ground Truth"
 doc_id: AB-LEARNING
-version: 0.1.7
+version: 0.1.8
 status: draft-for-ratification
 verified_commit: 
 changelog:
+  - "0.1.8 (2026-11-13): ADR-2201 - evidence references on memory_store (gated off), read counters in the memory_reads side table (gated), and a registered end-to-end memory fixture beside the recall gate. Invariants 14 and 15; D8. No retrieval-geometry change."
   - "0.1.7 (2026-11-01): ADR-2164 amendment 2 - every memory/learning client (ruvector-mcp, ruflo CLI, the aggregate/distil/sona/recall/ingest scripts, the dream-engine, the management-api memory slot) builds its Postgres connection from RUVECTOR_PG_HOST/PORT/DATABASE/USER plus the password read from the one 0600 file RUVECTOR_PG_PASSWORD_FILE (management-api/lib/pg-config.js); there is no conninfo string and no default password. The routing-label recorder (ADR-2110) writes through POST /v1/agent-events/routing-label. Retrieval geometry unchanged."
   - "0.1.6 (2026-11-01): ADR-2164 amendment - the trajectory recorder persists through POST /v1/agent-events/trajectory (management-api/lib/trajectory-store.js), not its own Postgres connection; the env gates are gone and enablement is the hook's registration. What is recorded is unchanged."
   - "0.1.5 (2026-10-29): ADR-2153 session-plane cutover retains management-owned identity and scoped memory namespaces. No retrieval geometry or durable adapter policy changes."
@@ -19,6 +20,10 @@ sources:
   - agentbox/config/hooks/lib/trajectory-util.cjs
   - agentbox/mcp/servers/lib/aggregate-effectiveness.js
   - agentbox/mcp/servers/lib/memory-hybrid.js
+  - agentbox/mcp/servers/lib/memory-evidence.js
+  - agentbox/mcp/servers/lib/memory-reads.js
+  - agentbox/scripts/memory-qa-harness.mjs
+  - agentbox/scripts/lib/memory-qa-protocol.mjs
   - agentbox/mcp/servers/lib/ruvector-gates.js
   - agentbox/mcp/servers/lib/orchestration-proxy.js
   - agentbox/scripts/ruvector-aggregate-sweep.mjs
@@ -228,6 +233,19 @@ The harness is read-only against the DB. Pass band in code:
 `median(self) ≥ 175/200 AND median(true) ≥ 102/120 AND median(exact-token hybrid
 delta) ≥ 0` (`ruvector-recall-harness.mjs` header). See divergence D3.
 
+### End-to-end fixture (the answer measure)
+
+The recall gate says whether a row survives in its own top-10. `scripts/memory-qa-harness.mjs`
+(ADR-2201 clause 5) says whether an agent answers a question correctly from memory, and whether
+the way it reads changes that. It compares four arms over frozen questions: no memory, one search,
+iterative reading, and iterative reading with consolidated topic entries. It connects read-only
+and writes nothing to the store. The protocol, floors and judge are in
+`scripts/lib/memory-qa-protocol.mjs`; the registration record under `scripts/recall-fixtures/`
+commits to that module and to the fixture by digest, and a run is refused unless the record is
+committed and both match. The fixture and the run artefacts hold private memory content and stay
+under `backups/ruvector-sidecar/qa-fixtures/` and `qa-runs/`. It does not gate retrieval-geometry
+changes; invariant 6 still does.
+
 ### Schedulers
 
 Both learning loops are imaged and supervised
@@ -277,6 +295,14 @@ scheduler `scripts/ontology-condense-scheduler.mjs` follows the same house patte
   with a stated RPO/RTO. Note that VisionClaw has **no RuVector write client at all**, so
   the tombstone must travel as a message to a RuVector-side consumer. D5 stays open until
   that lands; cite it before any right-to-erasure work.
+- **D8 — memory entries cite no source, and no gate measured answers.** Measured
+  2026-11-13: agent-written memory is a dated log (79% of `project-state` keys dated, 9.3%
+  revised, 5% naming another entry), not an index over the vault (1.0% of sampled entries have a
+  vault page at cosine 0.80 or above), and `access_count` is not maintained.
+  **ADR-2201 (accepted, partly implemented):** evidence references on `memory_store`
+  (`evidence_refs`, off), read counters (`read_counts`), and a registered end-to-end fixture
+  (`scripts/memory-qa-harness.mjs`). Open: the outward commitment form (ADR-2201 clause 3), and
+  switching `evidence_refs` on, which waits on D5 and ADR-2060 wherever erasure requests apply.
 - **D6 — v2 model-lifecycle keys RESERVED.** `embedding_dual_write`,
   `embedding_active_column`, `graph_backbone`, `param_tuning_enabled` and the m3/
   legacy-mining hygiene ops are declared and default-off, gated on a passing recall
@@ -344,6 +370,16 @@ scheduler `scripts/ontology-condense-scheduler.mjs` follows the same house patte
    nothing else; `reader-role --verify` must show every write path refused both in the
    read-only default and after a `READ WRITE` opt-in. A new readable table is a new
    ADR, not a widened grant.
+
+14. **Reads never update `memory_entries` (ADR-2201).** Read counters live in the
+   `memory_reads` side table. An update to a row of `memory_entries` is almost never HOT, so a
+   counter on the row would insert into the HNSW index on each read. The recorder is fail-open and
+   is not awaited; `access_count` stays unmaintained.
+15. **An evidence reference resolves or the write is refused, and it never leaves the container
+   (ADR-2201).** `memory_store` rejects a write whole when a reference is malformed or does not
+   resolve. Deleting a cited entry withdraws the reference in the same statement, leaving a marker
+   with no key. No reference, trajectory id or memory key may be copied onto a vault page, a pod
+   document, a relay event or a federation message; an outward artefact carries a commitment.
 
 ## Change process
 

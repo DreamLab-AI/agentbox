@@ -1,0 +1,87 @@
+// tests/integration/memory-evidence-sql.check.cjs
+//
+// Real-engine check of the ADR-2201 SQL (evidence references, withdrawal on
+// delete and sweep, read counters). The unit suites beside the modules use a
+// scripted pool and so cannot tell whether the statements are valid SQL; this
+// runs them on the live Postgres engine.
+//
+// Everything runs against TEMP tables that shadow memory_entries,
+// trajectory_steps and memory_reads inside one transaction that is rolled
+// back: the live tables are never read or written, and the check asserts the
+// shadowing before it does anything else.
+//
+//   node tests/integration/memory-evidence-sql.check.cjs
+//
+// Needs the governed connection env (RUVECTOR_PG_HOST/..., RUVECTOR_PG_PASSWORD_FILE)
+// and management-api/node_modules. Exits 1 on any failed assertion.
+const path = require('path');
+const assert = require('assert');
+const wt = path.join(__dirname, '..', '..');
+const root = path.join(wt, 'management-api');
+// In a git worktree management-api/node_modules is absent; NODE_PATH may point
+// at the primary checkout's copy.
+const { Client } = require(require.resolve('pg', { paths: [root, ...(process.env.NODE_PATH || '').split(':').filter(Boolean)] }));
+const cfg = require(path.join(root, 'lib/pg-config.js'));
+process.env.RUVECTOR_EVIDENCE_REFS = '1'; process.env.RUVECTOR_READ_COUNTS = '1'; process.env.RUVECTOR_TYPED_METADATA = '1';
+const { createMemoryTools } = require(path.join(wt, 'mcp/servers/lib/memory-tools.js'));
+(async () => {
+  const c = new Client(cfg.pgPoolConfig(process.env)); await c.connect();
+  await c.query('BEGIN');
+  try {
+    await c.query(`CREATE TEMP TABLE memory_entries (id text primary key, namespace text, key text, value jsonb, source_type text, metadata jsonb default '{}', embedding text, created_at timestamp default now(), updated_at timestamp default now()) ON COMMIT DROP`);
+    await c.query(`CREATE TEMP TABLE trajectory_steps (id text primary key) ON COMMIT DROP`);
+    await c.query(`CREATE TEMP TABLE memory_reads (namespace text NOT NULL, key text NOT NULL, action text NOT NULL, n bigint NOT NULL DEFAULT 0, first_at timestamptz NOT NULL DEFAULT now(), last_at timestamptz NOT NULL DEFAULT now(), PRIMARY KEY (namespace, key, action)) ON COMMIT DROP`);
+    const shadow = await c.query(`select n.nspname from pg_class k join pg_namespace n on n.oid=k.relnamespace where k.oid='memory_entries'::regclass`);
+    assert.match(shadow.rows[0].nspname, /^pg_temp/, 'the temp table must shadow the live one');
+    await c.query(`INSERT INTO trajectory_steps VALUES ('t1:s1')`);
+    // The store casts the vector to ruvector(384); the temp column is text, so strip the cast.
+    const pool = { query: (sql, params) => c.query(sql.replace(/::ruvector\(384\)/g, ''), params) };
+    const t = createMemoryTools({ backend: 'external-pg', deps: {
+      pool, getPgOk: () => true, getEmbedding: async () => [0.1], xinfEnsure: async () => true,
+      vecToSql: (a) => '[' + a.join(',') + ']', entryId: (ns, k) => `agentbox:${ns}:${k}`,
+      parseVal: (v) => v, notifyMemoryFlash() {}, notifyMemoryFlashBatch() {}, log: (l, m) => console.log('   log', l, m), writeSourceType: 'agentbox' } });
+    const A = { kind: 'memory', namespace: 'ns/a', key: 'note:1' }, B = { kind: 'memory', namespace: 'ns/a', key: 'note:2' }, ST = { kind: 'step', id: 't1:s1' };
+    assert.strictEqual((await t.memStore('note:1', 'first note', 'ns/a')).success, true);
+    assert.strictEqual((await t.memStore('note:2', 'second note', 'ns/a', { ttl_seconds: 3600 })).success, true);
+    // positive: all three resolve
+    let r = await t.memStore('topic', 'summary of notes', 'ns/a', { evidence: [A, { ...B, event_time: '2026-10-02' }, ST] });
+    assert.strictEqual(r.success, true); assert.strictEqual(r.evidence_refs, 3);
+    r = await t.memRetrieve('topic', 'ns/a');
+    assert.strictEqual(r.evidence.length, 3); assert.strictEqual(r.evidence_state, 'complete');
+    // negative: one missing ref rejects, and the stored row is untouched
+    r = await t.memStore('topic', 'CHANGED', 'ns/a', { evidence: [A, { kind: 'memory', namespace: 'ns/a', key: 'nope' }] });
+    assert.strictEqual(r.success, false); assert.strictEqual(r.reason, 'evidence-unresolved'); assert.strictEqual(r.unresolved.length, 1);
+    assert.strictEqual((await t.memRetrieve('topic', 'ns/a')).value, 'summary of notes');
+    r = await t.memStore('x', 'y', 'ns/a', { evidence: [{ kind: 'step', id: 'absent' }] });
+    assert.strictEqual(r.reason, 'evidence-unresolved');
+    // delete withdraws exactly the cited ref, keeps order, drops the key
+    r = await t.memDelete('note:1', 'ns/a');
+    assert.deepStrictEqual([r.deleted, r.withdrawn], [1, 1]);
+    r = await t.memRetrieve('topic', 'ns/a');
+    assert.strictEqual(r.evidence_state, 'partial');
+    assert.strictEqual(r.evidence[0].kind, 'withdrawn'); assert.ok(r.evidence[0].withdrawn_at); assert.strictEqual(r.evidence[0].key, undefined); assert.strictEqual(r.evidence[0].namespace, undefined);
+    assert.strictEqual(r.evidence[1].key, 'note:2'); assert.strictEqual(r.evidence[2].id, 't1:s1');
+    assert.strictEqual(r.value, 'summary of notes', 'withdrawal must not alter the value');
+    // control: deleting an uncited entry withdraws nothing
+    await t.memStore('lonely', 'z', 'ns/a');
+    r = await t.memDelete('lonely', 'ns/a'); assert.deepStrictEqual([r.deleted, r.withdrawn], [1, 0]);
+    // sweep: expire note:2 and prune the step, then reconcile through the sweep
+    await c.query(`UPDATE memory_entries SET metadata = metadata || '{"expires_at":"2020-01-01T00:00:00.000Z"}' WHERE key = 'note:2'`);
+    await c.query(`DELETE FROM trajectory_steps`);
+    r = await t.memSweepEpisodic('ns/a');
+    assert.strictEqual(r.swept, 1); assert.strictEqual(r.evidence_withdrawn_from, 1, JSON.stringify(r));
+    r = await t.memRetrieve('topic', 'ns/a');
+    assert.deepStrictEqual(r.evidence.map((e) => e.kind), ['withdrawn', 'withdrawn', 'withdrawn']);
+    // a rewrite without evidence clears the references
+    await t.memStore('topic', 'rewritten', 'ns/a');
+    r = await t.memRetrieve('topic', 'ns/a'); assert.strictEqual(r.evidence, undefined);
+    // read counters
+    await t.memReadsIdle();
+    await t.memRecordReads([{ namespace: 'ns/a', key: 'topic' }, { namespace: 'ns/a', key: 'topic' }], 'search_hit');
+    const reads = await c.query(`SELECT key, action, n FROM memory_reads ORDER BY key, action`);
+    const got = Object.fromEntries(reads.rows.map((x) => [`${x.key}|${x.action}`, Number(x.n)]));
+    assert.strictEqual(got['topic|retrieve'], 5, JSON.stringify(got)); assert.strictEqual(got['topic|search_hit'], 1);
+    assert.strictEqual(got['note:1|retrieve'], undefined); assert.strictEqual(got['lonely|retrieve'], undefined);
+    console.log('SQL CHECK PASS', JSON.stringify(got));
+  } finally { await c.query('ROLLBACK'); await c.end(); }
+})().catch((e) => { console.error('SQL CHECK FAIL:', e.message); process.exit(1); });

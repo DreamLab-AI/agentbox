@@ -33,6 +33,10 @@ const gates = {
   healthTool:      () => boolGate('RUVECTOR_HEALTH_TOOL'),
   episodicTtlSweep:() => boolGate('RUVECTOR_EPISODIC_TTL_SWEEP'),
   memoryOrient:    () => boolGate('RUVECTOR_MEMORY_ORIENT'),
+  // ADR-2201: evidence references on memory_store (clauses 1, 7) and read
+  // counters in the memory_reads side table (clause 9).
+  evidenceRefs:    () => boolGate('RUVECTOR_EVIDENCE_REFS'),
+  readCounts:      () => boolGate('RUVECTOR_READ_COUNTS'),
   // ADR-2082: forward swarm/agent/task/coordination tools to a filtered ruflo
   // child. Orchestration-only; memory_* never crosses (DENIED_PREFIXES).
   orchestrationProxy: () => boolGate('RUVECTOR_ORCHESTRATION_PROXY'),

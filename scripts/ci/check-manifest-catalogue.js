@@ -98,6 +98,7 @@ const BASELINE = [
       'integrations.ruvector_external.health_tool', 'integrations.ruvector_external.episodic_ttl_sweep',
       'integrations.ruvector_external.memory_orient', 'integrations.ruvector_external.embedding_dual_write',
       'integrations.ruvector_external.graph_backbone',
+      'integrations.ruvector_external.evidence_refs', 'integrations.ruvector_external.read_counts',
       'memory_learning.record_trajectories', 'memory_learning.feed_retrieval', 'memory_learning.feed_routing',
       'memory_learning.sona_enabled', 'memory_learning.relevance_feedback', 'memory_learning.aggregate_sweep',
       'memory_learning.pattern_distillation', 'memory_learning.attention_rerank',

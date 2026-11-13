@@ -434,6 +434,8 @@ metadata_gin       = true    # require/build the GIN on metadata jsonb for tag r
 health_tool        = true    # expose memory_health read-only diagnostics
 episodic_ttl_sweep = true    # honour TTL, sweep expired episodic entries (implements delete)
 memory_orient      = true    # memory_orient OODA cold-start bundle (semantic + effectiveness aggregates + episodic)
+evidence_refs      = false   # ADR-2201: memory_store accepts evidence references, resolved at write time; delete withdraws them. Keep off where erasure requests apply until ADR-2060 lands
+read_counts        = true    # ADR-2201: count retrieves and search hits in the memory_reads side table (never on memory_entries)
 # ADR-2133: sidecar access hardening, applied by one-time gated ops in
 # scripts/ruvector-sidecar-update.sh (never at boot: memory_entries is created by
 # the MCP server after initdb, and the reader password stays out of the sidecar env).

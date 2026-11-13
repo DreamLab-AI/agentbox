@@ -196,7 +196,7 @@ function parseVal(v) {
 // mandated external-pg path; it injects its pool, embedding transport, notifier
 // and helpers so the extracted logic behaves byte-for-byte as before.
 
-const { memStore, memRetrieve, memList, memSearch, memDelete, memSweepEpisodic, memRepairEmbeddings, memSonaHealth } = createMemoryTools({
+const { memStore, memRetrieve, memList, memSearch, memDelete, memSweepEpisodic, memRepairEmbeddings, memSonaHealth, memRecordReads } = createMemoryTools({
   backend: 'external-pg',
   deps: {
     pool,
@@ -241,7 +241,13 @@ async function shapedSearch(query, namespace, sourceType, args = {}) {
   const jevPool = memoryJevRerank.poolFor(limit);
   const raw = await memSearch(query, namespace, jevPool, sourceType);
   const res = await memoryJevRerank.rerank(query, raw);
-  return shapeSearchResponse(res, { full: args.full === true, minScore, snippetChars, limit });
+  const shaped = shapeSearchResponse(res, { full: args.full === true, minScore, snippetChars, limit });
+  // ADR-2201 clause 9: count the rows actually returned, after the floor and
+  // the limit. Not awaited: the counter can never fail or delay a search.
+  if (shaped && Array.isArray(shaped.results)) {
+    void memRecordReads(shaped.results.map((r) => ({ namespace: r.namespace || namespace, key: r.key })), 'search_hit');
+  }
+  return shaped;
 }
 
 // ── Tool schemas (claude-flow compatible) ─────────────────────────────────────
@@ -422,6 +428,29 @@ if (gates.typedMetadata()) {
   }
 }
 
+// ADR-2201 clause 1: advertise the evidence input only when it is honoured.
+if (gates.evidenceRefs()) {
+  const storeTool = TOOLS.find((t) => t.name === 'memory_store');
+  if (storeTool) {
+    storeTool.inputSchema.properties.evidence = {
+      type: 'array',
+      maxItems: 32,
+      description: 'What this entry was written from. Each reference must exist or the whole write is rejected. Readable only inside the container; never copy a reference onto a surface that leaves it.',
+      items: {
+        type: 'object',
+        properties: {
+          kind:       { type: 'string', enum: ['memory', 'step'], description: "'memory' = another memory entry; 'step' = a trajectory step." },
+          namespace:  { type: 'string', description: 'For kind memory.' },
+          key:        { type: 'string', description: 'For kind memory.' },
+          id:         { type: 'string', description: 'For kind step: the trajectory_steps id.' },
+          event_time: { type: 'string', description: 'When the cited event happened (ISO date).' },
+        },
+        required: ['kind'],
+      },
+    };
+  }
+}
+
 // ADR-2014 closeout: the durable-repair driver. Registered alongside the TTL
 // sweep gate because both are the maintenance half of the storage contract.
 if (gates.episodicTtlSweep()) {
@@ -570,6 +599,7 @@ async function executeTool(name, args = {}) {
           tags:        args.tags,
           memory_type: args.memory_type,
           ttl_seconds: args.ttl_seconds !== undefined ? args.ttl_seconds : args.ttl,
+          evidence:    args.evidence,
         });
 
       case 'memory_hybrid_search':
@@ -626,6 +656,7 @@ async function executeTool(name, args = {}) {
             tags:        args.tags,
             memory_type: args.memory_type,
             ttl_seconds: args.ttl_seconds !== undefined ? args.ttl_seconds : args.ttl,
+            evidence:    args.evidence,
           });
           case 'retrieve': return await memRetrieve(args.key, ns);
           case 'list':     return await memList(ns, 100);

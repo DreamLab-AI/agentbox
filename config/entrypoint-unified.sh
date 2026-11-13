@@ -1486,6 +1486,9 @@ _RV_METADATA_GIN=$(_ab_toml_bool integrations.ruvector_external metadata_gin)
 _RV_HEALTH_TOOL=$(_ab_toml_bool integrations.ruvector_external health_tool)
 _RV_EPISODIC_TTL_SWEEP=$(_ab_toml_bool integrations.ruvector_external episodic_ttl_sweep)
 _RV_MEMORY_ORIENT=$(_ab_toml_bool integrations.ruvector_external memory_orient)
+# ADR-2201: evidence references on memory_store, and read counters.
+_RV_EVIDENCE_REFS=$(_ab_toml_bool integrations.ruvector_external evidence_refs)
+_RV_READ_COUNTS=$(_ab_toml_bool integrations.ruvector_external read_counts)
 # ADR-2082: orchestration proxy gate + the ruflo category filter it passes on.
 _RV_ORCH_PROXY=$(_ab_toml_bool integrations.ruvector_external orchestration_proxy)
 _RV_ORCH_TOOLS=$(_ab_toml_val integrations.ruvector_external orchestration_tools)
@@ -1600,6 +1603,7 @@ if [ -f "$_MCP_JSON" ] && command -v node >/dev/null 2>&1; then
   RV_METADATA_GIN="$_RV_METADATA_GIN" RV_HEALTH_TOOL="$_RV_HEALTH_TOOL" \
   RV_EPISODIC_TTL_SWEEP="$_RV_EPISODIC_TTL_SWEEP" RV_MEMORY_ORIENT="$_RV_MEMORY_ORIENT" \
   RV_ORCH_PROXY="$_RV_ORCH_PROXY" RV_ORCH_TOOLS="$_RV_ORCH_TOOLS" \
+  RV_EVIDENCE_REFS="$_RV_EVIDENCE_REFS" RV_READ_COUNTS="$_RV_READ_COUNTS" \
   ML_ENABLED="$_ML_ENABLED" ML_RECORD_TRAJ="$_ML_RECORD_TRAJ" \
   ML_FEED_RETRIEVAL="$_ML_FEED_RETRIEVAL" ML_FEED_ROUTING="$_ML_FEED_ROUTING" \
   ML_AGG_MIN="$_ML_AGG_MIN" ML_HALFLIFE="$_ML_HALFLIFE" \
@@ -1623,6 +1627,8 @@ const gates = {
   RUVECTOR_HEALTH_TOOL:             process.env.RV_HEALTH_TOOL,
   RUVECTOR_EPISODIC_TTL_SWEEP:      process.env.RV_EPISODIC_TTL_SWEEP,
   RUVECTOR_MEMORY_ORIENT:           process.env.RV_MEMORY_ORIENT,
+  RUVECTOR_EVIDENCE_REFS:           process.env.RV_EVIDENCE_REFS,
+  RUVECTOR_READ_COUNTS:             process.env.RV_READ_COUNTS,
   // ADR-2082 orchestration proxy (gate + ruflo category filter).
   RUVECTOR_ORCHESTRATION_PROXY:     process.env.RV_ORCH_PROXY,
   RUVECTOR_ORCHESTRATION_TOOLS:     process.env.RV_ORCH_TOOLS,

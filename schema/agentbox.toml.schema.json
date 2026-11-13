@@ -988,6 +988,14 @@
               "type": "boolean",
               "description": "PRD-018/ADR-036 D6: enable memory_hybrid_search (DIY fusion: ruvector_hybrid_score + PG FTS). Default false ⇒ pure-vector search only. Injected as RUVECTOR_HYBRID_SEARCH."
             },
+            "evidence_refs": {
+              "type": "boolean",
+              "description": "ADR-2201: memory_store accepts evidence references (another memory entry or a trajectory step), resolves them at write time and rejects the write if one does not resolve; deleting a cited entry withdraws the reference. Default false. Injected as RUVECTOR_EVIDENCE_REFS."
+            },
+            "read_counts": {
+              "type": "boolean",
+              "description": "ADR-2201: count memory_retrieve reads and memory_search hits in the memory_reads side table. Never updates memory_entries. Default false. Injected as RUVECTOR_READ_COUNTS."
+            },
             "typed_metadata": {
               "type": "boolean",
               "description": "PRD-018/ADR-036 D6: write structured metadata (importance/tags/memory_type/ttl_seconds) on memory_store. Default false ⇒ metadata stays {}. Injected as RUVECTOR_TYPED_METADATA."

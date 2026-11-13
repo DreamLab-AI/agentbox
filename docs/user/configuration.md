@@ -504,6 +504,8 @@ conninfo = "postgresql://ruvector@ruvector-postgres:5432/ruvector"   # no passwo
 # typed metadata, no learning, no ops.
 hybrid_search      = true   # memory_hybrid_search: fuses vector score + PG full-text
 typed_metadata     = true   # honour importance/tags/memory_type/ttl on memory_store
+evidence_refs      = false  # ADR-2201: evidence references on memory_store, resolved at write time
+read_counts        = false  # ADR-2201: count reads in the memory_reads side table
 metadata_gin       = true   # GIN index on metadata jsonb for tag @> retrieval
 health_tool        = true   # memory_health read-only diagnostics
 episodic_ttl_sweep = true   # honour TTL, sweep expired episodic entries
