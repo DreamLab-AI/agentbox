@@ -166,9 +166,16 @@
                           --replace-fail '"cython>=3.2.5,<3.3",' '"cython>=3.2.5",'
                       '';
                     });
-                  uvloop = if pyPrev.python.pythonVersion != "3.14" then pyPrev.uvloop
+                  # 2026-11-13: 0.22.1/py314 also races delayed subprocess
+                  # stdout/close callbacks on this loaded builder (410 pass).
+                  # Drop these two named exclusions when upstream removes the
+                  # scheduling assumptions; keep every other upstream test.
+                  uvloop = if pyPrev.python.pythonVersion != "3.14" || pyPrev.uvloop.version != "0.22.1" then pyPrev.uvloop
                     else pyPrev.uvloop.overridePythonAttrs (o: {
-                      disabledTests = (o.disabledTests or [ ]) ++ [ "test_issue39_regression" ];
+                      disabledTests = (o.disabledTests or [ ]) ++ [
+                        "test_issue39_regression"
+                        "test_process_delayed_stdio__not_paused__no_stdin"
+                      ];
                     });
                   httpcore2 = if pyPrev.python.pythonVersion != "3.12" then pyPrev.httpcore2
                     else pyPrev.httpcore2.overridePythonAttrs (o: {

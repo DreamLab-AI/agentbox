@@ -163,7 +163,7 @@ class Delivery {
     this.run('bash', ['scripts/refresh-compose.sh']);
     const { maxJobs, cores } = nixBuildBudget();
     const outputs = JSON.parse(this.capture('nix', ['build', '.#runtime', '.#runtime.copyTo',
-      '.#runtime.securityEvidence', '.#security-tools',
+      '.#runtime.securityEvidence', '.#security-tools', '--keep-going',
       '--out-link', path.join(generation, 'result'), '--json', '--max-jobs', String(maxJobs), '--cores', String(cores)]));
     const paths = outputs.map(o => o.outputs.out);
     const imagePath = paths.find(p => p.endsWith('-image-agentbox.json'));

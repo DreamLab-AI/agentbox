@@ -105,6 +105,17 @@ Use the existing `up` workflow for first-time stack provisioning/dependencies.
 
 ## Cache retention and measurements
 
+Preparation uses `--keep-going`: a failed dependency is reported while
+independent derivations continue filling the cache. It does not ignore required
+failures or activate a partial image. After fixing a failure, rerun preparation
+to reuse completed outputs. Avoid bare `nix store gc` or
+`nix-collect-garbage -d` on a build host: retain builder outputs/derivations and
+live generation roots; any separately approved GC must be size- or age-bounded.
+On slow storage, keep concurrency conservative rather than increasing jobs in
+response to I/O pressure. This recovery uses 2 jobs with 8 cores per job;
+`/tmp` remains the existing RAM-backed build directory. Heavy writes to `/nix`
+compete with Docker workspace volumes on the same underlying disk.
+
 Cold-build cost traps: local QGIS brings QtWebEngine, and OrcaSlicer brings
 WebKitGTK. The checked-in configuration keeps QGIS's sidecar MCP proxy enabled
 with `qgis_local = false`, and disables `cad_print` (core CAD remains enabled).

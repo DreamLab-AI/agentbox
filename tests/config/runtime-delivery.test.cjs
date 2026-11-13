@@ -119,6 +119,7 @@ for (const mode of ['daemon', 'registry', 'none']) {
     assert.ok(fs.existsSync(path.join(r.securityReport, 'bundle.json')));
     assert.match(r.securityBundleChecksum, /^[a-f0-9]{64}$/);
     const build = f.calls.find(c => c.cmd === 'nix');
+    assert.ok(build.args.includes('--keep-going'), 'independent build outputs must survive another derivation failure');
     assert.ok(build.args.includes('.#runtime.securityEvidence'));
     assert.ok(build.args.includes('.#security-tools'));
     const { maxJobs, cores } = nixBuildBudget();
