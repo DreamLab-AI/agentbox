@@ -1,0 +1,76 @@
+{
+  "protocol_version": 1,
+  "adr": "ADR-2201 clause 5",
+  "registered_at": "2026-11-13T20:50:50.260Z",
+  "protocol_sha256": "b8cb42d8d8fc12a4047412fc7d43d9ea51c527b39db8bee71975ada0c8cda68a",
+  "harness_sha256": "d9c3c93e9c418f1cbaaa132720bba91f76030fa797a29134f4e9a68fa8f867ce",
+  "memory_tools_sha256": "ca50ec4a25ce68f4dac9cced526dfc1f55c582dce9fd6a56b3efd7a0652c15d7",
+  "fixture_sha256": "677d7d8c221e9f5bd900bfe95fd3819f47d7765f7ce5b97176640a16b9f4efe6",
+  "fixture": {
+    "built_at": "2026-11-13T20:50:31.962Z",
+    "namespace": "project-state",
+    "questions": 80,
+    "topics": 40,
+    "notes_sampled_from": 2987,
+    "writer_model": "hemmingway-1.5-q8_0"
+  },
+  "arms": [
+    "closed_book",
+    "one_shot",
+    "iterative",
+    "consolidated"
+  ],
+  "strata": [
+    "latest_state",
+    "single_note"
+  ],
+  "params": {
+    "namespace": "project-state",
+    "questions_per_stratum": 40,
+    "cluster_min_cosine": 0.85,
+    "cluster_min_members": 3,
+    "cluster_max_members": 6,
+    "gold_min_chars": 2,
+    "gold_max_chars": 60,
+    "topic_max_chars": 1800,
+    "search_limit": 5,
+    "search_min_score": 0.55,
+    "search_snippet_chars": 300,
+    "max_tool_steps": 6,
+    "retrieve_max_chars": 4000,
+    "note_max_chars": 2500,
+    "note_min_chars": 150,
+    "temperature": 0,
+    "max_tokens": 2048,
+    "build_seed": "adr-2201-v1"
+  },
+  "floors": {
+    "alpha": 0.05,
+    "control_closed_book_max_accuracy": 0.2,
+    "iterative_over_one_shot": {
+      "strata": [
+        "latest_state",
+        "single_note"
+      ],
+      "min_points": 10
+    },
+    "consolidated_over_iterative": {
+      "strata": [
+        "latest_state"
+      ],
+      "min_points": 10
+    },
+    "consolidated_single_note_max_loss_points": 5
+  },
+  "judge": "deterministic: normalised gold string contained in the normalised answer (no model judge)",
+  "answer_model": "hemmingway-1.5-q8_0",
+  "runs": "one run at temperature 0; the fixture itself is private and is not in this repository",
+  "limits": [
+    "questions and topic entries were written by the same local model that answers",
+    "topic entries exist only for the clusters the latest-state questions come from, so the consolidated comparison is an upper bound on what consolidation can give",
+    "a correct paraphrase of a gold string is scored wrong, equally in every arm",
+    "the consolidated arm also gets one extra prompt sentence and the evidence keys of a retrieved topic",
+    "two comparisons are tested at alpha 0.05 each, with no correction for there being two",
+    "the store is live: entries written after the fixture was built are searchable during the run, and the run artefact records how many"
+  ]
+}
