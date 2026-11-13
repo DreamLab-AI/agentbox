@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 67ab0c5414f8e71c13978e1d5a3b5423316cd65f
+verified_commit: 971fb010e175f0587f0e2bf6e831d172db865f1e
 verified_paths: [services/agentbox-manifest/src/permissions.rs, agents/Explore.md, scripts/bake-ruflo-console.sh]
 owner: jjohare
 review_trigger: a Claude Code release that changes advisor pairing rules, or the ADR-2135 shadow log showing a subagent-model policy that beats this one; root ~/.claude/settings.json observed at `model: sonnet` straight after a boot (activation → live)

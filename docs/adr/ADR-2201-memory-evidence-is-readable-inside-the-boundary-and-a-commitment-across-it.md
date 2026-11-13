@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 1a85871f77faef3c792ee2f19d8eeae71f074eda
+verified_commit: 971fb010e175f0587f0e2bf6e831d172db865f1e
 verified_paths: [mcp/servers/lib/memory-evidence.js, mcp/servers/lib/memory-reads.js, mcp/servers/lib/memory-tools.js, scripts/memory-qa-harness.mjs, scripts/lib/memory-qa-protocol.mjs, tests/integration/memory-evidence-sql.check.cjs]
 owner: jjohare
 review_trigger: the first registered run of the end-to-end memory fixture (clause 5); any change that lets a memory entry, trajectory id or evidence reference leave the container (vault propose, pod sync, relay, federation); ADR-2060 being reopened; the commitment form in crates/nostr-receipt changing; evidence_refs being switched on
