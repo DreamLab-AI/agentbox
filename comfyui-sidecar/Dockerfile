@@ -165,6 +165,40 @@ RUN --mount=type=cache,target=/root/.cache/pip if [ "$SPLATKIT" = "1" ]; then \
       pip list 2>/dev/null | grep -ci '^opencv' | grep -qx 1; \
       python -c "import cv2, numpy, torch, trimesh, skimage, matplotlib; from importlib.metadata import version; assert torch.__version__ == '2.14.0+cu130', torch.__version__; version('opencv-python-headless'); print('splatkit deps: cv2', cv2.__version__, 'numpy', numpy.__version__, 'trimesh', trimesh.__version__, 'skimage', skimage.__version__)"; \
     fi
+# Utility packs used by community MOSS-Image workflows (rgthree LoRA/seed loaders, KJNodes RCAS
+# sharpen, post-processing colour/grain, UtilsCollection power_shift scheduler + sigma rescale,
+# Krea seed-variance enhancer).
+# UtilsCollection is pinned at the commit the reference workflow was saved with; the others at
+# their 2026-10-29/30 heads (Krea enhancer: 2026-07-12 head). Licences: rgthree MIT, Krea MIT-0, KJNodes and post-processing GPL-3.0,
+# UtilsCollection AGPL-3.0 (separate service component, with upstream source and licence retained).
+# Every package already in the venv is held at its installed version by constraint, so these
+# packs can add dependencies but never move torch, numpy, cv2 or anything the splat stack owns.
+# UtilsCollection lists GUI `opencv-python`; the opencv lines are filtered as for SplatKit above.
+ARG RGTHREE_REV=bc48c6aaeca87bedbc14245d89f9bc6be37a630e
+ARG KJNODES_REV=ab72eda7ffad6280422d71ab7d54d3fb87c0ba18
+ARG POSTPROC_REV=c49a05254795403648f2c1774b6f5ea39f96e7d5
+ARG UTILSCOLLECTION_REV=303a18dc51bdfb65892ae2a913cf2503ff82a6f5
+ARG KREASEEDVAR_REV=1515d23a5b399a44ccd97482e1105a43937268ae
+RUN --mount=type=cache,target=/root/.cache/pip set -eux; \
+      clone() { git init "/opt/ComfyUI/custom_nodes/$1" && cd "/opt/ComfyUI/custom_nodes/$1" \
+        && git remote add origin "https://github.com/$2.git" \
+        && git fetch --depth 1 origin "$3" && git checkout --detach FETCH_HEAD; }; \
+      clone rgthree-comfy rgthree/rgthree-comfy "$RGTHREE_REV"; \
+      clone ComfyUI-KJNodes kijai/ComfyUI-KJNodes "$KJNODES_REV"; \
+      clone ComfyUI-post-processing-nodes EllangoK/ComfyUI-post-processing-nodes "$POSTPROC_REV"; \
+      clone ComfyUI-UtilsCollection silveroxides/ComfyUI-UtilsCollection "$UTILSCOLLECTION_REV"; \
+      clone KreaSeedVarianceEnhancer harukimix/KreaSeedVarianceEnhancer "$KREASEEDVAR_REV"; \
+      cd /opt/ComfyUI/custom_nodes; \
+      grep -q '^opencv-python$' ComfyUI-UtilsCollection/requirements.txt; \
+      cat ComfyUI-KJNodes/requirements.txt ComfyUI-UtilsCollection/requirements.txt \
+        | sed 's/#.*//' | grep -v '^[[:space:]]*$' | grep -viE '^opencv' > /tmp/utilpacks-requirements.txt; \
+      if grep -qi opencv /tmp/utilpacks-requirements.txt; then echo 'filtered line survived' >&2; exit 1; fi; \
+      pip list --format=freeze > /tmp/utilpacks-constraints.txt; \
+      grep -q '^torch==2.14.0' /tmp/utilpacks-constraints.txt; \
+      pip install --timeout 180 --retries 10 -r /tmp/utilpacks-requirements.txt -c /tmp/utilpacks-constraints.txt; \
+      rm -f /tmp/utilpacks-requirements.txt /tmp/utilpacks-constraints.txt; \
+      pip list 2>/dev/null | grep -ci '^opencv' | grep -qx 1; \
+      python -c "import color_matcher, mss, tiktoken, unifiedefficientloader, cv2, torch; assert torch.__version__ == '2.14.0+cu130', torch.__version__; print('utility packs deps ok: cv2', cv2.__version__, 'torch', torch.__version__)"
 # HiRes Composite loads torchvision RAFT weights through torch.hub; the splat-dataset profile
 # provisions them into the models volume, so the hub cache lives there too.
 ENV TORCH_HOME=/opt/ComfyUI/models/torch_hub

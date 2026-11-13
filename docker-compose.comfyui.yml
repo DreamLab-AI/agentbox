@@ -26,7 +26,9 @@ services:
       - comfyui-input:/opt/ComfyUI/input
       - comfyui-user:/opt/ComfyUI/user
     networks: [agentbox, visionclaw]
-    ports: ['127.0.0.1:8188:8188']
+    # Loopback by default. ComfyUI has no authentication: set COMFYUI_BIND in the gitignored .env
+    # to one LAN address (never 0.0.0.0, which also publishes on VPN and point-to-point links).
+    ports: ['${COMFYUI_BIND:-127.0.0.1}:8188:8188']
     shm_size: 8gb
     healthcheck:
       test: ['CMD', 'python', '-c', 'import urllib.request; urllib.request.urlopen("http://127.0.0.1:8188/system_stats", timeout=5)']

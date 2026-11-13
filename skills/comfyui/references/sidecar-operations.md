@@ -67,6 +67,15 @@ does not establish that a model is distributed between them.
 ## October 2026 stop-motion update
 
 The Dockerfile pins ComfyUI `989d93d0d968e704c589ce0146bb18c77f6b50cc` (v0.45.0, 2026-11-12).
+The host port binds to loopback unless `COMFYUI_BIND` in the gitignored `.env` names one LAN
+address. ComfyUI has no authentication, so never bind `0.0.0.0`.
+
+The image also bakes the utility packs community MOSS-Image workflows use, pinned and
+unmodified: rgthree-comfy (MIT), ComfyUI-KJNodes (GPL-3.0), ComfyUI-post-processing-nodes
+(GPL-3.0), ComfyUI-UtilsCollection (AGPL-3.0; adds the `power_shift` scheduler) and
+KreaSeedVarianceEnhancer (MIT-0). Their installs are constrained to the venv's existing
+versions, so they cannot move torch, numpy or cv2. Add a pack in the Dockerfile and rebuild;
+there is no Manager and no custom-nodes volume, so packs installed at runtime do not survive.
 The existing H3 baseline and `h3-clay` profile are the reproduced endpoint
 route. `ltx25-layout` pins the official INT8 model, Gemma4 encoder, VAEs,
 spatial upscaler and layout adapter; it requires accepted Hugging Face access
