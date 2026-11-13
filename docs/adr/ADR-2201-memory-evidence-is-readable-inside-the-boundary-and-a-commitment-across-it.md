@@ -128,6 +128,16 @@ Deferred: evidence edges in the host project's memory explorer.
 - Vault pages gain no provenance from this record. That stays open until the outward record in
   clause 3 is written.
 
+## Open before activation
+
+- **`.env.example` lacks both variables.** Add `RUVECTOR_EVIDENCE_REFS=false` and
+  `RUVECTOR_READ_COUNTS=true` beside `RUVECTOR_TYPED_METADATA`. They were not added with this
+  change because agent sessions are denied access to that file. Every other projection point is
+  wired (manifest, default manifest, schema, custody classes, catalogue check, boot projection).
+- **Neither gate has run in a container.** Both take effect at the next image build.
+- **The ADR index does not list this record.** `adr-index-gen` fails on 50 validation errors that
+  predate it.
+
 ## Verification
 
 Clauses 1, 5, 7 and 9 are implemented and gated; clauses 3 and 6 are not built. The live
