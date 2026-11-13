@@ -6,6 +6,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { partialHeaderProblems, clusterNotes, codeDigests } from '../scripts/memory-qa-harness.mjs';
 import {
   PARAMS, FLOORS, ARMS, STRATA, judge, normaliseAnswer, questionDefects, fixtureProblems, fixtureDigest,
   extractJson, parseAction, isRepeat, mcnemarExact, compareArms, verdict, PROTOCOL_VERSION,
@@ -201,4 +202,40 @@ test('verdict: questions answerable without memory void the run', () => {
   assert.equal(v.control.valid, false);
   assert.equal(v.iterative_over_one_shot.verdict, 'void');
   assert.equal(v.consolidated_over_iterative.verdict, 'void');
+});
+
+// ── harness: registration binding ────────────────────────────────────────────
+const EXPECTED = { fixture_sha256: 'f', protocol_sha256: 'p', harness_sha256: 'h', memory_tools_sha256: 'm', answer_model: 'model-a', registered: true };
+
+test('a partial file is resumable only under the same fixture, code, model and registration state', () => {
+  assert.deepEqual(partialHeaderProblems({ header: true, ...EXPECTED }, EXPECTED), []);
+  assert.deepEqual(partialHeaderProblems({ arm: 'one_shot', id: 'L001', correct: true }, EXPECTED), ['the file has no header line']);
+  assert.deepEqual(partialHeaderProblems(undefined, EXPECTED), ['the file has no header line']);
+  for (const k of Object.keys(EXPECTED)) {
+    const problems = partialHeaderProblems({ header: true, ...EXPECTED, [k]: k === 'registered' ? false : 'other' }, EXPECTED);
+    assert.deepEqual(problems, [`${k} differs`], `a different ${k} must block a resume`);
+  }
+});
+
+test('a smoke run\'s partial file cannot be resumed as a registered run', () => {
+  assert.ok(partialHeaderProblems({ header: true, ...EXPECTED, registered: false }, EXPECTED).includes('registered differs'));
+});
+
+test('codeDigests covers the protocol, the harness and the store read path', () => {
+  const d = codeDigests();
+  assert.deepEqual(Object.keys(d).sort(), ['harness_sha256', 'memory_tools_sha256', 'protocol_sha256']);
+  for (const v of Object.values(d)) assert.match(v, /^[0-9a-f]{64}$/);
+});
+
+test('clusterNotes groups near-duplicate notes across days and keeps the most recent', () => {
+  const v = (x, y) => { const n = Math.hypot(x, y); return Float32Array.from([x / n, y / n]); };
+  const note = (key, day, vec) => ({ key, text: 't', created: `2026-10-${day}T00:00:00.000Z`, vec });
+  const notes = [
+    note('a1', '01', v(1, 0)), note('a2', '02', v(1, 0.05)), note('a3', '03', v(1, 0.1)),
+    note('b1', '01', v(0, 1)), note('b2', '01', v(0.05, 1)), note('b3', '01', v(0.1, 1)),   // same day: not a history
+    note('c1', '05', v(1, 1)),
+  ];
+  const clusters = clusterNotes(notes);
+  assert.equal(clusters.length, 1);
+  assert.deepEqual(clusters[0].map((n) => n.key), ['a1', 'a2', 'a3'], 'oldest first, latest last');
 });

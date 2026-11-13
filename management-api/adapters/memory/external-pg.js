@@ -157,11 +157,14 @@ class ExternalPgMemoryAdapter extends BaseAdapter {
   async del(key, namespace = 'default') {
     if (!key) throw new Error('key is required');
     await this._ensureReady();
+    // ADR-2201 clause 7: the delete also withdraws every evidence reference to
+    // the entry, in the same statement as the MCP memory server's delete.
+    const { deleteAndWithdrawSql, withdrawProbe } = require('../../../mcp/servers/lib/memory-evidence.js');
     const res = await this._pool.query(
-      `DELETE FROM memory_entries WHERE key = $1 AND namespace = $2 AND source_type = $3`,
-      [key, namespace, SOURCE_TYPE]
+      deleteAndWithdrawSql('key = $2 AND namespace = $1 AND source_type = $5'),
+      [namespace, key, new Date().toISOString(), withdrawProbe(namespace, key), SOURCE_TYPE]
     );
-    return { deleted: res.rowCount > 0 };
+    return { deleted: Number(res.rows && res.rows[0] && res.rows[0].deleted) > 0 };
   }
 
   /**

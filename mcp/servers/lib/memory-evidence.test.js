@@ -20,16 +20,20 @@ async function test(name, fn) {
 // `steps` the resolvable trajectory step ids.
 function mockDeps({ live = [], steps = [], stepsTable = true, retrieveRow = null } = {}) {
   const queries = [];
+  const events = [];
   const liveSet = new Set(live.map(([ns, k]) => `${ns}\u0000${k}`));
   const stepSet = new Set(steps);
   return {
-    queries,
+    queries, events,
     writes: () => queries.filter((q) => /INSERT INTO memory_entries/.test(q.sql)),
     deps: {
       pool: {
         query: async (sql, params) => {
           queries.push({ sql, params });
+          if (/to_regclass/.test(sql)) return { rows: [{ t: stepsTable ? 'trajectory_steps' : null }] };
+          if (/^\s*UPDATE memory_entries m/.test(sql)) return { rows: [], rowCount: 3 };
           if (/FROM memory_entries/.test(sql) && /unnest\(/.test(sql)) {
+            events.push('resolve');
             const rows = [];
             params[0].forEach((ns, i) => { if (liveSet.has(`${ns}\u0000${params[1][i]}`)) rows.push({ namespace: ns, key: params[1][i] }); });
             return { rows };
@@ -45,7 +49,7 @@ function mockDeps({ live = [], steps = [], stepsTable = true, retrieveRow = null
         },
       },
       getPgOk: () => true,
-      getEmbedding: async () => new Array(384).fill(0.1),
+      getEmbedding: async () => { events.push('embed'); return new Array(384).fill(0.1); },
       xinfEnsure: async () => true,
       vecToSql: (arr) => '[' + arr.join(',') + ']',
       entryId: (ns, key) => `agentbox:${ns}:${key}`,
@@ -58,15 +62,19 @@ function mockDeps({ live = [], steps = [], stepsTable = true, retrieveRow = null
   };
 }
 
-function withGate(on, fn) {
+// Both gates are set explicitly so the ambient environment cannot leak in.
+function withGate(on, fn, { typed = false } = {}) {
   return async () => {
-    const before = process.env.RUVECTOR_EVIDENCE_REFS;
+    const before = { e: process.env.RUVECTOR_EVIDENCE_REFS, t: process.env.RUVECTOR_TYPED_METADATA };
     if (on) process.env.RUVECTOR_EVIDENCE_REFS = '1'; else delete process.env.RUVECTOR_EVIDENCE_REFS;
+    if (typed) process.env.RUVECTOR_TYPED_METADATA = '1'; else delete process.env.RUVECTOR_TYPED_METADATA;
     try { await fn(); } finally {
-      if (before === undefined) delete process.env.RUVECTOR_EVIDENCE_REFS; else process.env.RUVECTOR_EVIDENCE_REFS = before;
+      if (before.e === undefined) delete process.env.RUVECTOR_EVIDENCE_REFS; else process.env.RUVECTOR_EVIDENCE_REFS = before.e;
+      if (before.t === undefined) delete process.env.RUVECTOR_TYPED_METADATA; else process.env.RUVECTOR_TYPED_METADATA = before.t;
     }
   };
 }
+const STRIP = /metadata = \(memory_entries\.metadata - 'evidence' - 'evidence_state'\) \|\| EXCLUDED\.metadata/;
 
 const MEM = { kind: 'memory', namespace: 'project-state', key: 'note-2026-10-01' };
 const STEP = { kind: 'step', id: 'traj-1:step-3' };
@@ -122,7 +130,28 @@ const STEP = { kind: 'step', id: 'traj-1:step-3' };
     const meta = JSON.parse(m.writes()[0].params.find((p) => typeof p === 'string' && p.includes('"evidence"')));
     assert.deepStrictEqual(meta.evidence, [MEM, STEP]);
     assert.strictEqual(meta.evidence_state, 'complete');
-    assert.match(m.writes()[0].sql, /metadata = EXCLUDED\.metadata/, 'a rewrite must replace the previous evidence');
+    assert.match(m.writes()[0].sql, STRIP, 'a rewrite replaces the previous evidence and keeps every other metadata key');
+    assert.deepStrictEqual(Object.keys(meta).sort(), ['evidence', 'evidence_state'], 'typed metadata off: nothing else is written');
+  }));
+
+  await test('typed metadata on: evidence rides in the replaced metadata object', withGate(true, async () => {
+    const m = mockDeps({ live: [[MEM.namespace, MEM.key]] });
+    const t = createMemoryTools({ backend: 'external-pg', deps: m.deps });
+    await t.memStore('topic-x', 'summary', 'project-state', { evidence: [MEM], importance: 0.9 });
+    assert.match(m.writes()[0].sql, /metadata = EXCLUDED\.metadata/);
+    assert.ok(!STRIP.test(m.writes()[0].sql));
+    const meta = JSON.parse(m.writes()[0].params[m.writes()[0].params.length - 1]);
+    assert.deepStrictEqual(meta.evidence, [MEM]);
+    assert.strictEqual(meta.importance, 0.9);
+  }, { typed: true }));
+
+  await test('references are resolved after the embedding, immediately before the write', withGate(true, async () => {
+    const m = mockDeps({ live: [[MEM.namespace, MEM.key]] });
+    const t = createMemoryTools({ backend: 'external-pg', deps: m.deps });
+    await t.memStore('topic-x', 'summary', 'project-state', { evidence: [MEM] });
+    assert.deepStrictEqual(m.events, ['embed', 'resolve'], 'a slow embedding call must not sit between the existence check and the write');
+    const iResolve = m.queries.findIndex((q) => /unnest\(/.test(q.sql));
+    assert.ok(/INSERT INTO memory_entries/.test(m.queries[iResolve + 1].sql));
   }));
 
   await test('gate on: one unresolved ref rejects the whole write and nothing is written', withGate(true, async () => {
@@ -155,16 +184,14 @@ const STEP = { kind: 'step', id: 'traj-1:step-3' };
     assert.strictEqual(m.writes().length, 0);
   }));
 
-  await test('gate on: a write without evidence still replaces metadata, clearing stale refs', withGate(true, async () => {
+  await test('gate on, typed off: a rewrite without evidence clears stale refs and keeps other metadata (expires_at, tags)', withGate(true, async () => {
     const m = mockDeps();
     const t = createMemoryTools({ backend: 'external-pg', deps: m.deps });
     const r = await t.memStore('k', 'v2', 'ns');
     assert.strictEqual(r.success, true);
     assert.strictEqual(r.evidence_refs, undefined);
-    assert.match(m.writes()[0].sql, /metadata = EXCLUDED\.metadata/);
-    const meta = JSON.parse(m.writes()[0].params[m.writes()[0].params.length - 1]);
-    assert.strictEqual(meta.evidence, undefined);
-    assert.strictEqual(meta.evidence_state, undefined);
+    assert.match(m.writes()[0].sql, STRIP);
+    assert.strictEqual(m.writes()[0].params[m.writes()[0].params.length - 1], '{}', 'no typed metadata is invented or dropped');
   }));
 
   // ── store, gate off ───────────────────────────────────────────────────────
@@ -178,18 +205,14 @@ const STEP = { kind: 'step', id: 'traj-1:step-3' };
     assert.ok(!m.writes()[0].params.some((p) => typeof p === 'string' && p.includes('"evidence"')));
   }));
 
-  await test('gate off: a write without evidence is unchanged (no extra fields, one query)', withGate(false, async () => {
-    // The typed-metadata gate adds its own field; isolate this gate from it.
-    const typedBefore = process.env.RUVECTOR_TYPED_METADATA;
-    delete process.env.RUVECTOR_TYPED_METADATA;
-    try {
+  await test('gate off: a rewrite still strips stale evidence; the response is unchanged and it is one query', withGate(false, async () => {
     const m = mockDeps();
     const t = createMemoryTools({ backend: 'external-pg', deps: m.deps });
     const r = await t.memStore('k', 'v', 'ns');
     assert.deepStrictEqual(Object.keys(r).sort(), ['action', 'embedded', 'key', 'namespace', 'storage', 'stored', 'success']);
     assert.strictEqual(m.queries.length, 1);
-    assert.match(m.queries[0].sql, /'\{\}'/);
-    } finally { if (typedBefore !== undefined) process.env.RUVECTOR_TYPED_METADATA = typedBefore; }
+    assert.match(m.queries[0].sql, STRIP, 'evidence written while the gate was on must not stay attached to a new value');
+    assert.strictEqual(m.queries[0].params[m.queries[0].params.length - 1], '{}');
   }));
 
   // ── retrieve ──────────────────────────────────────────────────────────────
@@ -227,14 +250,35 @@ const STEP = { kind: 'step', id: 'traj-1:step-3' };
     assert.ok(!/'key',\s*\$/.test(q.sql), 'the withdrawn marker must not keep the deleted key');
   }));
 
-  await test('gate off: delete is the single historic statement', withGate(false, async () => {
+  await test('gate off: delete still withdraws references written while the gate was on', withGate(false, async () => {
     const m = mockDeps();
     const t = createMemoryTools({ backend: 'external-pg', deps: m.deps });
     const r = await t.memDelete('k', 'ns');
     assert.strictEqual(r.deleted, 1);
-    assert.strictEqual(r.withdrawn, undefined);
+    assert.strictEqual(r.withdrawn, 2);
     assert.strictEqual(m.queries.length, 1);
-    assert.match(m.queries[0].sql, /^DELETE FROM memory_entries WHERE id = \$1$/);
+    assert.match(m.queries[0].sql, /'kind', 'withdrawn'/);
+  }));
+
+  // ── reconcile on sweep ────────────────────────────────────────────────────
+  await test('the sweep reconciles references whatever it deleted, with either gate state', withGate(false, async () => {
+    const m = mockDeps();
+    const t = createMemoryTools({ backend: 'external-pg', deps: m.deps });
+    const r = await t.memSweepEpisodic(null);
+    assert.strictEqual(r.evidence_withdrawn_from, 3);
+    const rec = m.queries.find((q) => /^\s*UPDATE memory_entries m/.test(q.sql));
+    assert.ok(rec, 'reconcile ran');
+    assert.match(rec.sql, /trajectory_steps/);
+    assert.match(rec.sql, /m\.metadata->'evidence'/, 'the new array is computed from the row being updated, not from a snapshot');
+  }));
+
+  await test('reconcile without a trajectory_steps table leaves step references alone and does not fail', withGate(true, async () => {
+    const m = mockDeps({ stepsTable: false });
+    const t = createMemoryTools({ backend: 'external-pg', deps: m.deps });
+    const r = await t.memSweepEpisodic(null);
+    assert.strictEqual(r.evidence_reconcile_error, undefined);
+    const rec = m.queries.find((q) => /^\s*UPDATE memory_entries m/.test(q.sql));
+    assert.ok(rec && !/trajectory_steps/.test(rec.sql));
   }));
 
   console.log(`\n${passed} passed${process.exitCode ? ' (with failures)' : ''}`);

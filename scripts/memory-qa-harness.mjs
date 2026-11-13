@@ -68,6 +68,7 @@ function parseArgs(argv) {
     else die(`unknown argument: ${v}`);
   }
   if (!a.mode) die('one of --build, --register, --run, --smoke N is required');
+  if (a.resume && a.mode !== 'run') die('--resume applies to --run only');
   return a;
 }
 
@@ -284,6 +285,31 @@ async function build(args, { perStratum, seed, fixturePath }) {
 // ── register ─────────────────────────────────────────────────────────────────
 function protocolDigest() { return P.sha256Hex(readFileSync(PROTOCOL_FILE, 'utf8')); }
 
+// Everything in the repository that decides an outcome, by digest: the
+// protocol, this harness (search shaping, the topic overlay, the retrieve
+// cut-off) and the store's read path.
+const CODE_FILES = Object.freeze({
+  protocol_sha256: PROTOCOL_FILE,
+  harness_sha256: fileURLToPath(import.meta.url),
+  memory_tools_sha256: join(REPO_DIR, 'mcp', 'servers', 'lib', 'memory-tools.js'),
+});
+function codeDigests() {
+  return Object.fromEntries(Object.entries(CODE_FILES).map(([k, f]) => [k, P.sha256Hex(readFileSync(f, 'utf8'))]));
+}
+
+/**
+ * What a partial-results file must have been written under to be resumed.
+ * Returns the reasons it may not be; empty when it may.
+ */
+function partialHeaderProblems(header, expected) {
+  if (!header || header.header !== true) return ['the file has no header line'];
+  const problems = [];
+  for (const k of ['fixture_sha256', 'protocol_sha256', 'harness_sha256', 'memory_tools_sha256', 'answer_model', 'registered']) {
+    if (header[k] !== expected[k]) problems.push(`${k} differs`);
+  }
+  return problems;
+}
+
 function register(fixturePath) {
   if (existsSync(REGISTRATION)) die(`registration already exists: ${REGISTRATION_REL} (never overwritten; a change is a new protocol version)`);
   const fx = JSON.parse(readFileSync(fixturePath, 'utf8'));
@@ -293,7 +319,7 @@ function register(fixturePath) {
     protocol_version: P.PROTOCOL_VERSION,
     adr: 'ADR-2201 clause 5',
     registered_at: new Date().toISOString(),
-    protocol_sha256: protocolDigest(),
+    ...codeDigests(),
     fixture_sha256: P.fixtureDigest(fx),
     fixture: { built_at: fx.built_at, namespace: fx.namespace, questions: fx.questions.length, topics: fx.topics.length, notes_sampled_from: fx.corpus.notes, writer_model: fx.writer_model },
     arms: P.ARMS, strata: P.STRATA, params: P.PARAMS, floors: P.FLOORS,
@@ -304,25 +330,36 @@ function register(fixturePath) {
       'questions and topic entries were written by the same local model that answers',
       'topic entries exist only for the clusters the latest-state questions come from, so the consolidated comparison is an upper bound on what consolidation can give',
       'a correct paraphrase of a gold string is scored wrong, equally in every arm',
+      'the consolidated arm also gets one extra prompt sentence and the evidence keys of a retrieved topic',
+      'two comparisons are tested at alpha 0.05 each, with no correction for there being two',
+      'the store is live: entries written after the fixture was built are searchable during the run, and the run artefact records how many',
     ],
   };
   writeFileSync(REGISTRATION, `${JSON.stringify(reg, null, 2)}\n`);
   log(`registration written: ${REGISTRATION_REL} — commit it before --run`);
 }
 
-function registeredOrDie(fixture) {
+function registeredOrDie(fixture, answerModel) {
   if (!existsSync(REGISTRATION)) die(`no registration at ${REGISTRATION_REL}; run --register and commit it`);
-  let commit;
+  let commits;
   try {
     execFileSync('git', ['ls-files', '--error-unmatch', REGISTRATION_REL], { cwd: REPO_DIR, stdio: 'pipe' });
     execFileSync('git', ['diff', '--quiet', 'HEAD', '--', REGISTRATION_REL], { cwd: REPO_DIR, stdio: 'pipe' });
-    commit = execFileSync('git', ['log', '-1', '--format=%H', '--', REGISTRATION_REL], { cwd: REPO_DIR, encoding: 'utf8' }).trim();
+    commits = execFileSync('git', ['log', '--format=%H', '--', REGISTRATION_REL], { cwd: REPO_DIR, encoding: 'utf8' }).split('\n').filter(Boolean);
   } catch { die(`${REGISTRATION_REL} is not committed, or differs from HEAD: a run needs a registration fixed in history`); }
-  if (!commit) die(`${REGISTRATION_REL} has no commit`);
+  // A registration is written once. A file that was deleted and re-added, or
+  // edited, has more than one commit. (A commit amended before it was shared
+  // still shows one: the digests quoted in docs/LEARNING-memory.md with the
+  // result are the check against that.)
+  if (commits.length !== 1) die(`${REGISTRATION_REL} has ${commits.length} commits in its history; a registration is committed exactly once`);
   const reg = JSON.parse(readFileSync(REGISTRATION, 'utf8'));
-  if (reg.protocol_sha256 !== protocolDigest()) die('the protocol module changed after registration: refuse to run (register a new protocol version instead)');
+  const now = codeDigests();
+  for (const k of Object.keys(now)) {
+    if (reg[k] !== now[k]) die(`${k} changed after registration: refuse to run (register a new protocol version instead)`);
+  }
   if (reg.fixture_sha256 !== P.fixtureDigest(fixture)) die('the fixture does not match its registered digest: refuse to run');
-  return { reg, commit };
+  if (reg.answer_model !== answerModel) die(`the answering model is ${answerModel}, the registration names ${reg.answer_model}: refuse to run`);
+  return { reg, commit: commits[0] };
 }
 
 // ── run ──────────────────────────────────────────────────────────────────────
@@ -334,12 +371,31 @@ async function runArms(fixture, { runId, outDir, resume, registered }) {
   const partial = resume || join(outDir, `${runId}.partial.jsonl`);
   mkdirSync(outDir, { recursive: true });
 
+  // A partial file is bound to the fixture, the code and the model it was
+  // written under, and a resumed record is re-judged from its stored answer:
+  // the `correct` field of a file is never trusted.
+  const expected = { fixture_sha256: P.fixtureDigest(fixture), ...codeDigests(), answer_model: cfg.model, registered };
+  const goldOf = new Map(fixture.questions.map((q) => [q.id, q.gold]));
   const done = new Map();
-  if (existsSync(partial)) for (const line of readFileSync(partial, 'utf8').split('\n').filter(Boolean)) { const r = JSON.parse(line); done.set(`${r.arm}|${r.id}`, r); }
-  if (done.size) log(`resuming: ${done.size} results already recorded`);
+  if (existsSync(partial)) {
+    const lines = readFileSync(partial, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l));
+    const problems = partialHeaderProblems(lines[0], expected);
+    if (problems.length) die(`cannot resume from ${partial}: ${problems.join('; ')}`);
+    for (const r of lines.slice(1)) {
+      if (!P.ARMS.includes(r.arm) || !goldOf.has(r.id) || typeof r.answer !== 'string' || !Array.isArray(r.steps)) die(`cannot resume from ${partial}: malformed record`);
+      done.set(`${r.arm}|${r.id}`, { ...r, correct: P.judge(r.answer, goldOf.get(r.id)) });
+    }
+    log(`resuming: ${done.size} results already recorded`);
+  } else {
+    writeFileSync(partial, `${JSON.stringify({ header: true, ...expected })}\n`, { mode: 0o600 });
+  }
 
   const topicVecs = await mapLimit(fixture.topics, 4, async (t) => ({ ...t, vec: unit(await getEmbedding(t.value.slice(0, 2000))) }));
   const topicByKey = new Map(topicVecs.map((t) => [t.key, t]));
+  // The store is live. Record how far it has moved since the fixture was built.
+  const drift = (await pool.query(
+    `SELECT count(*)::int AS entries, count(*) FILTER (WHERE created_at > $2)::int AS written_since_build
+       FROM memory_entries WHERE namespace = $1`, [ns, fixture.built_at])).rows[0];
   const shape = (res) => shapeSearchResponse(res, { limit: P.PARAMS.search_limit, minScore: P.PARAMS.search_min_score, snippetChars: P.PARAMS.search_snippet_chars });
 
   async function search(query, withTopics) {
@@ -428,6 +484,7 @@ async function runArms(fixture, { runId, outDir, resume, registered }) {
   return {
     run_id: runId, registered, protocol_version: P.PROTOCOL_VERSION, answer_model: cfg.model, store_role: role,
     seconds: Math.round((Date.now() - started) / 1000), model_calls: modelCalls,
+    corpus_at_run: drift,
     verdict: v, behaviour: { iterative: stepStats('iterative'), consolidated: stepStats('consolidated') },
     per_question: fixture.questions.map((q) => ({ id: q.id, stratum: q.stratum, ...Object.fromEntries(P.ARMS.map((a) => [a, done.get(`${a}|${q.id}`).correct])) })),
   };
@@ -463,9 +520,9 @@ async function main() {
     return;
   }
   const fixture = JSON.parse(readFileSync(fixturePath, 'utf8'));
-  const { reg, commit } = registeredOrDie(fixture);
+  const { reg, commit } = registeredOrDie(fixture, modelConfig().model);
   const out = await runArms(fixture, { runId, outDir: runDir, resume: args.resume, registered: true });
-  out.registration = { commit, protocol_sha256: reg.protocol_sha256, fixture_sha256: reg.fixture_sha256, floors: reg.floors };
+  out.registration = { commit, protocol_sha256: reg.protocol_sha256, harness_sha256: reg.harness_sha256, memory_tools_sha256: reg.memory_tools_sha256, fixture_sha256: reg.fixture_sha256, floors: reg.floors };
   const artifact = join(runDir, `${runId}.json`);
   writeFileSync(artifact, `${JSON.stringify(out, null, 1)}\n`, { mode: 0o600 });
   log(`run artifact: ${artifact}`);
@@ -475,4 +532,4 @@ async function main() {
 const invokedDirectly = process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
 if (invokedDirectly) main().catch((e) => die(e && e.stack ? e.stack : String(e)));
 
-export { clusterNotes, parseArgs, protocolDigest, REGISTRATION_REL };
+export { clusterNotes, parseArgs, protocolDigest, codeDigests, partialHeaderProblems, REGISTRATION_REL };

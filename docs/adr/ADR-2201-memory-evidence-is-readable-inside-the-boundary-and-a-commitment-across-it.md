@@ -46,12 +46,14 @@ evidence appears only as a commitment.
    `[integrations.ruvector_external].evidence_refs`, env `RUVECTOR_EVIDENCE_REFS`, default off). A
    write may carry up to 32 references, each `{kind: "memory", namespace, key}` or
    `{kind: "step", id}` with an optional `event_time`. They are structured because namespaces and
-   keys contain the characters a string form would split on. The store resolves every reference
-   before it embeds or writes, and rejects the whole write if one is malformed or does not
-   resolve, leaving the previous row untouched. References are stored in `metadata.evidence` with
-   `metadata.evidence_state`, and `memory_retrieve` returns both. A rewrite replaces the metadata,
-   so references never outlive the version of the value they belong to. With the gate off a
-   supplied reference is not stored and the response says so. Metadata is not embedded, so none of
+   keys contain the characters a string form would split on. The store validates them before it
+   embeds, resolves every one immediately before the write, and rejects the whole write if one is
+   malformed or does not resolve, leaving the previous row untouched. References are stored in
+   `metadata.evidence` with `metadata.evidence_state`, and `memory_retrieve` returns both. Every
+   rewrite drops the previous references, with the gate on or off, so references never outlive the
+   version of the value they belong to; other metadata keys are kept as before. With the gate off
+   a supplied reference is not stored and the response says so. The gate controls only whether new
+   references are accepted: reading, stripping and withdrawal do not depend on it. Metadata is not embedded, so none of
    this is a retrieval-geometry change.
 2. **No new Source store.** The trajectory tables are the Source layer. Operator dialogue is not
    added to them by this record; widening what the recorder captures is a separate decision under
@@ -84,10 +86,13 @@ evidence appears only as a commitment.
    gain iterative-read guidance only if iterative reading clears its registered floor over one-shot
    search.
 7. **Withdrawal is exact; erasure of a disclosure is not claimed.** Deleting a cited entry and
-   replacing every reference to it are one statement. The replacement is a marker holding the
+   replacing every reference to it are one statement, in the memory server and in the management
+   API's adapter, whatever the gate says. The replacement is a marker holding the
    withdrawal time and nothing else, because the key of a deleted entry is part of what was deleted;
-   the citing entry is flagged `evidence_state: partial`. The TTL sweep withdraws every reference
-   whose source no longer exists, which also covers a pruned trajectory step. What a summary already
+   the citing entry is flagged `evidence_state: partial`. Every TTL sweep then withdraws each
+   reference whose source no longer exists. That is what covers a pruned trajectory step, an entry
+   removed by a bulk ingest's own delete, and an entry deleted in the one round trip between
+   resolution and write. What a summary already
    says, and what already left through a hosted model call or the session mirror, is not recalled.
    The gate may not be switched on in a deployment that takes erasure requests until ADR-2060's
    tombstone reaches citing entries.
@@ -120,7 +125,13 @@ Deferred: evidence edges in the host project's memory explorer.
   write, so the retention of trajectory steps becomes something memory depends on.
 - Deleting a source now has dependants. Until ADR-2060 lands this widens D5 instead of narrowing
   it, which is why clause 7 blocks activation where erasure requests apply.
-- With the evidence gate on, every write rewrites metadata, including when typed metadata is off.
+- Every delete now also probes the metadata index for citing entries, and every sweep runs the
+  reconcile.
+- A reference resolves across namespaces, so a writer can learn whether a key exists in a
+  namespace by citing it. Namespaces are not an access boundary in this store, so this discloses
+  nothing a `memory_retrieve` would not.
+- Read counting is best-effort: at most 64 counter writes wait behind the one in flight and the
+  rest are dropped, and a role that cannot create the table pauses counting for five minutes.
 - The fixture occupies the local model for the length of a run. Its questions and topic entries are
   written by the model that answers, and topic entries exist only for the clusters the latest-state
   questions come from, so the consolidated comparison is an upper bound.
@@ -144,14 +155,26 @@ Clauses 1, 5, 7 and 9 are implemented and gated; clauses 3 and 6 are not built. 
 `agentbox.toml` sets `read_counts = true` and `evidence_refs = false`; both take effect at the next
 image build, because the memory server runs from the baked tree.
 
-- `node mcp/servers/lib/memory-evidence.test.js` (16) and `node mcp/servers/lib/memory-reads.test.js`
-  (11): validation, rejection, gate-off behaviour, withdrawal and the fail-open recorder, against a
+- `node mcp/servers/lib/memory-evidence.test.js` (20) and `node mcp/servers/lib/memory-reads.test.js`
+  (14): validation, rejection, gate-off behaviour, withdrawal and the fail-open recorder, against a
   scripted pool. `node mcp/servers/lib/memory-tools.test.js` (35) is unchanged.
 - `node tests/integration/memory-evidence-sql.check.cjs`: the same paths on the live Postgres
-  engine against temporary tables that shadow the real ones inside a rolled-back transaction. It
-  establishes that the statements are valid and behave as specified; it does not exercise the
+  engine against temporary tables that shadow the real ones inside a rolled-back transaction,
+  including the gate-off and typed-metadata-off cases from the review. It establishes that the
+  statements are valid and behave as specified; it does not exercise the
   `ruvector` vector type or the live tables.
-- `node --test tests/memory-qa-protocol.spec.mjs` (18): the judge, fixture validation, digest,
-  reply parsing, the exact McNemar values and the three-valued verdict.
+- `node --test tests/memory-qa-protocol.spec.mjs` (22): the judge, fixture validation, digest,
+  reply parsing, the exact McNemar values, the three-valued verdict and the binding of a resumed
+  run to its fixture, code and model.
+- An independent review (same model family, so not the cross-vendor audit) reported seven defects
+  and five suspicions on 2026-11-13. Fixed with a failing test first: a resumed run trusted a
+  foreign results file; the registration did not cover the harness, the store read path or the
+  answering model; a rewrite with typed metadata off dropped an earlier TTL and tags; resolution
+  ran before the embedding call; with the gate off a delete left references in place and a rewrite
+  left stale ones; the reconcile failed without `trajectory_steps` and could overwrite a concurrent
+  rewrite; the read recorder could queue without bound and retried a failing `CREATE TABLE` on
+  every read. Accepted and stated above: the cross-namespace existence check, the single-commit
+  registration rule not detecting an amended unshared commit, the live corpus under the fixture,
+  and no multiplicity correction across the two floors.
 - Not established: behaviour of either gate in a running container, and anything about clause 3.
   The registered fixture run is recorded in `docs/LEARNING-memory.md` when it completes.

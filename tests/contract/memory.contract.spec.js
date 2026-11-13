@@ -64,10 +64,12 @@ function makePgStub() {
         return { rows: row ? [row] : [] };
       }
 
-      if (s.startsWith('DELETE FROM memory_entries')) {
-        const [key, namespace] = params;
+      // delete — one statement that also withdraws evidence references to the
+      // entry (ADR-2201 clause 7): params are (namespace, key, time, probe, source_type).
+      if (s.startsWith('WITH del AS ( DELETE FROM memory_entries')) {
+        const [namespace, key] = params;
         const existed = tables.delete(`${key}::${namespace}`);
-        return { rows: [], rowCount: existed ? 1 : 0 };
+        return { rows: [{ deleted: existed ? 1 : 0, withdrawn: 0 }], rowCount: 1 };
       }
 
       if (s.startsWith('SELECT key FROM memory_entries WHERE namespace')) {

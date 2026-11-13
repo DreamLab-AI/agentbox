@@ -64,7 +64,30 @@ const { createMemoryTools } = require(path.join(wt, 'mcp/servers/lib/memory-tool
     assert.strictEqual(r.value, 'summary of notes', 'withdrawal must not alter the value');
     // control: deleting an uncited entry withdraws nothing
     await t.memStore('lonely', 'z', 'ns/a');
-    r = await t.memDelete('lonely', 'ns/a'); assert.deepStrictEqual([r.deleted, r.withdrawn], [1, 0]);
+    r = await t.memDelete('lonely', 'ns/a'); assert.deepStrictEqual([r.deleted, r.withdrawn], [1, undefined]);
+    // control: deleting an entry that does not exist withdraws nothing, even if something cites that key
+    r = await t.memDelete('note:1', 'ns/a'); assert.deepStrictEqual([r.deleted, r.withdrawn], [0, undefined]);
+    // review finding 4: with typed metadata off, a rewrite keeps a TTL written earlier and drops only evidence
+    delete process.env.RUVECTOR_TYPED_METADATA;
+    await t.memStore('ttl-row', 'v1', 'ns/a', { evidence: [B] });
+    await c.query(`UPDATE memory_entries SET metadata = metadata || '{"expires_at":"2099-01-01T00:00:00.000Z","tags":["keep"]}' WHERE key = 'ttl-row'`);
+    await t.memStore('ttl-row', 'v2', 'ns/a');
+    let meta = (await c.query(`SELECT metadata FROM memory_entries WHERE key = 'ttl-row'`)).rows[0].metadata;
+    assert.strictEqual(meta.expires_at, '2099-01-01T00:00:00.000Z'); assert.deepStrictEqual(meta.tags, ['keep']);
+    assert.strictEqual(meta.evidence, undefined); assert.strictEqual(meta.evidence_state, undefined);
+    // review finding 6/7: with the evidence gate OFF, a delete still withdraws and a rewrite still strips
+    await t.memStore('cites-b', 'v', 'ns/a', { evidence: [B] });
+    delete process.env.RUVECTOR_EVIDENCE_REFS;
+    await t.memStore('gateoff-src', 'x', 'ns/a');
+    process.env.RUVECTOR_EVIDENCE_REFS = '1';
+    await t.memStore('cites-src', 'v', 'ns/a', { evidence: [{ kind: 'memory', namespace: 'ns/a', key: 'gateoff-src' }] });
+    delete process.env.RUVECTOR_EVIDENCE_REFS;
+    r = await t.memDelete('gateoff-src', 'ns/a'); assert.deepStrictEqual([r.deleted, r.withdrawn], [1, 1]);
+    r = await t.memRetrieve('cites-src', 'ns/a'); assert.strictEqual(r.evidence[0].kind, 'withdrawn');
+    await t.memStore('cites-b', 'v2', 'ns/a');
+    r = await t.memRetrieve('cites-b', 'ns/a'); assert.strictEqual(r.evidence, undefined, 'gate off: stale evidence is not left on a new value');
+    process.env.RUVECTOR_EVIDENCE_REFS = '1'; process.env.RUVECTOR_TYPED_METADATA = '1';
+    await t.memDelete('cites-src', 'ns/a'); await t.memDelete('ttl-row', 'ns/a'); await t.memDelete('cites-b', 'ns/a'); await t.memDelete('gateoff-src', 'ns/a');
     // sweep: expire note:2 and prune the step, then reconcile through the sweep
     await c.query(`UPDATE memory_entries SET metadata = metadata || '{"expires_at":"2020-01-01T00:00:00.000Z"}' WHERE key = 'note:2'`);
     await c.query(`DELETE FROM trajectory_steps`);
@@ -72,6 +95,9 @@ const { createMemoryTools } = require(path.join(wt, 'mcp/servers/lib/memory-tool
     assert.strictEqual(r.swept, 1); assert.strictEqual(r.evidence_withdrawn_from, 1, JSON.stringify(r));
     r = await t.memRetrieve('topic', 'ns/a');
     assert.deepStrictEqual(r.evidence.map((e) => e.kind), ['withdrawn', 'withdrawn', 'withdrawn']);
+    // the reconcile statement for an install without trajectory_steps is valid SQL too
+    const { reconcileSql } = require(path.join(wt, 'mcp/servers/lib/memory-evidence.js'));
+    assert.strictEqual((await c.query(reconcileSql(false), [new Date().toISOString()])).rowCount, 0);
     // a rewrite without evidence clears the references
     await t.memStore('topic', 'rewritten', 'ns/a');
     r = await t.memRetrieve('topic', 'ns/a'); assert.strictEqual(r.evidence, undefined);

@@ -130,75 +130,101 @@ async function findUnresolved(pool, evidence, log = () => {}) {
 // of what was deleted.
 const WITHDRAWN_MARKER = (timeParam) => `jsonb_build_object('kind', 'withdrawn', 'withdrawn_at', ${timeParam}::text)`;
 
+// The evidence array of row `m`, or an empty array when it is not one.
+const EVIDENCE_OF_M = `CASE WHEN jsonb_typeof(m.metadata->'evidence') = 'array' THEN m.metadata->'evidence' ELSE '[]'::jsonb END`;
+
 /**
- * One statement that deletes an entry and withdraws every reference to it
- * (ADR-2201 clause 7). Parameters: $1 entry id, $2 namespace, $3 key,
- * $4 withdrawal time (ISO), $5 the jsonb containment probe.
+ * One statement that deletes entries and withdraws every reference to the
+ * named entry (ADR-2201 clause 7). It is used whatever the gate says:
+ * references written while the gate was on must still be withdrawn after it
+ * is switched off.
+ *
+ * Parameters: $1 namespace, $2 key, $3 withdrawal time (ISO), $4 the jsonb
+ * containment probe (withdrawProbe), then whatever `where` uses from $5 on.
+ * The new array is computed from the row being updated, so a concurrent
+ * rewrite of the citing entry is not overwritten with a stale copy.
+ *
+ * @param {string} where the DELETE predicate, e.g. `id = $5`
  */
-const DELETE_AND_WITHDRAW_SQL = `
+function deleteAndWithdrawSql(where) {
+  return `
   WITH del AS (
-    DELETE FROM memory_entries WHERE id = $1 RETURNING id
+    DELETE FROM memory_entries WHERE ${where} RETURNING id
   ),
   upd AS (
     UPDATE memory_entries m
        SET metadata = m.metadata || jsonb_build_object(
              'evidence', (
                SELECT jsonb_agg(
-                        CASE WHEN e->>'kind' = 'memory' AND e->>'namespace' = $2 AND e->>'key' = $3
-                             THEN ${WITHDRAWN_MARKER('$4')}
+                        CASE WHEN e->>'kind' = 'memory' AND e->>'namespace' = $1 AND e->>'key' = $2
+                             THEN ${WITHDRAWN_MARKER('$3')}
                              ELSE e END
                         ORDER BY ord)
-                 FROM jsonb_array_elements(m.metadata->'evidence') WITH ORDINALITY AS x(e, ord)),
+                 FROM jsonb_array_elements(${EVIDENCE_OF_M}) WITH ORDINALITY AS x(e, ord)),
              'evidence_state', 'partial')
-     WHERE m.metadata @> $5::jsonb AND m.id <> $1
+     WHERE m.metadata @> $4::jsonb
+       AND m.id NOT IN (SELECT id FROM del)
+       AND EXISTS (SELECT 1 FROM del)
      RETURNING m.id
   )
   SELECT (SELECT count(*) FROM del)::int AS deleted, (SELECT count(*) FROM upd)::int AS withdrawn`;
+}
 
 function withdrawProbe(namespace, key) {
   return JSON.stringify({ evidence: [{ kind: 'memory', namespace, key }] });
 }
 
+// True for an evidence element `e` whose source no longer exists.
+function deadPredicate(hasSteps) {
+  const memoryGone = `(e->>'kind' = 'memory' AND NOT EXISTS (
+        SELECT 1 FROM memory_entries s
+         WHERE s.namespace = e->>'namespace' AND s.key = e->>'key'
+           AND ${notExpiredPredicate('s.metadata')}))`;
+  const stepGone = `(e->>'kind' = 'step' AND NOT EXISTS (
+        SELECT 1 FROM trajectory_steps t WHERE t.id = e->>'id'))`;
+  return hasSteps ? `(${memoryGone} OR ${stepGone})` : memoryGone;
+}
+
 /**
  * Withdraw every reference whose source no longer exists, whatever removed it
- * (the TTL sweep, a pruned trajectory step). Parameter: $1 withdrawal time.
- * Rows are found through `evidence_state`, which the metadata GIN serves.
+ * (the TTL sweep, a bulk ingest's delete, a pruned trajectory step).
+ * Parameter: $1 withdrawal time. Candidates are found through
+ * `evidence_state`, which the metadata GIN serves. As in the delete
+ * statement, the new array is computed from the row being updated.
+ *
+ * @param {boolean} hasSteps whether the trajectory_steps table exists; without
+ *   it step references cannot be checked and are left as they are.
  */
-const RECONCILE_SQL = `
-  WITH cand AS (
-    SELECT m.id, m.metadata->'evidence' AS ev
-      FROM memory_entries m
-     WHERE m.metadata @> '{"evidence_state":"complete"}'::jsonb
-        OR m.metadata @> '{"evidence_state":"partial"}'::jsonb
-  ),
-  fixed AS (
-    SELECT c.id, c.ev AS old_ev, (
-             SELECT jsonb_agg(
-                      CASE
-                        WHEN e->>'kind' = 'memory' AND NOT EXISTS (
-                               SELECT 1 FROM memory_entries s
-                                WHERE s.namespace = e->>'namespace' AND s.key = e->>'key'
-                                  AND ${notExpiredPredicate('s.metadata')})
-                          THEN ${WITHDRAWN_MARKER('$1')}
-                        WHEN e->>'kind' = 'step' AND NOT EXISTS (
-                               SELECT 1 FROM trajectory_steps t WHERE t.id = e->>'id')
-                          THEN ${WITHDRAWN_MARKER('$1')}
-                        ELSE e END
-                      ORDER BY ord)
-               FROM jsonb_array_elements(c.ev) WITH ORDINALITY AS x(e, ord)) AS new_ev
-      FROM cand c
-     WHERE jsonb_typeof(c.ev) = 'array'
-  )
+function reconcileSql(hasSteps) {
+  const dead = deadPredicate(hasSteps);
+  return `
   UPDATE memory_entries m
-     SET metadata = m.metadata || jsonb_build_object('evidence', f.new_ev, 'evidence_state', 'partial')
-    FROM fixed f
-   WHERE m.id = f.id AND f.new_ev IS DISTINCT FROM f.old_ev`;
+     SET metadata = m.metadata || jsonb_build_object(
+           'evidence', (
+             SELECT jsonb_agg(CASE WHEN ${dead} THEN ${WITHDRAWN_MARKER('$1')} ELSE e END ORDER BY ord)
+               FROM jsonb_array_elements(${EVIDENCE_OF_M}) WITH ORDINALITY AS x(e, ord)),
+           'evidence_state', 'partial')
+   WHERE (m.metadata @> '{"evidence_state":"complete"}'::jsonb OR m.metadata @> '{"evidence_state":"partial"}'::jsonb)
+     AND EXISTS (SELECT 1 FROM jsonb_array_elements(${EVIDENCE_OF_M}) AS y(e) WHERE ${dead})`;
+}
+
+/**
+ * Run the reconcile. Returns the number of entries that had a reference
+ * withdrawn.
+ */
+async function reconcile(pool, nowIso = new Date().toISOString()) {
+  const probe = await pool.query(`SELECT to_regclass('trajectory_steps')::text AS t`);
+  const hasSteps = !!(probe.rows && probe.rows[0] && probe.rows[0].t);
+  const res = await pool.query(reconcileSql(hasSteps), [nowIso]);
+  return res.rowCount || 0;
+}
 
 module.exports = {
   MAX_EVIDENCE_REFS,
   normaliseEvidence,
   findUnresolved,
   withdrawProbe,
-  DELETE_AND_WITHDRAW_SQL,
-  RECONCILE_SQL,
+  deleteAndWithdrawSql,
+  reconcileSql,
+  reconcile,
 };

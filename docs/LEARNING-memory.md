@@ -378,7 +378,7 @@ scheduler `scripts/ontology-condense-scheduler.mjs` follows the same house patte
 15. **An evidence reference resolves or the write is refused, and it never leaves the container
    (ADR-2201).** `memory_store` rejects a write whole when a reference is malformed or does not
    resolve. Deleting a cited entry withdraws the reference in the same statement, leaving a marker
-   with no key. No reference, trajectory id or memory key may be copied onto a vault page, a pod
+   with no key, and every rewrite drops the previous references; neither depends on the gate. No reference, trajectory id or memory key may be copied onto a vault page, a pod
    document, a relay event or a federation message; an outward artefact carries a commitment.
 
 ## Change process

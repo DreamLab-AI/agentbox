@@ -31,7 +31,7 @@
 const crypto = require('crypto');
 const { gates, boolGate } = require('./ruvector-gates');
 const { buildMetadata, VALID_TYPES, notExpiredPredicate, expiredPredicate } = require('./memory-metadata');
-const { normaliseEvidence, findUnresolved, withdrawProbe, DELETE_AND_WITHDRAW_SQL, RECONCILE_SQL } = require('./memory-evidence');
+const { normaliseEvidence, findUnresolved, withdrawProbe, deleteAndWithdrawSql, reconcile } = require('./memory-evidence');
 const { createReadRecorder } = require('./memory-reads');
 
 // ── ADR-2014 searchable-write guarantee (closeout 2026-09-05) ───────────────
@@ -256,27 +256,18 @@ function createExternalPgBackend(deps) {
     if (guard) return guard;
     if (!getPgOk() || !pool) return { success: false, error: 'pg unavailable', storage: 'none' };
 
-    // ADR-2201 clause 1 (gate RUVECTOR_EVIDENCE_REFS): validate and resolve the
-    // evidence references before anything is embedded or written. A reference
-    // that is malformed or does not resolve rejects the whole write, so the
-    // previous row, if any, is left exactly as it was.
+    // ADR-2201 clause 1 (gate RUVECTOR_EVIDENCE_REFS): validate the evidence
+    // references before anything is embedded. A malformed reference rejects
+    // the whole write, so the previous row, if any, is left exactly as it was.
     const evidenceOn = gates.evidenceRefs();
+    const refused = (reason, error, extra = {}) => ({
+      success: false, action: 'store', key, namespace, stored: false, error, reason, ...extra, storage: 'none',
+    });
     let evidence = [];
     if (evidenceOn) {
       const norm = normaliseEvidence(options && options.evidence, { namespace, key });
-      const refused = (reason, error, extra = {}) => ({
-        success: false, action: 'store', key, namespace, stored: false, error, reason, ...extra, storage: 'none',
-      });
       if (!norm.ok) return refused('evidence-invalid', `evidence rejected (ADR-2201): ${norm.error}`);
       evidence = norm.evidence;
-      if (evidence.length) {
-        const unresolved = await findUnresolved(pool, evidence, log);
-        if (unresolved.length) {
-          return refused('evidence-unresolved',
-            `${unresolved.length} evidence reference(s) do not resolve — write rejected (ADR-2201)`,
-            { unresolved, remedy: 'cite only entries and trajectory steps that exist, or store without evidence' });
-        }
-      }
     }
     const id = entryId(namespace, key);
     const jsonValue = typeof value === 'object' ? JSON.stringify(value) : value;
@@ -328,11 +319,8 @@ function createExternalPgBackend(deps) {
     // A REPAIR-mode unembedded write always carries metadata regardless of the
     // gate: the pending marker is what makes the row enumerable and repairable,
     // so it is not optional.
-    // With the evidence gate on, metadata is always rewritten: evidence belongs
-    // to one version of a value, so a rewrite without references must clear
-    // the references of the version it replaces.
     const typed = gates.typedMetadata();
-    const needsMetadata = typed || !embedded || evidenceOn;
+    const needsMetadata = typed || !embedded;
     let metadata = null;
     if (needsMetadata) {
       metadata = typed ? buildMetadata(options || {}) : {};
@@ -356,6 +344,19 @@ function createExternalPgBackend(deps) {
       }
     }
 
+    // Resolve the references immediately before the write, after the embedding
+    // call, so that slow call does not sit between the existence check and the
+    // INSERT. The remaining window is one round trip; an entry deleted inside
+    // it is repaired by the reconcile on the next sweep.
+    if (evidence.length) {
+      const unresolved = await findUnresolved(pool, evidence, log);
+      if (unresolved.length) {
+        return refused('evidence-unresolved',
+          `${unresolved.length} evidence reference(s) do not resolve — write rejected (ADR-2201)`,
+          { unresolved, remedy: 'cite only entries and trajectory steps that exist, or store without evidence' });
+      }
+    }
+
     if (needsMetadata) {
       params.push(JSON.stringify(metadata));
       const metaClause = `$${params.length}::jsonb`;
@@ -366,10 +367,18 @@ function createExternalPgBackend(deps) {
         params,
       );
     } else {
+      // Typed metadata off: every existing metadata key is kept (a TTL, tags or
+      // importance written while it was on survive a rewrite, as before), with
+      // one exception. Evidence belongs to one version of a value, so the old
+      // references are always dropped and replaced by this write's, if any.
+      // This holds with the evidence gate off too: references written while it
+      // was on must not stay attached to a new value.
+      params.push(JSON.stringify(evidence.length ? { evidence, evidence_state: 'complete' } : {}));
+      const metaClause = `$${params.length}::jsonb`;
       await pool.query(
         `INSERT INTO memory_entries (id, namespace, key, value, source_type, metadata, embedding)
-         VALUES ($1, $2, $3, $4::jsonb, $5, '{}', ${embeddingClause})
-         ON CONFLICT (id) DO UPDATE SET value = EXCLUDED.value, embedding = EXCLUDED.embedding, updated_at = NOW()`,
+         VALUES ($1, $2, $3, $4::jsonb, $5, ${metaClause}, ${embeddingClause})
+         ON CONFLICT (id) DO UPDATE SET value = EXCLUDED.value, metadata = (memory_entries.metadata - 'evidence' - 'evidence_state') || EXCLUDED.metadata, embedding = EXCLUDED.embedding, updated_at = NOW()`,
         params,
       );
     }
@@ -733,23 +742,20 @@ function createExternalPgBackend(deps) {
     if (guard) return { ...guard, action: 'delete' };
     if (!getPgOk() || !pool) return { success: false, error: 'pg unavailable' };
     const id = entryId(namespace, key);
-    if (gates.evidenceRefs()) {
-      // ADR-2201 clause 7: the delete and the withdrawal of every reference to
-      // the deleted entry are one statement, so no reader can see a reference
-      // to an entry that is gone. What a citing summary already says is not
-      // recalled by this, and neither is anything that already left the
-      // container.
-      const res = await pool.query(DELETE_AND_WITHDRAW_SQL,
-        [id, namespace, key, new Date().toISOString(), withdrawProbe(namespace, key)]);
-      const row = (res.rows && res.rows[0]) || {};
-      notifyMemoryFlash({ key, namespace, action: 'delete' });
-      void reads.forget(namespace, key);
-      return { success: true, action: 'delete', key, namespace, deleted: Number(row.deleted) || 0, withdrawn: Number(row.withdrawn) || 0, storage: 'ruvector-postgres' };
-    }
-    const res = await pool.query(`DELETE FROM memory_entries WHERE id = $1`, [id]);
+    // ADR-2201 clause 7: the delete and the withdrawal of every reference to
+    // the deleted entry are one statement, so no reader can see a reference to
+    // an entry that is gone. This does not depend on the evidence gate:
+    // references written while it was on are withdrawn after it is switched
+    // off. What a citing summary already says is not recalled by this, and
+    // neither is anything that already left the container.
+    const res = await pool.query(deleteAndWithdrawSql('id = $5'),
+      [namespace, key, new Date().toISOString(), withdrawProbe(namespace, key), id]);
+    const row = (res.rows && res.rows[0]) || {};
     notifyMemoryFlash({ key, namespace, action: 'delete' });
     void reads.forget(namespace, key);
-    return { success: true, action: 'delete', key, namespace, deleted: res.rowCount, storage: 'ruvector-postgres' };
+    const out = { success: true, action: 'delete', key, namespace, deleted: Number(row.deleted) || 0, storage: 'ruvector-postgres' };
+    if (Number(row.withdrawn) > 0) out.withdrawn = Number(row.withdrawn);
+    return out;
   }
 
   // ADR-2014 closeout: the sweep is the DELETION half of TTL and now covers
@@ -798,17 +804,16 @@ function createExternalPgBackend(deps) {
       types: types || Array.from(VALID_TYPES),
       swept: res.rowCount, storage: 'ruvector-postgres',
     };
-    // ADR-2201 clause 7: a swept entry may have been cited. Withdraw every
-    // reference whose source no longer exists. A failure here is reported, not
-    // hidden: the sweep itself has already happened.
-    if (gates.evidenceRefs() && res.rowCount > 0) {
-      try {
-        const rec = await pool.query(RECONCILE_SQL, [new Date().toISOString()]);
-        out.evidence_withdrawn_from = rec.rowCount || 0;
-      } catch (e) {
-        log('WARN', `evidence reconcile after sweep failed: ${e.message}`);
-        out.evidence_reconcile_error = e.message;
-      }
+    // ADR-2201 clause 7: withdraw every reference whose source no longer
+    // exists, whatever removed it (this sweep, a bulk ingest's delete, a pruned
+    // trajectory step). Not gated: references outlive the gate. A failure is
+    // reported, not hidden; the sweep itself has already happened.
+    try {
+      const n = await reconcile(pool);
+      if (n > 0) out.evidence_withdrawn_from = n;
+    } catch (e) {
+      log('WARN', `evidence reconcile after sweep failed: ${e.message}`);
+      out.evidence_reconcile_error = e.message;
     }
     if (res.rowCount > 0) void reads.forgetOrphans();
     return out;

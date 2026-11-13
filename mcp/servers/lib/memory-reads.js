@@ -44,20 +44,41 @@ const UPSERT = `INSERT INTO ${READS_TABLE} (namespace, key, action, n)
 
 function readCountsEnabled() { return boolGate('RUVECTOR_READ_COUNTS'); }
 
-function createReadRecorder({ pool, log = () => {} }) {
-  let ensured = null;      // the one CREATE TABLE promise, retried after a failure
+// At most this many counter writes wait behind the one in flight. Beyond it
+// reads are simply not counted: a hung or slow store must not grow a queue.
+const MAX_PENDING = 64;
+// After the table cannot be created (a role without CREATE, say) the recorder
+// stays silent this long before it tries again.
+const DDL_BACKOFF_MS = 5 * 60 * 1000;
+
+function createReadRecorder({ pool, log = () => {}, now = () => Date.now() }) {
+  let ensured = null;      // the one CREATE TABLE promise
+  let disabledUntil = 0;   // backoff after a failed CREATE TABLE
   let tail = Promise.resolve();
+  let pending = 0;
+  let dropped = 0;
 
   function ensure() {
     if (!ensured) {
-      ensured = pool.query(DDL).catch((e) => { ensured = null; throw e; });
+      ensured = pool.query(DDL).catch((e) => {
+        ensured = null;
+        disabledUntil = now() + DDL_BACKOFF_MS;
+        throw new Error(`cannot create ${READS_TABLE} (${e.message}); read counting paused for ${DDL_BACKOFF_MS / 60000} min`);
+      });
     }
     return ensured;
   }
 
-  // Serialise the recorder's own writes so idle() can wait for all of them.
+  // The recorder's writes run one at a time (so it holds at most one pool
+  // connection and idle() can wait for all of them), behind a bounded queue.
   function enqueue(work) {
-    tail = tail.then(work).catch((e) => { log('WARN', `memory read counter failed (ignored): ${e.message}`); });
+    if (now() < disabledUntil) return Promise.resolve();
+    if (pending >= MAX_PENDING) { dropped++; return Promise.resolve(); }
+    pending++;
+    tail = tail
+      .then(() => (now() < disabledUntil ? undefined : work()))
+      .catch((e) => { log('WARN', `memory read counter failed (ignored): ${e.message}`); })
+      .finally(() => { pending--; });
     return tail;
   }
 
@@ -69,18 +90,17 @@ function createReadRecorder({ pool, log = () => {} }) {
    */
   function record(rows, action) {
     if (!readCountsEnabled() || !pool || !ACTIONS.has(action) || !Array.isArray(rows)) return Promise.resolve();
-    const seen = new Set();
-    const namespaces = [];
-    const keys = [];
+    const seen = new Map();
     for (const r of rows) {
       if (!r || typeof r.namespace !== 'string' || typeof r.key !== 'string' || !r.namespace || !r.key) continue;
-      const id = `${r.namespace}\u0000${r.key}`;
-      if (seen.has(id)) continue;
-      seen.add(id);
-      namespaces.push(r.namespace);
-      keys.push(r.key);
+      seen.set(`${r.namespace}\u0000${r.key}`, r);
     }
-    if (!keys.length) return Promise.resolve();
+    if (!seen.size) return Promise.resolve();
+    // Sorted, so two processes upserting overlapping rows lock them in the
+    // same order and cannot deadlock.
+    const ordered = [...seen.keys()].sort().map((id) => seen.get(id));
+    const namespaces = ordered.map((r) => r.namespace);
+    const keys = ordered.map((r) => r.key);
     return enqueue(async () => {
       await ensure();
       await pool.query(UPSERT, [namespaces, keys, action]);
@@ -111,7 +131,10 @@ function createReadRecorder({ pool, log = () => {} }) {
   /** Resolves when every recorder write issued so far has settled. */
   function idle() { return tail; }
 
-  return { record, forget, forgetOrphans, idle };
+  /** Queue depth and how many reads went uncounted. */
+  function stats() { return { pending, dropped, max_pending: MAX_PENDING, paused: now() < disabledUntil }; }
+
+  return { record, forget, forgetOrphans, idle, stats };
 }
 
 module.exports = { createReadRecorder, readCountsEnabled, READS_TABLE, ACTIONS };

@@ -110,6 +110,34 @@ function toolDeps(pool) {
     assert.deepStrictEqual(del.params, ['ns', 'k']);
   }));
 
+  await test('gate on: pairs are written in sorted order (no cross-process deadlock on the upsert)', withGate(true, async () => {
+    const m = mockPool();
+    const rec = createReadRecorder({ pool: m.pool, log: () => {} });
+    await rec.record([{ namespace: 'b', key: 'z' }, { namespace: 'a', key: 'y' }, { namespace: 'a', key: 'x' }], 'search_hit');
+    const up = m.queries.find((q) => /INSERT INTO/.test(q.sql));
+    assert.deepStrictEqual(up.params, [['a', 'a', 'b'], ['x', 'y', 'z'], 'search_hit']);
+  }));
+
+  await test('gate on: a role that cannot create the table backs off instead of retrying on every read', withGate(true, async () => {
+    const logs = [];
+    const m = mockPool({ fail: (sql) => /CREATE TABLE/.test(sql) });
+    const rec = createReadRecorder({ pool: m.pool, log: (lvl, msg) => logs.push(msg) });
+    for (let i = 0; i < 20; i++) await rec.record([{ namespace: 'a', key: `k${i}` }], 'retrieve');
+    assert.strictEqual(m.queries.length, 1, 'one failed CREATE TABLE, then silence');
+    assert.strictEqual(logs.length, 1);
+  }));
+
+  await test('gate on: a hung store cannot grow the queue without bound', withGate(true, async () => {
+    const queries = [];
+    const pool = { query: (sql) => { queries.push(sql); return new Promise(() => {}); } };   // never settles
+    const rec = createReadRecorder({ pool, log: () => {} });
+    for (let i = 0; i < 5000; i++) void rec.record([{ namespace: 'a', key: `k${i}` }], 'retrieve');
+    await new Promise((r) => setImmediate(r));
+    assert.strictEqual(queries.length, 1, 'only the hung statement was issued');
+    assert.ok(rec.stats().pending <= rec.stats().max_pending);
+    assert.ok(rec.stats().dropped >= 5000 - rec.stats().max_pending);
+  }));
+
   // ── integration with the memory tools ─────────────────────────────────────
   await test('memRetrieve of a found row records one retrieve; the response is unchanged', withGate(true, async () => {
     const m = mockPool();
