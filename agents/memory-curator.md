@@ -26,6 +26,23 @@ facts. Plain `memory_search` everywhere (~100ms); namespace `"*"` searches
 globally. Avoid `memory_hybrid_search` on large namespaces — it materialises the
 whole namespace (~72s on `ruvnet-kb`).
 
+## Reading well
+
+A `memory_search` hit is a snippet of about 300 characters, not the entry. Read
+in steps:
+
+1. Search. If nothing relevant comes back, search again in different words
+   before concluding the fact is not stored.
+2. `memory_retrieve` the key of a promising hit and answer from the whole
+   value. Do not answer from a snippet: it is usually cut before the detail.
+3. Entries are dated and rarely revised. When two disagree, the most recent
+   one is the current state.
+
+Measured on 80 questions over `project-state` (ADR-2201, 2026-11-13): one
+search answered 19% correctly, reading in steps 49%. When the right entry was
+in the first five hits, answering from its snippet was right 30% of the time;
+after retrieving it, 91%.
+
 ## Writing well
 
 **The embedder sees only the first ~512 tokens (~2,500 chars) of a value.**

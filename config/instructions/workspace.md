@@ -13,6 +13,9 @@ conn       = ruvector-postgres:5432, db ruvector, user ruvector; the password li
 access     = memory MCP tools only (Claude: mcp__claude-flow__memory_*; Codex: agentbox-memory) — CLI and raw SQL INSERT bypass the embedding pipeline
              (bge-small-en-v1.5 via Xinference, 384-dim, client-side) → rows invisible to HNSW search
 search     = plain memory_search (~100ms); namespace "*" = global cross-namespace
+read       = a search hit is a ~300-char SNIPPET, usually cut before the fact you want: memory_retrieve the key before
+             relying on it; if the first results miss, search again in different words; when dated entries disagree,
+             the most recent wins (measured 2026-11-13, ADR-2201: 49% correct reading this way vs 19% from one search)
 avoid      = memory_hybrid_search on large namespaces (materialises the namespace; ~72s on ruvnet-kb)
 low-recall = ruvnet-kb / knowledge-* namespaces (scoped R@10 ~9-11%)
 index-law  = after bulk ingest/delete: non-concurrent AND serial HNSW rebuild (m=16, ef_construction=128,
