@@ -1,0 +1,12 @@
+diff --git a/tests/test_rust_notify.py b/tests/test_rust_notify.py
+--- a/tests/test_rust_notify.py
++++ b/tests/test_rust_notify.py
+@@ -295,7 +295,7 @@ def test_polling(test_dir: Path):
+     watcher = RustNotify([str(test_dir)], True, True, 100, True, False)
+     (test_dir / 'test_polling.txt').write_text('foobar')
+ 
+-    changes = watcher.watch(200, 50, 500, None)
++    changes = watcher.watch(200, 50, 5000, None)
+     assert (1, str(test_dir / 'test_polling.txt')) in changes  # sometimes has an event modify too
+ 
+ 

@@ -135,6 +135,14 @@ cached and treat PyTorch/CUDA-set bumps as expensive, not routine cheap CLI
 updates. This is an observed package cost, not an image-layer timing or a claim
 that those GPU tests were executed (`doCheck` is already false upstream).
 
+Additional cold-cache measurements from 2026-11-13 (2 jobs, 8 cores/job):
+LIEF 1.0.0's build phase took 20 min 42 s, including native/Python binding
+work. Code Server 4.140.0 reported 4 min 13 s configuring and 6 min 51 s
+building, excluding its separate npm-dependency fetch. These are package-phase
+timings, not layer timings or promises for another host. Rust 1.100 was
+reviewed on release, but the shared overlay stays at 1.99.1 for this recovery;
+test compatibility and closure/build cost separately before moving that pin.
+
 Successful candidate preparation keeps Nix roots for the latest and previous
 candidate plus the last candidate activated by this workflow. Older successful
 generation root symlinks are released; receipts remain. Failed preparations

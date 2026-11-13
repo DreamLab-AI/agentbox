@@ -181,6 +181,15 @@
                     else pyPrev.httpcore2.overridePythonAttrs (o: {
                       disabledTests = (o.disabledTests or [ ]) ++ [ "test_h2_timeout_during_request" ];
                     });
+                  # 2026-11-13: watchfiles 1.2.0/py314's polling test gets a
+                  # timeout string before the event arrives on a loaded builder
+                  # (150 other tests pass). Keep its real notification assertion,
+                  # but allow five seconds instead of 500 ms. Runtime unchanged.
+                  # Drop when upstream relaxes this test's scheduling deadline.
+                  watchfiles = if pyPrev.python.pythonVersion != "3.14" || pyPrev.watchfiles.version != "1.2.0" then pyPrev.watchfiles
+                    else pyPrev.watchfiles.overridePythonAttrs (o: {
+                      patches = (o.patches or [ ]) ++ [ ./patches/watchfiles-polling-deadline.patch ];
+                    });
                   mypy = if pyPrev.python.pythonVersion != "3.12" then pyPrev.mypy
                     else pyPrev.mypy.overridePythonAttrs (o: {
                       disabledTests = (o.disabledTests or [ ]) ++ [ "testListCopy" ];

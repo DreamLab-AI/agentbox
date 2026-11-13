@@ -7,10 +7,14 @@ latency. Specified by [PRD-005](../archive/prd/PRD-005-meta-router-consultants.m
 and [ADR-011](../archive/adr/ADR-011-consultation-mcps.md).
 
 
-The Antigravity consultant defaults to `gemini-3.8-flash`. A non-empty
+The Antigravity consultant defaults to `gemini-4-hydrogen`. A non-empty
 `AGENTBOX_ANTIGRAVITY_MODEL` overrides `[consultants.antigravity].model` at boot.
-See [model selection and cost estimates](../archive/upgrades-2026-09/upgrades-2026-09.md#gemini-selection-and-limits)
-for override precedence, specialised endpoints and rebuild checks.
+CLI 1.5.7 uses `GEMINI_API_KEY` plus explicit provider/custom-model settings;
+its built-in picker does not yet know Hydrogen. See the current
+[Gemini provisioning guide](configuration.md#providersname) for the tested
+registration and dotenv wiring. API charges are separate from subscription
+quota; Hydrogen's API-equivalent estimate is $1.50 input / $7.50 output per 1M
+tokens. Older specialised endpoints need their own capability checks.
 
 ## Why this exists
 
