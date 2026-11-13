@@ -246,6 +246,34 @@ committed and both match. The fixture and the run artefacts hold private memory 
 under `backups/ruvector-sidecar/qa-fixtures/` and `qa-runs/`. It does not gate retrieval-geometry
 changes; invariant 6 still does.
 
+**Registered run, protocol v1, 2026-11-13** (registration commit `2fbe45fb0`, fixture digest
+`677d7d8c221e…`, protocol digest `b8cb42d8d8fc…`, run `2026-11-13T20-50-53-290Z`, 849 model calls,
+48 minutes, read as `ruvector_reader`, no entries written to the namespace during the run):
+
+| Arm | Latest-state (40) | Single-note (40) | All (80) |
+|---|---|---|---|
+| No memory (control) | 0 | 0 | 0 (0%) |
+| One search | 11 | 4 | 15 (19%) |
+| Iterative reading | 20 | 19 | 39 (49%) |
+| Iterative with topic entries | 24 | 20 | 44 (55%) |
+
+- **Control valid:** nothing is answerable without memory.
+- **Iterative over one search: clears.** +30 points against a floor of +10, 26 questions won and 2
+  lost, exact McNemar p = 0.000003. The loss is in the snippet: with the right entry in the first
+  five hits (46 of 80), an answer from the snippet was right 14 times; after retrieving the entry
+  (33 of 80), 30 times. Read guidance was added on this result (ADR-2201 clause 6).
+- **Consolidated over iterative: inconclusive, so not built.** +10 points on latest-state
+  questions, 4 won and 0 lost, p = 0.125. A topic entry was retrieved on 4 of 80 questions, and 14
+  of the 40 topic entries did not contain the answer asked for. No consolidation job is written on
+  this evidence (ADR-2201 clause 10).
+- **Headroom is in reading, not storage.** The model retrieved the source entry on 33 of 80
+  questions and 25 answers were forced at the six-step limit.
+
+Limits: one run, one local model that also wrote the questions; a correct paraphrase scores as
+wrong; 40 questions per stratum cannot confirm a gain under about 15 points. The truncation hint in
+`memory-tools.js` was strengthened after this run, so protocol v1 cannot be re-run against the
+current tree; a repeat is a new protocol version.
+
 ### Schedulers
 
 Both learning loops are imaged and supervised

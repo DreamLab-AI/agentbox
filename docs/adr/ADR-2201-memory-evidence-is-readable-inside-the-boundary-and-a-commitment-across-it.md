@@ -105,7 +105,7 @@ evidence appears only as a commitment.
    action, n, first_at, last_at)` counts `retrieve` and `search_hit` apart. The recorder is not
    awaited and never throws. Counters are removed with the entry they describe. The table is not
    granted to `ruvector_reader`; a grant is a new record under invariant 13.
-10. **Consolidation is decided by the fixture.** The measurements in Context close the question of
+10. **Consolidation is decided by the fixture, and the first run does not support it.** The measurements in Context close the question of
     RuVector as an index over the vault. Whether a job that maintains topic entries over the dated
     log is built depends on the consolidated arm clearing its floor over iterative reading on
     latest-state questions without costing more than five points on single-note questions.
@@ -151,7 +151,7 @@ Deferred: evidence edges in the host project's memory explorer.
 
 ## Verification
 
-Clauses 1, 5, 7 and 9 are implemented and gated; clauses 3 and 6 are not built. The live
+Clauses 1, 5, 6, 7 and 9 are implemented; clause 3 is not built; clause 10 is decided against building. The live
 `agentbox.toml` sets `read_counts = true` and `evidence_refs = false`; both take effect at the next
 image build, because the memory server runs from the baked tree.
 
@@ -183,5 +183,10 @@ image build, because the memory server runs from the baked tree.
   are now skipped); a row with SQL NULL metadata swallowed new evidence; the read recorder could
   reject when the logger threw, or throw on hostile input; a pool throwing synchronously on
   `CREATE TABLE` bypassed the backoff.
+- The registered fixture ran on 2026-11-13 (registration commit `2fbe45fb0`); the table is in
+  `docs/LEARNING-memory.md`. Clause 6: iterative reading cleared its floor (+30 points, p =
+  0.000003), so the read guidance was added to the instruction tiers, the tool descriptions, the
+  Codex instructions and the memory-curator and Explore agents. Clause 10: consolidation was
+  inconclusive (+10 points, 4 against 0, p = 0.125), which is not a pass, so no consolidation job
+  is built.
 - Not established: behaviour of either gate in a running container, and anything about clause 3.
-  The registered fixture run is recorded in `docs/LEARNING-memory.md` when it completes.

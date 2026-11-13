@@ -190,7 +190,7 @@ function shapeSearchResponse(res, opts = {}) {
   if (belowMin) out.below_min_score = belowMin;
   if (!full) out.snippet_chars = snippetChars;
   if (truncated) {
-    out.hint = `${truncated} value(s) truncated to ${snippetChars} chars; memory_retrieve {key, namespace} returns the whole value (or search again with full:true).`;
+    out.hint = `${truncated} value(s) truncated to ${snippetChars} chars. Do not answer from a truncated value: memory_retrieve {key, namespace} returns the whole one (or search again with full:true).`;
   }
   if (!rows.length && belowMin) {
     out.hint = `no result scored >= ${minScore}; ${belowMin} weaker match(es) dropped — lower min_score to see them.`;
