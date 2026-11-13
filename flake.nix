@@ -190,6 +190,17 @@
                     else pyPrev.watchfiles.overridePythonAttrs (o: {
                       patches = (o.patches or [ ]) ++ [ ./patches/watchfiles-polling-deadline.patch ];
                     });
+                  # 2026-11-13: Manim 0.22.0/py314's init-help snapshot predates
+                  # Click 8.4.2 rendering an optional subcommand as [COMMAND].
+                  # Update that single expected line; keep every test and all
+                  # runtime code. Drop when upstream refreshes the snapshot.
+                  manim = if pyPrev.python.pythonVersion != "3.14" || pyPrev.manim.version != "0.22.0" || pyPrev.click.version != "8.4.2" then pyPrev.manim
+                    else pyPrev.manim.overridePythonAttrs (o: {
+                      postPatch = (o.postPatch or "") + ''
+                        substituteInPlace tests/interface/test_commands.py \
+                          --replace-fail 'Usage: manim init [OPTIONS] COMMAND [ARGS]...' 'Usage: manim init [OPTIONS] [COMMAND] [ARGS]...'
+                      '';
+                    });
                   mypy = if pyPrev.python.pythonVersion != "3.12" then pyPrev.mypy
                     else pyPrev.mypy.overridePythonAttrs (o: {
                       disabledTests = (o.disabledTests or [ ]) ++ [ "testListCopy" ];

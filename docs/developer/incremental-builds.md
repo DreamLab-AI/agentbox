@@ -143,6 +143,14 @@ timings, not layer timings or promises for another host. Rust 1.100 was
 reviewed on release, but the shared overlay stays at 1.99.1 for this recovery;
 test compatibility and closure/build cost separately before moving that pin.
 
+The same run measured Node.js 26.12 at 30 min 30 s compiling plus 7 min 30 s
+testing (all 7,155 test results recorded), GDAL 3.13.3 at 7 min 35 s building
+plus 15 min 48 s checking (20,762 passed), and FFmpeg 9.0.2 at 3 min 44 s
+building plus 4 min 19 s checking. Scientific packages can spend longer in
+checks than compilation: DuckDB's Python package took 2 min 9 s building and
+6 min 49 s checking (3,317 passed). Retain their builder closures, not just
+runtime image paths, when reclaiming cache space.
+
 Successful candidate preparation keeps Nix roots for the latest and previous
 candidate plus the last candidate activated by this workflow. Older successful
 generation root symlinks are released; receipts remain. Failed preparations
