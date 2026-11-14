@@ -7,6 +7,11 @@
 #   wardley-maps    JSON -> D3 HTML map generation, heuristics tables, strategic analysis
 #   docs-alignment  markdown link validation, mermaid checking, ASCII-diagram detection
 #
+# and the deterministic gates of a fourth, ported from upstream Python (ADR-2202):
+#
+#   paper-orchestra outline validation, claim-evidence and citation gates, the
+#                   reviewer loop's accept/revert rules, arXiv preflight
+#
 # Two Python files in this territory deliberately survive and are NOT replaced
 # here: skills/wardley-maps/tools/advanced_nlp_parser.py needs spaCy NER (no
 # Rust equivalent worth the effort), so the ported tools shell out to it on the
@@ -67,7 +72,7 @@ pkgs.rustPlatform.buildRustPackage {
   doCheck = true;
 
   meta = with lib; {
-    description = "Skill support binaries for agentbox — ui-ux-pro-max BM25 style-guide search, Wardley map generation and strategic analysis, and docs-alignment link/mermaid/ASCII checking";
+    description = "Skill support binaries for agentbox — ui-ux-pro-max BM25 style-guide search, Wardley map generation and strategic analysis, docs-alignment link/mermaid/ASCII checking, and the paper-orchestra helpers (workspace, outline, claim-evidence, citation, refinement-loop and arXiv preflight gates)";
     homepage    = "https://github.com/DreamLab-AI/agentbox";
     license     = with licenses; [ mit asl20 ];
     platforms   = platforms.linux;

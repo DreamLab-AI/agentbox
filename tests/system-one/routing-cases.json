@@ -1522,6 +1522,86 @@
       "class": "none",
       "provenance": "directory-derived",
       "late_discriminative": false
+    },
+    {
+      "prompt": "I've got the idea written up and a log of all the experiment results. Turn them into a proper research paper I can put on arXiv.",
+      "expected_skill": "paper-orchestra",
+      "rationale": "Idea plus experimental log to an arXiv paper is paper-orchestra's write mode; latex-documents only compiles source that already exists, and report-builder researches a white paper rather than writing up results.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "We submitted the paper to arXiv last week. Can you review it like a tough referee and see whether a revised version would actually be better?",
+      "expected_skill": "paper-orchestra",
+      "rationale": "Simulated peer review and refinement of an existing paper is paper-orchestra's refine mode; book-publishing mentions arXiv but owns manuscript-to-book conversion, not reviewing a research paper.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Check every number in the results section of my draft against the experiment ledger, and tell me which claims have no evidence behind them.",
+      "expected_skill": "paper-orchestra",
+      "rationale": "The claim-evidence gate against a log or results ledger belongs to paper-orchestra; no other skill checks a paper's numbers against its evidence.",
+      "class": "single",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Here are two versions of the same paper. Which one reads better to a reviewer? Judge them blind.",
+      "expected_skill": "paper-orchestra",
+      "rationale": "Blind side-by-side comparison of two paper drafts is paper-orchestra's autorater; prose-sanitiser reviews one draft's prose and does not compare papers.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "main.tex stopped compiling after I added the natbib package: undefined control sequence on every citation. Fix the build.",
+      "expected_skill": "latex-documents",
+      "rationale": "Sounds like a paper task, but repairing compilation of existing LaTeX is latex-documents; paper-orchestra delegates compiling to it.",
+      "class": "boundary",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Convert my twelve-chapter markdown manuscript into a memoir-class LaTeX book and get it ready for arXiv and print.",
+      "expected_skill": "book-publishing",
+      "rationale": "A multi-chapter manuscript to a memoir-class book is book-publishing even with arXiv as a target; paper-orchestra is for a research paper, not a book.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Write a researched policy brief on grid-connection queues for UK solar farms, with charts, sources and a bibliography.",
+      "expected_skill": "report-builder",
+      "rationale": "A researched brief with charts and citations but no experiments of our own is report-builder; paper-orchestra writes up an idea and its experimental results.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Get my 12-page paper arXiv-ready: check the source package, the abstract length and the references before I upload it.",
+      "expected_skill": "paper-orchestra",
+      "rationale": "An arXiv preflight of a research paper's source, abstract and references is paper-orchestra; book-publishing prepares a book manuscript, and nothing here is a compile error for latex-documents.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Fix the compile error in my arXiv paper, latexmk dies on a missing brace somewhere in the methods section.",
+      "expected_skill": "latex-documents",
+      "rationale": "The word arXiv does not move a compile error: repairing a LaTeX build is latex-documents, and paper-orchestra delegates compiling to it.",
+      "class": "boundary",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Post a replacement version of our arXiv preprint with the reviewer fixes, as v2.",
+      "expected_skill": "paper-orchestra",
+      "rationale": "Revising a submitted research paper into a new arXiv version is paper-orchestra's refine mode; book-publishing prepares a book manuscript and latex-documents only compiles.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": false
     }
   ]
 }

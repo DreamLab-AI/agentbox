@@ -1,0 +1,64 @@
+% arXiv preprint template. pdfLaTeX, article class, natbib + BibTeX.
+% Build: latexmk -pdf main.tex
+% arXiv rules and the preflight command: the paper-orchestra skill, references/arxiv.md
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[british]{babel}
+\usepackage[margin=2.4cm]{geometry}
+\usepackage{amsmath,amssymb,amsthm,mathtools}
+\usepackage{booktabs,array,tabularx}
+\usepackage{graphicx}
+\usepackage{enumitem}
+\usepackage{microtype}
+\usepackage{xcolor}
+\usepackage{caption}
+\usepackage[numbers,sort&compress]{natbib}
+\usepackage[colorlinks=true,linkcolor=blue!50!black,citecolor=blue!50!black,urlcolor=blue!50!black]{hyperref}
+\captionsetup{font=small,labelfont=bf}
+
+% Results ledger: every result is written \ledger{id} and substituted by the build.
+% Compiled without the build, a use prints a visible marker instead of a number.
+\providecommand{\ledger}[2][text]{\textbf{\textlangle\textsf{#2}\textrangle}}
+
+\theoremstyle{plain}
+\newtheorem{proposition}{Proposition}
+\newtheorem{lemma}[proposition]{Lemma}
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}
+\newtheorem{assumption}{Assumption}
+
+\title{\bfseries Title}
+\author{Firstname Lastname\\ \small Affiliation}
+% A fixed date. arXiv rebuilds PDFs, so \today would change.
+\date{1 January 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+% At most 1,920 characters as plain text. No private macros: the same text goes in the arXiv form.
+\end{abstract}
+
+\section{Introduction}
+\section{Related Work}
+\section{Method}
+\section{Experiments}
+\section{Results}
+\section{Limitations}
+\section{Conclusion}
+
+\section*{Data and code availability}
+% Name the repository and the commit or release the results were generated from.
+
+\section*{Competing interests}
+
+\bibliographystyle{plainnat}
+\bibliography{refs}
+
+\appendix
+\section{Additional Results}
+
+\end{document}

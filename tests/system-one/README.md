@@ -5,7 +5,7 @@ Two audiences read this directory: `node --test` here, and `crates/system-one/` 
 (`system-one-client` parses `golden/`, `system-one-eval` runs `routing-cases.json`).
 
 ```
-routing-cases.json        184 labelled routing cases  — the eval corpus
+routing-cases.json        194 labelled routing cases  — the eval corpus
 golden/                   9 wire fixtures + manifest.json — the protocol fixtures
 consumer-compat.test.mjs  the shipped router library, unchanged, against an SSO-shaped judge
 golden-fixtures.test.mjs  §2 hard rules over every fixture
@@ -38,12 +38,12 @@ this corpus can answer it. Treat absolute accuracy as a sanity floor, never as e
 
 ### Provenance, case by case
 
-Every case declares one tier in its `provenance` field. Counts as of 184 cases (98 added 2026-11-11):
+Every case declares one tier in its `provenance` field. Counts as of 194 cases (98 added 2026-11-11, 10 for paper-orchestra 2026-11-14):
 
 | tier | n | what it is | how independent |
 |---|---|---|---|
 | `items-json-tier-A` | 9 | Verbatim prompts from `skills/system-one/scripts/items.json` tier A, authored in earlier sessions for a different task, before this corpus existed. | The only genuinely independent prompts here. Nobody wrote them knowing they would be scored. |
-| `directory-derived` | 161 | Written from the *When to Choose* / *NOT for* columns of `skills/SKILL-DIRECTORY.md`. | Independent of the text under test — the router scores the frontmatter `description`, and the directory table is authored separately — but not independent of this repo, and written by the same agent that built the corpus. **These are the invented cases.** The 98 added on 2026-11-11 were written by the same agent that rewrote 48 descriptions in the same change, so a score on them flatters those descriptions; the original 86 are the regression gate. |
+| `directory-derived` | 171 | Written from the *When to Choose* / *NOT for* columns of `skills/SKILL-DIRECTORY.md`. | Independent of the text under test — the router scores the frontmatter `description`, and the directory table is authored separately — but not independent of this repo, and written by the same agent that built the corpus. **These are the invented cases.** The 98 added on 2026-11-11 were written by the same agent that rewrote 48 descriptions in the same change, so a score on them flatters those descriptions; the original 86 are the regression gate. |
 | `log-shaped` | 14 | Conversational turns written to match the *shape* of the 66 `none` picks and 13 `short-prompt` skips in `~/.claude/skill-route.jsonl`. | Shape only. The router log records outcomes — choice, confidence, tokens, cost — and **never the prompt text, by design**. No user turn has been recovered; none could be. |
 
 So: **9 cases derive from a pre-existing authored set, 14 are modelled on the real
@@ -63,7 +63,7 @@ handful, and why prompt lengths sit in the range the log records.
 | `single` | 10 | One skill obviously applies. A router that misses these is broken, not miscalibrated. |
 | `none` | 14 | No skill would change how a capable assistant approaches the turn. |
 
-## The `late_discriminative` subgroup — 46 of 184 cases
+## The `late_discriminative` subgroup — 46 of 194 cases
 
 `laya` truncates **every option to 48 tokens, unconditionally**, before any budget logic
 runs (`laya/common.py:build_sequence`; SSO contract §10.1). Our median skill description
@@ -89,7 +89,7 @@ correct. The computation is mechanical and re-derived on every test run
   explicitly states the boundary, the discriminative material is diffuse and truncation
   takes an unknown share of it.
 
-34 of the 119 distinct labelled skills are flagged, giving 46 of 184 cases —
+34 of the 119 distinct labelled skills are flagged, giving 46 of 194 cases —
 31 `near-neighbour`, 11 `single`, 4 `boundary`, 0 `none`.
 
 **`system-one-eval` must report this subgroup separately.** It is the subgroup that
