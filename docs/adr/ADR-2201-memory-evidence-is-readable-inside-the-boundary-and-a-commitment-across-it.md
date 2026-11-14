@@ -4,10 +4,10 @@ title: Memory evidence is readable inside the trust boundary and a commitment ac
 date: 2026-11-13
 decision_status: accepted
 implementation_status: partial
-activation_status: staged
+activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 971fb010e175f0587f0e2bf6e831d172db865f1e
+verified_commit: 573e0900ffc202580ddf3ae8f630158127fd753e
 verified_paths: [mcp/servers/lib/memory-evidence.js, mcp/servers/lib/memory-reads.js, mcp/servers/lib/memory-tools.js, scripts/memory-qa-harness.mjs, scripts/lib/memory-qa-protocol.mjs, tests/integration/memory-evidence-sql.check.cjs]
 owner: jjohare
 review_trigger: the first registered run of the end-to-end memory fixture (clause 5); any change that lets a memory entry, trajectory id or evidence reference leave the container (vault propose, pod sync, relay, federation); ADR-2060 being reopened; the commitment form in crates/nostr-receipt changing; evidence_refs being switched on
@@ -189,4 +189,5 @@ image build, because the memory server runs from the baked tree.
   Codex instructions and the memory-curator and Explore agents. Clause 10: consolidation was
   inconclusive (+10 points, 4 against 0, p = 0.125), which is not a pass, so no consolidation job
   is built.
-- Not established: behaviour of either gate in a running container, and anything about clause 3.
+- Partial deployment verified on 2026-11-14 at the commit above: the running image projects `RUVECTOR_READ_COUNTS=1` and `RUVECTOR_EVIDENCE_REFS=0` into the governed claude-flow MCP configuration. Its MCP `memory_health` reports healthy ruvector-postgres storage. The evidence, read-counter and QA-protocol suites pass (20, 17 and 24 tests); adapter contracts pass 32 tests with 9 existing TODOs. The real-engine SQL check also passes against a separate disposable Postgres instance with temporary tables; no production memory tables or volumes were attached to that fixture.
+- Not established: production counter totals, evidence-on writes in production, and anything about clause 3. Implementation remains partial; activating the installed code and read guidance does not close the cross-boundary commitment work or enable evidence references.

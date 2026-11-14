@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 1a85871f77faef3c792ee2f19d8eeae71f074eda
+verified_commit: 573e0900ffc202580ddf3ae8f630158127fd753e
 verified_paths: [agentbox.toml, flake.nix, management-api/lib/system-manifest.js, schema/agentbox.toml.schema.json, services/agentbox-manifest/src/tui_read.rs, services/agentbox-manifest/src/tui_fields.rs, skills/browser/references/latex-diagram-workflows.md]
 owner: jjohare
 review_trigger: Re-enable local QGIS or CAD printing; change PDF comparison workflow or nixpkgs pin
@@ -80,3 +80,9 @@ Nostr gateway and both sidechain producers are RUNNING. Executed probes pass
 CUDA tensor allocation, FFmpeg NVENC (640 by 480), sidecar QGIS framed ping,
 RuVector MCP `memory_health` and a Gemini Hydrogen consultant turn. These
 checks do not claim a new PDF pixel-equality test or a sidecar GPU training run.
+
+Re-verified on 2026-11-14 for the skill and memory update at `verified_commit`:
+the new image `sha256:ceeb743c024961d0d0e19a271737bd20b2b20b8c647f5361ff4eea206d94117f`
+still excludes all packages named above from its actual layer paths. Platform,
+toolchain and CLI layer digests are unchanged. Mount equality, settled readiness,
+CUDA allocation, NVENC and the sidecar QGIS ping pass again; no sidecar was recreated.

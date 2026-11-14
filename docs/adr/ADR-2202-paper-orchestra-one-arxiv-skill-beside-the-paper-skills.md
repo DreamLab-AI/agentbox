@@ -4,18 +4,18 @@ title: PaperOrchestra is one arXiv-only skill that sits beside the existing pape
 date: 2026-11-14
 decision_status: accepted
 implementation_status: complete
-activation_status: staged
+activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 4a2bd7ec304cd34279c51ddef6e431958e37b3a9
-verified_paths: []
+verified_commit: 573e0900ffc202580ddf3ae8f630158127fd753e
+verified_paths: [skills/paper-orchestra, services/skill-tools, lib/skill-tools.nix]
 owner: jjohare
 review_trigger: the next image build (confirm `paper-orchestra --help` on PATH and the skill under /opt/agentbox/skills); arXiv changing its TeX submission or metadata rules (skills/paper-orchestra/references/arxiv.md carries the date they were read); a routed turn about compiling LaTeX, a book manuscript or a white paper landing on paper-orchestra in ~/.claude/skill-route.jsonl; an upstream PaperOrchestra release that changes a verbatim prompt
 repo: agentbox
 domain: GOVERNANCE-capabilities
 relates: [ADR-2083, ADR-2091, ADR-2192, ADR-2196]
 evidence_class: test+runtime
-acceptance_boundary: Lint, count, corpus and crate tests pass in source, and eighteen prompts were routed through live Jev against the source tree by calling the router library directly. The helper binary was built with cargo, not by Nix, and nothing here is in a built image. The routing prompts were written by the author of the description they test, so they show the wiring works and are not a measure of routing accuracy.
+acceptance_boundary: Skill lint, count and routing-table checks pass; the Nix skill-tools build passes 275 tests, and the deployed image exposes the helper on PATH and offers the skill to the router. Earlier live Jev prompts show wiring, not routing accuracy. The full routing corpus still has disabled cad-print expectations; no all-corpus pass is claimed.
 ---
 
 # ADR-2202 — PaperOrchestra is one arXiv-only skill that sits beside the existing paper skills
@@ -37,8 +37,8 @@ Upstream PaperOrchestra (`Ar9av/PaperOrchestra`, MIT, commit `6a31913`) implemen
 ## Consequences
 
 - 124 skills. A paper task now has a first-choice skill, and the three older paper skills keep their territory; ten labelled cases in `tests/system-one/routing-cases.json` hold the boundary.
-- The skill is inert until the next image build puts the binary on PATH. Until then the binary can be built with `cargo build --release` in `services/skill-tools`.
-- `tests/system-one/routing-corpus.test.mjs` "repo and baked trees agree" fails until that build, because three neighbour descriptions changed. It fails the same way for any description edit.
+- The 2026-11-14 image build puts the helper on PATH and bakes the skill. It remains routing-only, not always registered.
+- The baked descriptions are updated. The full routing-corpus test still expects `cad-print` although `cad_print = false` excludes it from the live candidates; its availability assertion and dependent subgroup checks fail. Do not re-enable the expensive slicer/WebKit closure to satisfy this fixture.
 - `book-publishing` still carries an older arXiv checklist (`\pdfoutput=1` required, `.bbl` required). arXiv no longer requires either. That file is not changed here; it is a follow-up for that skill's owner.
 - The reviewer loop's scores steer revision and are not evidence of improvement. The skill says so and requires a blind comparison by judges outside the loop.
 - Upstream prompt updates are a manual diff of seven files.
@@ -47,10 +47,10 @@ Upstream PaperOrchestra (`Ar9av/PaperOrchestra`, MIT, commit `6a31913`) implemen
 
 - After a real prompt about replacing an arXiv submission with a v2 was routed to `book-publishing`, the description's first sentence was reworded to name revising and new versions. Live Jev then routed 16 of 16: the ten labelled cases, three real prompts, and existing cases for the three neighbours.
 
-Verified on the branch `feat/paper-orchestra-skill`, on top of the base commit named in `verified_commit`; `verified_paths` is empty until the branch is merged and the record re-stamped at its own commit.
+Initial verification was on `feat/paper-orchestra-skill`; the merged source is now re-verified at `verified_commit` above.
 
 - `bash skills/lint-skills.sh`: clean, 124 skills. `bash tests/config/skill-lint.test.sh`: 30 passed. `node scripts/skill-count-check.js`: ok, no divergences. `node skills/gen-routing-table.mjs --check`: current.
 - Live Jev through the loopback proxy, scope `all`, 136 candidates, against the source tree: the nine new cases 9 of 9; seven existing cases labelled for the neighbouring skills, plus two fresh prompts, 9 of 9. Cost $0.013. Citation discovery goes through `web-researcher`, an existing egress route; no backend is added.
 - `services/skill-tools`: `cargo test --release` 275 passed (236 unit, 23 binary integration, 16 doc tests), 0 failed; `cargo clippy --all-targets -- -D warnings` clean; `cargo doc --no-deps` raises no warning in `paper_orchestra` (three older warnings in `docs_alignment` and `wardley` remain). No dependency was added and `Cargo.lock` is unchanged. After review the gates fail closed: `score-delta`, `score-trajectory`, `worklog` and `concession-guard` exit 3 on a missing or non-numeric score, an unknown severity or a non-integer round instead of reading a zero; usage errors exit 64; `arxiv-preflight` rejects graphics and bibliography paths outside `--source`; the citation extractor matches only real cite commands.
 - Used end to end on a real 58-page ledger-built preprint in a scratch copy: `arxiv-preflight`, `orphan-cites`, `claim-evidence --ledger` and `reverse-outline` ran on the submitted and a revised source; the preflight reported the one 40 pt overfull table the build log holds and no error.
-- Not verified: the Nix build of `skill-tools`, and the skill in a rebuilt image.
+- Deployment verification, 2026-11-14: Nix built `skill-tools` with 236 library tests, 23 CLI integration tests and 16 doc tests passing. The build phase took 44 seconds with dependency caches warm. Image `sha256:ceeb743c024961d0d0e19a271737bd20b2b20b8c647f5361ff4eea206d94117f` passes an offline `paper-orchestra --help` and a 124-skill inventory check. After activation, the helper is on PATH and the actual router offers `paper-orchestra`, while `cad-print` remains gated off. Persistent mounts are unchanged; readiness and all expected long-running supervisor programs settle healthy. This does not establish independent routing accuracy or execute an arXiv submission.
