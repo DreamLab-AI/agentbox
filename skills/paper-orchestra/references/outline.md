@@ -4,7 +4,7 @@ One call turns the idea and the experimental log into a single JSON object
 that drives every later step. Prompt: [prompt-outline.md](prompt-outline.md)
 (verbatim from the paper's Appendix F.1), with the anti-leakage prompt
 prepended. Where that prompt mentions `template.tex` and
-`conference_guidelines.md`, supply [../assets/arxiv-template.tex](../assets/arxiv-template.tex)
+`conference_guidelines.md`, supply the `latex-documents` template `templates/arxiv/arxiv-preprint.tex`
 and the "Format" section of [arxiv.md](arxiv.md).
 
 A complete example is [../assets/outline.example.json](../assets/outline.example.json).

@@ -20,7 +20,7 @@ paper-orchestra consistency --idea workspace/inputs/idea.md --log workspace/inpu
 | `inputs/figures/` | no | Figures that already exist. Anything missing is generated in step 2. |
 
 There is no template or guidelines input. The template is
-[../assets/arxiv-template.tex](../assets/arxiv-template.tex) and the rules are
+the `latex-documents` template `templates/arxiv/arxiv-preprint.tex` and the rules are
 [arxiv.md](arxiv.md).
 
 `validate-inputs` blocks on a missing file or an idea or log too thin to

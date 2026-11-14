@@ -8,7 +8,7 @@ a few months old, and correct this file.
 ## Format
 
 - `article` class, single column, pdfLaTeX. Template:
-  [../assets/arxiv-template.tex](../assets/arxiv-template.tex).
+  the `latex-documents` template `templates/arxiv/arxiv-preprint.tex`.
 - Figures as PDF, PNG or JPEG. arXiv converts nothing: no EPS under pdfLaTeX,
   and no `-eps-converted-to.pdf` files.
 - No shell escape (`\write18`, `minted`), no absolute paths, no JavaScript or
@@ -41,6 +41,10 @@ Run on the tree that will be packaged, after the paper's own build:
 ```bash
 paper-orchestra arxiv-preflight --source build/ --main main.tex --log build/main.log --json preflight.json
 ```
+
+The preflight detects the engine (pdfLaTeX, XeLaTeX or LuaLaTeX) and the
+bibliography tool from the source, so a memoir-class book built with XeLaTeX
+and Biber is checked by the same command.
 
 | Class | Checks |
 |---|---|

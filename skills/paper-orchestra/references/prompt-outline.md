@@ -6,7 +6,7 @@ This is the exact system prompt used by the Outline Agent in the paper.
 Reproduce it as your system message. Substitute `{cutoff_date}` with the
 date the paper's claims are frozen (normally today). Where the prompt names
 `template.tex` and `conference_guidelines.md`, supply
-`../assets/arxiv-template.tex` and the Format section of [arxiv.md](arxiv.md).
+the `latex-documents` template `templates/arxiv/arxiv-preprint.tex` and the Format section of [arxiv.md](arxiv.md).
 Estate adjustments are in [outline.md](outline.md).
 
 ---

@@ -84,7 +84,12 @@ Quick start with the bundled AmurMaple theme:
 \end{document}
 ```
 
-Start from a template and compile with the helper script:
+For an arXiv preprint start from `templates/arxiv/arxiv-preprint.tex` (article
+class, pdfLaTeX, natbib and BibTeX, fixed date, limitations and availability
+sections); the `paper-orchestra` skill holds arXiv's rules and a preflight
+command for the finished source tree.
+
+Start from a Beamer template and compile with the helper script:
 ```bash
 # templates/beamer/{amurmaple-basic,amurmaple-academic,amurmaple-technical}.tex
 cd examples/beamer

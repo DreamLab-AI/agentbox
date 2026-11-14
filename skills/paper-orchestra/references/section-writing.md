@@ -14,7 +14,7 @@ prompt prepended.
 - `drafts/intro_relwork.tex`, kept verbatim
 - `refs.bib` and the pool abstracts
 - the figure files themselves and `figures/captions.json`
-- [../assets/arxiv-template.tex](../assets/arxiv-template.tex)
+- the `latex-documents` template `templates/arxiv/arxiv-preprint.tex`
 
 Output: `drafts/paper.tex`, a complete document that compiles.
 

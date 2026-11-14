@@ -1578,6 +1578,22 @@
       "class": "near-neighbour",
       "provenance": "directory-derived",
       "late_discriminative": false
+    },
+    {
+      "prompt": "Get my 12-page paper arXiv-ready: check the source package, the abstract length and the references before I upload it.",
+      "expected_skill": "paper-orchestra",
+      "rationale": "An arXiv preflight of a research paper's source, abstract and references is paper-orchestra; book-publishing prepares a book manuscript, and nothing here is a compile error for latex-documents.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Fix the compile error in my arXiv paper, latexmk dies on a missing brace somewhere in the methods section.",
+      "expected_skill": "latex-documents",
+      "rationale": "The word arXiv does not move a compile error: repairing a LaTeX build is latex-documents, and paper-orchestra delegates compiling to it.",
+      "class": "boundary",
+      "provenance": "directory-derived",
+      "late_discriminative": false
     }
   ]
 }
