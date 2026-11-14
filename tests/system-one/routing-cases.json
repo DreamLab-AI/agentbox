@@ -1594,6 +1594,14 @@
       "class": "boundary",
       "provenance": "directory-derived",
       "late_discriminative": false
+    },
+    {
+      "prompt": "Post a replacement version of our arXiv preprint with the reviewer fixes, as v2.",
+      "expected_skill": "paper-orchestra",
+      "rationale": "Revising a submitted research paper into a new arXiv version is paper-orchestra's refine mode; book-publishing prepares a book manuscript and latex-documents only compiles.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": false
     }
   ]
 }

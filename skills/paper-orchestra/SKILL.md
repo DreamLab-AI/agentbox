@@ -1,6 +1,6 @@
 ---
 name: paper-orchestra
-description: "Writes an arXiv research paper from an idea and experimental results, or improves an existing paper draft by simulated peer review, with claim-evidence, citation and arXiv preflight gates. Use when turning results into a preprint, when asked to review, refine, strengthen or sanity-check a paper before or after submission, or to compare two drafts side by side. Not for fixing a LaTeX compile or Beamer (latex-documents), a researched white paper (report-builder) or a book manuscript (book-publishing)."
+description: "Writes or revises an arXiv research paper: a first draft from an idea and results, or a new version (v2) of a draft or submitted paper, improved by simulated peer review with claim-evidence, citation and arXiv preflight gates. Use when turning results into a preprint, when asked to review, refine, strengthen or sanity-check a paper, to update or replace an arXiv submission, or to compare two drafts side by side. Not for fixing a LaTeX compile or Beamer (latex-documents), a researched white paper (report-builder) or a book manuscript (book-publishing)."
 license: MIT
 compatibility: "Claude Code and Codex. Steps 2 and 3 and the blind judges run as parallel subagents under Claude Code; a Codex session runs them one after another in the same session. Needs the paper-orchestra binary (skill-tools), TeX Live and matplotlib in the runtime Python, all baked."
 metadata:

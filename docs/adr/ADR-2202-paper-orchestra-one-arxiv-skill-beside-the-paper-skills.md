@@ -36,7 +36,7 @@ Upstream PaperOrchestra (`Ar9av/PaperOrchestra`, MIT, commit `6a31913`) implemen
 
 ## Consequences
 
-- 124 skills. A paper task now has a first-choice skill, and the three older paper skills keep their territory; nine labelled cases in `tests/system-one/routing-cases.json` hold the boundary.
+- 124 skills. A paper task now has a first-choice skill, and the three older paper skills keep their territory; ten labelled cases in `tests/system-one/routing-cases.json` hold the boundary.
 - The skill is inert until the next image build puts the binary on PATH. Until then the binary can be built with `cargo build --release` in `services/skill-tools`.
 - `tests/system-one/routing-corpus.test.mjs` "repo and baked trees agree" fails until that build, because three neighbour descriptions changed. It fails the same way for any description edit.
 - `book-publishing` still carries an older arXiv checklist (`\pdfoutput=1` required, `.bbl` required). arXiv no longer requires either. That file is not changed here; it is a follow-up for that skill's owner.
@@ -44,6 +44,8 @@ Upstream PaperOrchestra (`Ar9av/PaperOrchestra`, MIT, commit `6a31913`) implemen
 - Upstream prompt updates are a manual diff of seven files.
 
 ## Verification
+
+- After a real prompt about replacing an arXiv submission with a v2 was routed to `book-publishing`, the description's first sentence was reworded to name revising and new versions. Live Jev then routed 16 of 16: the ten labelled cases, three real prompts, and existing cases for the three neighbours.
 
 Verified on the branch `feat/paper-orchestra-skill`, on top of the base commit named in `verified_commit`; `verified_paths` is empty until the branch is merged and the record re-stamped at its own commit.
 
