@@ -65,7 +65,7 @@ has "$F" 'cadEnabled = spatialCfg.cad or false;' \
 awk '/^\[program:cad-engine\]/{f=1} f&&/^[[:space:]]*'"''"';/{exit} f' "$F" > "$T/block"
 has "$T/block" 'command=${cadLib.launcher}/bin/cad server' && has "$T/block" 'user=devuser' && has "$T/block" 'autorestart=true' \
   && _ok "the engine is a supervised program run as devuser" || _bad "[program:cad-engine] is missing"
-has "$ROOT/lib/cad.nix" 'sha256 = w.sha256;' && has "$ROOT/lib/cad.nix" 'python313' \
+has "$ROOT/lib/cad.nix" 'inherit (w) url sha256;' && has "$ROOT/lib/cad.nix" 'python313' \
   && _ok "lib/cad.nix fetches each wheel by its locked sha256 and pins CPython 3.13" || _bad "lib/cad.nix no longer verifies wheels by hash"
 for f in management-api/lib/system-manifest.js schema/agentbox.toml.apply.json; do
   has "$ROOT/$f" 'skills.spatial_and_3d.cad' && has "$ROOT/$f" 'skills.spatial_and_3d.cad_print' \

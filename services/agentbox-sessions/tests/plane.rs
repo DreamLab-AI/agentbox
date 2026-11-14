@@ -244,6 +244,11 @@ fn a_legacy_aoe_worktree_is_adopted_with_its_work() {
     assert_eq!(std::fs::read_to_string(wt.join("wip.txt")).unwrap(), "unsaved");
     let note = &out.iter().find(|o| o.slug == "w").unwrap().note;
     assert!(note.contains("adopted legacy worktree"), "the adoption is reported: {note}");
+    // new-session acknowledges creation before the child has necessarily run
+    // chdir. Until then pane_current_path can still be the server's directory.
+    wait_for("adopted pane to enter its worktree", 5, || {
+        p.tmux.list().unwrap().iter().any(|x| x.name == "abs_w" && Path::new(&x.path) == wt)
+    });
     let pane = p.tmux.list().unwrap().into_iter().find(|x| x.name == "abs_w").unwrap();
     assert_eq!(std::fs::canonicalize(&pane.path).unwrap(), std::fs::canonicalize(&wt).unwrap());
 }
@@ -257,6 +262,11 @@ fn a_legacy_worktree_in_use_by_another_session_is_left_in_place() {
     git(&project, &["worktree", "add", "-q", "-b", "session-plane/w", legacy.to_str().unwrap(), "HEAD"]);
     fx.tmux(&["new-session", "-d", "-s", "operator", "-c", legacy.to_str().unwrap(), "sleep", "600"]);
     let p = fx.plane();
+    // Establish the fixture's precondition: the foreign process is actually
+    // using the directory before asking the reconciler to protect it.
+    wait_for("foreign pane to enter the legacy worktree", 5, || {
+        p.tmux.list().unwrap().iter().any(|x| x.name == "operator" && Path::new(&x.path) == legacy)
+    });
     let out = p.reconcile_once(false);
     let o = out.iter().find(|o| o.slug == "w").unwrap();
     let err = o.error.as_deref().unwrap_or_default();
