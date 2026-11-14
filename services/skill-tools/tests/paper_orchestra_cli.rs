@@ -361,8 +361,26 @@ fn arxiv_preflight_exit_codes_and_json() {
         "\\documentclass{article}\n\\begin{document}\nText.\n\\end{document}\n",
     );
     let o = po(&["arxiv-preflight", "--source", s(&src), "--main", "main.tex"]);
-    assert_eq!(code(&o), 2);
+    assert_eq!(
+        code(&o),
+        1,
+        "pdfoutput is informational; the missing abstract only warns"
+    );
     assert!(out(&o).contains("[pdfoutput]"));
+    write(
+        &src.join("main.tex"),
+        "\\documentclass{article}\n\\begin{document}\n\\includegraphics{gone}\n\\end{document}\n",
+    );
+    assert_eq!(
+        code(&po(&[
+            "arxiv-preflight",
+            "--source",
+            s(&src),
+            "--main",
+            "main.tex"
+        ])),
+        2
+    );
     assert_eq!(
         code(&po(&[
             "arxiv-preflight",

@@ -5,8 +5,13 @@
 //!
 //! | Check | Severity |
 //! |---|---|
-//! | `\pdfoutput=1` within the first five lines of the main file | ERROR |
-//! | `.bbl` beside the main file when `\bibliography`/`\addbibresource` is used, and every cited key present as `\bibitem`/`\entry` | ERROR (per missing key) |
+//! | engine (pdfLaTeX, XeLaTeX/LuaLaTeX), bibliography tool, `\pdfoutput=1` present or absent | INFO |
+//! | `.bbl` named exactly `<main>.bbl` **or** every referenced `.bib`; a `.bbl` with another stem | ERROR |
+//! | every cited key present as `\bibitem`/`\entry` when a `.bbl` is present | ERROR (per missing key) |
+//! | biblatex with a `.bbl`: must match arXiv's Biber (TeX Live 2025: bbl format 3.3) | WARN |
+//! | build products beside the main file, unused figure files, `\today` in `\date{}`, non-ASCII `\title` | WARN |
+//! | `-eps-converted-to.pdf` files | ERROR |
+//! | honorifics in `\author` | INFO |
 //! | no `\write18`, `--shell-escape` hints, `minted`, or absolute paths in `\input`, `\include`, `\includegraphics`, `\bibliography`, `\addbibresource` | ERROR |
 //! | every `\includegraphics` target resolves (`.pdf` `.png` `.jpg` `.jpeg` tried) and none is `.eps`/`.ps`/`.tif` | ERROR |
 //! | every `\input`/`\include` target exists | ERROR |
@@ -17,7 +22,11 @@
 //! | log: each `Overfull \hbox` wider than 5 pt | WARN |
 //! | log: missing-character warnings | WARN |
 //!
-//! Exit code: 2 on any ERROR, 1 on WARN only, 0 when clean.
+//! Exit code: 2 on any ERROR, 1 on WARN only, 0 when clean (INFO never counts).
+//!
+//! The checks are engine-agnostic: the same rules apply to pdfLaTeX, XeLaTeX
+//! and LuaLaTeX, with natbib/BibTeX or biblatex/Biber; PDF, PNG and JPEG are the
+//! accepted figure formats throughout and EPS is always an error.
 //!
 //! Limits worth knowing: overfull boxes are reported with the source line
 //! range TeX printed, but not attributed to a file (TeX's log does not make the
@@ -47,6 +56,8 @@ fn re(p: &str) -> Regex {
 #[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq, PartialOrd, Ord)]
 #[serde(rename_all = "UPPERCASE")]
 pub enum Severity {
+    /// Information only; never affects the exit code.
+    Info,
     /// Worth fixing; arXiv will probably still accept the source.
     Warn,
     /// arXiv will reject or mis-build the source.
@@ -116,6 +127,8 @@ pub struct Report {
     pub errors: usize,
     /// Warning count.
     pub warnings: usize,
+    /// Informational finding count.
+    pub infos: usize,
 }
 
 impl Report {
@@ -156,6 +169,7 @@ impl Report {
             let tag = match f.severity {
                 Severity::Error => "ERROR",
                 Severity::Warn => "WARN ",
+                Severity::Info => "INFO ",
             };
             let loc = f
                 .location
@@ -458,6 +472,56 @@ pub fn overfull_boxes(log: &str) -> Vec<Overfull> {
         .collect()
 }
 
+/// Detects the TeX engine from the source: `fontspec`, `unicode-math`,
+/// `polyglossia` or a `% !TEX program = xelatex|lualatex` line mean
+/// XeLaTeX/LuaLaTeX; anything else is pdfLaTeX.
+#[must_use]
+pub fn detect_engine(raw: &str) -> &'static str {
+    static MAGIC: LazyLock<Regex> = LazyLock::new(|| {
+        re(r"(?im)^\s*%\s*!TEX\s+(?:TS-)?program\s*=\s*(xelatex|lualatex|pdflatex)")
+    });
+    if let Some(m) = MAGIC.captures(raw) {
+        return match m[1].to_ascii_lowercase().as_str() {
+            "xelatex" => "XeLaTeX",
+            "lualatex" => "LuaLaTeX",
+            _ => "pdfLaTeX",
+        };
+    }
+    static PKG: LazyLock<Regex> = LazyLock::new(|| {
+        re(
+            r"\\(?:usepackage|RequirePackage)\s*(?:\[[^\]]*\])?\s*\{[^}]*\b(fontspec|unicode-math|polyglossia)\b[^}]*\}",
+        )
+    });
+    if PKG.is_match(&super::tex::strip_comments(raw)) {
+        "XeLaTeX/LuaLaTeX (fontspec, unicode-math or polyglossia)"
+    } else {
+        "pdfLaTeX"
+    }
+}
+
+/// Detects the bibliography tool: biblatex (with its `backend=` option, default
+/// biber), `\bibliography` (bibtex), an embedded `thebibliography`, or none.
+#[must_use]
+pub fn detect_bib_tool(text: &str) -> String {
+    static BIBLATEX: LazyLock<Regex> =
+        LazyLock::new(|| re(r"\\usepackage\s*(?:\[([^\]]*)\])?\s*\{[^}]*\bbiblatex\b[^}]*\}"));
+    static BACKEND: LazyLock<Regex> = LazyLock::new(|| re(r"backend\s*=\s*(\w+)"));
+    if let Some(m) = BIBLATEX.captures(text) {
+        let backend = m
+            .get(1)
+            .and_then(|o| BACKEND.captures(o.as_str()))
+            .map_or_else(|| "biber".to_string(), |b| b[1].to_string());
+        return format!("biblatex ({backend} backend)");
+    }
+    if text.contains("\\bibliography") {
+        "bibtex".to_string()
+    } else if text.contains("\\begin{thebibliography}") {
+        "embedded thebibliography".to_string()
+    } else {
+        "none".to_string()
+    }
+}
+
 // -------------------------------------------------------------------- run
 
 struct Collector {
@@ -553,9 +617,18 @@ pub fn run(opts: &Options) -> Result<Report, String> {
         );
     }
 
-    // 1. \pdfoutput=1 in the first five lines of the main file.
+    // 1. Engine, bibliography tool and \pdfoutput (information only).
+    let engine = detect_engine(&paper.raw_text());
+    let bib_tool = detect_bib_tool(text);
+    c.add(Severity::Info, "engine", format!("engine: {engine}"), None);
+    c.add(
+        Severity::Info,
+        "bib-tool",
+        format!("bibliography tool: {bib_tool}"),
+        None,
+    );
     static PDFOUT: LazyLock<Regex> = LazyLock::new(|| re(r"\\pdfoutput\s*=\s*1\b"));
-    let head_ok = std::fs::read(&main)
+    let has_pdfoutput = std::fs::read(&main)
         .map(|b| {
             String::from_utf8_lossy(&b)
                 .lines()
@@ -563,44 +636,159 @@ pub fn run(opts: &Options) -> Result<Report, String> {
                 .any(|l| PDFOUT.is_match(strip_comment(l)))
         })
         .unwrap_or(false);
-    if !head_ok {
-        c.add(
-            Severity::Error,
-            "pdfoutput",
-            "\\pdfoutput=1 is not within the first five lines of the main file; arXiv may build with the wrong engine".into(),
-            Some(format!("{}:1", main.file_name().map_or_else(String::new, |n| n.to_string_lossy().into_owned()))),
-        );
-    }
+    c.add(
+        Severity::Info,
+        "pdfoutput",
+        format!(
+            "\\pdfoutput=1 is {} in the first five lines (not required; arXiv detects the processor)",
+            if has_pdfoutput { "present" } else { "absent" }
+        ),
+        None,
+    );
 
-    // 2. .bbl beside the main file and every cited key in it.
+    // 2. Bibliography: a matching .bbl or every .bib file.
     static BIBUSE: LazyLock<Regex> =
-        LazyLock::new(|| re(r"\\(?:bibliography|addbibresource)\s*(?:\[[^\]]*\])?\s*\{"));
-    if BIBUSE.is_match(text) {
+        LazyLock::new(|| re(r"\\(bibliography|addbibresource)\s*(?:\[[^\]]*\])?\s*\{([^}]*)\}"));
+    let uses: Vec<(String, String, usize)> = BIBUSE
+        .captures_iter(text)
+        .map(|m| {
+            (
+                m[1].to_string(),
+                m[2].to_string(),
+                m.get(0).map_or(0, |w| w.start()),
+            )
+        })
+        .collect();
+    if !uses.is_empty() {
         let bbl = main.with_extension("bbl");
         let bbl_name = bbl
             .file_name()
             .map_or_else(String::new, |n| n.to_string_lossy().into_owned());
-        match std::fs::read(&bbl) {
-            Err(_) => c.add(
-                Severity::Error,
-                "bbl-missing",
-                format!("{bbl_name} not found beside the main file; arXiv does not run BibTeX/biber, upload the generated .bbl"),
-                None,
-            ),
-            Ok(bytes) => {
-                let have = bbl_keys(&String::from_utf8_lossy(&bytes));
-                let mut reported = BTreeSet::new();
-                for u in cite_uses(text) {
-                    if !have.contains(&u.key) && reported.insert(u.key.clone()) {
-                        c.add(
-                            Severity::Error,
-                            "bbl-key-missing",
-                            format!("cited key `{}` has no \\bibitem/\\entry in {bbl_name}", u.key),
-                            Some(paper.locate_display(u.offset)),
-                        );
-                    }
+        let mut bibs_missing = Vec::new();
+        for (kind, list, _) in &uses {
+            for b in list.split(',').map(str::trim).filter(|b| !b.is_empty()) {
+                let name = if kind == "bibliography" && !b.ends_with(".bib") {
+                    format!("{b}.bib")
+                } else {
+                    b.to_string()
+                };
+                if !main_dir.join(&name).is_file() {
+                    bibs_missing.push(name);
                 }
             }
+        }
+        let bbl_bytes = std::fs::read(&bbl).ok();
+        if bbl_bytes.is_none() {
+            // A .bbl with another stem cannot be picked up.
+            let others: Vec<String> = std::fs::read_dir(&main_dir)
+                .into_iter()
+                .flatten()
+                .flatten()
+                .map(|e| e.file_name().to_string_lossy().into_owned())
+                .filter(|n| n.ends_with(".bbl"))
+                .collect();
+            if !others.is_empty() {
+                c.add(
+                    Severity::Error,
+                    "bbl-name",
+                    format!(
+                        "{} does not match the main file; arXiv needs exactly {bbl_name}",
+                        others.join(", ")
+                    ),
+                    None,
+                );
+            }
+            if !bibs_missing.is_empty() {
+                c.add(
+                    Severity::Error,
+                    "bib-missing",
+                    format!(
+                        "no {bbl_name} and these .bib files are missing: {}",
+                        bibs_missing.join(", ")
+                    ),
+                    None,
+                );
+            }
+        }
+        if let Some(bytes) = bbl_bytes {
+            let bbl_text = String::from_utf8_lossy(&bytes);
+            let have = bbl_keys(&bbl_text);
+            let mut reported = BTreeSet::new();
+            for u in cite_uses(text) {
+                if !have.contains(&u.key) && reported.insert(u.key.clone()) {
+                    c.add(
+                        Severity::Error,
+                        "bbl-key-missing",
+                        format!(
+                            "cited key `{}` has no \\bibitem/\\entry in {bbl_name}",
+                            u.key
+                        ),
+                        Some(paper.locate_display(u.offset)),
+                    );
+                }
+            }
+            if bib_tool.starts_with("biblatex") {
+                static FMT: LazyLock<Regex> = LazyLock::new(|| re(r"bbl format version ([0-9.]+)"));
+                let found = FMT.captures(&bbl_text).map_or_else(
+                    || "none found in the header".to_string(),
+                    |m| m[1].to_string(),
+                );
+                c.add(
+                    Severity::Warn,
+                    "bbl-biblatex-version",
+                    format!(
+                        "the .bbl must match arXiv's biblatex/Biber (TeX Live 2025: biblatex 3.20, Biber 2.20, bbl format 3.3); bbl format version: {found}"
+                    ),
+                    None,
+                );
+            }
+        }
+    }
+
+    // Package hygiene: build products, converted figures.
+    if let Some(stem) = main.file_stem().map(|s| s.to_string_lossy().into_owned()) {
+        for ext in [
+            "aux",
+            "log",
+            "toc",
+            "lot",
+            "lof",
+            "dvi",
+            "ps",
+            "pdf",
+            "out",
+            "blg",
+            "fls",
+            "fdb_latexmk",
+        ] {
+            let f = main_dir.join(format!("{stem}.{ext}"));
+            if f.is_file() {
+                c.add(
+                    Severity::Warn,
+                    "build-product",
+                    format!("{stem}.{ext} is a build product; arXiv strips it, so exclude it from the package"),
+                    None,
+                );
+            }
+        }
+    }
+    let tree: Vec<PathBuf> = walkdir::WalkDir::new(&opts.source)
+        .into_iter()
+        .flatten()
+        .filter(|e| e.file_type().is_file())
+        .map(walkdir::DirEntry::into_path)
+        .collect();
+    for f in &tree {
+        if f.to_string_lossy().ends_with("-eps-converted-to.pdf") {
+            c.add(
+                Severity::Error,
+                "eps-converted",
+                format!(
+                    "{} is a generated conversion; remove it and ship the original PDF/PNG/JPEG",
+                    f.display()
+                ),
+                None,
+            );
         }
     }
 
@@ -691,6 +879,7 @@ pub fn run(opts: &Options) -> Result<Report, String> {
     // 4. Figures.
     let dirs = graphics_dirs(text, &main_dir);
     let mut seen_figs = BTreeSet::new();
+    let mut used_figs: BTreeSet<PathBuf> = BTreeSet::new();
     static IG: LazyLock<Regex> =
         LazyLock::new(|| re(r"\\includegraphics\*?\s*(?:\[[^\]]*\])?\s*\{([^}]*)\}"));
     for m in IG.captures_iter(text) {
@@ -741,15 +930,82 @@ pub fn run(opts: &Options) -> Result<Report, String> {
         } else {
             OK_FIG_EXT.iter().map(|e| format!("{p}.{e}")).collect()
         };
-        let found = dirs
+        let hit = dirs
             .iter()
-            .any(|d| cands.iter().any(|cand| d.join(cand).is_file()));
-        if !found {
+            .flat_map(|d| cands.iter().map(move |cand| d.join(cand)))
+            .find(|p| p.is_file());
+        if let Some(h) = &hit {
+            used_figs.insert(h.canonicalize().unwrap_or_else(|_| h.clone()));
+        }
+        if hit.is_none() {
             c.add(
                 Severity::Error,
                 "figure-missing",
                 format!("figure not found: {p} (tried {})", cands.join(", ")),
                 loc,
+            );
+        }
+    }
+
+    for f in &tree {
+        let ext = f
+            .extension()
+            .and_then(|e| e.to_str())
+            .map(str::to_lowercase)
+            .unwrap_or_default();
+        let is_fig = OK_FIG_EXT.contains(&ext.as_str());
+        let canon = f.canonicalize().unwrap_or_else(|_| f.clone());
+        let is_product = main
+            .with_extension("pdf")
+            .canonicalize()
+            .is_ok_and(|p| p == canon);
+        if is_fig
+            && !is_product
+            && !used_figs.contains(&canon)
+            && !f.to_string_lossy().ends_with("-eps-converted-to.pdf")
+        {
+            c.add(
+                Severity::Warn,
+                "extraneous-figure",
+                format!(
+                    "{} is not used by any \\includegraphics; arXiv asks for no extraneous files",
+                    f.strip_prefix(&opts.source).unwrap_or(f).display()
+                ),
+                None,
+            );
+        }
+    }
+
+    // Metadata fields: \title, \author, \date.
+    static TITLE: LazyLock<Regex> = LazyLock::new(|| re(r"\\title\s*(?:\[[^\]]*\])?\s*\{"));
+    static AUTHOR: LazyLock<Regex> = LazyLock::new(|| re(r"\\author\s*(?:\[[^\]]*\])?\s*\{"));
+    static DATE: LazyLock<Regex> = LazyLock::new(|| re(r"\\date\s*\{"));
+    let group_after = |m: &regex::Match<'_>| {
+        matching_brace(text, m.end() - 1).map(|e| (text[m.end()..e].to_string(), m.start()))
+    };
+    if let Some((t, off)) = TITLE.find(text).and_then(|m| group_after(&m)) {
+        if !t.is_ascii() {
+            c.add(
+                Severity::Warn,
+                "title-non-ascii",
+                "non-ASCII characters in \\title: arXiv metadata fields accept ASCII only".into(),
+                Some(paper.locate_display(off)),
+            );
+        }
+    }
+    if let Some((a, off)) = AUTHOR.find(text).and_then(|m| group_after(&m)) {
+        static HONOR: LazyLock<Regex> = LazyLock::new(|| re(r"\b(?:Dr|Prof|PhD|MD|MSc|BSc)\b"));
+        if HONOR.is_match(&a) {
+            c.add(Severity::Info, "author-honorifics", "honorifics in \\author: omit them from the arXiv Authors field; the PDF may keep them".into(), Some(paper.locate_display(off)));
+        }
+    }
+    if let Some((d, off)) = DATE.find(text).and_then(|m| group_after(&m)) {
+        if d.contains("\\today") {
+            c.add(
+                Severity::Warn,
+                "date-today",
+                "\\today inside \\date{}: the date will change on every arXiv rebuild".into(),
+                Some(paper.locate_display(off)),
             );
         }
     }
@@ -767,7 +1023,21 @@ pub fn run(opts: &Options) -> Result<Report, String> {
             None,
         ),
         Some(m) => {
-            let (plain, macros) = render_abstract(&m[1]);
+            let (plain, mut macros) = render_abstract(&m[1]);
+            for extra in ["~", "\\,"] {
+                if m[1].contains(extra) {
+                    macros.push(extra.to_string());
+                }
+            }
+            if !plain.is_ascii() {
+                c.add(
+                    Severity::Warn,
+                    "abstract-non-ascii",
+                    "non-ASCII characters in the abstract: arXiv metadata fields accept ASCII only"
+                        .into(),
+                    Some(paper.locate_display(m.get(0).map_or(0, |w| w.start()))),
+                );
+            }
             let n = plain.chars().count();
             abstract_chars = Some(n);
             let loc = Some(paper.locate_display(m.get(0).map_or(0, |w| w.start())));
@@ -878,7 +1148,11 @@ pub fn run(opts: &Options) -> Result<Report, String> {
         .iter()
         .filter(|f| f.severity == Severity::Error)
         .count();
-    let warnings = findings.len() - errors;
+    let warnings = findings
+        .iter()
+        .filter(|f| f.severity == Severity::Warn)
+        .count();
+    let infos = findings.len() - errors - warnings;
     Ok(Report {
         source: opts.source.display().to_string(),
         main: main
@@ -891,6 +1165,7 @@ pub fn run(opts: &Options) -> Result<Report, String> {
         findings,
         errors,
         warnings,
+        infos,
     })
 }
 
@@ -937,7 +1212,7 @@ mod tests {
     }
 
     #[test]
-    fn missing_pdfoutput_bbl_and_figure_are_errors() {
+    fn missing_bib_and_figure_are_errors() {
         let d = good_tree();
         write(
             d.path(),
@@ -948,7 +1223,7 @@ mod tests {
         std::fs::remove_file(d.path().join("fig/one.pdf")).unwrap();
         let r = run(&opts(d.path())).unwrap();
         assert_eq!(r.exit_code(), 2);
-        for want in ["pdfoutput", "bbl-missing", "figure-missing"] {
+        for want in ["bib-missing", "figure-missing"] {
             assert!(checks(&r).contains(&want), "{want} in {:?}", checks(&r));
         }
     }
@@ -1099,5 +1374,69 @@ mod tests {
         let mut o = opts(d.path());
         o.main = "absent.tex".into();
         assert!(run(&o).is_err());
+    }
+
+    #[test]
+    fn bib_files_suffice_but_a_mismatched_bbl_is_an_error() {
+        let d = good_tree();
+        std::fs::remove_file(d.path().join("main.bbl")).unwrap();
+        write(d.path(), "refs.bib", "@article{a,}\n");
+        let r = run(&opts(d.path())).unwrap();
+        assert_eq!(r.exit_code(), 0, "{}", r.render());
+        write(d.path(), "paper.bbl", GOOD_BBL);
+        let r = run(&opts(d.path())).unwrap();
+        assert!(checks(&r).contains(&"bbl-name"));
+    }
+
+    #[test]
+    fn hygiene_findings_and_info_never_change_exit_code() {
+        let d = good_tree();
+        let body = GOOD_MAIN.replace(
+            "\\begin{document}",
+            "\\title{Caf\u{e9}}\n\\author{Dr A}\n\\date{\\today}\n\\begin{document}",
+        );
+        write(d.path(), "main.tex", &body);
+        write(d.path(), "main.aux", "x");
+        write(d.path(), "fig/unused.png", "x");
+        write(d.path(), "fig/one-eps-converted-to.pdf", "x");
+        let r = run(&opts(d.path())).unwrap();
+        for want in [
+            "title-non-ascii",
+            "date-today",
+            "build-product",
+            "extraneous-figure",
+            "eps-converted",
+            "author-honorifics",
+        ] {
+            assert!(checks(&r).contains(&want), "{want} in {:?}", checks(&r));
+        }
+        assert!(r.infos >= 3);
+        let clean = good_tree();
+        assert_eq!(run(&opts(clean.path())).unwrap().exit_code(), 0);
+    }
+
+    #[test]
+    fn xelatex_with_biblatex_is_detected_and_checked_alike() {
+        let d = tempfile::tempdir().unwrap();
+        write(d.path(), "book.tex", "% !TEX program = xelatex\n\\documentclass{book}\n\\usepackage{fontspec}\n\\usepackage[backend=biber]{biblatex}\n\\addbibresource{refs.bib}\n\\begin{document}\n\\textcite{k}\n\\includegraphics{pic.eps}\n\\printbibliography\n\\end{document}\n");
+        write(d.path(), "refs.bib", "@book{k,}\n");
+        write(
+            d.path(),
+            "book.bbl",
+            "% $ biblatex bbl format version 3.3 $\n\\entry{k}{book}{}\n",
+        );
+        let mut o = opts(d.path());
+        o.main = "book.tex".into();
+        let r = run(&o).unwrap();
+        let msgs: Vec<_> = r.findings.iter().map(|f| f.message.as_str()).collect();
+        assert!(msgs.contains(&"engine: XeLaTeX"), "{msgs:?}");
+        assert!(msgs.contains(&"bibliography tool: biblatex (biber backend)"));
+        assert!(msgs.iter().any(|m| m.contains("bbl format version: 3.3")));
+        assert!(
+            checks(&r).contains(&"figure-format"),
+            "EPS is an error for every engine"
+        );
+        assert!(!checks(&r).contains(&"bbl-key-missing"));
+        assert_eq!(r.exit_code(), 2);
     }
 }
