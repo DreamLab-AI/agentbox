@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 0ed05167b23bced24dcb8d7674d4990163b55b6d
+verified_commit: 0b97c79c2a2cab3a72e165a8110fc89392611014
 verified_paths: [config/hooks/trajectory-recorder.cjs, config/hooks/routing-label-recorder.cjs, config/entrypoint-unified.sh, management-api/lib/pg-config.js, management-api/lib/routing-label-store.js, management-api/lib/trajectory-store.js, mcp/consultants/shared/consultant-base.js, management-api/lib/task-action-tokens.js, management-api/middleware/auth.js, management-api/lib/agent-event-auth.js, management-api/routes/agent-events.js, management-api/utils/process-manager.js, management-api/adapters/index.js, management-api/adapters/lifecycle.js, management-api/adapters/events/external.js, management-api/server.js, scripts/ruvector-sidecar-update.sh]
 owner: jjohare
 review_trigger: any new reader of the RuVector Postgres password or any new place a connection is assembled, any new route a task needs to call, any change to the Management API auth gate or auth modes, or a hook that gains a way to sign NIP-98
@@ -17,6 +17,11 @@ acceptance_boundary: Jest suites tests/sovereign/task-action-token*.test.js driv
 ---
 
 # ADR-2164 — A per-task action token keeps the Management API key out of tasks
+
+## Scoped source check — 2026-11-14
+
+Reviewed at `0b97c79c2a2cab3a72e165a8110fc89392611014`. The auth middleware and server changes are comment/Swagger wording for the session-plane replacement. Shared boot changes add memory projection and Antigravity configuration and retire AoE directories. Task-action token minting, scope, revocation and event attribution are unchanged. This source check issued no token or task and does not promote runtime acceptance.
+
 
 ## Scoped credential-consumer check — 2026-11-11
 

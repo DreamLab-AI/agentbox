@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 2c4b365b48d306b90bc36bf113249380e82b9f5c
+verified_commit: 0b97c79c2a2cab3a72e165a8110fc89392611014
 verified_paths: [flake.nix, docker-compose.yml, docker-compose.override.yml, scripts/migrate-codex-home.sh, tests/config/compose-persistence.test.cjs]
 owner: jjohare
 review_trigger: changes to Codex home mounts, session retention, or the migration procedure
@@ -15,6 +15,11 @@ repo: agentbox
 ---
 
 # ADR-2147: Retain Codex session state in a named volume
+
+## Scoped source check — 2026-11-14
+
+Reviewed at `0b97c79c2a2cab3a72e165a8110fc89392611014`. Base Compose and flake remove only the retired AoE volume among persistent mounts. The fixture removes its old expectation and asserts its absence. Codex's parent-home volume, independent package volume, credential bind and migration script are unchanged. Resolved-Compose persistence passes using dummy configuration; no transcripts or state were moved or deleted.
+
 
 ## Scoped source check — 2026-11-09
 

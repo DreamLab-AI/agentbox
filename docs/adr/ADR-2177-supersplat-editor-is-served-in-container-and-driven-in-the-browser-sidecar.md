@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 2c4b365b48d306b90bc36bf113249380e82b9f5c
+verified_commit: 0b97c79c2a2cab3a72e165a8110fc89392611014
 verified_paths: [lib/supersplat.nix, lib/splat-transform.package-lock.json, flake.nix, agentbox.toml, scripts/ci/check-ports-loopback.mjs, docker-compose.browsercontainer.yml, skills/supersplat/SKILL.md]
 owner: jjohare
 review_trigger: SuperSplat or splat-transform pin bump; any change to the supersplat listener's bind, root or authentication; the browser sidecar's TREAT_AS_SECURE list; a proposal to serve datasets or anything outside $WORKSPACE/splats/share
@@ -17,6 +17,11 @@ relates: [ADR-2175, ADR-2062, ADR-2040]
 ---
 
 # ADR-2177: The SuperSplat editor is served in-container and driven in the browser sidecar; splat-transform is on PATH
+
+## Scoped source check — 2026-11-14
+
+Reviewed at `0b97c79c2a2cab3a72e165a8110fc89392611014`. The SuperSplat skill adds a Blender 5.3 integration pointer and explicitly retains SuperSplat/splat-transform for export. Shared manifest/flake changes do not alter SuperSplat pins, serving root, listener or browser secure-context list. Source publish/listener gates pass and report the existing 8795 sanction. No browser sidecar was recreated and staged acceptance remains.
+
 
 ## Scoped source check — 2026-11-09
 

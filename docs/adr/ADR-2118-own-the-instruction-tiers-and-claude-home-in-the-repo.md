@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 2c4b365b48d306b90bc36bf113249380e82b9f5c
+verified_commit: 0b97c79c2a2cab3a72e165a8110fc89392611014
 verified_paths: [config/instructions, services/agentbox-manifest/src/instructions.rs, services/agentbox-manifest/src/cred_sync.rs, config/entrypoint-unified.sh, agentbox.sh, flake.nix, docker-compose.yml, docker-compose.override.yml, tests/config/claude-home-migration.test.sh, tests/config/compose-persistence.test.cjs]
 owner: jjohare
 review_trigger: Claude Code starts reading AGENTS.md natively (drop the @AGENTS.md wrappers and the embed); or a Claude Code release changes where credentials live
@@ -16,6 +16,11 @@ domain: BASELINE-container
 ---
 
 # ADR-2118 — Own the instruction tiers and the Claude home in the repo
+
+## Scoped source check — 2026-11-14
+
+Reviewed at `0b97c79c2a2cab3a72e165a8110fc89392611014`. Instruction sources add retrieve-after-search guidance. Boot/Compose retire only AoE directories and its volume; the reviewed launcher and flake diffs do not change the Claude home, read-only instructions mount or credential synchroniser. The updated persistence fixture removes the retired volume expectation and passes against resolved Compose with a dummy credential and empty test env file. The 12 instruction-layer checks pass. No user home was migrated.
+
 
 ## Scoped source check — 2026-11-09
 

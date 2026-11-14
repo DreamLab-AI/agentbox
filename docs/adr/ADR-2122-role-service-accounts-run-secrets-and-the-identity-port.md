@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: 2c4b365b48d306b90bc36bf113249380e82b9f5c
+verified_commit: 0b97c79c2a2cab3a72e165a8110fc89392611014
 verified_paths: [config/role-accounts.json, services/agentbox-manifest/src/role_accounts.rs, services/agentbox-manifest/src/main.rs, lib/agentbox-manifest.nix, config/lib/role-custody.sh, config/entrypoint-unified.sh, flake.nix, docker-compose.yml, agentbox.toml, setup/agentbox.default.toml, schema/agentbox.toml.schema.json, management-api/lib/system-manifest.js, tests/config/role-isolation-supervisor.test.sh, tests/config/role-secrets-delivery.test.sh, tests/config/role-isolation-boot.test.sh, tests/config/fixtures/role-isolation/supervisord.conf, config/custody/env-classes.json, scripts/ci/env-secret-inventory.js, management-api/lib/role-secret.js, services/nostr-pod-bridge/src/role_secret.rs, services/nostr-pod-bridge/src/bootstrap.rs, tests/runtime-contract/RC-X1-06.sh, config/custody/identity-port-acl.json, services/nostr-pod-bridge/src/identity_port/mod.rs, services/nostr-pod-bridge/src/identity_port/server.rs, management-api/lib/pod-signer.js, scripts/activation/role-isolation-rehearsal.sh, scripts/activation/role-isolation-rehearsal.host.sh, tests/config/role-isolation-rehearsal.test.sh, tests/config/role-isolation-class.test.cjs, config/bake-devuser-privilege.sh, tests/runtime-contract/RC-X1-07.sh, tests/security/compose-role-env.test.mjs, docker-compose.override.yml, tests/config/role-custody-migrate.test.sh, config/sidechain/run-producer.sh, config/sidechain/run-faucet.sh, config/sidechain/mirror-sync.sh]
 owner: jjohare
 review_trigger: the role-isolation rehearsal (scripts/activation/role-isolation-rehearsal.sh) passing or failing on a rebuilt image; a new secret-bearing supervisor program; a new [sidechain.<name>] chain; a change to the host docker gid; the identity port's consumer cutover (W3b: JunkieJarvis, the mirror hook, the gateway, dream-engine); a change to config/custody/identity-port-acl.json
@@ -17,6 +17,11 @@ lineage: ADR-2027 (secret custody; role accounts become its custodians, owner Q3
 ---
 
 # ADR-2122 — Role service accounts, /run/secrets, and the identity port
+
+## Scoped source check — 2026-11-14
+
+Reviewed at `0b97c79c2a2cab3a72e165a8110fc89392611014`. Custody classification removes retired AoE temporaries and adds the memory flags plus four verified non-secret names: ENABLE_ANTIGRAVITY_CLI, _AGY_AUTH_MODE, XDG_CACHE_HOME and the literal ELF ORIGIN token. Shared boot/manifest/flake/Compose changes do not alter role accounts or secret delivery. The Decision removes the retired AoE bearer-share claim. The 730-name inventory and 14 classification regressions already pass. This does not enable role_isolation or claim a new live custody rehearsal.
+
 
 ## Scoped source check — 2026-11-09
 
@@ -123,7 +128,7 @@ Home is `/run/secrets/<role>/home`. Shell is `/sbin/nologin`.
 | Role | uid | Programs (isolated config) | Secrets delivered to `/run/secrets/<role>/` |
 |---|---|---|---|
 | `ab-identity` | 960 | `nostr-relay` | `nostr.key` ← `$AGENTBOX_BRIDGE_SK`; `AGENTBOX_PRIVKEY_HEX`, `AGENTBOX_NSEC`, `JUNKIEJARVIS_PRIVKEY_HEX`, `CONCIERGE_PRIVKEY_HEX` ← the same-named PID-1 variables |
-| `ab-gateway` | 961 | `nostr-gateway` | none (signs through the port; AoE bearer through the share, design §2.6) |
+| `ab-gateway` | 961 | `nostr-gateway` | none (signs through the port; the AoE bearer share retired in ADR-2153) |
 | `ab-ingress` | 962 | `nip98-proxy` | `NIP98_PROXY_ALLOW_BEARER`, `NIP98_PROXY_SESSION_SECRET` ← PID-1 variables |
 | `ab-spend` | 963 | — (Q6: W5 deferred) | none in step 1; account only |
 | `ab-sidestr-dreamlab` | 964 | `sidestr-producer` | `signer.key` ← `secrets/sidestr-dreamlab.key`; `parent.credential` ← `secrets/sidestr-tbtc4.cookie` |
@@ -138,7 +143,7 @@ is root on the host. The design's "per chain from 964 upwards" would have put
 `ab-faucet-dreamlab` exactly there. The table validator refuses any reserved id, and a test
 cross-checks every compose `group_add` gid.
 
-management-api, dream-engine and the agent plane (aoe, tmux) stay devuser, as the design's §1
+management-api, dream-engine and the agent plane (agentbox-sessions, tmux) stay devuser, as the design's §1
 inventory decides. JunkieJarvis is a key in `ab-identity`'s keyring, not an account.
 
 ### 2. Two supervisor configs, one flag (design §2.3, §3.1)

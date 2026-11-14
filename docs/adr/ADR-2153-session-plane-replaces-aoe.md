@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: [ADR-2002, ADR-2063, ADR-2079]
 superseded_by: []
-verified_commit: 2c4b365b48d306b90bc36bf113249380e82b9f5c
+verified_commit: 0b97c79c2a2cab3a72e165a8110fc89392611014
 verified_paths: [services/agentbox-sessions, config/session-plane, lib/agentbox-sessions.nix, flake.nix, flake.lock, agentbox.toml, config/entrypoint-unified.sh, config/role-accounts.json, config/custody/session-plane-acl.json, config/tab0-bridge, config/nostr-gateway/gateway.cjs, config/nip98-proxy, config/tmux-autostart.sh, config/hooks/session-state.cjs, config/registered-hooks.txt, scripts/session-provision.mjs, scripts/session-control.cjs, scripts/activation/session-plane-acceptance.mjs, management-api/lib/system-manifest.js, schema/agentbox.toml.schema.json, services/agentbox-manifest/src/stacks.rs, services/agentbox-manifest/src/stacks_env.rs, tests/cli/session-launch-contract.test.mjs, tests/cli/session-control.test.cjs, tests/config/session-plane-notify.test.sh]
 owner: jjohare
 review_trigger: Antigravity signed in and OpenRouter answering the canned round trip (closes §11 acceptance → implementation complete); any AoE consumer found to have been missed
@@ -15,6 +15,11 @@ repo: agentbox
 ---
 
 # ADR-2153 — Replace Agent of Empires with an owned, tmux-backed session plane that reconciles to the manifest
+
+## Scoped source check — 2026-11-14
+
+Reviewed at `0b97c79c2a2cab3a72e165a8110fc89392611014`. The launch contract uses abs- worktrees and adopts registered aoe- worktrees without discarding edits or submodule state; a foreign session in the old directory defers adoption. AoE mount/config remnants and redundant proxy flags retire. The Decision now records that migration. The two integration fixtures wait for pane_current_path before asserting reconciliation behaviour. All 47 unit and 17 integration tests and Clippy pass, as do eight offline launch/control checks and the proxy selftest. The separate live provider round-trip is not rerun; partial/live remains.
+
 
 ## AoE residue retired — 2026-11-12
 
@@ -135,8 +140,8 @@ runtime acceptance of this record's unrelated capabilities.
    - At boot and on a timer, a seed whose session is missing, whose pane is dead, whose pane is blocked, or whose command/path/model differs from the manifest is recreated.
    - Before recreating, the daemon checks the worktree for work in progress: tracked changes and untracked files (`git status --porcelain`, ignored files excluded). If there are any it reports and does not touch the session. Ignored build output (`node_modules`, `coverage`, `target`) must not count, or a built worktree would hold its session out of reconcile for ever; recreating a tmux session deletes no files. Deleting a worktree is stricter and also refuses when an ignored path is not regenerable, because `git worktree remove` deletes ignored files without warning.
    - Sessions the daemon did not create are never touched.
-5. **Worktrees live at `~/workspace/wt/aoe-<slug>`** (global one-root rule). Before launch, the daemon seeds folder trust for each session directory in every config store the session's tool reads: the root `~/.claude.json`, every wrapper profile's `profiles/<slug>/.claude/.claude.json`, and `~/.codex/config.toml`.
-6. **The daemon runs as devuser**, as `aoe-serve` does: it must own devuser's tmux server, and it launches agents, which a role account never hosts. Its one secret is `MANAGEMENT_API_KEY`, and that is devuser-class (`config/custody/env-classes.json`). It therefore gets no `role-accounts.json` row.
+5. **Worktrees live at `~/workspace/wt/abs-<slug>`** (global one-root rule). A registered worktree under the legacy `aoe-` prefix is adopted with its branch, submodules and uncommitted work preserved; another session using it defers adoption. Before launch, the daemon seeds folder trust for each session directory in every config store the session's tool reads: the root `~/.claude.json`, every wrapper profile's `profiles/<slug>/.claude/.claude.json`, and `~/.codex/config.toml`.
+6. **The daemon runs as devuser**, as the retired `aoe-serve` did: it must own devuser's tmux server, and it launches agents, which a role account never hosts. Its one secret is `MANAGEMENT_API_KEY`, and that is devuser-class (`config/custody/env-classes.json`). It therefore gets no `role-accounts.json` row.
    - **The API is a unix socket only**, offering `list`, `create`, `send` and `status`. It follows the identity-port precedent: mode 0660 in a dedicated socket group whose members are devuser and `ab-gateway`, authorised by `SO_PEERCRED` against an ACL of uid 1000 and 961. That way nostr-gateway still reaches it under `[security].role_isolation`.
    - tab0-bridge and nostr-gateway move to the socket and keep their existing tmux fallbacks.
    - There is no TCP listener, so ADR-2002's token boundary and the gateway's `aoe-share` token copy retire with `:9095`.

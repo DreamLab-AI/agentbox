@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 2c4b365b48d306b90bc36bf113249380e82b9f5c
+verified_commit: 0b97c79c2a2cab3a72e165a8110fc89392611014
 verified_paths: [flake.nix, comfyui-sidecar/Dockerfile, docker-compose.comfyui.yml, docker-compose.gui-tools.yml, gui-tools-sidecar, skills/blender/tools, skills/comfyui/mcp-server, skills/comfyui/scripts, skills/comfyui/models/stopmotion-candidates.json]
 owner: jjohare
 review_trigger: media control-plane protocol, sidecar dependencies, workflow state handling or model provisioning changes
@@ -16,6 +16,11 @@ domain: BASELINE-container
 ---
 
 # ADR-2148: Typed remote media control planes alongside existing bridges
+
+## Scoped source check — 2026-11-14
+
+Reviewed at `0b97c79c2a2cab3a72e165a8110fc89392611014`. ComfyUI moves to pinned 0.45.0 and adds five pinned utility packs under installed-package constraints. The GUI sidecar consumes the shared Blender 5.3.0 checksum pin from the repository-root build context, restricted by its Dockerfile-specific ignore file, and launches OpenGL for VirtualGL. ComfyUI's host publish is now explicitly loopback. DCC negotiation/job handling sources are unchanged. Thirty media adapter and 71 ComfyUI pipeline/download fixtures pass; source port/listener gates pass. No image rebuild, model download or live GPU acceptance is claimed.
+
 
 ## Scoped source check — 2026-11-09
 

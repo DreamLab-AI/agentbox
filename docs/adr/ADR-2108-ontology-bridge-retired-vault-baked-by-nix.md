@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: [ADR-2022, ADR-2054]
 superseded_by: []
-verified_commit: 2c4b365b48d306b90bc36bf113249380e82b9f5c
+verified_commit: 0b97c79c2a2cab3a72e165a8110fc89392611014
 verified_paths: [lib/vault.nix, flake.nix, agentbox.toml, schema/agentbox.toml.schema.json, config/entrypoint-unified.sh, mcp/mcp.json, services/agentbox-manifest/tests/golden, management-api/lib/ontology-propose.js]
 owner: jjohare
 review_trigger: a `vault --version` gate failure at boot; a request to re-register any deleted server; ontology-monitor, typed-spawn and ontology-workingset re-pointed off mcp/servers/lib/ontology-local.js (vault shipped, so this is now due; ADR-2136); a vaultSrc bump that changes the vault verb set
@@ -17,6 +17,11 @@ lineage: ADR-2107 (no MCP for the corpus), ADR-2029 (rune, the gated-binary patt
 ---
 
 # ADR-2108 — ontology-bridge is retired; the vault binary is baked by Nix
+
+## Scoped source check — 2026-11-14
+
+Reviewed at `0b97c79c2a2cab3a72e165a8110fc89392611014`. The shared changes concern memory accounting, Gemini configuration, spatial packages and AoE retirement. All changed TUI golden rows add qgis_local or update the consultant default; vault fields are unchanged. The Decision now reflects the existing immutable VisionClaw source pin and the already-landed vault-propose helper instead of treating both as future work. The retired-corpus-path gate and 21 vault precedence/fallback checks pass. No corpus write or image activation occurred.
+
 
 ## Scoped source check — 2026-11-09
 
@@ -85,9 +90,9 @@ vendored package-local copy. The file therefore moves to
 and the flake's `buildPhaseExtra` vendoring step disappears. PRD §4 lists it
 among the deletions; deleting the *file from `mcp/servers/`* honours that, while
 deleting the *function* would have unmounted a live route this workstream does
-not own. WS-F replaces that path with `vault propose`; until then it is the last
-non-`vault` propose path in this repo, and it is recorded here rather than left
-for someone to find.
+not own. ADR-2109/ADR-2116 subsequently replaced that descriptor path with
+`vault propose`; the helper now returns a checked PatchProposal and defaults
+to dry-run so the elevation publisher remains the single publisher.
 
 **Also deleted — the second door.** `mcp/servers/ontology-local.cjs` was never
 registered as an MCP server (zero entries in `mcp.json` and
@@ -113,9 +118,10 @@ The file carries a header naming `vault` as its successor and the follow-up is
 tracked in this ADR's review trigger. Verified still working: the monitor hook
 matched 8 concepts from the corpus after the write path was removed.
 
-**Kept.** `decision-tools`, `governance-bridge`, `harness-bridge`,
-`precedent-bridge` stay registered. ADR-2107 bans MCP for **the corpus**;
-decision records and governance are not the corpus.
+**Governance stays separate.** ADR-2107 bans MCP for **the corpus**; decision
+records and governance are not the corpus. The original cutover retained
+`decision-tools`, `governance-bridge`, `harness-bridge` and `precedent-bridge`;
+the later retirement of precedent-bridge does not restore a corpus MCP door.
 
 **Baked.** `lib/vault.nix` builds `crates/vault` with `rustPlatform.buildRustPackage`,
 `doCheck = true` (the golden build-parity tests are exactly the ones that must
@@ -138,8 +144,8 @@ checked separately.
 OntologyBlock parser and Whelk-rs with VisionClaw's ingest (PRD Q11). A flake may
 not read a path outside its own tree, so `src = ../../crates/vault` is not
 available. It arrives as a flake input, `vaultSrc`, `flake = false` — the same
-mechanism `skills` already uses — currently pinned to the absolute workspace path
-`path:/home/devuser/workspace/project/crates/vault`.
+mechanism `skills` already uses — currently pinned to
+`github:DreamLab-AI/VisionClaw/f3bbb430ea00a9a7828b2d86b43a34a0a21e200d`.
 
 ## Consequences
 

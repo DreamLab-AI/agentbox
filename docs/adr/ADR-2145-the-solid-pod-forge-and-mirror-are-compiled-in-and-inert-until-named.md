@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 5d111477b614d88b2462cd2f04039e5f7c7369c6
+verified_commit: 0b97c79c2a2cab3a72e165a8110fc89392611014
 verified_paths: [lib/solid-pod-rs.nix, lib/solid-pod-rs.cargo-lock, flake.nix, agentbox.toml, scripts/ci/check-manifest-catalogue.js]
 owner: jjohare
 review_trigger: the first image rebuilt with this pin; any change to the forge block defaults (open_edit, allow_mainnet, mirror_follow); a solid-pod-rs release that changes the forge feature names; a second operator
@@ -15,6 +15,11 @@ repo: agentbox
 ---
 
 # ADR-2145 — The solid-pod forge and mirror are compiled into the native pod and inert until relays and follows are named
+
+## Scoped source check — 2026-11-14
+
+Reviewed at `0b97c79c2a2cab3a72e165a8110fc89392611014`. The former verified_commit was from an unmerged branch. Compared that tree directly: the Solid source pin and vendored lock are byte-identical; the catalogue adds only memory-accounting omissions, and manifest/flake deltas concern unrelated package, spatial, provider and session changes. The Decision now names the existing alpha.22 pin at bc6d9d8. forge-full selection, false allow_mainnet/open_edit and empty mirror_follow/announce lists remain. Catalogue validation passes. This ancestor pin replaces invalid provenance without claiming a new pod deployment or mirror activation.
+
 
 ## Scoped source check — 2026-11-11
 
@@ -83,7 +88,7 @@ runtime acceptance of this record's unrelated capabilities.
 - The forge and mirror had no manifest surface, the server read none of their settings in the old pin, and behind the Cloudflare Tunnel the pod now needs an explicit public origin for NIP-98 URL matching (solid-pod-rs security review M1).
 
 ## Decision
-- Pin `solid-pod-rs` at `v0.5.0-alpha.17` (`55bfec1f`), with the source hash computed from the tag's tarball and the lockfile copied from the tag. The Git provenance patch still matches exactly once.
+- Pin `solid-pod-rs` at `v0.5.0-alpha.22` (`bc6d9d837bfb7638a4e7698fba9b8c22f4152cf2`), with the source hash computed from the tag's tarball and the lockfile copied from the tag. The Git provenance patch still matches exactly once.
 - Build with `forge-full` unless `[integrations.solid_pod_rs.forge] enable = false`. The pod then serves the forge under `/forge` and starts the mirror at boot.
 - The `[integrations.solid_pod_rs.forge]` block carries: `chain` (default `txbt4`), `allow_mainnet` (false), `open_edit` (false), `private_repos` (false), `anchoring_ui` (true), `mirror_relays` (the embedded relay `ws://127.0.0.1:7777`), `mirror_follow` (empty) and `announce_relays` (empty). The launcher turns them into the server's `FORGE_*` environment.
 - `mirror_follow` takes `<64-hex pubkey>/<repo>` or `self/<repo>`; `self` expands at boot to this container's sovereign key (public half, read from the identity file). The estate relay and any external follow entry go in the root `.env` (`AGENTBOX_FORGE_MIRROR_RELAYS`, `AGENTBOX_FORGE_MIRROR_FOLLOW`, `AGENTBOX_FORGE_ANNOUNCE_RELAYS`), because tracked files are public.

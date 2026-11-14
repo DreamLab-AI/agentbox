@@ -59,7 +59,7 @@ detect changes to files it already lists — it is structurally blind to **addit
 is exactly how a new crate landed unlicensed under ADR-2030 while the record still read as
 verified and its `review_trigger` ("any new crate under `services/`") sat unactioned.
 
-_157 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
+_161 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
 
 | ID | Title | Domain | Date | Decision | Impl | Activation | Supersedes | Superseded by | Owner | Repo |
 |----|-------|--------|------|----------|------|------------|------------|---------------|-------|------|
@@ -220,3 +220,7 @@ _157 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
 | [ADR-2195](ADR-2195-cad-skills-over-a-pinned-offline-text-to-cad-engine.md) | CAD, electronics and fabrication skills run over a pinned, offline text-to-cad engine | GOVERNANCE-capabilities | 2026-11-11 | accepted | complete | staged | — | — | jjohare | agentbox |
 | [ADR-2196](ADR-2196-no-half-installed-skills.md) | No skill ships half-installed; its tool is baked or the skill is deleted | GOVERNANCE-capabilities | 2026-11-11 | accepted | complete | staged | — | — | jjohare | agentbox |
 | [ADR-2197](ADR-2197-an-operator-delegated-agent-sweep-may-merge-dream-prs-on-non-live-repos.md) | An operator-delegated agent sweep (yolo mode) may merge dream PRs and clear the dream backlog on non-live repos | GOVERNANCE-capabilities | 2026-11-11 | accepted | complete | staged | — | — | jjohare | agentbox |
+| [ADR-2198](ADR-2198-operator-supervisor-plugins.md) | Agentbox is a public host; operator systems are private plugins it loads | — | 2026-11-12 | proposed | none | inactive | — | — | jjohare | agentbox |
+| [ADR-2200](ADR-2200-keep-embedded-browser-engines-out-of-the-default-image.md) | Keep embedded browser engines out of the default image | BASELINE-container | 2026-11-12 | accepted | complete | live | — | — | jjohare | agentbox |
+| [ADR-2201](ADR-2201-memory-evidence-is-readable-inside-the-boundary-and-a-commitment-across-it.md) | Memory evidence is readable inside the trust boundary and a commitment across it | LEARNING-memory | 2026-11-13 | accepted | partial | live | — | — | jjohare | agentbox |
+| [ADR-2202](ADR-2202-paper-orchestra-one-arxiv-skill-beside-the-paper-skills.md) | PaperOrchestra is one arXiv-only skill that sits beside the existing paper skills | GOVERNANCE-capabilities | 2026-11-14 | accepted | complete | live | — | — | jjohare | agentbox |

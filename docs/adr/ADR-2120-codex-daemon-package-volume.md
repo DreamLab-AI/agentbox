@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 2c4b365b48d306b90bc36bf113249380e82b9f5c
+verified_commit: 0b97c79c2a2cab3a72e165a8110fc89392611014
 verified_paths: [agentbox.sh, config/entrypoint-unified.sh, flake.nix, docker-compose.yml, scripts/refresh-compose.sh, tests/config/compose-persistence.test.cjs, tests/config/refresh-compose.test.cjs]
 owner: jjohare
 review_trigger: commit verification and rebuild; or change Codex daemon packaging
@@ -16,6 +16,11 @@ domain: BASELINE-container
 ---
 
 # ADR-2120 — Give Codex daemon packages executable persistent storage
+
+## Scoped source check — 2026-11-14
+
+Reviewed at `0b97c79c2a2cab3a72e165a8110fc89392611014`. The shared launcher, boot and flake diffs do not change the executable Codex package volume or compose refresh path. Base Compose removes only the retired AoE volume, which the persistence fixture now checks is absent. Resolved-Compose persistence passes; 48 delivery/listener/launch fixtures pass. No package volume or active container was replaced.
+
 
 ## Scoped source check — 2026-11-09
 

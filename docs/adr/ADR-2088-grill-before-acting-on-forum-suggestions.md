@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 0ed05167b23bced24dcb8d7674d4990163b55b6d
+verified_commit: 0b97c79c2a2cab3a72e165a8110fc89392611014
 verified_paths: [management-api/lib/junkiejarvis-clarify.js, management-api/lib/junkiejarvis-agent.js, management-api/server.js, scripts/dream-forum-suggestions.mjs, scripts/run-junkiejarvis.cjs, tests/sovereign/junkiejarvis-clarify.test.js, tests/sovereign/junkiejarvis-dm-send.test.js, tests/sovereign/dream-forum-suggestions-jj-gate.test.js]
 owner: jjohare
 review_trigger: any change to the clarity signals, MIN_SPECIFICITY, the 7-day expiry, or the forum-suggestions ingest path
@@ -15,6 +15,11 @@ repo: agentbox
 ---
 
 # ADR-2088 — JunkieJarvis grills the author before acting on an unclear forum item
+
+## Scoped source check — 2026-11-14
+
+Reviewed at `0b97c79c2a2cab3a72e165a8110fc89392611014`. Only server.js changed, in a Swagger description and the session-boundary registration comment. The clarity assessment, reply matching, expiry, DM construction and forum-ingest registration are unchanged. This source review sent no DM and made no forum-ledger change; existing acceptance limits are retained.
+
 
 ## Scoped source re-verification — 2026-11-03
 
