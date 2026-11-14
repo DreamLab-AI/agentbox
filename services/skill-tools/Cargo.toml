@@ -6,7 +6,7 @@ version = "0.1.0"
 edition = "2021"
 rust-version = "1.85"
 license = "MIT OR Apache-2.0"
-description = "Rust ports of agentbox skill tooling: UI/UX Pro Max BM25 search & design-system generation, Wardley Map generation/analysis/heuristics, and docs-alignment validators (links, mermaid, ASCII diagrams, reports)."
+description = "Rust ports of agentbox skill tooling: UI/UX Pro Max BM25 search & design-system generation, Wardley Map generation/analysis/heuristics, and docs-alignment validators (links, mermaid, ASCII diagrams, reports), and paper-orchestra deterministic helpers (workspace, outline, claim-evidence, citation, refinement-loop and arXiv preflight gates)."
 repository = "https://github.com/DreamLab-AI/agentbox"
 readme = "README.md"
 
@@ -64,6 +64,11 @@ path = "src/bin/docs_detect_ascii.rs"
 [[bin]]
 name = "docs-generate-report"
 path = "src/bin/docs_generate_report.rs"
+
+# ---- paper-orchestra (Part D) ----
+[[bin]]
+name = "paper-orchestra"
+path = "src/bin/paper_orchestra.rs"
 
 [dependencies]
 clap = { version = "4", features = ["derive"] }
