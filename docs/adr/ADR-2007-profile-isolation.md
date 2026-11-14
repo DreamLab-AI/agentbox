@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: cc949bb79c9ac89858d01c1235dd3bca6e2226a2
+verified_commit: 18315de55b9be6f8fdaed6e9f33b6ad26da1cf4f
 verified_paths: [config/harness-wrappers/zai.sh, config/harness-wrappers/openrouter.sh, config/harness-wrappers/_provider-url.sh, tests/security/provider-url-validation.test.sh]
 owner: jjohare
 review_trigger: A proposal to reintroduce Linux pseudo-user isolation as the primary model, or a harness wrapper omitting the redirect assertion
@@ -17,6 +17,11 @@ lineage: legacy ADR-025 (multi-harness tmux architecture), supersedes ADR-028 (p
 ---
 
 # ADR-2007 — Runtime isolation is profile-based (per-profile HOME + CLAUDE_CONFIG_DIR), not Linux pseudo-users
+
+## Scoped source check — 2026-11-14
+
+Reviewed at `18315de55b9be6f8fdaed6e9f33b6ad26da1cf4f`. Both wrapper diffs change only their introductory comments from AoE to the owned session plane. The HOME/CLAUDE_CONFIG_DIR isolation, provider URL parser and launch guards are unchanged. All 52 provider URL validation checks pass.
+
 
 ## Re-verification — 2026-10-29 at 3b498088e (ADR-2153 cutover)
 

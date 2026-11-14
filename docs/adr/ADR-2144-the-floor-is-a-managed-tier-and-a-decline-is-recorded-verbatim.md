@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 2c4b365b48d306b90bc36bf113249380e82b9f5c
+verified_commit: 18315de55b9be6f8fdaed6e9f33b6ad26da1cf4f
 verified_paths: [config/instructions/floor.md, config/hooks/decline-recorder.cjs, services/agentbox-manifest/src/instructions.rs, config/registered-hooks.txt, tests/config/decline-recorder.test.mjs, tests/config/instructions-layers.test.sh, services/agentbox-manifest/src/stacks.rs, services/agentbox-manifest/src/stacks_env.rs, flake.nix]
 owner: jjohare
 review_trigger: a Stop/SubagentStop hook that can halt a task (upgrade the exit clause to "halts the task"); a Claude Code release that changes managed CLAUDE.md, omitClaudeMd or last_assistant_message semantics; a second operator (the single-operator premise behind "the operator reads them")
@@ -15,6 +15,11 @@ repo: agentbox
 ---
 
 # ADR-2144 — The floor is a managed instruction tier, and a decline is recorded verbatim
+
+## Scoped source check — 2026-11-14
+
+Reviewed at `18315de55b9be6f8fdaed6e9f33b6ad26da1cf4f`. Since 2c4b365b4, registered-hooks.txt changes only its explanation of the pruned AoE hooks. The decline-recorder row still owns Stop, SubagentStop and UserPromptSubmit. The reviewed flake changes concern dependency builds, CLI pins, spatial packages and the retired AoE volume; the floor projector, hook, managed-tier text and stack propagation are unchanged. The decline-recorder/quality-consumer test batch passes 36 cases and the instruction-layer suite passes 12. No new durable decline was submitted to test the live store.
+
 
 ## Scoped source check — 2026-11-09
 

@@ -7,8 +7,8 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 2c4b365b48d306b90bc36bf113249380e82b9f5c
-verified_paths: [scripts/ci/check-ports-loopback.sh, .github/workflows/invariants.yml, flake.nix, docker-compose.yml]
+verified_commit: 18315de55b9be6f8fdaed6e9f33b6ad26da1cf4f
+verified_paths: [scripts/ci/check-ports-loopback.sh, scripts/ci/check-ports-loopback.mjs, tests/security/ports-gate.test.mjs, .github/workflows/invariants.yml, flake.nix, docker-compose*.yml]
 owner: jjohare
 review_trigger: Any new entry on the SANCTIONED list, or a new compose overlay file
 repo: agentbox
@@ -17,6 +17,11 @@ lineage: legacy ADR-045 (sovereign ingress front door), R-003 (loopback publish 
 ---
 
 # ADR-2013 — Loopback-only compose publishes except the sanctioned-exposure list
+
+## Scoped source check — 2026-11-14
+
+Reviewed at `18315de55b9be6f8fdaed6e9f33b6ad26da1cf4f`. The ComfyUI overlay now declares 127.0.0.1:8188:8188 explicitly; the gate rejects its former interpolated bind. Base Compose only retires the AoE volume; workflow changes rename the operator-tmux guard. The Decision now matches the strict parser already documented in the acceptance progress, and verified_paths includes that implementation, its fixtures and all root overlays. All 39 parser fixtures pass. The source gate passes 15 Compose files/14 port blocks and the declared-listener audit. Effective deployment and active-listener acceptance remain outstanding; partial/live status is retained.
+
 
 ## Scoped source check — 2026-11-09
 
@@ -128,9 +133,10 @@ LAN doors, each citing its governing rationale: `9096` (ADR-045 sovereign
 ingress), voice `8443`/`8444` (cockpit TLS door — the former "second LAN
 ingress" is now modelled, not silent), browsercontainer `5903`/`8931`/`9222`
 (sidecar VNC / MCP SSE / raw CDP), gui-tools `5905`/`9876`/`9877`, xr-runtime
-`5904`. Anything else fails CI. Long-syntax `published:`/`host_ip:` mappings
-are forbidden in every file as part of the intended syntax restriction; the dated closeout evidence shows
-that the scanner does not cover all equivalent forms. Adding a
+`5904`. Anything else fails CI. The strict YAML reader normalises short and
+long syntax to the same host, published port, target and protocol tuple, including
+resolved aliases and merges. Unsupported syntax, interpolation, port ranges,
+bare container ports and unknown long-syntax keys fail closed. Adding a
 SANCTIONED line is a security decision requiring a citation. This forecloses
 silent new LAN doors in any overlay, present or future.
 

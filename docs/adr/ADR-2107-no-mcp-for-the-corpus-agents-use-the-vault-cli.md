@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 2c4b365b48d306b90bc36bf113249380e82b9f5c
+verified_commit: 18315de55b9be6f8fdaed6e9f33b6ad26da1cf4f
 verified_paths: [skills/ontology-augment, skills/podcast-knowledge-ingest, agents/ontology-curator.md, mcp/mcp.json, agentbox.toml, AGENTS.md]
 owner: jjohare
 review_trigger: a request to register any MCP server that reads or writes visionGraph, the ADR-140 /mcp plane reaching the deployed Loom, or the first `vault` subcommand an agent cannot express
@@ -19,6 +19,11 @@ acceptance_boundary: ontomark and vault --help verb checks at 3e3e09b1d, a grep 
 ---
 
 # ADR-2107 — No MCP inside the estate for the corpus; agents use the vault CLI
+
+## Scoped source check — 2026-11-14
+
+Reviewed at `18315de55b9be6f8fdaed6e9f33b6ad26da1cf4f`. The diff since 2c4b365b4 changes only AGENTS.md and agentbox.toml among this record's governed paths. It documents sidecar-first QGIS, retires AoE wording, adds paper-orchestra to the skill count and introduces memory-accounting/provider switches. It adds no corpus MCP registration or corpus writer; the vault configuration and governed ontology skills are unchanged. Skill lint and the retired-corpus-path gate pass. Existing staged activation and the separate live Loom acceptance boundary remain.
+
 
 ## Scoped source check — 2026-11-09
 

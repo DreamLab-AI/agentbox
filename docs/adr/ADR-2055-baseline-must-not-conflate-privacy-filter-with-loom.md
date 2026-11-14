@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 23717873089478ce4b18c6c09bddf4e0adb064f9
+verified_commit: 18315de55b9be6f8fdaed6e9f33b6ad26da1cf4f
 verified_paths: [docs/BASELINE-container.md]
 owner: jjohare
 review_trigger: a change to [privacy_filter].port, to the [program:opf-router] supervisor block, or to the BASELINE-container supervised-program table
@@ -17,6 +17,11 @@ lineage: legacy ADR-008 (privacy-filter routing, defines opf-router at :9092), A
 ---
 
 # ADR-2055 — Describe opf-router as the privacy-filter sidecar on its own port, never as a facade on the Loom's
+
+## Scoped source check — 2026-11-14
+
+Reviewed at `18315de55b9be6f8fdaed6e9f33b6ad26da1cf4f`. The BASELINE-container diff since 237178730 adds Blender packaging and QGIS/CAD guidance, and qualifies the ComfyUI cancellation observation by source revision. The opf-router row still names the privacy-filter redaction sidecar on 127.0.0.1:9092 (docs/BASELINE-container.md:129). The obsolete wording that treated this row correction as pending is updated to match the landed row and the record's complete status. No service restart or new live-port measurement is claimed.
+
 
 ## Context
 
@@ -53,11 +58,9 @@ No document describes any agentbox-supervised program as serving `:8084`. Where 
 needs to mention `:8084` it says explicitly that it is the Ontology Loom facade on
 the gateway host, reached over the LAN, and cross-references ADR-2023.
 
-`docs/BASELINE-container.md` is owned by the runtime lane, so the exact row edit is
-**routed** to that owner rather than applied here; `implementation_status` stays
-`partial` until it lands. This ADR is the authority for the correction and the diagram
-carries `RESOLVED ADR-2055` now, because the *code* was never wrong — only the
-description of it.
+The runtime-owned `docs/BASELINE-container.md` row now carries this correction.
+`implementation_status: complete` records the landed documentation change; it
+does not assert a new service deployment.
 
 ## Consequences
 

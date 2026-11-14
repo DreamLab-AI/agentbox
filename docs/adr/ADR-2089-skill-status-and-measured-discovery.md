@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 2c4b365b48d306b90bc36bf113249380e82b9f5c
+verified_commit: 18315de55b9be6f8fdaed6e9f33b6ad26da1cf4f
 verified_paths: [skills/lint-skills.mjs, skills/gen-routing-table.mjs, skills/SKILL-DIRECTORY.md, skills/system-one/scripts/route-eval.mjs]
 owner: jjohare
 review_trigger: the next time a skill is demoted, merged, or added to a cluster that already shows measured overlap
@@ -15,6 +15,11 @@ repo: agentbox
 ---
 
 # ADR-2089 — Make skill availability a contract field and gate progressive discovery on measurement
+
+## Scoped source check — 2026-11-14
+
+Reviewed at `18315de55b9be6f8fdaed6e9f33b6ad26da1cf4f`. Only SKILL-DIRECTORY.md changed since 2c4b365b4: paper-orchestra joins the inventory, document-routing tree and composition table, taking the count from 123 to 124. The status parser, generated badge logic and evaluation code are unchanged. Skill lint, skill-count-check and routing-table freshness pass. No new overlap or live routing-accuracy measurement is claimed; the requirement to measure a proposed merge remains.
+
 
 ## Scoped source check — 2026-11-09
 
