@@ -27,6 +27,26 @@ fn s(p: &Path) -> &str {
     p.to_str().expect("utf-8 path")
 }
 
+/// A score document in the documented schema with every axis at `v`.
+fn score_doc(v: f64) -> String {
+    let axes = [
+        "scientific_depth",
+        "technical_execution",
+        "logical_flow",
+        "writing_clarity",
+        "evidence_presentation",
+        "academic_style",
+    ];
+    let body: Vec<String> = axes
+        .iter()
+        .map(|a| format!("\"{a}\":{{\"score\":{v}}}"))
+        .collect();
+    format!(
+        "{{\"overall_score\":{v},\"axis_scores\":{{{}}}}}",
+        body.join(",")
+    )
+}
+
 fn write(p: &Path, body: &str) {
     std::fs::create_dir_all(p.parent().unwrap()).unwrap();
     std::fs::write(p, body).unwrap();
@@ -60,11 +80,18 @@ fn help_exits_zero_and_lists_subcommands() {
 }
 
 #[test]
-fn usage_errors_use_the_subcommands_own_code() {
-    assert_eq!(code(&po(&["score-delta"])), 3);
-    assert_eq!(code(&po(&["concession-guard"])), 3);
-    assert_eq!(code(&po(&["orphan-cites"])), 2);
-    assert_eq!(code(&po(&["no-such-subcommand"])), 2);
+fn usage_errors_exit_64_and_help_exits_zero() {
+    for args in [
+        &["score-delta"][..],
+        &["concession-guard"],
+        &["orphan-cites"],
+        &["no-such-subcommand"],
+        &["arxiv-preflight"],
+    ] {
+        assert_eq!(code(&po(args)), 64, "{args:?}");
+    }
+    assert_eq!(code(&po(&["score-delta", "--help"])), 0);
+    assert_eq!(code(&po(&["--version"])), 0);
 }
 
 #[test]
@@ -99,8 +126,8 @@ fn init_then_validate_inputs() {
 fn score_delta_and_decision_band_exit_codes() {
     let d = tempfile::tempdir().unwrap();
     let (a, b) = (d.path().join("a.json"), d.path().join("b.json"));
-    write(&a, r#"{"overall_score": 70, "axis_scores": {}}"#);
-    write(&b, r#"{"overall_score": 82, "axis_scores": {}}"#);
+    write(&a, &score_doc(70.0));
+    write(&b, &score_doc(82.0));
     let o = po(&["score-delta", "--prev", s(&a), "--curr", s(&b)]);
     assert_eq!(code(&o), 5, "{}", out(&o));
     assert!(out(&o).contains("\"decision\": \"HALT_TARGET_MET\""));
@@ -122,6 +149,190 @@ fn score_delta_and_decision_band_exit_codes() {
     assert_eq!(code(&o), 0);
     assert!(out(&o).contains("\"decision_band\": \"Minor Revision\""));
     assert_eq!(code(&po(&["decision-band", "70", "--accept-min", "10"])), 2);
+}
+
+#[test]
+fn score_delta_fails_closed_on_missing_or_misnamed_scores() {
+    let d = tempfile::tempdir().unwrap();
+    let (p, c, ok) = (
+        d.path().join("p.json"),
+        d.path().join("c.json"),
+        d.path().join("ok.json"),
+    );
+    write(&p, r#"{"overall":70}"#);
+    write(&c, r#"{"overall":40}"#);
+    write(&ok, &score_doc(60.0));
+    let o = po(&["score-delta", "--prev", s(&p), "--curr", s(&c)]);
+    assert_eq!(code(&o), 3, "{}", out(&o));
+    assert!(
+        err(&o).contains("p.json") && err(&o).contains("overall_score"),
+        "{}",
+        err(&o)
+    );
+    // A missing axis, a non-numeric axis and a non-numeric overall are each input errors.
+    for (body, key) in [
+        (
+            r#"{"overall_score":70,"axis_scores":{}}"#,
+            "scientific_depth",
+        ),
+        (
+            r#"{"overall_score":70,"axis_scores":{"scientific_depth":{"score":"high"}}}"#,
+            "scientific_depth",
+        ),
+        (r#"{"overall_score":"70"}"#, "overall_score"),
+    ] {
+        write(&c, body);
+        let o = po(&["score-delta", "--prev", s(&ok), "--curr", s(&c)]);
+        assert_eq!(code(&o), 3, "{body}");
+        assert!(
+            err(&o).contains("c.json") && err(&o).contains(key),
+            "{}",
+            err(&o)
+        );
+    }
+}
+
+#[test]
+fn score_delta_derives_the_plateau_streak_from_the_worklog() {
+    let d = tempfile::tempdir().unwrap();
+    let (wl, prev, curr) = (
+        d.path().join("worklog.json"),
+        d.path().join("prev.json"),
+        d.path().join("curr.json"),
+    );
+    // Baseline 60, then two accepted gains under 1.0, with a revert in between.
+    write(
+        &wl,
+        r#"{"iterations":[
+        {"iter":0,"decision":"ACCEPT_IMPROVED","score":{"overall_score":60.0}},
+        {"iter":1,"decision":"ACCEPT_IMPROVED","score":{"overall_score":60.4}},
+        {"iter":2,"decision":"REVERT_OVERALL_DECREASED","score":{"overall_score":50.0}},
+        {"iter":3,"decision":"ACCEPT_IMPROVED","score":{"overall_score":60.9}}]}"#,
+    );
+    write(&prev, &score_doc(60.9));
+    write(&curr, &score_doc(61.2));
+    let o = po(&[
+        "score-delta",
+        "--prev",
+        s(&prev),
+        "--curr",
+        s(&curr),
+        "--worklog",
+        s(&wl),
+    ]);
+    assert_eq!(code(&o), 4, "{}{}", out(&o), err(&o));
+    assert!(out(&o).contains("\"decision\": \"HALT_PLATEAU\""));
+    assert!(out(&o).contains("\"consecutive_small\": 3"));
+    // A big gain in the worklog resets the streak.
+    write(&curr, &score_doc(70.0));
+    let o = po(&[
+        "score-delta",
+        "--prev",
+        s(&prev),
+        "--curr",
+        s(&curr),
+        "--worklog",
+        s(&wl),
+    ]);
+    assert_eq!(code(&o), 0, "{}", out(&o));
+    // The explicit flag still works, and an absent worklog counts as empty.
+    write(&curr, &score_doc(61.2));
+    let o = po(&[
+        "score-delta",
+        "--prev",
+        s(&prev),
+        "--curr",
+        s(&curr),
+        "--consecutive-small",
+        "2",
+    ]);
+    assert_eq!(code(&o), 4);
+    let o = po(&[
+        "score-delta",
+        "--prev",
+        s(&prev),
+        "--curr",
+        s(&curr),
+        "--worklog",
+        s(&d.path().join("none.json")),
+    ]);
+    assert_eq!(code(&o), 0);
+    // Both at once is a usage error.
+    let o = po(&[
+        "score-delta",
+        "--prev",
+        s(&prev),
+        "--curr",
+        s(&curr),
+        "--worklog",
+        s(&wl),
+        "--consecutive-small",
+        "1",
+    ]);
+    assert_eq!(code(&o), 64);
+}
+
+#[test]
+fn concession_guard_fails_closed_on_the_reviewers_da_fixture() {
+    let d = tempfile::tempdir().unwrap();
+    let log = d.path().join("da.json");
+    for (body, needle) in [
+        // missing severity (the key is misnamed)
+        (
+            r#"{"rounds":[{"round":1,"findings":[{"id":"c","Severity":"critical"}]}]}"#,
+            "severity",
+        ),
+        // string round
+        (r#"{"rounds":[{"round":"1","findings":[]}]}"#, "round"),
+        // missing round
+        (r#"{"rounds":[{"findings":[]}]}"#, "round"),
+        // unknown severity
+        (
+            r#"{"rounds":[{"round":1,"findings":[{"id":"c","severity":"fatal"}]}]}"#,
+            "severity",
+        ),
+    ] {
+        write(&log, body);
+        let o = po(&["concession-guard", "--log", s(&log)]);
+        assert_eq!(code(&o), 3, "{body}: {}", out(&o));
+        assert!(err(&o).contains(needle), "{}", err(&o));
+    }
+    // Upper-case severities are accepted and a critical still blocks.
+    write(
+        &log,
+        r#"{"rounds":[{"round":1,"findings":[{"id":"c","severity":"CRITICAL","attack":"x"}]}]}"#,
+    );
+    assert_eq!(code(&po(&["concession-guard", "--log", s(&log)])), 1);
+    // Two concessions in one round: the second is rejected.
+    write(
+        &log,
+        r#"{"rounds":[{"round":1,"findings":[
+        {"id":"a","severity":"major","conceded":true,"rebuttal_score":5},
+        {"id":"b","severity":"major","conceded":true,"rebuttal_score":5}]}]}"#,
+    );
+    let o = po(&["concession-guard", "--log", s(&log)]);
+    assert_eq!(code(&o), 2, "{}", out(&o));
+}
+
+#[test]
+fn worklog_rejects_a_score_without_a_numeric_overall() {
+    let d = tempfile::tempdir().unwrap();
+    let (wl, sc) = (d.path().join("worklog.json"), d.path().join("score.json"));
+    write(&sc, r#"{"overall":61.5}"#);
+    let o = po(&[
+        "worklog",
+        "--worklog",
+        s(&wl),
+        "--iter",
+        "0",
+        "--score",
+        s(&sc),
+        "--decision",
+        "ACCEPT_IMPROVED",
+    ]);
+    assert_eq!(code(&o), 3, "{}", err(&o));
+    assert!(err(&o).contains("score.json") && err(&o).contains("overall_score"));
+    assert!(!wl.exists(), "nothing is written on an input error");
 }
 
 #[test]
@@ -282,7 +493,7 @@ fn claim_evidence_log_and_ledger_modes() {
     ]);
     assert_eq!(code(&o), 1);
     assert!(out(&o).contains("needs evidence: 1"));
-    // Exactly one of --log / --ledger.
+    // Exactly one of --log / --ledger (a usage error, exit 64).
     assert_eq!(
         code(&po(&[
             "claim-evidence",
@@ -291,7 +502,7 @@ fn claim_evidence_log_and_ledger_modes() {
             "--out",
             s(&rep)
         ])),
-        2
+        64
     );
 }
 
@@ -459,10 +670,12 @@ fn validate_outline_exit_codes() {
 fn score_trajectory_and_critique_memory() {
     let d = tempfile::tempdir().unwrap();
     for (i, v) in [(0, 50.0), (1, 60.0)] {
-        let body: String = format!(
-            "{{\"scientific_depth\":{v},\"technical_execution\":{v},\"logical_flow\":{v},\"writing_clarity\":{v},\"evidence_presentation\":{v},\"academic_style\":{v}}}"
+        // iter0 carries score.json, iter1 only review.json (both use the score schema).
+        let name = if i == 0 { "score.json" } else { "review.json" };
+        write(
+            &d.path().join(format!("scores/iter{i}/{name}")),
+            &score_doc(v),
         );
-        write(&d.path().join(format!("scores/iter{i}/scores.json")), &body);
     }
     let report = d.path().join("traj.json");
     let o = po(&[
@@ -537,4 +750,117 @@ fn consistency_and_citation_coverage() {
         ])),
         0
     );
+}
+
+#[test]
+fn score_trajectory_fails_closed_and_ignores_the_old_file_name() {
+    let d = tempfile::tempdir().unwrap();
+    let dir = d.path().join("scores");
+    write(&dir.join("iter0/score.json"), &score_doc(50.0));
+    write(&dir.join("iter1/score.json"), r#"{"overall_score":60}"#);
+    let o = po(&["score-trajectory", "--scores-dir", s(&dir)]);
+    assert_eq!(code(&o), 3, "{}{}", out(&o), err(&o));
+    assert!(
+        err(&o).contains("iter1") && err(&o).contains("scientific_depth"),
+        "{}",
+        err(&o)
+    );
+    // score.json wins over review.json when both exist.
+    write(&dir.join("iter1/score.json"), &score_doc(60.0));
+    write(&dir.join("iter1/review.json"), r#"{"nonsense":true}"#);
+    assert_eq!(code(&po(&["score-trajectory", "--scores-dir", s(&dir)])), 0);
+    // scores.json is not a documented name.
+    let e = d.path().join("empty");
+    write(&e.join("iter0/scores.json"), &score_doc(50.0));
+    assert_eq!(code(&po(&["score-trajectory", "--scores-dir", s(&e)])), 1);
+    let h = po(&["score-trajectory", "--help"]);
+    assert!(out(&h).contains("score.json") && out(&h).contains("review.json"));
+}
+
+#[test]
+fn preflight_flags_paths_that_escape_the_source_directory() {
+    let d = tempfile::tempdir().unwrap();
+    let src = d.path().join("src");
+    write(
+        &src.join("main.tex"),
+        "\\documentclass{article}\n\\usepackage{graphicx}\n\\begin{document}\n\\begin{abstract}\nShort.\n\\end{abstract}\n\\cite{a}\\includegraphics{../fig}\n\\bibliography{../refs}\n\\end{document}\n",
+    );
+    write(&d.path().join("fig.pdf"), "%PDF");
+    write(&d.path().join("refs.bib"), "@article{a,}\n");
+    let o = po(&["arxiv-preflight", "--source", s(&src), "--main", "main.tex"]);
+    assert_eq!(code(&o), 2, "{}", out(&o));
+    let text = out(&o);
+    assert!(text.matches("path-escape").count() >= 2, "{text}");
+}
+
+#[test]
+fn preflight_does_not_mistake_natbib_setup_for_citations() {
+    let d = tempfile::tempdir().unwrap();
+    write(
+        &d.path().join("main.tex"),
+        "\\documentclass{article}\n\\usepackage{natbib}\n\\setcitestyle{numbers,square}\n\\begin{document}\n\\begin{abstract}\nShort.\n\\end{abstract}\nSee \\citep{a}.\n\\bibliographystyle{plainnat}\n\\bibliography{refs}\n\\end{document}\n",
+    );
+    write(
+        &d.path().join("main.bbl"),
+        "\\begin{thebibliography}{1}\n\\bibitem[A]{a} A.\n\\end{thebibliography}\n",
+    );
+    let o = po(&[
+        "arxiv-preflight",
+        "--source",
+        s(d.path()),
+        "--main",
+        "main.tex",
+    ]);
+    assert!(!out(&o).contains("bbl-key-missing"), "{}", out(&o));
+}
+
+#[test]
+fn documented_loop_reaches_halt_plateau_with_the_worklog_alone() {
+    // The loop in refinement.md: log iter0 as the baseline, then call score-delta
+    // and `worklog` for iterations 1 to 3, each gaining less than 1.0.
+    let d = tempfile::tempdir().unwrap();
+    let wl = d.path().join("refinement/worklog.json");
+    let it = |n: usize| d.path().join(format!("refinement/iter{n}/score.json"));
+    let scores = [60.0, 60.4, 60.8, 61.2];
+    for (n, v) in scores.iter().enumerate() {
+        write(&it(n), &score_doc(*v));
+    }
+    let append = |n: usize, decision: &str| {
+        let o = po(&[
+            "worklog",
+            "--worklog",
+            s(&wl),
+            "--iter",
+            &n.to_string(),
+            "--score",
+            s(&it(n)),
+            "--decision",
+            decision,
+        ]);
+        assert_eq!(code(&o), 0, "{}", err(&o));
+    };
+    append(0, "ACCEPT_BASELINE");
+    for (n, want) in [(1, 0), (2, 0), (3, 4)] {
+        let o = po(&[
+            "score-delta",
+            "--prev",
+            s(&it(n - 1)),
+            "--curr",
+            s(&it(n)),
+            "--worklog",
+            s(&wl),
+        ]);
+        assert_eq!(code(&o), want, "iter {n}: {}", out(&o));
+        append(
+            n,
+            if want == 4 {
+                "HALT_PLATEAU"
+            } else {
+                "ACCEPT_IMPROVED"
+            },
+        );
+    }
+    let v: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&wl).unwrap()).unwrap();
+    assert_eq!(v["best_iter"], 3);
 }

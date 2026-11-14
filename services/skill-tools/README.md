@@ -7,7 +7,8 @@ self-contained Cargo workspace.
 
 `skill-tools` holds the Rust ports of the agentbox skill helper scripts:
 UI/UX Pro Max BM25 search and design-system generation, Wardley Map generation,
-analysis and heuristics, and the docs-alignment validators.
+analysis and heuristics, the docs-alignment validators, and the paper-orchestra
+helpers.
 
 ### Binaries
 
@@ -21,6 +22,7 @@ analysis and heuristics, and the docs-alignment validators.
 | `docs-check-mermaid` | Mermaid diagram syntax validation. |
 | `docs-detect-ascii` | Finds ASCII diagrams that should be Mermaid. |
 | `docs-generate-report` | Renders the alignment report. |
+| `paper-orchestra` | Deterministic helpers for the paper-orchestra skill: workspace, outline, claim-evidence, citation, refinement-loop and arXiv preflight gates (17 subcommands; usage errors exit 64). |
 
 ### Usage
 

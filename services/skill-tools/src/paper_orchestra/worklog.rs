@@ -14,6 +14,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use super::json_util::truthy;
+use super::scoring::overall_score_of;
 
 /// One iteration entry.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -67,7 +68,23 @@ pub fn is_accepted(decision: &str) -> bool {
 }
 
 /// Appends an entry and recomputes `best_iter`.
-pub fn append(wl: &mut Worklog, entry: Entry, halted_because: Option<&str>) {
+///
+/// # Errors
+///
+/// A message when an accepted entry carries a score without a numeric
+/// `overall_score`; the worklog is left with the entry appended only on success.
+pub fn append(wl: &mut Worklog, entry: Entry, halted_because: Option<&str>) -> Result<(), String> {
+    let mut staged = wl.clone();
+    append_unchecked(&mut staged, entry, halted_because)?;
+    *wl = staged;
+    Ok(())
+}
+
+fn append_unchecked(
+    wl: &mut Worklog,
+    entry: Entry,
+    halted_because: Option<&str>,
+) -> Result<(), String> {
     wl.iterations
         .push(serde_json::to_value(entry).expect("entry serialises"));
     if let Some(h) = halted_because {
@@ -85,11 +102,9 @@ pub fn append(wl: &mut Worklog, entry: Entry, halted_because: Option<&str>) {
         if !accepted {
             continue;
         }
-        let overall = score
-            .get("overall_score")
-            .and_then(Value::as_f64)
-            .unwrap_or(0.0);
         let iter = it.get("iter").and_then(Value::as_i64).unwrap_or(-1);
+        let overall = overall_score_of(score)
+            .map_err(|e| format!("iteration {iter}: score has no usable overall_score: {e}"))?;
         // Strictly greater: the first maximal entry wins, as Python's max() does.
         if best.is_none_or(|(b, _)| overall > b) {
             best = Some((overall, iter));
@@ -98,6 +113,56 @@ pub fn append(wl: &mut Worklog, entry: Entry, halted_because: Option<&str>) {
     if let Some((_, i)) = best {
         wl.best_iter = Some(i);
     }
+    Ok(())
+}
+
+/// Counts the trailing accepted iterations whose gain over the previous
+/// accepted iteration is below `threshold`: the `HALT_PLATEAU` streak.
+///
+/// Reverted iterations are skipped (they never replace the accepted draft). The
+/// first accepted iteration is a baseline with no gain, so it ends the count.
+///
+/// ```
+/// use skill_tools::paper_orchestra::worklog::{small_gain_streak, Worklog};
+/// let wl: Worklog = serde_json::from_value(serde_json::json!({"iterations": [
+///     {"iter": 0, "decision": "ACCEPT_IMPROVED", "score": {"overall_score": 60.0}},
+///     {"iter": 1, "decision": "ACCEPT_IMPROVED", "score": {"overall_score": 60.5}},
+///     {"iter": 2, "decision": "REVERT_OVERALL_DECREASED", "score": {"overall_score": 40.0}},
+///     {"iter": 3, "decision": "ACCEPT_TIED_NON_NEGATIVE", "score": {"overall_score": 60.5}}
+/// ]})).unwrap();
+/// assert_eq!(small_gain_streak(&wl, 1.0).unwrap(), 2);
+/// ```
+///
+/// # Errors
+///
+/// A message when an accepted iteration lacks a numeric `score.overall_score`.
+pub fn small_gain_streak(wl: &Worklog, threshold: f64) -> Result<i64, String> {
+    let mut scores = Vec::new();
+    for it in &wl.iterations {
+        if !it
+            .get("decision")
+            .and_then(Value::as_str)
+            .is_some_and(is_accepted)
+        {
+            continue;
+        }
+        let iter = it.get("iter").and_then(Value::as_i64).unwrap_or(-1);
+        let score = it
+            .get("score")
+            .filter(|s| truthy(s))
+            .ok_or_else(|| format!("accepted iteration {iter} has no score"))?;
+        scores
+            .push(overall_score_of(score).map_err(|e| {
+                format!("iteration {iter}: score has no usable overall_score: {e}")
+            })?);
+    }
+    Ok(scores
+        .windows(2)
+        .rev()
+        .take_while(|w| w[1] - w[0] < threshold)
+        .count()
+        .try_into()
+        .unwrap_or(i64::MAX))
 }
 
 /// Builds an entry stamped with the current UTC time.
@@ -147,10 +212,10 @@ mod tests {
     #[test]
     fn appends_and_tracks_best_with_first_tie_winning() {
         let mut wl = Worklog::default();
-        append(&mut wl, e(0, "ACCEPT_IMPROVED", 60.0), None);
-        append(&mut wl, e(1, "REVERT_OVERALL_DECREASED", 90.0), None);
-        append(&mut wl, e(2, "ACCEPT_IMPROVED", 70.0), None);
-        append(&mut wl, e(3, "ACCEPT_TIED_NON_NEGATIVE", 70.0), None);
+        append(&mut wl, e(0, "ACCEPT_IMPROVED", 60.0), None).unwrap();
+        append(&mut wl, e(1, "REVERT_OVERALL_DECREASED", 90.0), None).unwrap();
+        append(&mut wl, e(2, "ACCEPT_IMPROVED", 70.0), None).unwrap();
+        append(&mut wl, e(3, "ACCEPT_TIED_NON_NEGATIVE", 70.0), None).unwrap();
         assert_eq!(wl.iterations.len(), 4);
         assert_eq!(wl.best_iter, Some(2));
     }
@@ -158,8 +223,8 @@ mod tests {
     #[test]
     fn halt_decisions_count_as_accepted() {
         let mut wl = Worklog::default();
-        append(&mut wl, e(0, "ACCEPT_IMPROVED", 60.0), None);
-        append(&mut wl, e(1, "HALT_TARGET_MET", 81.0), Some("target met"));
+        append(&mut wl, e(0, "ACCEPT_IMPROVED", 60.0), None).unwrap();
+        append(&mut wl, e(1, "HALT_TARGET_MET", 81.0), Some("target met")).unwrap();
         assert_eq!(wl.best_iter, Some(1));
         assert_eq!(wl.halted_because.as_deref(), Some("target met"));
     }
@@ -174,9 +239,41 @@ mod tests {
             &mut wl,
             new_entry(0, "ACCEPT_IMPROVED", Value::Null, Value::Null, Value::Null),
             None,
-        );
+        )
+        .unwrap();
         assert_eq!(wl.best_iter, None);
         assert_eq!(wl.extra["note"], "keep");
+    }
+
+    #[test]
+    fn an_accepted_score_without_overall_is_refused_and_nothing_is_appended() {
+        let mut wl = Worklog::default();
+        let bad = new_entry(
+            0,
+            "ACCEPT_IMPROVED",
+            Value::Null,
+            json!({"overall": 70}),
+            Value::Null,
+        );
+        assert!(append(&mut wl, bad, None).is_err());
+        assert!(wl.iterations.is_empty());
+    }
+
+    #[test]
+    fn streak_counts_trailing_small_accepted_gains() {
+        let mut wl = Worklog::default();
+        for (i, d, s) in [
+            (0, "ACCEPT_IMPROVED", 60.0),
+            (1, "ACCEPT_IMPROVED", 65.0),
+            (2, "ACCEPT_IMPROVED", 65.4),
+            (3, "REVERT_OVERALL_DECREASED", 20.0),
+            (4, "ACCEPT_TIED_NON_NEGATIVE", 65.4),
+        ] {
+            append(&mut wl, e(i, d, s), None).unwrap();
+        }
+        assert_eq!(small_gain_streak(&wl, 1.0).unwrap(), 2);
+        assert_eq!(small_gain_streak(&wl, 0.1).unwrap(), 1);
+        assert_eq!(small_gain_streak(&Worklog::default(), 1.0).unwrap(), 0);
     }
 
     #[test]

@@ -8,11 +8,12 @@
 //! | engine (pdfLaTeX, XeLaTeX/LuaLaTeX), bibliography tool, `\pdfoutput=1` present or absent | INFO |
 //! | `.bbl` named exactly `<main>.bbl` **or** every referenced `.bib`; a `.bbl` with another stem | ERROR |
 //! | every cited key present as `\bibitem`/`\entry` when a `.bbl` is present | ERROR (per missing key) |
-//! | biblatex with a `.bbl`: must match arXiv's Biber (TeX Live 2025: bbl format 3.3) | WARN |
+//! | biblatex with a `.bbl`: must match arXiv's Biber (TeX Live 2025: bbl format 3.3) | INFO when the header says 3.3; WARN when it differs or cannot be read |
 //! | build products beside the main file, unused figure files, `\today` in `\date{}`, non-ASCII `\title` | WARN |
 //! | `-eps-converted-to.pdf` files | ERROR |
 //! | honorifics in `\author` | INFO |
 //! | no `\write18`, `--shell-escape` hints, `minted`, or absolute paths in `\input`, `\include`, `\includegraphics`, `\bibliography`, `\addbibresource` | ERROR |
+//! | `\includegraphics`, `\bibliography` or `\addbibresource` path that leaves `--source` (`../fig`, or a symlink out) | ERROR |
 //! | every `\includegraphics` target resolves (`.pdf` `.png` `.jpg` `.jpeg` tried) and none is `.eps`/`.ps`/`.tif` | ERROR |
 //! | every `\input`/`\include` target exists | ERROR |
 //! | abstract (following an `\input` inside it) rendered to plain text within the limit | ERROR |
@@ -47,6 +48,10 @@ use super::tex::{matching_brace, strip_comment, Paper};
 pub const DEFAULT_ABSTRACT_MAX: usize = 1920;
 /// Overfull boxes wider than this many points are reported.
 pub const OVERFULL_WARN_PT: f64 = 5.0;
+
+/// The `.bbl` format version of arXiv's Biber (TeX Live 2025). A biblatex
+/// `.bbl` with exactly this header is reported as INFO; any other is a WARN.
+pub const BBL_FORMAT_VERSION: &str = "3.3";
 
 fn re(p: &str) -> Regex {
     Regex::new(p).unwrap_or_else(|e| panic!("static regex {p:?}: {e}"))
@@ -555,6 +560,37 @@ fn is_absolute_path(p: &str) -> bool {
             && p.as_bytes().first().is_some_and(u8::is_ascii_alphabetic)
 }
 
+/// Lexically normalises an absolute path: `.` is dropped and `..` pops a
+/// component, never going above the root.
+fn normalise(p: &Path) -> PathBuf {
+    use std::path::Component;
+    let mut out = PathBuf::new();
+    for comp in p.components() {
+        match comp {
+            Component::CurDir => {}
+            Component::ParentDir => {
+                out.pop();
+            }
+            other => out.push(other.as_os_str()),
+        }
+    }
+    out
+}
+
+/// True when `candidate` (a path built under the source directory) leaves
+/// `source`, either lexically (`../x`) or through a symlink.
+fn escapes_source(candidate: &Path, source: &Path) -> bool {
+    let abs = |p: &Path| std::path::absolute(p).unwrap_or_else(|_| p.to_path_buf());
+    let root = normalise(&abs(source));
+    if !normalise(&abs(candidate)).starts_with(&root) {
+        return true;
+    }
+    match (candidate.canonicalize(), source.canonicalize()) {
+        (Ok(c), Ok(s)) => !c.starts_with(s),
+        _ => false,
+    }
+}
+
 const OK_FIG_EXT: [&str; 4] = ["pdf", "png", "jpg", "jpeg"];
 const BAD_FIG_EXT: [&str; 4] = ["eps", "ps", "tif", "tiff"];
 const UNSUPPORTED_FIG_EXT: [&str; 4] = ["svg", "gif", "bmp", "webp"];
@@ -665,14 +701,24 @@ pub fn run(opts: &Options) -> Result<Report, String> {
             .file_name()
             .map_or_else(String::new, |n| n.to_string_lossy().into_owned());
         let mut bibs_missing = Vec::new();
-        for (kind, list, _) in &uses {
+        for (kind, list, off) in &uses {
             for b in list.split(',').map(str::trim).filter(|b| !b.is_empty()) {
                 let name = if kind == "bibliography" && !b.ends_with(".bib") {
                     format!("{b}.bib")
                 } else {
                     b.to_string()
                 };
-                if !main_dir.join(&name).is_file() {
+                let target = main_dir.join(&name);
+                if escapes_source(&target, &opts.source) {
+                    c.add(
+                        Severity::Error,
+                        "path-escape",
+                        format!(
+                            "\\{kind}{{{b}}} leaves the source directory; copy the file into it"
+                        ),
+                        Some(paper.locate_display(*off)),
+                    );
+                } else if !target.is_file() {
                     bibs_missing.push(name);
                 }
             }
@@ -733,11 +779,16 @@ pub fn run(opts: &Options) -> Result<Report, String> {
                     || "none found in the header".to_string(),
                     |m| m[1].to_string(),
                 );
+                let severity = if found == BBL_FORMAT_VERSION {
+                    Severity::Info
+                } else {
+                    Severity::Warn
+                };
                 c.add(
-                    Severity::Warn,
+                    severity,
                     "bbl-biblatex-version",
                     format!(
-                        "the .bbl must match arXiv's biblatex/Biber (TeX Live 2025: biblatex 3.20, Biber 2.20, bbl format 3.3); bbl format version: {found}"
+                        "the .bbl must match arXiv's biblatex/Biber (TeX Live 2025: biblatex 3.20, Biber 2.20, bbl format {BBL_FORMAT_VERSION}); bbl format version: {found}"
                     ),
                     None,
                 );
@@ -934,6 +985,19 @@ pub fn run(opts: &Options) -> Result<Report, String> {
             .iter()
             .flat_map(|d| cands.iter().map(move |cand| d.join(cand)))
             .find(|p| p.is_file());
+        let escaped = match &hit {
+            Some(h) => escapes_source(h, &opts.source),
+            None => escapes_source(&main_dir.join(&p), &opts.source),
+        };
+        if escaped {
+            c.add(
+                Severity::Error,
+                "path-escape",
+                format!("{p} leaves the source directory; copy the figure into it"),
+                loc,
+            );
+            continue;
+        }
         if let Some(h) = &hit {
             used_figs.insert(h.canonicalize().unwrap_or_else(|_| h.clone()));
         }
@@ -1415,6 +1479,98 @@ mod tests {
         assert_eq!(run(&opts(clean.path())).unwrap().exit_code(), 0);
     }
 
+    fn biblatex_tree(bbl_header: &str) -> tempfile::TempDir {
+        let d = tempfile::tempdir().unwrap();
+        write(d.path(), "main.tex", "\\documentclass{article}\n\\usepackage[backend=biber]{biblatex}\n\\addbibresource{refs.bib}\n\\begin{document}\n\\begin{abstract}\nShort.\n\\end{abstract}\n\\autocite{a}\n\\printbibliography\n\\end{document}\n");
+        write(d.path(), "refs.bib", "@article{a,}\n");
+        write(
+            d.path(),
+            "main.bbl",
+            &format!("{bbl_header}\\entry{{a}}{{article}}{{}}\n"),
+        );
+        d
+    }
+
+    #[test]
+    fn biblatex_format_version_is_info_when_exact_and_warn_otherwise() {
+        let sev = |header: &str| {
+            let d = biblatex_tree(header);
+            let r = run(&opts(d.path())).unwrap();
+            let f = r
+                .findings
+                .iter()
+                .find(|f| f.check == "bbl-biblatex-version")
+                .unwrap();
+            (f.severity, r.exit_code())
+        };
+        assert_eq!(
+            sev("% $ biblatex bbl format version 3.3 $\n"),
+            (Severity::Info, 0)
+        );
+        assert_eq!(
+            sev("% $ biblatex bbl format version 3.2 $\n"),
+            (Severity::Warn, 1)
+        );
+        assert_eq!(
+            sev("% $ biblatex bbl format version 3.30 $\n"),
+            (Severity::Warn, 1)
+        );
+        assert_eq!(sev(""), (Severity::Warn, 1), "unreadable header");
+    }
+
+    #[test]
+    fn paths_leaving_the_source_directory_are_errors() {
+        let d = tempfile::tempdir().unwrap();
+        let src = d.path().join("src");
+        write(&src, "x", "");
+        write(&src, "main.tex", "\\documentclass{article}\n\\usepackage{graphicx}\n\\usepackage{biblatex}\n\\addbibresource{../a.bib}\n\\begin{document}\n\\begin{abstract}\nShort.\n\\end{abstract}\n\\cite{a}\\includegraphics{../fig}\\includegraphics{sub/../../fig2}\n\\bibliography{../refs}\n\\end{document}\n");
+        for f in ["fig.pdf", "fig2.pdf"] {
+            write(d.path(), f, "%PDF");
+        }
+        write(d.path(), "refs.bib", "@article{a,}\n");
+        write(d.path(), "a.bib", "@article{a,}\n");
+        let mut o = opts(&src);
+        o.source = src.clone();
+        let r = run(&o).unwrap();
+        let n = r
+            .findings
+            .iter()
+            .filter(|f| f.check == "path-escape")
+            .count();
+        assert_eq!(n, 4, "{}", r.render());
+        assert_eq!(r.exit_code(), 2);
+        // Nothing double-reports: an escaping target is not also "missing".
+        assert!(!checks(&r).contains(&"figure-missing"));
+        assert!(!checks(&r).contains(&"bib-missing"));
+    }
+
+    #[test]
+    fn paths_inside_the_source_directory_may_contain_dotdot() {
+        let d = tempfile::tempdir().unwrap();
+        write(
+            d.path(),
+            "main.tex",
+            &GOOD_MAIN.replace("fig/one", "fig/../fig/one"),
+        );
+        write(d.path(), "main.bbl", GOOD_BBL);
+        write(d.path(), "fig/one.pdf", "%PDF");
+        let r = run(&opts(d.path())).unwrap();
+        assert!(!checks(&r).contains(&"path-escape"), "{}", r.render());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_symlink_out_of_the_source_directory_is_an_escape() {
+        let d = tempfile::tempdir().unwrap();
+        let src = d.path().join("src");
+        write(&src, "main.tex", GOOD_MAIN);
+        write(&src, "main.bbl", GOOD_BBL);
+        write(d.path(), "outside/one.pdf", "%PDF");
+        std::os::unix::fs::symlink(d.path().join("outside"), src.join("fig")).unwrap();
+        let r = run(&opts(&src)).unwrap();
+        assert!(checks(&r).contains(&"path-escape"), "{}", r.render());
+    }
+
     #[test]
     fn xelatex_with_biblatex_is_detected_and_checked_alike() {
         let d = tempfile::tempdir().unwrap();
@@ -1432,6 +1588,11 @@ mod tests {
         assert!(msgs.contains(&"engine: XeLaTeX"), "{msgs:?}");
         assert!(msgs.contains(&"bibliography tool: biblatex (biber backend)"));
         assert!(msgs.iter().any(|m| m.contains("bbl format version: 3.3")));
+        let v = r
+            .findings
+            .iter()
+            .find(|f| f.check == "bbl-biblatex-version");
+        assert_eq!(v.map(|f| f.severity), Some(Severity::Info));
         assert!(
             checks(&r).contains(&"figure-format"),
             "EPS is an error for every engine"

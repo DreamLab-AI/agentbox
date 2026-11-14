@@ -66,7 +66,10 @@ One reviewer call with [reviewer-rubric.md](reviewer-rubric.md), given the
 built text (or the PDF), the reverse outline, the gate findings and the
 author-decisions list. One devil's-advocate call
 ([refinement.md](refinement.md#devils-advocate)). Save `iter0/review.json`,
-`iter0/score.json`, `da_concessions.json`.
+`iter0/score.json`, `da_concessions.json`. Scores need `overall_score` and
+`axis_scores.<axis>.score` for every axis; `score-delta` and `score-trajectory`
+refuse a file without them (exit 3). Concession severities are `critical`,
+`major` or `minor` in any case, and `round` is an integer.
 
 For a long paper (over about 30 pages) give the reviewer the full text; do not
 summarise it first. A reviewer scoring a summary scores the summariser.
@@ -92,7 +95,7 @@ revision produced the score.
 
 - Baseline identity: commit, page count, text hash.
 - Gate findings on the baseline, then on the candidate.
-- Score trajectory (`paper-orchestra score-trajectory`) and each decision.
+- Score trajectory (`paper-orchestra score-trajectory --scores-dir refinement`, reading `iter<N>/score.json`) and each decision.
 - Blind verdicts in both orders, and whether they agree.
 - A diff of the source, grouped by reviewer weakness addressed.
 - What the reviewer asked for that was declined, and why.

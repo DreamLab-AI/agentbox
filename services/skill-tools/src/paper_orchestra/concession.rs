@@ -6,8 +6,14 @@
 //!
 //! 1. A concession needs a rebuttal score of at least 4 (otherwise it is
 //!    *caving* and is rejected).
-//! 2. No consecutive concessions: a valid concession in round *n* rejects any
-//!    concession in round *n + 1*.
+//! 2. At most one concession in any two consecutive rounds: a valid concession
+//!    in round *n* rejects any further concession in round *n* and in round
+//!    *n + 1*.
+//!
+//! The log is validated strictly: every round needs an integer `round`, and
+//! every finding needs a `severity` of `critical`, `major` or `minor` (any
+//! letter case). A guard that guessed missing values could let a critical
+//! finding through, so anything else is an input error.
 //!
 //! A critical finding that is neither resolved nor validly conceded *blocks*
 //! acceptance of the refinement iteration.
@@ -89,8 +95,24 @@ impl GuardReport {
 
 const VALID_SEVERITY: [&str; 3] = ["critical", "major", "minor"];
 
-/// Validates the log shape (non-empty `rounds`, known severities, scores in
-/// 1–5) and returns the rounds.
+/// The lower-case severity of a finding.
+fn severity_of(f: &Value) -> Result<String, String> {
+    let id = f.get("id").and_then(Value::as_str).unwrap_or("?");
+    match f.get("severity") {
+        None | Some(Value::Null) => Err(format!(
+            "finding {id} has no `severity` (expected one of {VALID_SEVERITY:?}, any case)"
+        )),
+        Some(Value::String(s)) if VALID_SEVERITY.contains(&s.trim().to_lowercase().as_str()) => {
+            Ok(s.trim().to_lowercase())
+        }
+        Some(other) => Err(format!(
+            "finding {id} has invalid severity {other} (expected one of {VALID_SEVERITY:?}, any case)"
+        )),
+    }
+}
+
+/// Validates the log shape (non-empty `rounds`, integer round numbers, known
+/// severities, scores in 1–5) and returns the rounds.
 ///
 /// # Errors
 ///
@@ -104,6 +126,15 @@ pub fn validate_log(log: &Value) -> Result<&Vec<Value>, String> {
         if !r.is_object() {
             return Err("every round must be an object".into());
         }
+        match r.get("round") {
+            Some(Value::Number(n)) if n.is_i64() || n.is_u64() => {}
+            other => {
+                return Err(format!(
+                    "every round needs an integer `round`, found {}",
+                    other.map_or_else(|| "none".to_string(), ToString::to_string)
+                ))
+            }
+        }
         let findings = match r.get("findings") {
             None => continue,
             Some(Value::Array(a)) => a,
@@ -111,12 +142,7 @@ pub fn validate_log(log: &Value) -> Result<&Vec<Value>, String> {
         };
         for f in findings {
             let id = f.get("id").and_then(Value::as_str).unwrap_or("?");
-            let sev = f.get("severity").and_then(Value::as_str).unwrap_or("minor");
-            if !VALID_SEVERITY.contains(&sev) {
-                return Err(format!(
-                    "finding {id} has invalid severity '{sev}' (expected one of {VALID_SEVERITY:?})"
-                ));
-            }
+            severity_of(f)?;
             match f.get("rebuttal_score") {
                 None | Some(Value::Null) => {}
                 Some(Value::Number(n)) => {
@@ -136,7 +162,7 @@ pub fn validate_log(log: &Value) -> Result<&Vec<Value>, String> {
     Ok(rounds)
 }
 
-/// Applies the two rules to validated rounds.
+/// Applies the two rules to rounds accepted by [`validate_log`].
 #[must_use]
 pub fn analyse(rounds: &[Value]) -> GuardReport {
     let mut violations = Vec::new();
@@ -147,7 +173,6 @@ pub fn analyse(rounds: &[Value]) -> GuardReport {
     for r in rounds {
         let rnum = r.get("round").cloned().unwrap_or(Value::Null);
         let rint = rnum.as_i64();
-        let mut conceded_this_round = false;
         let empty = Vec::new();
         let findings = r
             .get("findings")
@@ -159,11 +184,7 @@ pub fn analyse(rounds: &[Value]) -> GuardReport {
                 .and_then(Value::as_str)
                 .unwrap_or("?")
                 .to_string();
-            let sev = f
-                .get("severity")
-                .and_then(Value::as_str)
-                .unwrap_or("minor")
-                .to_string();
+            let sev = severity_of(f).unwrap_or_default();
             let conceded = f.get("conceded").is_some_and(truthy);
             let resolved = f.get("resolved").is_some_and(truthy);
             let score = f.get("rebuttal_score").and_then(Value::as_f64);
@@ -185,20 +206,27 @@ pub fn analyse(rounds: &[Value]) -> GuardReport {
                         ),
                     });
                 } else if let Some((last, now)) =
-                    last_conceded.zip(rint).filter(|(l, n)| *n == l + 1)
+                    last_conceded.zip(rint).filter(|(l, n)| n.abs_diff(*l) <= 1)
                 {
+                    let detail = if last == now {
+                        format!(
+                            "a second concession in round {now}; rejected (max one per two rounds)"
+                        )
+                    } else {
+                        format!(
+                            "concession in round {now} immediately follows a concession in round \
+                             {last}; rejected (max one per two rounds)"
+                        )
+                    };
                     violations.push(Violation {
                         round: rnum.clone(),
                         id: id.clone(),
                         kind: "consecutive_concession",
-                        detail: format!(
-                            "concession in round {now} immediately follows a concession in round \
-                             {last}; rejected (max one per two rounds)"
-                        ),
+                        detail,
                     });
                 } else {
                     concession_valid = true;
-                    conceded_this_round = true;
+                    last_conceded = rint;
                     valid.push(ValidConcession {
                         round: rnum.clone(),
                         id: id.clone(),
@@ -217,9 +245,6 @@ pub fn analyse(rounds: &[Value]) -> GuardReport {
                         .to_string(),
                 });
             }
-        }
-        if conceded_this_round {
-            last_conceded = rint;
         }
     }
 
@@ -337,9 +362,75 @@ mod tests {
     }
 
     #[test]
+    fn severity_is_case_insensitive_and_a_critical_still_blocks() {
+        let r = run(json!({"rounds":[{"round":1,"findings":[
+            {"id":"F1","severity":"CRITICAL","attack":"x"},
+            {"id":"F2","severity":"Major"}]}]}));
+        assert_eq!((r.exit_code(), r.standing_criticals.len()), (1, 1));
+        let r = run(json!({"rounds":[{"round":1,"findings":[
+            {"id":"F1","severity":"Critical","rebuttal_score":5,"conceded":true}]}]}));
+        assert_eq!(r.valid_concessions[0].severity, "critical");
+    }
+
+    #[test]
+    fn at_most_one_concession_within_a_round() {
+        let r = run(json!({"rounds":[{"round":1,"findings":[
+            {"id":"A","severity":"major","rebuttal_score":5,"conceded":true},
+            {"id":"B","severity":"major","rebuttal_score":5,"conceded":true}]}]}));
+        assert_eq!(r.valid_concessions.len(), 1);
+        assert_eq!(r.violations.len(), 1);
+        assert_eq!(r.violations[0].id, "B");
+        assert!(r.violations[0]
+            .detail
+            .contains("second concession in round 1"));
+        assert_eq!(r.exit_code(), 2);
+    }
+
+    #[test]
+    fn missing_severity_and_non_integer_rounds_are_input_errors() {
+        let ok_f = json!([{"id":"F","severity":"minor"}]);
+        for (log, needle) in [
+            (
+                json!({"rounds":[{"round":1,"findings":[{"id":"F"}]}]}),
+                "no `severity`",
+            ),
+            (
+                json!({"rounds":[{"round":1,"findings":[{"id":"F","Severity":"critical"}]}]}),
+                "no `severity`",
+            ),
+            (
+                json!({"rounds":[{"round":1,"findings":[{"id":"F","severity":null}]}]}),
+                "no `severity`",
+            ),
+            (
+                json!({"rounds":[{"round":1,"findings":[{"id":"F","severity":3}]}]}),
+                "invalid severity",
+            ),
+            (
+                json!({"rounds":[{"round":"1","findings":ok_f}]}),
+                "integer `round`",
+            ),
+            (
+                json!({"rounds":[{"round":1.5,"findings":[]}]}),
+                "integer `round`",
+            ),
+            (json!({"rounds":[{"findings":[]}]}), "integer `round`"),
+        ] {
+            let e = validate_log(&log).unwrap_err();
+            assert!(e.contains(needle), "{log}: {e}");
+        }
+    }
+
+    #[test]
     fn schema_errors() {
         assert!(validate_log(&json!({"rounds":[]})).is_err());
-        assert!(validate_log(&json!({"rounds":[{"findings":[{"severity":"fatal"}]}]})).is_err());
-        assert!(validate_log(&json!({"rounds":[{"findings":[{"rebuttal_score":9}]}]})).is_err());
+        assert!(
+            validate_log(&json!({"rounds":[{"round":1,"findings":[{"severity":"fatal"}]}]}))
+                .is_err()
+        );
+        assert!(validate_log(
+            &json!({"rounds":[{"round":1,"findings":[{"severity":"minor","rebuttal_score":9}]}]})
+        )
+        .is_err());
     }
 }

@@ -1952,7 +1952,8 @@
         #   podcast-ingest  <- skills/podcast-{knowledge,bulk}-ingest (weekly cron)
         #   agentbox-mcp    <- the imagemagick / web-summary / gemini-url-context
         #                      Python MCP servers (one rmcp binary, 3 subcommands)
-        #   skill-tools     <- ui-ux-pro-max BM25, wardley-maps, docs-alignment
+        #   skill-tools     <- ui-ux-pro-max BM25, wardley-maps, docs-alignment,
+        #                      paper-orchestra (arXiv paper gates)
         #   explainer-tools <- the explainer skill's Node scripts; talks to the
         #                      Loom façade through the published loom-client crate
         # Each crate is a self-contained [workspace] on crates.io deps with

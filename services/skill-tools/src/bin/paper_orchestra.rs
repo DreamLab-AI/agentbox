@@ -2,6 +2,7 @@
 //!
 //! One binary, one subcommand per upstream script (see
 //! `skill_tools::paper_orchestra` for the mapping and exit-code conventions).
+//! Command-line usage errors exit 64 (`EX_USAGE`), which no gate uses.
 
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
@@ -17,7 +18,13 @@ use skill_tools::paper_orchestra::{
 
 /// Deterministic helpers for the paper-orchestra skill (arXiv preprints).
 #[derive(Parser, Debug)]
-#[command(name = "paper-orchestra", version, about)]
+#[command(
+    name = "paper-orchestra",
+    version,
+    about,
+    after_help = "Exit codes are per subcommand (see each --help). Command-line usage errors exit 64, \
+                  which no gate uses; input errors in score and concession files exit 3."
+)]
 struct Cli {
     #[command(subcommand)]
     cmd: Cmd,
@@ -149,6 +156,10 @@ enum Cmd {
         strict: bool,
     },
     /// Apply the accept/revert/halt rules to two score files. Exit 0/1/2/4/5, 3 on input error.
+    ///
+    /// Both files use the score schema: `overall_score` and
+    /// `axis_scores.AXIS.score` for all six axes. A missing or non-numeric
+    /// value is an input error (exit 3), never a zero.
     ScoreDelta {
         /// Score JSON of the previous accepted iteration.
         #[arg(long)]
@@ -163,8 +174,12 @@ enum Cmd {
         #[arg(long, default_value_t = 3)]
         plateau_streak: i64,
         /// Small-delta accepted iterations so far (kept by the calling loop).
-        #[arg(long, default_value_t = 0)]
+        #[arg(long, default_value_t = 0, conflicts_with = "worklog")]
         consecutive_small: i64,
+        /// Derive the streak from this worklog.json: the trailing accepted
+        /// iterations whose gain is below --plateau-threshold (absent file = 0).
+        #[arg(long)]
+        worklog: Option<PathBuf>,
         /// Score at or above which the paper is in the Accept band.
         #[arg(long, default_value_t = 80.0)]
         accept_threshold: f64,
@@ -194,7 +209,12 @@ enum Cmd {
         #[arg(long, default_value_t = 50.0)]
         major_min: f64,
     },
-    /// Track per-dimension deltas across iterN/scores.json. Exit 1 on regression or plateau.
+    /// Track per-dimension deltas across iterN/score.json. Exit 1 on regression or plateau, 3 on input error.
+    ///
+    /// Each iterN/ directory is read from score.json, or from review.json when
+    /// score.json is absent (both carry the score schema); directories with
+    /// neither are skipped. A file without numeric axis_scores.AXIS.score is
+    /// an input error.
     ScoreTrajectory {
         /// Directory holding iterN/ subdirectories.
         #[arg(long)]
@@ -302,17 +322,21 @@ fn load_paper(p: &Path) -> Result<Paper, String> {
     Ok(paper)
 }
 
-/// Exit code for a usage error of the subcommand named in `args`.
-fn usage_code(args: &[String]) -> u8 {
-    match args
-        .iter()
-        .skip(1)
-        .find(|a| !a.starts_with('-'))
-        .map(String::as_str)
-    {
-        Some("score-delta" | "concession-guard") => 3,
-        _ => 2,
-    }
+/// Exit code for a command-line usage error (`EX_USAGE`): distinct from every
+/// gate result, including the 2 that `arxiv-preflight` and others use.
+const EXIT_USAGE: u8 = 64;
+
+/// Reads a score document and checks the keys the loop depends on, so a typo in
+/// a key can never read as a zero.
+fn read_score(path: &Path, full: bool) -> Result<serde_json::Value, (i32, String)> {
+    let doc = read_json(path).map_err(fail(3))?;
+    let check = if full {
+        scoring::check_score_doc(&doc)
+    } else {
+        scoring::overall_score_of(&doc).map(|_| ())
+    };
+    check.map_err(|e| (3, format!("{}: {e}", path.display())))?;
+    Ok(doc)
 }
 
 fn main() -> ExitCode {
@@ -325,13 +349,13 @@ fn main() -> ExitCode {
         }
         default_hook(info);
     }));
-    let args: Vec<String> = std::env::args().collect();
     let cli = match Cli::try_parse() {
         Ok(c) => c,
         Err(e) => {
+            // --help and --version are not errors; everything else is usage.
             let ok = !e.use_stderr();
             let _ = e.print();
-            return ExitCode::from(if ok { 0 } else { usage_code(&args) });
+            return ExitCode::from(if ok { 0 } else { EXIT_USAGE });
         }
     };
     let code = match run(cli.cmd) {
@@ -676,13 +700,22 @@ fn run(cmd: Cmd) -> Outcome {
             plateau_threshold,
             plateau_streak,
             consecutive_small,
+            worklog: worklog_path,
             accept_threshold,
             no_target_halt,
         } => {
-            let (p, c) = (
-                read_json(&prev).map_err(fail(3))?,
-                read_json(&curr).map_err(fail(3))?,
-            );
+            let (p, c) = (read_score(&prev, true)?, read_score(&curr, true)?);
+            let consecutive_small = match worklog_path {
+                None => consecutive_small,
+                Some(w) if !w.exists() => 0,
+                Some(w) => {
+                    let wl: worklog::Worklog =
+                        serde_json::from_value(read_json(&w).map_err(fail(3))?)
+                            .map_err(|e| (3, format!("{} is not a worklog: {e}", w.display())))?;
+                    worklog::small_gain_streak(&wl, plateau_threshold)
+                        .map_err(|e| (3, format!("{}: {e}", w.display())))?
+                }
+            };
             let o = scoring::score_delta(
                 &p,
                 &c,
@@ -727,15 +760,19 @@ fn run(cmd: Cmd) -> Outcome {
             regression_threshold,
             report_path,
         } => {
-            let (entries, warns) = scoring::load_scores(&scores_dir).map_err(fail(1))?;
-            warns.iter().for_each(|w| eprintln!("[WARN] {w}"));
-            if entries.is_empty() {
-                return Err((1, "No iterN/scores.json files found in scores-dir.".into()));
-            }
-            let o = scoring::analyse_trajectory(&entries, regression_threshold).ok_or((
-                1,
-                "No iterN/scores.json files found in scores-dir.".to_string(),
-            ))?;
+            let entries = scoring::load_scores(&scores_dir).map_err(|e| {
+                let missing = !scores_dir.is_dir();
+                (if missing { 1 } else { 3 }, e)
+            })?;
+            let none = || {
+                (
+                    1,
+                    "No iterN/score.json (or review.json) files found in scores-dir.".to_string(),
+                )
+            };
+            let o = scoring::analyse_trajectory(&entries, regression_threshold)
+                .map_err(fail(3))?
+                .ok_or_else(none)?;
             print!("{}", o.text);
             if let Some(rp) = report_path {
                 write_json(&rp, &o.report).map_err(fail(1))?;
@@ -771,14 +808,19 @@ fn run(cmd: Cmd) -> Outcome {
             } else {
                 worklog::Worklog::default()
             };
+            let score_doc = worklog::load_optional(score.as_deref()).map_err(fail(1))?;
+            if let (Some(sp), false) = (&score, score_doc.is_null()) {
+                scoring::overall_score_of(&score_doc)
+                    .map_err(|e| (3, format!("{}: {e}", sp.display())))?;
+            }
             let entry = worklog::new_entry(
                 iteration,
                 &decision,
                 worklog::load_optional(review.as_deref()).map_err(fail(1))?,
-                worklog::load_optional(score.as_deref()).map_err(fail(1))?,
+                score_doc,
                 worklog::load_optional(actions.as_deref()).map_err(fail(1))?,
             );
-            worklog::append(&mut wl, entry, halted_because.as_deref());
+            worklog::append(&mut wl, entry, halted_because.as_deref()).map_err(fail(3))?;
             write_json(&path, &wl).map_err(fail(1))?;
             println!(
                 "OK: appended iter {iteration} ({decision}) to {}",

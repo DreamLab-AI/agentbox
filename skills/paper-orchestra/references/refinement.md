@@ -9,6 +9,7 @@ paper worse.
 
 ```
 iter0 = the current draft, built, gated and scored
+        worklog append --iter 0 --decision ACCEPT_BASELINE   # the baseline the streak counts from
 for N in 1..3:
     review   = reviewer(draft, reverse outline, gate findings, critique memory)
     da       = devil's advocate(draft, review)
@@ -26,8 +27,22 @@ Each iteration lives in `refinement/iter<N>/` with its source, PDF,
 
 ## Decision rules
 
-`paper-orchestra score-delta --prev iter<N-1>/score.json --curr iter<N>/score.json`
+`paper-orchestra score-delta --prev iter<N-1>/score.json --curr iter<N>/score.json --worklog worklog.json`
 applies them and prints the decision; obey its exit code.
+
+Both score files use the reviewer schema: `overall_score` and
+`axis_scores.<axis>.score` for all six axes. A missing or non-numeric value is
+an input error (exit 3, naming the file and key), never a zero; treat exit 3 as
+"fix the file and rerun", not as a decision.
+
+`--worklog` makes the plateau rule work without the caller counting: the binary
+reads `worklog.json` and counts the trailing accepted iterations whose gain over
+the accepted iteration before them is under `--plateau-threshold` (default 1.0),
+skipping reverts. The call itself adds one more when its own gain is under that
+threshold. An absent worklog counts as no history. `--consecutive-small N` still
+supplies the count explicitly; the two options cannot be combined. The baseline entry for iteration 0 matters: the
+first accepted entry has no gain to measure, so without it the streak can never reach three
+within the cap of three iterations, and `best_iter` would not know iteration 0.
 
 | Condition | Decision | Exit | Loop |
 |---|---|---|---|
@@ -52,18 +67,22 @@ the core claims, in this order: causal claims resting on correlation; a claimed
 component with no ablation; baselines given less compute or tuning; broad
 claims from narrow experiments; novelty already present in a cited work.
 
-Each attack is a finding with a severity. A `CRITICAL` finding blocks an
+Each attack is a finding with a severity: `critical`, `major` or `minor`, in
+any letter case (`CRITICAL` is read as `critical`). A `CRITICAL` finding blocks an
 accept regardless of the scores. A finding is closed only by a concession, and
 a concession is valid only when the rebuttal scores 4 or 5 out of 5 (it answers
 the attack with evidence that is in the paper). The advocate may concede at
-most once in any two consecutive rounds.
+most once in any two consecutive rounds, which also means once within a round.
 
 Those rules are easy for a model to relax quietly, so they are enforced
 outside it. Record findings and concessions in `refinement/da_concessions.json`
 and run `paper-orchestra concession-guard` each iteration. Exit 1 means a
 critical finding still stands: turn the accept into a revert and make the next
 revision address that finding. Exit 2 means a concession was rejected with no
-critical outstanding: the advocate restates the attack; no revert.
+critical outstanding: the advocate restates the attack; no revert. Exit 3 means
+the log is malformed: a finding without a `severity` (or with one that is not
+`critical`, `major` or `minor`), or a round whose `round` is not an integer
+(`"1"` is rejected). The guard never guesses a missing value; repair the log.
 
 ## Critique memory
 
@@ -114,5 +133,7 @@ are enforced around it.
 
 The accepted iteration with the highest overall score is final. After a
 revert, that is the iteration before the reverted one. Print the trajectory
-with `paper-orchestra score-trajectory` and put it in the report, for example
+with `paper-orchestra score-trajectory --scores-dir refinement`, which reads
+`iter<N>/score.json` (or `iter<N>/review.json` when that is absent) and exits 3
+on a file without numeric axis scores and put it in the report, for example
 `64.5 -> 67.3 (accept) -> 67.3 (accept tied) -> 66.0 (revert, halt)`.

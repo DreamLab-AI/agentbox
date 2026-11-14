@@ -72,7 +72,7 @@ pkgs.rustPlatform.buildRustPackage {
   doCheck = true;
 
   meta = with lib; {
-    description = "Skill support binaries for agentbox — ui-ux-pro-max BM25 style-guide search, Wardley map generation and strategic analysis, and docs-alignment link/mermaid/ASCII checking";
+    description = "Skill support binaries for agentbox — ui-ux-pro-max BM25 style-guide search, Wardley map generation and strategic analysis, docs-alignment link/mermaid/ASCII checking, and the paper-orchestra helpers (workspace, outline, claim-evidence, citation, refinement-loop and arXiv preflight gates)";
     homepage    = "https://github.com/DreamLab-AI/agentbox";
     license     = with licenses; [ mit asl20 ];
     platforms   = platforms.linux;

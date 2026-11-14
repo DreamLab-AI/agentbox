@@ -29,7 +29,7 @@ agent and any conference. This is one skill, one Rust binary, and one target.
 | "Never explicitly state a limitation" | Limitations stay; none is invented or removed | Upstream's rule stops a benchmark agent gaming an automated score; on a real preprint it removes honest disclosure |
 | Reviewer framed as a conference committee with a page limit | Reviewer framed as a reader of a preprint | No page limit, no anonymity |
 | Numbers checked against a markdown log by pattern | The same, plus a ledger mode for papers whose results are substituted at build time | The estate's papers are ledger-built |
-| 51 Python scripts, `jsonschema`, `python-Levenshtein` | 16 subcommands of one Rust binary in `services/skill-tools` | Estate rule for CLIs and evaluators; neither Python package is in the image |
+| 51 Python scripts, `jsonschema`, `python-Levenshtein` | 17 subcommands of one Rust binary in `services/skill-tools` | Estate rule for CLIs and evaluators; neither Python package is in the image |
 | Outline validated by JSON Schema | Typed structures that reject unknown fields | Better error paths, no schema dependency |
 
 ## Delegated to an existing skill

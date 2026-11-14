@@ -27,9 +27,13 @@
 //! Shared plumbing: [`tex`] (source loading), [`cite`] (citation keys) and
 //! [`json_util`] (ordered JSON output, Python-style truthiness).
 //!
-//! Exit-code conventions follow upstream per subcommand; where upstream used 2
-//! for a usage error but also gave 2 a meaning (`score-delta`,
-//! `concession-guard`), usage errors exit 3.
+//! Exit-code conventions follow upstream per subcommand. Command-line usage
+//! errors exit 64 (`EX_USAGE`) in every subcommand, because 2 means a gate
+//! result elsewhere (`arxiv-preflight` not ready, `concession-guard` restate,
+//! `score-delta` revert). `score-delta`, `score-trajectory`, `concession-guard`
+//! and `worklog` exit 3 on an input error: a missing or non-numeric required
+//! score, an unknown severity, a non-integer round. They never default a
+//! missing value.
 
 #![deny(missing_docs)]
 

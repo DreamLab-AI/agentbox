@@ -32,7 +32,9 @@ pre-built `.bbl`:
   biblatex 3.20, Biber 2.20, bbl format 3.3) and the backend that built the
   paper. This image's Biber may be newer than arXiv's. For a biblatex paper,
   ship the `.bib` and let arXiv build it, unless the versions are known to
-  match.
+  match. The preflight reads the format version from the `.bbl` header: exactly
+  3.3 is reported as information, any other version, or a header it cannot
+  read, as a warning.
 
 ## Preflight
 
@@ -48,9 +50,9 @@ and Biber is checked by the same command.
 
 | Class | Checks |
 |---|---|
-| Error (exit 2) | bibliography neither shipped as `<main>.bbl` nor as its `.bib`; a cited key missing from the `.bbl`; an undefined reference or citation in the log; an `\includegraphics` target that does not resolve; a figure format pdfLaTeX cannot take; shell escape; an absolute path; abstract over 1,920 characters |
-| Warning (exit 1) | an overfull box more than 5 pt wide; a multiply defined label; missing characters; auxiliary or output files in the tree; figure files nothing includes; `\today` in `\date`; non-ASCII or TeX formatting left in the title or abstract; a biblatex `.bbl` |
-| Information | `\pdfoutput=1` present or absent; honorifics in `\author` |
+| Error (exit 2) | bibliography neither shipped as `<main>.bbl` nor as its `.bib`; a cited key missing from the `.bbl`; an undefined reference or citation in the log; an `\includegraphics` target that does not resolve; a figure format pdfLaTeX cannot take; shell escape; an absolute path; an `\includegraphics`, `\bibliography` or `\addbibresource` path that leaves `--source` (`../fig`, or a symlink out); abstract over 1,920 characters |
+| Warning (exit 1) | an overfull box more than 5 pt wide; a multiply defined label; missing characters; auxiliary or output files in the tree; figure files nothing includes; `\today` in `\date`; non-ASCII or TeX formatting left in the title or abstract; a biblatex `.bbl` whose format version is not 3.3 or cannot be read |
+| Information | `\pdfoutput=1` present or absent; honorifics in `\author`; a biblatex `.bbl` at format version 3.3 |
 
 Fix every error. Read every warning: an overfull box of 40 pt is a table
 running into the margin and is worth a rebuild; one of 6 pt usually is not.
