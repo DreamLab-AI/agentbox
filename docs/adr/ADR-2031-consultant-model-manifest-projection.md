@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 924f4282ae18428f044bfd468bb8a4cd66a6106e
+verified_commit: 9ce9c2c2cd3be8e339139c7786657b5c3d158bc5
 verified_paths: [config/entrypoint-unified.sh, services/agentbox-manifest/src/tui_write.rs, mcp/consultants/antigravity/server.js, skills/mcp.json]
 owner: jjohare
 review_trigger: any change to a consultant's default model, a Gemini model retirement, the 2027-01-01 Gemini tariff step, or a wizard that starts exposing the consultant model field; activation — a receipt on the running image for the absent, empty and explicit override cases and a TUI save (explicit case observed live 2026-10-30)
@@ -15,6 +15,11 @@ repo: agentbox
 ---
 
 # ADR-2031 — Consultant model selection is projected from the manifest at boot; environment wins, TUI preserves the operator's choice, and tariffs are dated
+
+## Scoped source check — 2026-11-14
+
+Reviewed at `9ce9c2c2cd3be8e339139c7786657b5c3d158bc5`. The consultant and registry now default to Hydrogen; API-key calls pass the Gemini provider/custom-model settings, with GEMINI_API_KEY preceding Google aliases. Boot provisions both writable homes before projecting MCP configuration while preserving an explicit model override. The Decision distinguishes the retained Flash setup-template and URL-context defaults. Offline consultant argv/auth/tariff and provisioning fixtures pass. No paid inference, quota check or current price verification is claimed.
+
 
 ## Scoped source check — 2026-11-09
 
@@ -78,7 +83,7 @@ that doubles on 2027-01-01, making both problems visible.
 ## Decision
 The manifest is the source of the consultant model. At boot the entrypoint
 projects `consultants.antigravity.model` into `AGENTBOX_ANTIGRAVITY_MODEL`
-through `agentbox-manifest toml-string` (`config/entrypoint-unified.sh:2223`),
+through `agentbox-manifest toml-string` (`config/entrypoint-unified.sh`),
 a fail-open subcommand that prints an empty string for a missing, non-string or
 unparseable value. Precedence is fixed: a non-empty environment variable set
 before boot wins, then the manifest, then the registry default. The TUI writer
@@ -86,9 +91,12 @@ carries an existing manifest model forward unless the flat state names one
 explicitly (`services/agentbox-manifest/src/tui_write.rs:37`). Consultant cost
 figures are API-equivalent estimates selected by call time against a published,
 dated tariff; a model with no configured tariff reports `cost_usd: null` and
-`cost_estimate` says so rather than inventing a number. The general-purpose
-Gemini default across manifest, setup template, schema, consultant, URL-context
-MCP and the AoE session seed is `gemini-3.8-flash`.
+`cost_estimate` says so rather than inventing a number. The current manifest, schema, consultant and MCP registry default to
+`gemini-4-hydrogen`; the owned Antigravity session seed names the same model.
+The setup template and URL-context MCP retain `gemini-3.8-flash`. These are
+separate defaults, not one estate-wide model choice. API-key calls select the
+Gemini provider and register Hydrogen as a custom model for CLI 1.5.7;
+`GEMINI_API_KEY` is primary, with the existing Google aliases accepted.
 
 ## Consequences
 Operators change a consultant model in one place and it survives TUI saves and

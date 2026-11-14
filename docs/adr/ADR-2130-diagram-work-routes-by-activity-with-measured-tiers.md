@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: f475e0b8ee370610132d1920f1e64a82f83311ce
+verified_commit: 9ce9c2c2cd3be8e339139c7786657b5c3d158bc5
 verified_paths: [services/agentbox-manifest/src/routing.rs, agentbox.toml, schema/agentbox.toml.schema.json]
 owner: jjohare
 review_trigger: the sealmap skill landing (DESIGN §10 step 5) with the four routes and two hosts; a Loom model swap; a change of the GLM model behind [consultants.zai]; a seal review whose author and reviewer share a family; ADR-2079's router consolidating [model_routing.routes]
@@ -17,6 +17,11 @@ lineage: ADR-2079 (the routing table this extends; still proposed); ADR-2080 (th
 ---
 
 # ADR-2130 — Diagram work routes by activity, with measured tiers
+
+## Scoped source check — 2026-11-14
+
+Reviewed at `9ce9c2c2cd3be8e339139c7786657b5c3d158bc5`. The manifest/schema deltas add memory, Gemini and QGIS configuration and retire AoE wording; the diagram activity routes are unchanged in this range. The Decision's table now matches the already-landed Sonnet/Opus 5.5 routes, and its address wording reflects ADR-2023's direct-access amendment. No tier is lowered and no cross-family review is claimed by this source check.
+
 
 ## Scoped source check — 2026-11-09
 
@@ -40,14 +45,14 @@ Diagram skills name `[model_routing]` activities and never name model ids. The d
 
 | Activity | Start → rung | Escalate when |
 |---|---|---|
-| `diagram-polish` | **T1** `loom:qwen3.8-27B -> claude:claude-sonnet-5`. Claude Haiku is the alternative T1 that the descent may select | the render gate fails twice; diagram-ir finds an invented edge; more than 25 % of calls are inferred |
-| `diagram-narrative` | **T2** `claude:claude-sonnet-5 -> claude:claude-opus-5` | seal-review rejects; the topic spans 3 or more areas |
-| `diagram-synthesis` | **T3** `claude:claude-opus-5 -> claude:claude-fable-5-1` | the corpus is too large for T3 → T4 Fable |
+| `diagram-polish` | **T1** `loom:qwen3.8-27B -> claude:claude-sonnet-5-5`. Claude Haiku is the alternative T1 that the descent may select | the render gate fails twice; diagram-ir finds an invented edge; more than 25 % of calls are inferred |
+| `diagram-narrative` | **T2** `claude:claude-sonnet-5-5 -> claude:claude-opus-5-5` | seal-review rejects; the topic spans 3 or more areas |
+| `diagram-synthesis` | **T3** `claude:claude-opus-5-5 -> claude:claude-fable-5-1` | the corpus is too large for T3 → T4 Fable |
 | `seal-review` | **T3 cross-family** `zai:glm-5.3 -> claude:claude-fable-5-1` | contract-class disagreement → T4 |
 
 Two hosts are added, described the same way as `claude → claude-code` and `codex → codex`:
 
-- **`loom`** → the Ontology Loom façade: `${LOOM_BASE_URL}`, the `:8084` door (ADR-2023), or the compose-profile `loom` sidecar `http://loom:8080`. It speaks OpenAI chat-completions, needs no key, stays on the LAN and costs $0 at the margin. The model behind it is swappable, and no consumer ever targets the model port. Non-ontology subjects send `{"loom_options":{"scaffold":false}}`.
+- **`loom`** → the Ontology Loom façade: `${LOOM_BASE_URL}`, the `:8084` door (ADR-2023), or the compose-profile `loom` sidecar `http://loom:8080`. It speaks OpenAI chat-completions, needs no key, stays on the LAN and costs $0 at the margin. The model behind it is swappable. The façade remains the preferred stable address; direct model access is permitted under the ADR-2023 amendment. Non-ontology subjects send `{"loom_options":{"scaffold":false}}`.
 - **`zai`** → the GLM model on Z.AI's Anthropic Messages API: `ZAI_URL` and `ZAI_ANTHROPIC_API_KEY` under `[providers.zai]`, with the auth home `[consultants.zai].home`. Calls are metered and leave the estate. This is the egress path that ADR-2053 already names.
 
 **Tiers are set by measured descent.** A tier is lowered one step at a time, and only while accuracy holds within 0.03 of the tier above. Each step is confirmed on held-out data. A confirmed de-escalation is sticky per corpus and recorded in `docs/diagrams/.tiers.json`; the route is the default start for a corpus with no record. **Seal review is always a different model family from the author.** The `seal-review` route must not share a family with the route that authored the topic. If a skill finds that the author and the reviewer share a family, it refuses to seal; it never reviews with the same family.

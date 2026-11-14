@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: f475e0b8ee370610132d1920f1e64a82f83311ce
+verified_commit: 9ce9c2c2cd3be8e339139c7786657b5c3d158bc5
 verified_paths: [agentbox.toml, setup/agentbox.default.toml, schema/agentbox.toml.schema.json, config/entrypoint-unified.sh, mcp/servers/lib/ontology-local.js, mcp/servers/lib/ontology-index-build.js, scripts/ontology-condense-scheduler.mjs, scripts/ontology-condense-refresh.sh, skills/podcast-knowledge-ingest/SKILL.md, skills/ontology-core/SKILL.md, skills/ontology-enrich/SKILL.md, skills/ontology-augment/SKILL.md, skills/web-summary/SKILL.md]
 owner: jjohare
 review_trigger: any new skill, MCP server, or supervised program that reads or writes authored markdown
@@ -17,6 +17,11 @@ lineage: ADR-2003 (manifest-driven composition), ADR-2008 (single source of trut
 ---
 
 # ADR-2028 — `[vault]` is the single path authority for the authored corpus
+
+## Scoped source check — 2026-11-14
+
+Reviewed at `9ce9c2c2cd3be8e339139c7786657b5c3d158bc5`. Manifest, schema and template changes concern memory accounting, Gemini, spatial packages and session-plane wording. The boot diff adds memory projection, Antigravity provisioning and read-in-steps guidance, and removes obsolete AoE volume setup. Vault resolution is unchanged. The Decision now removes its obsolete legacy-variable override claim. Vault precedence checks pass 10 cases and consumer fallback checks pass 11; no corpus was published.
+
 
 ## Scoped source check — 2026-11-09
 
@@ -106,8 +111,8 @@ against a stale tree.
 2. The entrypoint exports `VAULT_ROOT`, `VAULT_PAGES` (= `root/pages`),
    `VAULT_WORKING_ROOT`, `VAULT_WORKING_PAGES`, `VAULT_TRANSCRIPTS` and
    `VAULT_FORMAT` from the manifest for every supervised program and every
-   tmux window, and derives `ONTOLOGY_PAGES_DIR` from `VAULT_PAGES` (the old
-   variable stays as an override for one release).
+   tmux window. `VAULT_PAGES` is the sole corpus-path authority; the retired
+   `ONTOLOGY_PAGES_DIR` and `AGENTBOX_VAULT_LEGACY_PATHS` variables are ignored.
 3. Every consumer listed in `verified_paths` reads `VAULT_PAGES` /
    `VAULT_ROOT`; the former Logseq literals are deleted, not left as fallbacks.
    If `VAULT_ROOT` is unset **and** the manifest lacks `[vault]`, consumers

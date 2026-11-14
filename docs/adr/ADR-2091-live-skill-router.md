@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 924f4282ae18428f044bfd468bb8a4cd66a6106e
+verified_commit: 9ce9c2c2cd3be8e339139c7786657b5c3d158bc5
 verified_paths: [config/hooks/lib/skill-route.cjs, config/hooks/skill-route.cjs, skills/skill-router/scripts/route.mjs, config/entrypoint-unified.sh, tests/config/skill-route.test.js, skills/visioncraft/SKILL.md, skills/registered-skills.txt, skills/codex-registered-skills.txt, tests/system-one/visioncraft-picker.test.mjs]
 owner: jjohare
 review_trigger: the first project that needs a per-project routing bypass (ADR-2090), a Jev model change, or a measured runtime-path accuracy below 85% on the 40-item set
@@ -15,6 +15,11 @@ repo: agentbox
 ---
 
 # ADR-2091 — Route each turn to a skill with one typed judgement, failing open to the table
+
+## Scoped source check — 2026-11-14
+
+Reviewed at `9ce9c2c2cd3be8e339139c7786657b5c3d158bc5`. Only the shared entrypoint changed, adding memory flags, Antigravity provisioning and memory-reading instructions while removing retired AoE volume setup. The skill-route registration and runtime-env projection are unchanged. The skill-route/activity-sink suites pass all 126 offline tests; no new routing accuracy measurement or live judge acceptance is claimed.
+
 
 ## Scoped source check — 2026-11-09
 

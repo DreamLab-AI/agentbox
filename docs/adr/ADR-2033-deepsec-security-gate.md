@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 2c4b365b48d306b90bc36bf113249380e82b9f5c
+verified_commit: 9ce9c2c2cd3be8e339139c7786657b5c3d158bc5
 verified_paths: [flake.nix, agentbox.toml, schema/agentbox.toml.schema.json, scripts/agentbox-config-validate.js, management-api/lib/system-manifest.js, scripts/visioncraft-deepsec-gate.sh, services/agentbox-manifest/src/deepsec_gate.rs, skills/visioncraft/references/deepsec.md, .github/workflows/deepsec.yml, lib/visioncraft.nix, config/visioncraft-source.json, lib/lockfiles/visioncraft-0.3.0.Cargo.lock, tests/config/visioncraft-deepsec.test.mjs]
 owner: jjohare
 review_trigger: a deepsec major version, a change to its CLI exit-code contract or model-route schema, any new model route, or the first paid full-repo run
@@ -16,6 +16,11 @@ domain: GOVERNANCE-capabilities
 ---
 
 # ADR-2033 — Deepsec is the optional VisionCraft security reviewer
+
+## Scoped source check — 2026-11-14
+
+Reviewed at `9ce9c2c2cd3be8e339139c7786657b5c3d158bc5`. The flake pins Deepsec 2.3.12; other reviewed manifest/schema/catalogue changes concern memory, spatial packages and session naming. Deepsec gate implementation and names-only credential policy are unchanged. The Decision now names the current thin host wrapper and VisionCraft execution boundary rather than the retired skill script. The previously run quality-consumer batch passes, including Deepsec fixtures. Paid whole-repository and rebuilt-image acceptance remain separate; partial/staged is retained.
+
 
 ## Scoped source check — 2026-11-09
 
@@ -141,18 +146,18 @@ posture (ADR-2027).
 ## Decision
 
 1. deepsec is baked as a global npm CLI via `lib/npm-cli.nix` (`deepsecPkg`,
-   exact pin 2.3.10) gated by `[toolchains].deepsec`; `ENABLE_DEEPSEC` is projected
+   exact pin 2.3.12) gated by `[toolchains].deepsec`; `ENABLE_DEEPSEC` is projected
    at boot and the catalogue entry `deepsec` (ADR-039) reports both gates.
 2. Runtime policy lives in `[security.deepsec]` (agent, model route, thinking
    level, `fail_on` severity, `max_duration`, batching, provider names). The
    manifest stores env-var names only; the validator rejects values (E072) and
    enforces the route/toolchain pairings (E070, E071) and warns on a baked but
    ungated binary (W070).
-3. The only in-container entry point is
-   `skills/build-with-quality/scripts/deepsec-gate.sh`. It generates a minimal
-   `.deepsec-gate/deepsec.config.mjs` (gitignored), never runs `deepsec init`,
-   bounds runs with `max_duration`, applies `fail_on` over exported findings and
-   writes `receipt.json` per run. Exit 78 (disabled/unavailable) must be recorded
+3. The host entry point is `scripts/visioncraft-deepsec-gate.sh`, which delegates
+   to `agentbox-manifest deepsec-gate` for typed policy projection. The pinned
+   VisionCraft payload owns execution and receipt validation (ADR-2165).
+   Names-only credentials, explicit caller overrides, duration and severity
+   limits remain policy inputs. Exit 78 (disabled/unavailable) must be recorded
    as SKIPPED, never as a pass.
 4. The default route is `model_auth = "local"` (the logged-in `claude` CLI); the
    LAN-only alternative is `custom` through the Loom façade with the `pi` agent.

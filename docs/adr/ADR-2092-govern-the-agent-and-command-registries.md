@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 2c4b365b48d306b90bc36bf113249380e82b9f5c
+verified_commit: 9ce9c2c2cd3be8e339139c7786657b5c3d158bc5
 verified_paths: [agents/registered-agents.txt, scripts/reconcile-agents.sh, scripts/reconcile-commands.sh, scripts/project-skill-roots.mjs, config/registered-commands.txt, config/entrypoint-unified.sh, flake.nix, tests/config/agent-reconcile.test.sh, scripts/reconcile-skills.sh, skills/registered-skills.txt, skills/codex-registered-skills.txt, tests/config/visioncraft-cutover.test.mjs]
 owner: jjohare
 review_trigger: a new subagent worth always-loading, or evidence the router surfaces baked-but-unregistered skills too slowly; a reconcile audit on the running image showing ~/.claude/agents matches agents/registered-agents.txt (activation → live)
@@ -15,6 +15,11 @@ repo: agentbox
 ---
 
 # ADR-2092 — Agents and slash-commands get the same manifest governance skills already have
+
+## Scoped source check — 2026-11-14
+
+Reviewed at `9ce9c2c2cd3be8e339139c7786657b5c3d158bc5`. The entrypoint and flake changes do not alter agent/command registry reconciliation or project skill-root projection. Reviewed changes concern memory, Antigravity, dependency packaging, spatial tools and the retired AoE volume. Skill inventory/count/routing checks already pass for 124 skills. No retired registry entry is restored and no live profile rewrite ran.
+
 
 ## Scoped source check — 2026-11-09
 

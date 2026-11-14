@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: f475e0b8ee370610132d1920f1e64a82f83311ce
+verified_commit: 9ce9c2c2cd3be8e339139c7786657b5c3d158bc5
 verified_paths: [agentbox.toml, skills/tree-search-coder/SKILL.md, services/agentbox-ops/src/bin/tree-search-cap.rs]
 owner: jjohare
 review_trigger: any new optional skill/feature block added to agentbox.toml, or any change to the tree-search-coder spend/route posture
@@ -17,6 +17,11 @@ lineage: legacy ADR-039 (system-manifest apply-class catalogue), ADR-020 (ACI MC
 ---
 
 # ADR-2020 — Optional capabilities are manifest-gated and byte-identical-when-off; execution-gated tools are spend-capped and never auto-routed
+
+## Scoped source check — 2026-11-14
+
+Reviewed at `9ce9c2c2cd3be8e339139c7786657b5c3d158bc5`. Only agentbox.toml changed: it disables local QGIS and CAD printing, retains their parent capabilities, adds memory accounting switches and updates Gemini configuration. The tree-search skill and Rust spend-cap implementation are unchanged; no automatic route is added. Catalogue validation passes with the existing omission baseline. This does not prove disabled-image byte identity; partial implementation is retained.
+
 
 ## Scoped source check — 2026-11-09
 
