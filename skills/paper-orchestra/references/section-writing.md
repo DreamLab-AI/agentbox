@@ -49,7 +49,7 @@ fails on an unknown or superseded id. This is stronger than checking prose
 against a log afterwards, and it is the estate's practice for its own papers.
 
 - Write results as macros from the first draft.
-- `paper-orchestra claim-evidence --paper <dir> --ledger ledger.json --macro ledger`
+- `paper-orchestra claim-evidence --paper <dir> --ledger ledger.json --macro ledger --out claims.json`
   then reports the two things the build cannot: a result typed by hand, and a
   macro whose id is unknown.
 - A number derived from two entries (a difference, a ratio) becomes its own

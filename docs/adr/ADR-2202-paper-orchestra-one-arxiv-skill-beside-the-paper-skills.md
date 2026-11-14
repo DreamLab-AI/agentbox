@@ -49,5 +49,6 @@ Verified on the branch `feat/paper-orchestra-skill`, on top of the base commit n
 
 - `bash skills/lint-skills.sh`: clean, 124 skills. `bash tests/config/skill-lint.test.sh`: 30 passed. `node scripts/skill-count-check.js`: ok, no divergences. `node skills/gen-routing-table.mjs --check`: current.
 - Live Jev through the loopback proxy, scope `all`, 136 candidates, against the source tree: the nine new cases 9 of 9; seven existing cases labelled for the neighbouring skills, plus two fresh prompts, 9 of 9. Cost $0.013. Citation discovery goes through `web-researcher`, an existing egress route; no backend is added.
-- `cargo test`, `cargo clippy -- -D warnings` and `cargo doc --no-deps` in `services/skill-tools`: see the commit that adds `src/paper_orchestra/`.
+- `services/skill-tools`: `cargo test --release` 250 passed, 0 failed; `cargo clippy --all-targets -- -D warnings` clean; `cargo doc --no-deps` raises no warning in `paper_orchestra` (three older warnings in `docs_alignment` and `wardley` remain). No dependency was added and `Cargo.lock` is unchanged.
+- Used end to end on a real 58-page ledger-built preprint in a scratch copy: `arxiv-preflight`, `orphan-cites`, `claim-evidence --ledger` and `reverse-outline` ran on the submitted and a revised source; the preflight reported the one 40 pt overfull table the build log holds and no error.
 - Not verified: the Nix build of `skill-tools`, and the skill in a rebuilt image.

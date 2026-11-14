@@ -55,8 +55,10 @@ Gate findings are facts about the submitted text. Report them even if the
 loop below changes nothing.
 
 `needs evidence` does not mean wrong. A constant in a proof, a parameter value
-or a number derived from two ledger entries is legitimately absent. Read each
-row; the count that matters is the rows that are results.
+(a 95% interval, a noise rate, a threshold) or a number derived from two
+ledger entries is legitimately absent. Read each row; the count that matters
+is the rows that are results. On a ledger-built paper that count is usually
+zero, and saying so is a finding worth reporting.
 
 ## 3. Score the baseline
 
