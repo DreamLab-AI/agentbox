@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: 924f4282ae18428f044bfd468bb8a4cd66a6106e
+verified_commit: 9ce9c2c2cd3be8e339139c7786657b5c3d158bc5
 verified_paths: [config/hooks/activity-sink.cjs, config/entrypoint-unified.sh, services/agentbox-manifest/src/stacks.rs, services/agentbox-manifest/src/stacks_env.rs, tests/config/activity-sink.test.js, config/egress-policy.json]
 owner: jjohare
 review_trigger: a second consumer of the sink, a change to the wire body, a new event or tool class, moving the token under role isolation (ADR-2122), or any change to the ADR-2026 redactor
@@ -16,6 +16,11 @@ domain: GOVERNANCE-capabilities
 ---
 
 # ADR-2146 — Agent activity leaves through one generic, manifest-gated, fail-open sink hook
+
+## Scoped source check — 2026-11-14
+
+Reviewed at `9ce9c2c2cd3be8e339139c7786657b5c3d158bc5`. Only the shared entrypoint changed. Its memory and Antigravity additions and AoE directory removal leave activity-sink registration, token handling and event filtering unchanged. The combined activity-sink/skill-route suites pass 126 offline tests. No real prompt or token was sent to an external sink.
+
 
 ## Scoped source check — 2026-11-09
 

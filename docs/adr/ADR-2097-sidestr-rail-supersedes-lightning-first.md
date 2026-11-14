@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 044f1d689569572417a98f91afcf744fc2ca2385
+verified_commit: 0b97c79c2a2cab3a72e165a8110fc89392611014
 verified_paths: [management-api/lib/pay402.js, scripts/sidechain/demo-accounts.js, management-api/lib/sidestr-spend-key.js, management-api/lib/sidestr-rail.js, management-api/lib/sidestr-payee.js, management-api/middleware/consumer-payer.js, management-api/middleware/spend-policy.js, management-api/routes/chain-payments.js, tests/contract/pay402, scripts/activation/adr-2097-acceptance.js]
 owner: jjohare
 review_trigger: a chain added to pay402.js SIDESTR_CHAINS; the rail switched to sidestr:dreamlab-txbt4; sidestr-agent gaining a memo or transaction lookup (S2); any proposal to make x402 or l402 payable; any proposal to build NWC
@@ -16,6 +16,11 @@ domain: GOVERNANCE-capabilities
 ---
 
 # ADR-2097 — The sidestr rail supersedes Lightning-first, and pay402 gains a fixtured sidestr scheme
+
+## Scoped source check — 2026-11-14
+
+Reviewed at `0b97c79c2a2cab3a72e165a8110fc89392611014`. The sole governed change is a chain-payments.js comment replacing AoE agents with session-plane agents. Payment classification, reservation accounting, compiled-chain checks and spend-key selection are byte-identical. No transaction, funding or payment rehearsal occurred.
+
 
 ## Context
 

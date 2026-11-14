@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 2c4b365b48d306b90bc36bf113249380e82b9f5c
+verified_commit: 0b97c79c2a2cab3a72e165a8110fc89392611014
 verified_paths: [agentbox.sh, scripts/runtime-delivery.*, scripts/refresh-compose.sh, config/build-registry.json, lib/image-layers.nix, flake.nix, tests/config/runtime-delivery*, .github/workflows/invariants.yml, docs/developer/incremental-builds.md]
 owner: jjohare
 review_trigger: layer grouping, delivery transport, candidate validation or cache retention changes
@@ -16,6 +16,11 @@ domain: BASELINE-container
 ---
 
 # ADR-2132 — Incremental image delivery and explicit activation
+
+## Scoped source check — 2026-11-14
+
+Reviewed at `0b97c79c2a2cab3a72e165a8110fc89392611014`. Preparation adds nix --keep-going so independent derivations populate the cache after another fails; required build failures still prevent preparation success. The fixture asserts that flag. Reviewed flake changes include cold-build repairs and package pins; developer notes add explicitly scoped warm/cold timings. All 48 delivery/listener/launch fixtures pass. No image build, activation, GC or cleanup ran for this review.
+
 
 ## Measurement-only re-verification — 2026-11-10
 

@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 4f3bd5325eb56b582d1220bc9b0a0b79e918fdae
+verified_commit: 18315de55b9be6f8fdaed6e9f33b6ad26da1cf4f
 verified_paths: [config/nip98-proxy/proxy.mjs, docs/INGRESS-identity.md]
 owner: jjohare
 review_trigger: A governance upstream stops re-verifying the operator signature, or a new default proxy route is proposed
@@ -17,6 +17,11 @@ lineage: legacy ADR-069 (unified operator auth / dreamlab adoption)
 ---
 
 # ADR-2010 — Bearer credential exchange is gated beneath the NIP-98 identity
+
+## Scoped source check — 2026-11-14
+
+Reviewed at `18315de55b9be6f8fdaed6e9f33b6ad26da1cf4f`. The only governed diff removes the constant-false isAoe field and its redundant HTTP/WebSocket conditions. Signed Authorization headers still reach named upstreams unchanged; cookie and break-glass requests use the configured route credential. The obsolete AoE exception is removed from the current Decision. The proxy selftest passes with zero failures and zero skips, including signed-header forwarding to governance upstreams.
+
 
 ## Re-verification — 2026-10-29 at 3b498088e (ADR-2153 cutover)
 
@@ -47,15 +52,15 @@ Sits beneath the identity boundary of ADR-2009. Governing doc:
 `docs/INGRESS-identity.md`.
 
 ## Decision
-For a named non-AoE route the proxy injects the route's `bearer_env` token into
+For each named route the proxy injects the route's `bearer_env` token into
 `Authorization` **only when `auth.mode !== 'nip98'`** (i.e. cookie session or
 break-glass). A genuinely signed NIP-98 request passes its own `Authorization`
 through untouched, so the governance upstream re-verifies the operator signature.
 `bearer_env` is fatal at boot if the named env var is unset (fail-closed, no
 silent unauthenticated route). NIP-07 browser-session minting itself requires a
-live NIP-98 signature. The default AoE route is the deliberate exception: the
-proxy replaces `Authorization` with the daemon token for every mode, including
-NIP-98. This forecloses a bearer-only path to a governance gate.
+live NIP-98 signature. ADR-2153 retired the default AoE route and its daemon-token
+exception; every current route follows the signed-header preservation rule.
+This forecloses a bearer-only path to a governance gate.
 
 ## Consequences
 A stolen bearer cannot release a gate that also checks a signature; the signed

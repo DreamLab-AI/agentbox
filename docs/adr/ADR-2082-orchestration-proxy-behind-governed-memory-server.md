@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 924f4282ae18428f044bfd468bb8a4cd66a6106e
+verified_commit: 0b97c79c2a2cab3a72e165a8110fc89392611014
 verified_paths: [mcp/servers/lib/orchestration-proxy.js, mcp/servers/ruvector-mcp.cjs, mcp/servers/lib/ruvector-gates.js, config/entrypoint-unified.sh]
 owner: jjohare
 review_trigger: next image rebuild (activation), a Ruflo release that changes plugin/runtime resolution or renames the swarm/agent/task/coordination tools, or any proposal to forward a memory_* tool
@@ -16,6 +16,11 @@ domain: LEARNING-memory
 ---
 
 # ADR-2082 — The governed server projects one pinned Ruflo capability; memory never crosses
+
+## Scoped source check — 2026-11-14
+
+Reviewed at `0b97c79c2a2cab3a72e165a8110fc89392611014`. The memory server adds independently gated evidence references and asynchronous returned-hit counters under ADR-2201; the gate table and boot projection add their flags. The orchestration dispatcher and denied-prefix boundary are unchanged. All 11 orchestration-proxy fixtures pass. The Decision now scopes gate-off identity to orchestration, rather than incorrectly freezing the entire memory tool list at 26 tools. No external memory or orchestration process was activated.
+
 
 ## Scoped source check — 2026-11-09
 
@@ -143,8 +148,9 @@ tools replace the stubs of the same name and are appended otherwise
   child ⇒ the stub list is advertised and answered exactly as before, the failure is
   logged, and memory is unaffected. The child is respawned at most three times per
   session. Memory keeps its ADR-2014 fail-closed contract.
-- **Gate off ⇒ byte-identical.** With the gate off nothing is required, spawned or
-  advertised beyond the pre-ADR-2082 26-tool list.
+- **Gate off ⇒ no orchestration child.** With the gate off no ruflo child is
+  required or spawned, and no child tools are advertised. Governed memory tools
+  keep their own independently gated schemas (including ADR-2201).
 - Apply class **boot**: the entrypoint projects the gate and filter into the
   `claude-flow` env block of `.mcp.json`; a new Claude session picks them up.
 

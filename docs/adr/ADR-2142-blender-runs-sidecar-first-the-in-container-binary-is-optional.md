@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 2c4b365b48d306b90bc36bf113249380e82b9f5c
+verified_commit: 0b97c79c2a2cab3a72e165a8110fc89392611014
 verified_paths: [agentbox.toml, flake.nix, skills/blender/tools/blender-job.js, skills/blender/tools/blender-introspect.js, skills/blender/tools/blender-batch.sh, skills/blender/SKILL.md, skills/uk-solar-planner/SKILL.md, skills/game-dev/tools/engine-check.sh, tests/toolchains/blender-present.sh]
 owner: jjohare
 review_trigger: the image rebuild activates the change, the GPU sidecar (gui-tools-service) or its shared volume changes, a local-Blender consumer is added, or `blender_local` is flipped in the shipped manifest
@@ -15,6 +15,11 @@ repo: agentbox
 ---
 
 # ADR-2142 — Blender runs sidecar-first; the in-container binary is optional
+
+## Scoped source check — 2026-11-14
+
+Reviewed at `0b97c79c2a2cab3a72e165a8110fc89392611014`. The flake now imports the shared Blender derivation; x86_64 Linux uses the checksum-pinned upstream 5.3.0 archive, while other platforms retain their native package. The skill documents the shared pin, OpenGL/VirtualGL choice and version checks against the running instance. blender_local remains false and the proxy remains enabled. The media adapter batch passes 30 offline tests. This source receipt does not assert a new GPU render or rebuilt sidecar.
+
 
 ## Scoped source check — 2026-11-09
 

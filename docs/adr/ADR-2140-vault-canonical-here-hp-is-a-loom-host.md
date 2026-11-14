@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: f475e0b8ee370610132d1920f1e64a82f83311ce
+verified_commit: 9ce9c2c2cd3be8e339139c7786657b5c3d158bc5
 verified_paths: [scripts/hp-loom-reconcile.sh, config/entrypoint-unified.sh, agentbox.toml, management-api/lib/system-manifest.js, schema/agentbox.toml.schema.json, tests/config/hp-loom-reconcile.test.sh, skills/ontology-augment/scripts/ontology-augment.sh, tests/skills/ontology-augment-grounding.test.sh]
 owner: jjohare
 review_trigger: a reconcile failure or change to the builder pin or published-generation schema; any proposal to run an agentbox on the HP again; any proposal for the HP to read the vault directly; a second consumer of the built generation
@@ -15,6 +15,11 @@ repo: agentbox
 ---
 
 # ADR-2140 — Keep the vault canonical on this host, reconcile the HP Loom to it at every boot, and retire the HP agentbox
+
+## Scoped source check — 2026-11-14
+
+Reviewed at `9ce9c2c2cd3be8e339139c7786657b5c3d158bc5`. The manifest, boot, schema and catalogue changes do not touch vault paths, hp-loom reconciliation or the publication pipeline. Memory accounting, Gemini and spatial/session changes are unrelated to the canonical-vault boundary. Vault precedence and fallback fixtures pass. No SSH, promotion, HP reload or corpus transfer ran.
+
 
 ## Scoped source check — 2026-11-09
 

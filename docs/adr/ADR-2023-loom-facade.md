@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: f475e0b8ee370610132d1920f1e64a82f83311ce
+verified_commit: 9fa78f77ebaa8862c2e2e74c0e8617ac87a69fc5
 verified_paths: [agentbox.toml, mcp/servers/lib/ontology-retrieval.js]
 owner: jjohare
 review_trigger: model swap behind the Loom, or ADR-051 deferred-distillation MCP tools becoming a discrete server
@@ -17,6 +17,11 @@ lineage: legacy ADR-051 (Loom client + deferred distillation, status 'proposed')
 ---
 
 # ADR-2023 — The Loom is a façade — consumers hold the :8084 door and the model is a swappable URL behind it
+
+## Scoped source check — 2026-11-14
+
+Reviewed the governed-path diff from `f475e0b8e` to `9fa78f77ebaa8862c2e2e74c0e8617ac87a69fc5`. Only `agentbox.toml` changed, in memory accounting, spatial tools and provider/session configuration. The Loom consumer still uses `${LOOM_BASE_URL}`, an empty model override and a 32,768-token ceiling (`agentbox.toml:2644`–`:2651`). The unchanged retrieval implementation still selects `LOOM_FACADE_URL` and uses `/loom/search` and `/loom/sparql`, with the documented VisionClaw fallback (`ontology-retrieval.js:534`, `:659`, `:734`, `:753`). No live façade request or deferred-distillation acceptance was run; the existing partial/live status is retained.
+
 
 ## Scoped source check — 2026-11-09
 

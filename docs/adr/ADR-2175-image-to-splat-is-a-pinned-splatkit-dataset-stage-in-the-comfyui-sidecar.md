@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: d402e991c1e8d31c75974f920574fb1a979ac072
+verified_commit: 0b97c79c2a2cab3a72e165a8110fc89392611014
 verified_paths: [comfyui-sidecar/Dockerfile, comfyui-sidecar/nodes/agentbox_video/splat_export.py, skills/comfyui/scripts/splat_pipeline.py, skills/comfyui/scripts/ui_to_api.py, skills/comfyui/scripts/download_video_models.py, skills/comfyui/manifests/splatkit.json]
 owner: jjohare
 review_trigger: SplatKit or Mickmumpitz-Nodes pin bump; Krea 2 Community Licence change; Matrix-3D gate or file change; any proposal to install SplatKit's managed training venv, 4DAnyone, ultralytics or an attention patch in the sidecar; LichtFeld gate change; ADR-2148 control-plane change
@@ -19,6 +19,11 @@ acceptance_boundary: image rebuilt from the host with SPLATKIT=1, verify-splatki
 ---
 
 # ADR-2175 — Image-to-splat is a pinned SplatKit dataset stage in the ComfyUI sidecar, driven by API, trained outside it
+
+## Scoped source check — 2026-11-14
+
+Reviewed at `0b97c79c2a2cab3a72e165a8110fc89392611014`. Only the ComfyUI Dockerfile changed: the core moves to pinned 0.45.0 and five utility packs are added after SplatKit, with installed-package constraints and OpenCV filtering/assertions. SplatKit pins, export and pipeline sources and model manifest are unchanged. All 71 ComfyUI pipeline/download fixtures pass. This does not satisfy the separate rebuilt-image, provisioned-model or end-to-end trained-dataset acceptance boundary; partial/staged is retained.
+
 
 ## Context
 - Agents should turn one image into a 3D Gaussian splat through the ComfyUI sidecar's API (ADR-2148). The sidecar already edits splats (SpEdE, gsplat 1.5.3) and LichtFeld trains them; nothing produced the training dataset.

@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 2c4b365b48d306b90bc36bf113249380e82b9f5c
+verified_commit: 9ce9c2c2cd3be8e339139c7786657b5c3d158bc5
 verified_paths: [flake.nix, lib/rune.nix, config/tmux-autostart.sh, config/tmux.conf, agentbox.toml, setup/agentbox.default.toml, schema/agentbox.toml.schema.json]
 owner: jjohare
 review_trigger: a Rune release that changes its CLI (`-w`), its keyboard-protocol requirement, or its licence; or the AoE plane absorbing note editing
@@ -17,6 +17,11 @@ lineage: ADR-2003 (manifest-gated Nix composition), legacy ADR-042 (AoE Sessions
 ---
 
 # ADR-2029 — Rune is the first-class markdown TUI
+
+## Scoped source check — 2026-11-14
+
+Reviewed at `9ce9c2c2cd3be8e339139c7786657b5c3d158bc5`. Reviewed the shared manifest/schema/template and flake deltas: none changes the vault TUI gate, Rune derivation or Notes-window launcher. The Decision's stale 1.4.0 pin is aligned with the existing jjohare/rune 1.5.0-dreamlab.1 source pin. Vault precedence and consumer fallback fixtures pass. This does not claim a new image build or interactive Rune acceptance.
+
 
 ## Scoped source check — 2026-11-09
 
@@ -87,7 +92,8 @@ and builds from source here in 90 s. Its CLI is `rune [-w <dir>] [file...]`.
 ## Decision
 
 1. Rune is packaged as `lib/rune.nix` (`rustPlatform.buildRustPackage`,
-   `fetchFromGitHub` pinned to tag `v1.4.0`, `cargoBuildFlags = ["-p" "rune-cli"]`,
+   `fetchFromGitHub` pinned to `jjohare/rune` commit
+   `2698873b1961877a2a1627e98b11929334b51e28` (`v1.5.0-dreamlab.1`), `cargoBuildFlags = ["-p" "rune-cli"]`,
    `doCheck = false`, hashes recorded in the file) and enters the package set
    when `[vault].tui = "rune"`. The gate is honest: absent the gate, the
    binary is not in the image.
@@ -99,8 +105,8 @@ and builds from source here in 90 s. Its CLI is `rune [-w <dir>] [file...]`.
 3. `config/tmux.conf` enables `allow-passthrough on` and `extended-keys on`
    so Rune's Kitty graphics and modifier keys work inside tmux.
 4. Until the image is rebuilt, the bind-mounted `~/workspace/.cargo/bin/rune`
-   (built with `cargo install --git https://github.com/aka-rider/rune --tag
-   v1.4.0 rune-cli`) satisfies the presence check; the entrypoint adds
+   (built with `cargo install --git https://github.com/jjohare/rune --tag
+   v1.5.0-dreamlab.1 rune-cli`) satisfies the presence check; the entrypoint adds
    `/home/devuser/workspace/.cargo/bin` to `PATH` if it exists.
 5. The welcome dashboard lists the Notes tab.
 

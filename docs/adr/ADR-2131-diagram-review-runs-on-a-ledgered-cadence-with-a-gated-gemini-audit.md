@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: f475e0b8ee370610132d1920f1e64a82f83311ce
+verified_commit: 9fa78f77ebaa8862c2e2e74c0e8617ac87a69fc5
 verified_paths: [skills/sealmap-review/scripts/review-cadence.cjs, skills/sealmap-review/scripts/external-review.cjs, skills/sealmap-review/scripts/review-context.cjs, skills/sealmap-review/scripts/merge-findings.cjs, skills/sealmap-review/run-cron.sh, skills/sealmap-review/crontab, schema/agentbox.toml.schema.json]
 owner: jjohare
 review_trigger: the first month of real Gemini spend (compare ledger cost with the estimate); a change to Gemini or Z.AI pricing; a GLM model change behind [consultants.zai]; a second corpus joining repos
@@ -17,6 +17,11 @@ lineage: ADR-2130 (external review is a transport outside [model_routing]; seal 
 ---
 
 # ADR-2131 — Diagram review runs on a ledgered cadence with a gated Gemini audit
+
+## Scoped source check — 2026-11-14
+
+Reviewed the governed-path diff from `f475e0b8e` to `9fa78f77ebaa8862c2e2e74c0e8617ac87a69fc5`. Only `schema/agentbox.toml.schema.json` changed: it adds the QGIS local-package switch and memory evidence-reference/read-count properties. A parsed-object comparison confirms the `diagram_review` schema is identical. All six governed cadence, context, merge and cron source files are unchanged. This source review does not rerun paid model calls, budget settlement or deployment acceptance; existing status axes remain unchanged.
+
 
 ## Scoped source check — 2026-11-09
 

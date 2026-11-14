@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 924f4282ae18428f044bfd468bb8a4cd66a6106e
+verified_commit: 18315de55b9be6f8fdaed6e9f33b6ad26da1cf4f
 verified_paths: [services/LICENSING-NOTICE.md, docs/developer/licensing.md, scripts/ci/check-crate-licensing.sh, services/*/Cargo.toml]
 owner: jjohare
 review_trigger: any new crate under services/, any services crate gaining an AGPL dependency, or first publication of a services crate to crates.io
@@ -15,6 +15,11 @@ repo: agentbox
 ---
 
 # ADR-2030 — Publishable service crates are MIT OR Apache-2.0 inside the AGPL-3.0 repository
+
+## Scoped source check — 2026-11-14
+
+Reviewed at `18315de55b9be6f8fdaed6e9f33b6ad26da1cf4f`. Only services/skill-tools/Cargo.toml changed since 924f4282ae: it adds the paper-orchestra binary and expands the package description. The dependency table and MIT OR Apache-2.0 declaration are unchanged. The crate-licensing gate passes for all 12 services package directories. This reviews the manifest/licence-text boundary; it does not assert a new crate publication or audit every transitive licence.
+
 
 ## Scoped source check — 2026-11-09
 

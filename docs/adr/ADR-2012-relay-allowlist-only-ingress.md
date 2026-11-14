@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 2c4b365b48d306b90bc36bf113249380e82b9f5c
+verified_commit: 18315de55b9be6f8fdaed6e9f33b6ad26da1cf4f
 verified_paths: [agentbox.toml, flake.nix]
 owner: jjohare
 review_trigger: ingress_policy changes from allowlist, or the ADR-040 D3 governance-publisher key-split lands
@@ -17,6 +17,11 @@ lineage: legacy ADR-040 (learning consumers / governance publisher key-split), s
 ---
 
 # ADR-2012 — Relay ingress is allowlist-only, no fallback, no auto-add
+
+## Scoped source check — 2026-11-14
+
+Reviewed at `18315de55b9be6f8fdaed6e9f33b6ad26da1cf4f`. The reviewed manifest and flake diffs change memory accounting, provider and spatial-package configuration, dependency pins and the retired AoE volume. They leave ingress_policy=allowlist, agent_event_auth=nip98 and relayAllowedPubkeys sourced solely from relay.allowed_pubkeys. The empty whitelist still renders an explicit deny-all array. This source check does not complete the separate governance key split or claim a running-relay rehearsal.
+
 
 ## Scoped source check — 2026-11-09
 

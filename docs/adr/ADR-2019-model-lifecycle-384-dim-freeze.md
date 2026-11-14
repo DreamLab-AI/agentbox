@@ -7,7 +7,7 @@ implementation_status: none
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: f475e0b8ee370610132d1920f1e64a82f83311ce
+verified_commit: 9fa78f77ebaa8862c2e2e74c0e8617ac87a69fc5
 verified_paths: [mcp/servers/lib/aggregate-effectiveness.js, scripts/ruvector-sona-feeder.mjs, agentbox.toml]
 owner: jjohare
 review_trigger: A SONA binary with configurable embedding_dim (384-capable) ships, or a dimension migration is planned
@@ -17,6 +17,11 @@ lineage: "legacy PRD-020 / ADR-040 (model lifecycle), DDD-018 (I22)."
 ---
 
 # ADR-2019 — Model-lifecycle freeze — 384-dim bge is the active column, SONA and attention-rerank stay off
+
+## Scoped source check — 2026-11-14
+
+Reviewed the governed-path diff from `f475e0b8e` to `9fa78f77ebaa8862c2e2e74c0e8617ac87a69fc5`. Only `agentbox.toml` changed. The added evidence-reference/read-count switches do not change the embedding column or learning gates: `embedding_dual_write` remains false, the active column remains `embedding`, and SONA learn/apply and attention reranking remain off (`agentbox.toml:462`, `:463`, `:493`–`:495`). The aggregate and feeder sources are unchanged; they still enforce 384 dimensions. This is a source check; no recall or deployed-model measurement was rerun. Existing status axes remain unchanged.
+
 
 ## Scoped source check — 2026-11-09
 

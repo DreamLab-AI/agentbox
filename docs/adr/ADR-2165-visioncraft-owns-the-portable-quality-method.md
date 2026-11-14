@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 2c4b365b48d306b90bc36bf113249380e82b9f5c
+verified_commit: 18315de55b9be6f8fdaed6e9f33b6ad26da1cf4f
 verified_paths: [services/agentbox-manifest/src/deepsec_gate.rs, services/agentbox-manifest/src/visioncraft_source.rs, services/agentbox-manifest/src/jsonio.rs, services/agentbox-manifest/src/mcp.rs, services/agentbox-manifest/src/mcp_hub.rs, services/agentbox-manifest/tests/deepsec_gate.rs, services/agentbox-manifest/tests/aqe.rs, tests/config/visioncraft-deepsec.test.mjs, tests/config/visioncraft-aqe.test.mjs, tests/system-one/visioncraft-picker.test.mjs, config/visioncraft-source.json, lib/lockfiles/visioncraft-0.3.0.Cargo.lock, lib/visioncraft.nix, lib/agentbox-manifest.nix, flake.nix, skills/visioncraft, skills/registered-skills.txt, skills/codex-registered-skills.txt, scripts/reconcile-skills.sh, services/agentbox-manifest/src/main.rs, tests/config/visioncraft-cutover.test.mjs]
 owner: jjohare
 review_trigger: a VisionCraft release, a Deepsec protocol change, or discovery of a second active quality implementation
@@ -18,6 +18,11 @@ acceptance_boundary: source and offline consumer checks; running image acceptanc
 ---
 
 # ADR-2165 — VisionCraft owns the portable quality method
+
+## Scoped source check — 2026-11-14
+
+Reviewed at `18315de55b9be6f8fdaed6e9f33b6ad26da1cf4f`. Only flake.nix changed since 2c4b365b4. It updates Agentic QE from 3.15.10 to 3.15.19 and Deepsec from 2.3.10 to 2.3.12 with matching lockfiles and hashes, alongside unrelated package/build changes. The Decision now names the current AQE source pin. The immutable VisionCraft 0.3.0 payload, source checker, registration/projection and policy adapter sources are unchanged. The focused decline-recorder/quality-consumer batch passes all 36 tests, including AQE, Deepsec, cutover and picker fixtures. These are offline consumer checks; upstream model behaviour and rebuilt-image parity remain outside this receipt. Existing staged activation is retained.
+
 
 ## Scoped source check — 2026-11-09
 
@@ -66,7 +71,7 @@ The invocation is a trusted local CLI boundary: the caller owns PATH, environmen
 explicit flags and selected manifest. It is not a privileged policy service;
 CI/service credentials must be scoped by that caller.
 
-The pinned upstream Agentic QE 3.15.10 package is re-enabled separately. Its
+The pinned upstream Agentic QE 3.15.19 package is re-enabled separately. Its
 `aqe mcp` tools register directly in Claude's workspace MCP and Codex's TOML;
 Ruflo coordinates work but does not stand in for AQE execution. The projector
 repairs stale executable paths and removes registration when disabled or missing.

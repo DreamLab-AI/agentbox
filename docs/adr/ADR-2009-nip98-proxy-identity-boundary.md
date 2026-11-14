@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 2c4b365b48d306b90bc36bf113249380e82b9f5c
+verified_commit: 18315de55b9be6f8fdaed6e9f33b6ad26da1cf4f
 verified_paths: [config/nip98-proxy/proxy.mjs, flake.nix, docs/INGRESS-identity.md]
 owner: jjohare
 review_trigger: A second operator identity ingress is proposed, or named-route authentication changes
@@ -17,6 +17,11 @@ lineage: legacy ADR-042 (AoE interaction plane), ADR-043 (session identity bindi
 ---
 
 # ADR-2009 — The nip98-proxy is the fail-closed AoE identity boundary
+
+## Scoped source check — 2026-11-14
+
+Reviewed at `18315de55b9be6f8fdaed6e9f33b6ad26da1cf4f`. The proxy removes the constant-false isAoe field and redundant conditions on named-route forwarding. The reviewed flake changes do not widen the proxy listener or restore the retired daemon. The Decision now describes named routes and the ADR-2153 retirement instead of the obsolete AoE command. The proxy selftest passes with zero failures and zero skips, including HTTP/WebSocket identity-header replacement and verifier failure controls.
+
 
 ## Scoped source check — 2026-11-09
 
@@ -118,14 +123,14 @@ consolidates them into one boundary. Governing doc: `docs/INGRESS-identity.md`.
 
 ## Decision
 Exactly one NIP-98-verifying door — the `:9096` nip98-proxy — turns a request
-into a verified x-only pubkey. `aoe serve` runs `--behind-proxy --host 127.0.0.1
---port 9095`, so bypassing the proxy bypasses identity. Every upstream request is
+into a verified x-only pubkey. It forwards only explicitly configured named routes;
+the AoE daemon and its default route were retired by ADR-2153. Every upstream request is
 authenticated before routing; the proxy-owned NIP-07 handshake is separate; any inbound `X-Agentbox-Pubkey`
 (and `-Auth-Mode`) is unconditionally stripped and re-injected from the verified
 identity on both HTTP and WebSocket paths. If the Schnorr verifier cannot load,
 every NIP-98 token is rejected (401; only an explicit break-glass bearer may
 pass). A malformed route, allowlist or upstream config crashes the proxy at boot
-rather than silently dropping a rule. This forbids an additional ungoverned AoE identity
+rather than silently dropping a rule. This forbids an additional ungoverned operator identity
 ingress and client-asserted pubkeys; other estate services retain their own
 authentication boundaries.
 

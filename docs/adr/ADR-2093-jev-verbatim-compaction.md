@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 924f4282ae18428f044bfd468bb8a4cd66a6106e
+verified_commit: 9ce9c2c2cd3be8e339139c7786657b5c3d158bc5
 verified_paths: [lib/factrail.nix, config/entrypoint-unified.sh, lib/claude-code-binary.nix]
 owner: jjohare
 review_trigger: the first measured residency bill that exceeds the summary path's re-read savings, a Claude Code function-hook API change, a request to fence a class other than email, or a change to ADR-2121 (its implementation); `/jev-compact status` answering in a fresh session on a booted image (activation → live)
@@ -15,6 +15,11 @@ repo: agentbox
 ---
 
 # ADR-2093 — Compact context by Jev judgement, verbatim, with email fenced out and a switch
+
+## Scoped source check — 2026-11-14
+
+Reviewed at `9ce9c2c2cd3be8e339139c7786657b5c3d158bc5`. Only the shared entrypoint changed; factrail packaging and the Claude Code binary pin remain unchanged at their verified sources. The boot changes do not alter compaction projection or the email fence. The Decision now explicitly distinguishes its historical plugin clauses from ADR-2121's current factrail implementation. Eight projection checks and store-migration fixtures pass; staged activation is retained.
+
 
 ## Prebuilt CLI pin check — 2026-11-11
 
@@ -107,6 +112,11 @@ hooks (2.1.274+), and the plugin sends the whole transcript, beyond ADR-2090's r
 egress. The operator's decision: proceed, with email always fenced out and a switch.
 
 ## Decision
+
+The policy below remains in force. Its original plugin implementation is
+replaced by ADR-2121: factrail is the installed implementation, and the current
+Claude Code package pin is 2.1.322. The numbered clauses preserve the original
+design; ADR-2121 governs conflicting implementation and fallback details.
 
 1. **Claude Code is pinned at 2.1.291** (`lib/claude-code-binary.nix:35`), retaining
    the function-hook surface (`session.compact`, `command.register`, `$.http.fetch`).

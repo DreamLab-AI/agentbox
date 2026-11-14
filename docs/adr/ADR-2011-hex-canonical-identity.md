@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 3b498088e5a35e78158a9eb8d6f0266996d31f82
+verified_commit: 18315de55b9be6f8fdaed6e9f33b6ad26da1cf4f
 verified_paths: [management-api/lib/agent-identity.js, config/nip98-proxy/proxy.mjs]
 owner: jjohare
 review_trigger: A durable identity appears in bech32/npub form in storage or a URL, or the did:nostr:local fallback fires in production
@@ -17,6 +17,11 @@ lineage: legacy ADR-053 (hex-canonical pod naming), ADR-033 (did:nostr / Multike
 ---
 
 # ADR-2011 — Hex-canonical identity: 64-hex x-only everywhere durable
+
+## Scoped source check — 2026-11-14
+
+Reviewed at `18315de55b9be6f8fdaed6e9f33b6ad26da1cf4f`. agent-identity.js is unchanged. The proxy diff removes the retired constant-false AoE discriminator without changing public-key canonicalisation. With the declared nostr-tools dependency available, the proxy selftest passes without failures or skips, including identity minting, persistence, lowercase hex and rejection of invalid identity forms. This is isolated fixture evidence, not a new production identity rehearsal.
+
 
 ## Re-verification — 2026-10-29 at 3b498088e (ADR-2153 cutover)
 

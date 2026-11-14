@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 0ed05167b23bced24dcb8d7674d4990163b55b6d
+verified_commit: 0b97c79c2a2cab3a72e165a8110fc89392611014
 verified_paths: [management-api/server.js, management-api/lib/action-plane.js, management-api/lib/execution-coverage.js, tests/contract/system-execution-wiring.contract.spec.js]
 owner: jjohare
 review_trigger: a second route or MCP tool needs to become an AgentAction, or task-spawn's `local` classification is challenged by a real incident
@@ -18,6 +18,11 @@ acceptance_boundary: jest system-execution-wiring (3 passed) and execution-cover
 ---
 
 # ADR-2041 — Wire the execution journal and action pipeline onto POST /v1/tasks
+
+## Scoped source check — 2026-11-14
+
+Reviewed at `0b97c79c2a2cab3a72e165a8110fc89392611014`. Only server.js changed: the Swagger tag and a session-boundary comment now name the owned session plane. Task dispatch, journal construction and action-pipeline registration are unchanged. The Decision also corrects its stale description of the proxy header: the current action-plane uses proxyVerifiedPubkey rather than accepting an arbitrary header. No task was spawned or runtime journal receipt claimed.
+
 
 ## Context
 
@@ -39,8 +44,8 @@ this the governance gap: autonomy is live, the governor that would police it is 
 happens after classify/guard and a capability token exist. Every task-spawn action is
 minted a real `session_urn` (`uris.mint({kind:'meta', ...})`, never an ad-hoc template
 literal) and an `agent_did` resolved honestly: verified `request.auth.pubkey` first, then
-the (unverified, defensively-read) `X-Agentbox-Pubkey` header ADR-2042 is wiring
-separately, then this container's own `AGENTBOX_AGENT_DID`, then `null`.
+the `X-Agentbox-Pubkey` header accepted only from the proxy peer by
+`proxyVerifiedPubkey`, then this container's own `AGENTBOX_AGENT_DID`, then `null`.
 
 Fail-closed (PHASE2 policy 1): ADR-005's "off" events adapter deliberately no-ops
 `dispatch()` without throwing, so `ExecutionJournal`'s own constructor guard alone would

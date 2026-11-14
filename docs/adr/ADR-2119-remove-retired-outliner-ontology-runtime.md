@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 2c4b365b48d306b90bc36bf113249380e82b9f5c
+verified_commit: 18315de55b9be6f8fdaed6e9f33b6ad26da1cf4f
 verified_paths: [flake.nix, lib/ontology-tools.nix, services/ontology-tools, services/agentbox-mcp/src/web_summary, skills/ontology-core, skills/ontology-enrich, dream.config.json]
 owner: jjohare
 review_trigger: commit and rebuild the image; or introduce a corpus writer or output format
@@ -16,6 +16,11 @@ domain: BASELINE-container
 ---
 
 # ADR-2119 — Remove the retired outliner ontology runtime
+
+## Scoped source check — 2026-11-14
+
+Reviewed at `18315de55b9be6f8fdaed6e9f33b6ad26da1cf4f`. Only flake.nix changed since 2c4b365b4. The reviewed hunks add cold-build dependency repairs, update CLI pins, change optional spatial packaging and remove the retired AoE volume. They do not restore ontology-tools or an outliner writer; the vault package remains the corpus entry point. The other governed sources are unchanged, and check-no-logseq-paths passes. This is a source review, not a new image activation.
+
 
 ## Scoped source check — 2026-11-09
 

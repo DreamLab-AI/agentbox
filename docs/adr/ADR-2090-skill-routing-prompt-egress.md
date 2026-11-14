@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: f475e0b8ee370610132d1920f1e64a82f83311ce
+verified_commit: 9ce9c2c2cd3be8e339139c7786657b5c3d158bc5
 verified_paths: [agentbox.toml, schema/agentbox.toml.schema.json, scripts/agentbox-config-validate.js, config/entrypoint-unified.sh, config/hooks/skill-route.cjs, config/hooks/lib/skill-route.cjs, skills/skill-router/scripts/route.mjs, config/egress-policy.json, tests/config/skill-route.test.js]
 owner: jjohare
 review_trigger: the first project whose content must not reach the judge, or any proposal to widen this beyond skill routing
@@ -17,6 +17,11 @@ acceptance_boundary: jest skill-route 70 passed, semantic-rules and routing-labe
 ---
 
 # ADR-2090 — Skill-routing prompts may egress to the judge; per-project gates are deferred, not waived
+
+## Scoped source check — 2026-11-14
+
+Reviewed at `9ce9c2c2cd3be8e339139c7786657b5c3d158bc5`. The manifest/schema/boot diffs concern memory accounting, spatial packaging, Gemini provisioning and AoE retirement. No skills.routing value, bypass-project rule, egress classification or router transport changes. The combined skill-route/activity-sink Jest suites pass 126 tests. This does not widen the prompt-egress exception or make a new live judge call.
+
 
 ## Scoped source check — 2026-11-09
 
