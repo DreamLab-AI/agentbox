@@ -1,10 +1,11 @@
 ---
 title: Agentbox Capability Governance
 doc_id: AB-GOVERNANCE
-version: 0.6.19
+version: 0.6.20
 status: draft-for-ratification
 verified_commit: 
 changelog:
+  - "0.6.20 (2026-11-14): ADR-2202 (accepted, complete, staged for rebuild): `paper-orchestra`, one arXiv-only skill ported from PaperOrchestra, beside `latex-documents`, `report-builder` and `book-publishing`, which keep their territory and gain one pointer each. Helpers are one Rust binary in skill-tools. 124 skills."
   - "0.6.19 (2026-11-11): ADR-2197 (accepted, complete, staged for rebuild) amends ADR-2024 for non-live repos only. An operator-delegated agent sweep (yolo mode, `/dream sweep`) may merge dream PRs the agent judged correct and green, oldest first, each with a comment stating that no human review is recorded. It may also fix candidate rot, close wrong PRs, answer code-design inbox questions with an agent prefix, dismiss stale alerts, withdraw resolved cases and push the ledger fast-forward outside the night. It never writes review.json, answers owner-fact questions, signs a 31403, touches protected or HANDOFF paths, force-pushes, or touches a repo on the gitignored exclusion list, and with no list it does not run. The engine still merges nothing and ACCEPT still triggers nothing. Invariants: the human-merge-gate invariant gains the sweep exception."
   - "0.6.18 (2026-11-11): ADR-2196: no skill ships half-installed. semgrep, gitleaks, trivy and jj baked; 13 uninstallable or superseded skills deleted with their build wiring; the router honours a skill's manifest gate. 123 skills (lichtfeld-studio removed in a second pass)."
   - "0.6.17 (2026-11-11): ADR-2195 (accepted, complete, staged and gated off): seven `cad-*` skills adapted from text-to-cad 0.11.8 (cad, cad-drawing, cad-fea, cad-robot, cad-pcb, cad-print, cad-render) over a pinned, offline `cad` launcher. New invariants: a third-party tool that installs or updates itself is run only from a hash-locked wheelhouse with its index, telemetry and update feed off; its daemon is a supervised program. 141 skills."
@@ -523,6 +524,7 @@ above, enabled but explicitly-invoke-only.
 - **An orchestrating skill and its neighbours name each other** (ADR-2150, proposed): A skill that orchestrates other skills names every neighbour it overlaps in its when-not clause, and each neighbour names it back in the same change; measured overlap ≥0.60 with any neighbour, cross-section included, blocks activation. A skill never advertises a command, engine or runtime that is not in the tree.
 - A third-party tool that installs or updates itself (text-to-cad's `cad`, ADR-2195) runs only from a hash-locked wheelhouse baked into the image, offline, with no package index, its telemetry and update feed off, and its self-install subcommands refused by the launcher. Its daemon is a supervised program. Gate: `tests/config/cad-launcher.test.sh`.
 - No skill ships half-installed (ADR-2196): a skill's tool is in the image or the skill is deleted; `not-installed` and `superseded` are not used. A deliberately-off skill names a `gate:`, and the router offers it only while that manifest key is true.
+- A ported skill pack becomes one skill that delegates what the estate already owns (ADR-2202): it adds a pointer to each neighbouring skill and changes nothing else in them, and labelled routing cases hold the boundary.
 
 ## Change process
 

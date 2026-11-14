@@ -1,6 +1,6 @@
 ---
 name: latex-documents
-description: "Writes and compiles LaTeX to PDF with TeX Live and latexmk: academic papers, theses, Beamer slides, maths-heavy technical documents, BibTeX or biber bibliographies and multi-file projects. Use when editing .tex or .bib source, fixing a compile error, typesetting equations or building a Beamer deck. Not for a researched multi-agent report with charts (report-builder) or a whole book or arXiv/KDP manuscript pipeline (book-publishing)."
+description: "Writes and compiles LaTeX to PDF with TeX Live and latexmk: academic papers, theses, Beamer slides, maths-heavy technical documents, BibTeX or biber bibliographies and multi-file projects. Use when editing .tex or .bib source, fixing a compile error, typesetting equations or building a Beamer deck. Not for a researched multi-agent report with charts (report-builder), writing or peer-review refinement of a research paper (paper-orchestra) or a whole book or arXiv/KDP manuscript pipeline (book-publishing)."
 ---
 
 # LaTeX Documents
@@ -55,6 +55,7 @@ managed with `\include`/`\input`.
 
 - Simple markdown that doesn't need LaTeX formatting — write markdown directly.
 - Comprehensive reports with multi-LLM research, charts, Wardley maps — use **report-builder**.
+- Writing a research paper from an idea and results, or improving one by simulated peer review, evidence gates and an arXiv preflight — use **paper-orchestra** (it compiles through this skill).
 - Diagrams/flowcharts as code — use **mermaid-diagrams**.
 - Web docs not compiled to PDF — markdown or HTML fits better.
 - Slide decks outside Beamer (HTML/reveal.js) — standard web tools.

@@ -1,6 +1,6 @@
 # Skill Directory -- Comprehensive Inventory and Decision Tree
 
-> **123 active skills**. Categorised inventory (Artefact 1), decision tree (Artefact 2), composition patterns, MCP summary. Skills self-trigger from their frontmatter `description`; the always-loaded subsets are `registered-skills.txt` (Claude Code) and `codex-registered-skills.txt` (Codex); everything else is reached through `skill-router` (`/route`) and its generated `references/routing-table.md`. Facts here are gated: `scripts/skill-count-check.js` (count), `lint-skills.sh` (every skill named here, section map, routing table current).
+> **124 active skills**. Categorised inventory (Artefact 1), decision tree (Artefact 2), composition patterns, MCP summary. Skills self-trigger from their frontmatter `description`; the always-loaded subsets are `registered-skills.txt` (Claude Code) and `codex-registered-skills.txt` (Codex); everything else is reached through `skill-router` (`/route`) and its generated `references/routing-table.md`. Facts here are gated: `scripts/skill-count-check.js` (count), `lint-skills.sh` (every skill named here, section map, routing table current).
 > Updated 2026-09-09 (estate re-audit for Fable 5.1 / GPT-6 Astra workloads; history in `CHANGELOG.md` and `docs/adr/`). Reference this file from CLAUDE.md for intelligent routing.
 
 ---
@@ -32,13 +32,13 @@
 
 ---
 
-## Artefact 1: Categorised Skill Inventory (123 Active Skills)
+## Artefact 1: Categorised Skill Inventory (124 Active Skills)
 
 ### Context, Discovery, and Session Management
 
 | Skill | MCP | Key Capability | When to Choose |
 |-------|-----|----------------|----------------|
-| `skill-router` | No | **Unified dispatcher** for 123 skills. `/route [task]` classifies intent and routes to optimal skill. Single entry point | Don't know which skill to use — describe your task and get routed |
+| `skill-router` | No | **Unified dispatcher** for 124 skills. `/route [task]` classifies intent and routes to optimal skill. Single entry point | Don't know which skill to use — describe your task and get routed |
 | `lazy-fetch` | Yes | 25 MCP tools: context hydration, plan tracking, blueprints, PRD-to-sprints, security scanning, persistent memory | Starting a new session, managing context across tasks, tracking phased plans, running autonomous PRD execution |
 | `skill-builder` | No | Create new Claude Code skills with YAML frontmatter and progressive disclosure | Building new custom skills for the skills directory |
 | `skill-tuning` | No | Empirically optimize an existing skill against a measurable reward via the SkillOpt loop + noise-robust held-out A/B (single-optimizer vs mesh arms). Live harness in skillopt-lab | Tuning a skill by evidence — raising an agent's success rate on a bounded scoreable task, not eyeballing prose |
@@ -167,6 +167,7 @@ Testing is integrated into `visioncraft` (TDD agents) and `sparc-methodology` (T
 |-------|-----|----------------|----------------|
 | `report-builder` | No | LaTeX reports, Python analytics, Wardley maps, TikZ+Mermaid diagrams, multi-LLM research | Research reports, white papers, sector analyses, policy briefs |
 | `latex-documents` | No | TeX Live toolchain, Beamer presentations, BibTeX, mathematical typesetting | Academic papers, presentations, publication-quality documents |
+| `paper-orchestra` | No | arXiv research paper from an idea and experimental results, or refinement of an existing paper: typed outline, verified citations, claim-evidence gate against a log or results ledger, simulated peer review with deterministic accept/revert rules, blind side-by-side judging, arXiv preflight (`paper-orchestra` binary) | Writing a preprint from results; reviewing, strengthening or sanity-checking a paper before or after arXiv submission; comparing two drafts |
 | `book-publishing` | No | End-to-end book pipeline: markdown → arXiv/KDP/print-ready PDF using parallel agent swarms (LaTeX conversion, BibTeX extraction, TikZ diagrams, matplotlib charts, Wardley maps, Gemini image upcycling, visual verification) | Publishing a book or preparing a full manuscript for academic or commercial publication |
 | `anatomy` | No | Crafted isometric SVG machines with shared behaviour/readout models, geometry kit, seven examples, optional interaction, WebGL and 3D; topic references load on demand via Jev | Mechanical technical illustrations, algorithm explainers and interactive instruments for docs or web pages; not architecture topology, Mermaid corpora or whole-repository explanations |
 | `diagram-design` | No | Editorial-quality HTML/SVG diagrams: 28 visual types, branded design system, semantic patterns, draw.io/Mermaid import, light/dark/terminal/sketchy variants, accessible animation, self-contained output | Presentation diagrams, blog visuals, branded architecture diagrams, editorial charts, any diagram that will be shared or published |
@@ -302,7 +303,7 @@ Answer these questions in order. Stop at the first match.
 
 ```
 Q0: Unsure which skill handles your task?
-    --> /route [describe task]  (skill-router — intelligent dispatcher for all 123 skills)
+    --> /route [describe task]  (skill-router — intelligent dispatcher for all 124 skills)
 
 Q1: Is the task about an EXISTING skill that is deprecated?
     YES --> Use its replacement (see Deprecated table above)
@@ -486,7 +487,10 @@ Q3: What kind of document?
     +-- Full research report / white paper / policy brief
     |   --> report-builder
     |
-    +-- Academic paper, Beamer presentation, math typesetting
+    +-- Research paper for arXiv: write it from an idea + results, or review/refine an existing draft or submission
+    |   --> paper-orchestra  (compiles via latex-documents; citations via web-researcher; prose via prose-sanitiser)
+    |
+    +-- Editing .tex, fixing a compile error, Beamer presentation, math typesetting
     |   --> latex-documents
     |
     +-- Multi-chapter markdown manuscript → arXiv/KDP/print-ready PDF (full pipeline)
@@ -837,6 +841,7 @@ Some tasks benefit from combining skills. Common compositions:
 | Documentation with live web research | `report-builder` | `perplexity-research`, `gemini-url-context` |
 | Visual UI testing after building components | `daisyui` or `ui-ux-pro-max-skill` | `browser` |
 | Academic paper with AI-generated figures | `latex-documents` | `diagram-design`, `mermaid-diagrams` |
+| arXiv paper from results, reviewed and preflighted | `paper-orchestra` | `latex-documents`, `web-researcher`, `prose-sanitiser`, `diagram-design` |
 | Creative landing page with proper typography | `bencium-creative` | `typography` |
 | Enterprise app with accessibility audit | `bencium-controlled-ux-designer` | `design-audit` |
 | Architecture review before major refactor | `vanity-engineering-review` | `human-architect-mindset`, `negentropy-lens` |

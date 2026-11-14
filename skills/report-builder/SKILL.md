@@ -19,6 +19,7 @@ Build publication-quality reports using a hierarchical mesh swarm of specialist 
 
 - For simple markdown documents that do not need LaTeX formatting — just write markdown directly
 - For presentations — use Beamer via the `latex-documents` skill instead
+- For a research paper for arXiv written from an idea and experimental results, or refinement of an existing paper — use the `paper-orchestra` skill instead
 - For single-figure chart generation — use Python directly without the full report pipeline
 - For API documentation — use the `docs-alignment` skill instead
 - For diagrams only without a full report — use the `mermaid-diagrams` skill instead

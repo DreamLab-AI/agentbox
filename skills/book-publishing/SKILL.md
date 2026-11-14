@@ -1,6 +1,6 @@
 ---
 name: book-publishing
-description: "Use when publishing a book, preparing an arXiv submission, formatting a manuscript for KDP, or turning a markdown manuscript into a print-ready PDF. End-to-end pipeline orchestrating parallel agent swarms for LaTeX (memoir) conversion, BibTeX citation extraction, diagram/chart generation, image upcycling, and visual verification. NOT for single-document LaTeX compilation (use latex-documents), general prose editing, or ebook-only EPUB flows."
+description: "Use when publishing a book, preparing an arXiv submission, formatting a manuscript for KDP, or turning a markdown manuscript into a print-ready PDF. End-to-end pipeline orchestrating parallel agent swarms for LaTeX (memoir) conversion, BibTeX citation extraction, diagram/chart generation, image upcycling, and visual verification. NOT for single-document LaTeX compilation (use latex-documents), a research paper for arXiv (use paper-orchestra), general prose editing, or ebook-only EPUB flows."
 triggers:
   - /book-publishing
   - publish book

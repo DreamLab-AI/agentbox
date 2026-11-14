@@ -7,6 +7,11 @@
 #   wardley-maps    JSON -> D3 HTML map generation, heuristics tables, strategic analysis
 #   docs-alignment  markdown link validation, mermaid checking, ASCII-diagram detection
 #
+# and the deterministic gates of a fourth, ported from upstream Python (ADR-2202):
+#
+#   paper-orchestra outline validation, claim-evidence and citation gates, the
+#                   reviewer loop's accept/revert rules, arXiv preflight
+#
 # Two Python files in this territory deliberately survive and are NOT replaced
 # here: skills/wardley-maps/tools/advanced_nlp_parser.py needs spaCy NER (no
 # Rust equivalent worth the effort), so the ported tools shell out to it on the
