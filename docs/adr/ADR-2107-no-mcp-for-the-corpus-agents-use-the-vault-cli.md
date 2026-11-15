@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 18315de55b9be6f8fdaed6e9f33b6ad26da1cf4f
+verified_commit: c9f8ba2676af10d55096d026301817688c3bc64c
 verified_paths: [skills/ontology-augment, skills/podcast-knowledge-ingest, agents/ontology-curator.md, mcp/mcp.json, agentbox.toml, AGENTS.md]
 owner: jjohare
 review_trigger: a request to register any MCP server that reads or writes visionGraph, the ADR-140 /mcp plane reaching the deployed Loom, or the first `vault` subcommand an agent cannot express
@@ -19,6 +19,16 @@ acceptance_boundary: ontomark and vault --help verb checks at 3e3e09b1d, a grep 
 ---
 
 # ADR-2107 — No MCP inside the estate for the corpus; agents use the vault CLI
+
+## Scoped source check — 2026-11-15
+
+Reviewed at `c9f8ba2676af10d55096d026301817688c3bc64c`. Among governed
+paths, only AGENTS.md changes: the baked skill count becomes 125. The corpus CLI
+rule, vault path authority, MCP registry and ontology/podcast skills are
+unchanged. Agent reconciliation (45), instruction layers (12), boot projection
+(13), skill lint and skill-count checks pass. This count-only review preserves
+the existing staged activation and acceptance boundary; it claims no new corpus
+write or runtime acceptance.
 
 ## Scoped source check — 2026-11-14
 
