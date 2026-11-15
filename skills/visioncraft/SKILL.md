@@ -20,6 +20,8 @@ or authorise external calls. Use the repository's actual tool and API versions.
 Installed command help and package documentation describe the shipped
 command surface.
 
+For browser-facing HTML/CSS/DOM features, consult [modern-web-guidance](../modern-web-guidance/SKILL.md) when selecting native platform patterns and compatibility fallbacks. This complements the Rust/WASM implementation guidance.
+
 ## Choose the useful depth
 
 | Situation | Read next |
