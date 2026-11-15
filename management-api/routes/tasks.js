@@ -126,6 +126,9 @@ async function tasksRoutes(fastify, options) {
             exitCode: { type: ['number', 'null'] },
             duration: { type: 'number' },
             logTail: { type: 'string' },
+            // VisionClaw's TaskStatus requires these two; fastify strips them if absent here.
+            taskDir: { type: 'string' },
+            logFile: { type: 'string' },
             // D2 (PRD-023 WP-3): echoed claude-flow join key (null when the task
             // carried none). Must be in the schema or fastify strips it.
             claudeFlowAgentId: { type: ['string', 'null'] },
@@ -173,6 +176,11 @@ async function tasksRoutes(fastify, options) {
                 properties: {
                   taskId: { type: 'string' },
                   agent: { type: 'string' },
+                  // VisionClaw's TaskInfo requires these three; fastify strips
+                  // them if absent here.
+                  task: { type: 'string' },
+                  provider: { type: 'string' },
+                  status: { type: 'string' },
                   startTime: { type: 'number' },
                   duration: { type: 'number' },
                   // D2 (PRD-023 WP-3): echoed claude-flow join key (null when the
