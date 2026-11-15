@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 0b97c79c2a2cab3a72e165a8110fc89392611014
+verified_commit: ab215574f23c597e040cbff9cc3bacd88a2e0ced
 verified_paths: [agentbox.sh, scripts/runtime-delivery.*, scripts/refresh-compose.sh, config/build-registry.json, lib/image-layers.nix, flake.nix, tests/config/runtime-delivery*, .github/workflows/invariants.yml, docs/developer/incremental-builds.md]
 owner: jjohare
 review_trigger: layer grouping, delivery transport, candidate validation or cache retention changes
@@ -16,6 +16,20 @@ domain: BASELINE-container
 ---
 
 # ADR-2132 — Incremental image delivery and explicit activation
+
+## Scoped verification — 2026-11-15
+
+Reviewed at `ab215574f23c597e040cbff9cc3bacd88a2e0ced`. The only governed
+delta since the prior stamp adds measured phase timings and a platform-layer
+cost warning to `docs/developer/incremental-builds.md`. Layer grouping,
+transport, candidate validation and cache-retention code are unchanged.
+The release from `c254a24bf` exercised preparation while the old container kept
+running, offline candidate checks, source/image/configuration guards, scoped
+activation and persistent-mount equality. Runtime readiness and MCP, Gemini,
+synthetic terminal rendering, CUDA/NVENC and QGIS probes pass. Targeted delivery
+tests pass again. Data volumes, caches and recovery images are retained; no
+cleanup or rollback was performed. The timed preparation excludes PR/CI work
+and the earlier superseded attempt; it is not total maintenance wall time.
 
 ## Scoped source check — 2026-11-14
 
