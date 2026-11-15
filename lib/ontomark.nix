@@ -37,16 +37,18 @@
 # 0.8.0 adds field-level certification, `ontomark ground` question coverage and
 # the generated context/v2.jsonld (ADR-OM-012; agentbox via VisionFlow ADR-2023).
 #
+# 0.9.0 adds content-bound review freshness and separate build provenance.
+#
 # Repinning
 # ---------
 # Change `version`, `sha256` (from the release's .sha256 asset) and nothing else.
 # The asset name keeps the `-linux-gnu` suffix the first release used; the
 # binary itself is static-pie and runs on glibc and Nix hosts alike.
 
-{ lib, pkgs, jev ? false, version ? "0.8.0"
-, hash ? "sha256-od+x6RPV/ji3tpTayCyOK0SwBpk4KZmgjPVpM8bBDWQ=" }:
+{ lib, pkgs, jev ? false, version ? "0.9.0"
+, hash ? "sha256-vKitw+FDj3DcnNyhVmGm/VUy8Q8tXwd2xwmSIsNMn10=" }:
 
-# The release binary is built without the Jev feature. Build the same v0.8.0 source
+# The release binary is built without the Jev feature. Build the same v0.9.0 source
 # with `jev` only for the enabled suggestion consumer; off retains the release bytes.
 if jev then pkgs.rustPlatform.buildRustPackage {
   pname = "ontomark";
@@ -54,10 +56,10 @@ if jev then pkgs.rustPlatform.buildRustPackage {
   src = pkgs.fetchFromGitHub {
     owner = "DreamLab-AI";
     repo = "ontomark";
-    rev = "1176316b055b4eea5e7aa0b1ffb8e73a00415f73"; # v0.8.0
-    hash = "sha256-Wx6tnbm+a7T1Sk5xgu08VnPwLEuIiRsWraMvDvCFy8k=";
+    rev = "f9ba200b8051dc3a1f5e26ff2e001d5fc2905426"; # v0.9.0
+    hash = "sha256-Ze3BuW4fQyIuZN+IT9rsKj0yZE2m600hb5pPXWtz+j0=";
   };
-  cargoLock.lockFile = ./lockfiles/ontomark-1176316b.Cargo.lock;
+  cargoLock.lockFile = ./lockfiles/ontomark-f9ba200b.Cargo.lock;
   buildAndTestSubdir = "crates/ontomark-cli";
   buildFeatures = [ "jev" ];
   nativeBuildInputs = [ pkgs.pkg-config ];
