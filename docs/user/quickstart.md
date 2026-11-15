@@ -577,7 +577,7 @@ The container runs a tmux session (`agentbox`) with operator windows plus a sing
 | 2 | Services | `supervisorctl status` |
 | 3 | Build | Build/compile workspace |
 | 4 | Logs | Management API logs (split pane) |
-| 5 | System | SystemScape rotating telemetry history + `btm` process attribution companion |
+| 5 | System | SystemScape telemetry ridges (two-hour history, per-GPU) + `btm` process attribution companion |
 | 6 | VNC | VNC connection info |
 | 7 | Git | Project git status |
 | 8 | Sessions | Owned session plane (`agentbox-sessions pick`) |

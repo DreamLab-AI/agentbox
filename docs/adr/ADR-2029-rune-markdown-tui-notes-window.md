@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 9ce9c2c2cd3be8e339139c7786657b5c3d158bc5
+verified_commit: e521b1136ba912f63a18b2f9eeffbb8489b672eb
 verified_paths: [flake.nix, lib/rune.nix, config/tmux-autostart.sh, config/tmux.conf, agentbox.toml, setup/agentbox.default.toml, schema/agentbox.toml.schema.json]
 owner: jjohare
 review_trigger: a Rune release that changes its CLI (`-w`), its keyboard-protocol requirement, or its licence; or the AoE plane absorbing note editing
@@ -17,6 +17,15 @@ lineage: ADR-2003 (manifest-gated Nix composition), legacy ADR-042 (AoE Sessions
 ---
 
 # ADR-2029 — Rune is the first-class markdown TUI
+
+## Scoped source check — 2026-11-15
+
+At `e521b1136ba912f63a18b2f9eeffbb8489b672eb`, the only governed-path
+change is the SystemScape 0.3 comment in `config/tmux-autostart.sh`.
+Removing full-line comments and blank lines produces the same executable script
+as main before PR #49; Bash syntax validation passes. The Notes window, Rune
+pin, CLI arguments and vault-root selection are unchanged. This establishes no
+new interactive Rune acceptance; existing status axes and limitations remain.
 
 ## Scoped source check — 2026-11-14
 
