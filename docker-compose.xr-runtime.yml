@@ -61,7 +61,7 @@ services:
     ports:
       # VNC: watch the Monado compositor window + Godot stereo render.
       # 5904 avoids the browsercontainer VNC on 5903.
-      - "0.0.0.0:5904:5904"
+      - "${AGENTBOX_SIDECAR_BIND:-127.0.0.1}:5904:5904"
     volumes:
       # The integrator's XR project tree. `..` resolves to the host project root
       # in an integrated checkout (agentbox/ lives inside it); override

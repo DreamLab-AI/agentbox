@@ -80,27 +80,27 @@ import { fileURLToPath } from 'node:url';
 //   docker-compose.yml 9096                     — ADR-045 NIP-98 sovereign ingress
 //   docker-compose.voice.yml 8443/8444          — voice cockpit TLS door (ADR-2013
 //                                                 second LAN ingress, modelled not hidden)
-//   docker-compose.browsercontainer.yml 5903/8931/9222
-//                                               — sidecar VNC / MCP SSE / raw CDP
-//                                                 for LAN operators + agents
-//   docker-compose.gui-tools.yml 5905/9876/9877 — sidecar VNC / Blender-MCP / QGIS-MCP
-//   docker-compose.xr-runtime.yml 5904          — sidecar VNC
+//
+// The browsercontainer, gui-tools and xr-runtime sidecars (VNC, CDP, browser MCP,
+// Blender/QGIS MCP) are NOT sanctioned any more: they carry no authentication, so
+// they publish through SIDECAR_BIND_FILES below, defaulting to loopback.
 //
 // `host_ip: null` means the mapping states no host address, which Docker reads
 // as every interface — the 9096 ingress is written that way today and is
 // sanctioned in that exact form.
 // ---------------------------------------------------------------------------
+// Sidecar compose files whose publishes may take the host address from
+// ${AGENTBOX_SIDECAR_BIND:-127.0.0.1}. The default is loopback; setting the one
+// variable moves every sidecar port to a LAN address together. This is the ONLY
+// interpolation the gate accepts, and only in these files and only with that
+// exact loopback default, so an unauditable `${X:-0.0.0.0}` is still rejected.
+const SIDECAR_BIND_FILES = ['docker-compose.browsercontainer.yml', 'docker-compose.gui-tools.yml', 'docker-compose.xr-runtime.yml'];
+const SIDECAR_BIND_PREFIX = '${AGENTBOX_SIDECAR_BIND:-127.0.0.1}:';
+
 const SANCTIONED = [
   { file: 'docker-compose.yml', host_ip: null, published: 9096, target: 9096, protocol: 'tcp' },
   { file: 'docker-compose.voice.yml', host_ip: '0.0.0.0', published: 8443, target: 8443, protocol: 'tcp' },
   { file: 'docker-compose.voice.yml', host_ip: '0.0.0.0', published: 8444, target: 8444, protocol: 'tcp' },
-  { file: 'docker-compose.browsercontainer.yml', host_ip: '0.0.0.0', published: 5903, target: 5903, protocol: 'tcp' },
-  { file: 'docker-compose.browsercontainer.yml', host_ip: '0.0.0.0', published: 8931, target: 8931, protocol: 'tcp' },
-  { file: 'docker-compose.browsercontainer.yml', host_ip: '0.0.0.0', published: 9222, target: 9223, protocol: 'tcp' },
-  { file: 'docker-compose.gui-tools.yml', host_ip: '0.0.0.0', published: 5905, target: 5905, protocol: 'tcp' },
-  { file: 'docker-compose.gui-tools.yml', host_ip: '0.0.0.0', published: 9876, target: 9876, protocol: 'tcp' },
-  { file: 'docker-compose.gui-tools.yml', host_ip: '0.0.0.0', published: 9877, target: 9877, protocol: 'tcp' },
-  { file: 'docker-compose.xr-runtime.yml', host_ip: '0.0.0.0', published: 5904, target: 5904, protocol: 'tcp' },
 ];
 
 const LOOPBACK = '127.0.0.1';
@@ -535,6 +535,11 @@ export function normalisePort(node) {
   if (typeof v !== 'string') return { ok: false, why: `unsupported ports entry type ${typeof v}` };
   const text = v.trim();
   if (text === '') return { ok: false, why: 'empty ports entry' };
+  if (text.startsWith(SIDECAR_BIND_PREFIX) && !/[${(]/.test(text.slice(SIDECAR_BIND_PREFIX.length))) {
+    const inner = normalisePort({ kind: 'scalar', value: `127.0.0.1:${text.slice(SIDECAR_BIND_PREFIX.length)}` });
+    if (inner.ok) inner.mapping.sidecarBind = true;
+    return inner;
+  }
   if (text.includes('${') || text.includes('$(')) return { ok: false, why: `environment interpolation in ${JSON.stringify(text)} is unauditable` };
   if (text.includes('-') && /\d-\d/.test(text)) return { ok: false, why: `port range in ${JSON.stringify(text)} is unauditable` };
 
@@ -649,6 +654,10 @@ function checkFile(file) {
       const r = normalisePort(entry);
       if (!r.ok) { violations.push(`${base}:${entry.line}: ${where}: ${r.why}`); continue; }
       const m = r.mapping;
+      if (m.sidecarBind && !SIDECAR_BIND_FILES.includes(base)) {
+        violations.push(`${base}:${entry.line}: ${where}: AGENTBOX_SIDECAR_BIND interpolation is only accepted in ${SIDECAR_BIND_FILES.join(', ')}`);
+        continue;
+      }
       if (m.host_ip === LOOPBACK) continue;
       if (isSanctioned(base, m)) continue;
       const shown = `${m.host_ip === null ? '(all interfaces)' : m.host_ip}:${m.published}:${m.target}/${m.protocol}`;
