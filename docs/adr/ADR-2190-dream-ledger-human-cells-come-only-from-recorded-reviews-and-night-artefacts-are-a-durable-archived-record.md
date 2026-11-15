@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 9ce9c2c2cd3be8e339139c7786657b5c3d158bc5
+verified_commit: e521b1136ba912f63a18b2f9eeffbb8489b672eb
 verified_paths: [services/dream-engine/src/review.rs, services/dream-engine/src/archive.rs, services/dream-engine/src/ledger_io.rs, services/dream-engine/src/gitcmd.rs, services/dream-engine/src/records.rs, services/dream-engine/src/lib.rs, services/dream-engine/src/engine.rs, services/dream-engine/src/main.rs, services/dream-engine/src/config.rs, services/dream-engine/src/estate.rs, services/dream-engine/src/digest.rs, services/dream-engine/src/governance.rs, config/tmux-autostart.sh, schema/agentbox.toml.schema.json, setup/agentbox.default.toml]
 owner: jjohare
 review_trigger: a forge identity that separates agent merges from human merges (a dedicated agent account or signed human approvals), which would reopen merge events as review evidence; a review tool that authenticates its reviewer; any change that prunes, relocates or stops archiving the artefact directory; a dream-core release that changes the ledger row or the witness
@@ -20,6 +20,16 @@ acceptance_boundary: "cargo test in services/dream-engine at 542031581 passes 25
 ---
 
 # ADR-2190: Dream ledger human cells come only from recorded reviews, and night artefacts are a durable, archived record
+
+## Scoped source check — 2026-11-15
+
+At `e521b1136ba912f63a18b2f9eeffbb8489b672eb`, PR #49 changes only the
+SystemScape display comment in `config/tmux-autostart.sh` among governed paths.
+The executable script is byte-identical after stripping full-line comments and
+blank lines; Bash syntax validation passes. Review attribution, ledger locking,
+night artefact creation, archive retention and their sources are unchanged.
+Staged activation and the original night-run/private-archive limitations remain;
+this review neither fills human cells nor writes or prunes an archive.
 
 ## Scoped source check — 2026-11-14
 
