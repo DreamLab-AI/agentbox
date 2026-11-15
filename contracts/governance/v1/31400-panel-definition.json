@@ -1,0 +1,38 @@
+{
+  "content": "{\"title\":\"Ontology governance\",\"description\":\"Human decisions on proposed changes to the shared ontology.\",\"version\":\"1.0.0\",\"schema\":\"action-inbox\",\"fields\":[{\"name\":\"term\",\"field_type\":\"string\",\"label\":\"Term\"},{\"name\":\"score\",\"field_type\":\"float\",\"label\":\"Score\"}],\"actions\":[{\"id\":\"promote\",\"label\":\"Promote\",\"style\":\"primary\"},{\"id\":\"reject\",\"label\":\"Reject\",\"style\":\"destructive\"}],\"layout\":\"inbox-table\",\"capabilities\":[\"filter\",\"search\"],\"refresh_secs\":30,\"task_properties\":{\"verifiability\":\"partial\",\"reversibility\":\"compensable\",\"stakes\":\"significant\"},\"calibration_sample_rate\":0.25,\"max_pending_hours\":48,\"probe_agent\":\"4f355bdcb7cc0af728ef3cceb9615d90684bb5b2ca5f859ab0f0b704075871aa\"}",
+  "created_at": 1790078400,
+  "id": "8fef4d0e5a4f1032e04825181a72dde66da7807eca5808b27f52651c6065544b",
+  "kind": 31400,
+  "pubkey": "4f355bdcb7cc0af728ef3cceb9615d90684bb5b2ca5f859ab0f0b704075871aa",
+  "sig": "ab289fc845e102e147cb026bccb4b81f92750072f8c68f1c0ece130b0bcb9b44f4995c8d5cadf6a39878f7498f6ae97f3bc876ba41dd1ff3ccae21ea97bf185c",
+  "tags": [
+    [
+      "d",
+      "ontology-governance"
+    ],
+    [
+      "tp-verifiability",
+      "partial"
+    ],
+    [
+      "tp-reversibility",
+      "compensable"
+    ],
+    [
+      "tp-stakes",
+      "significant"
+    ],
+    [
+      "calibration-sample-rate",
+      "0.25"
+    ],
+    [
+      "max-pending-hours",
+      "48"
+    ],
+    [
+      "probe-agent",
+      "4f355bdcb7cc0af728ef3cceb9615d90684bb5b2ca5f859ab0f0b704075871aa"
+    ]
+  ]
+}

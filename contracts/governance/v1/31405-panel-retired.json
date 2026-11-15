@@ -1,0 +1,14 @@
+{
+  "content": "",
+  "created_at": 1790078580,
+  "id": "4201a7c42115e134b7649cc4ac87c65fcf6a363028fe7cbe5dfdc912ee3ee031",
+  "kind": 31405,
+  "pubkey": "4f355bdcb7cc0af728ef3cceb9615d90684bb5b2ca5f859ab0f0b704075871aa",
+  "sig": "e5e32afa8bb3a9943fb2ea1f5afd12e9dd087d37ed3e45698c5f58725760f808c3bb0bd0dc080a7e538a7924edc1bf8afbb699440848651c68d6c4082970d79a",
+  "tags": [
+    [
+      "d",
+      "ontology-governance"
+    ]
+  ]
+}

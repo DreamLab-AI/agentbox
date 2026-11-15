@@ -47,6 +47,7 @@ const POD_ROOT = process.env.AGENTBOX_POD_ROOT || '/var/lib/agentbox';
 // These are the SAME modules the authority gate uses, so a triple derived here
 // and a triple stamped by the gate can never disagree.
 const taskProperties = require('../../management-api/lib/task-properties');
+const governanceContract = require('../../management-api/lib/governance-contract');
 const { ApplicationReceiptStore } = require('../../management-api/lib/governance-application-receipts');
 const { manualContinue } = require('../../management-api/lib/governance-manual-continue');
 const { buildReceiptPublisher } = require('../../management-api/lib/governance-receipt-publisher');
@@ -307,7 +308,7 @@ async function handleTool(name, args) {
       };
 
       const event = {
-        kind: 31400,
+        kind: governanceContract.PANEL_DEFINITION,
         content: JSON.stringify(panelPayload),
         tags: [['d', args.panel_id]],
         created_at: nowUnix(),
@@ -351,7 +352,7 @@ async function handleTool(name, args) {
       };
 
       const event = {
-        kind: 31402,
+        kind: governanceContract.ACTION_REQUEST,
         content: JSON.stringify(requestPayload),
         tags: [
           ['d', caseId],
@@ -417,7 +418,7 @@ async function handleTool(name, args) {
       };
 
       const event = {
-        kind: 31404,
+        kind: governanceContract.PANEL_UPDATE,
         content: JSON.stringify(updatePayload),
         tags: [
           ['d', args.panel_id],
@@ -443,7 +444,7 @@ async function handleTool(name, args) {
       };
 
       const event = {
-        kind: 31405,
+        kind: governanceContract.PANEL_RETIRED,
         content: JSON.stringify(retirePayload),
         tags: [
           ['d', args.panel_id],
@@ -476,7 +477,7 @@ async function handleTool(name, args) {
           const evt = JSON.parse(raw);
 
           // Filter for ActionResponse (kind 31403) only
-          if (evt.kind !== 31403) continue;
+          if (evt.kind !== governanceContract.ACTION_RESPONSE) continue;
 
           let content = {};
           try { content = JSON.parse(evt.content); } catch { /* non-JSON content */ }

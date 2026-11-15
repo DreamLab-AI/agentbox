@@ -17,6 +17,7 @@ const { BaseAdapter } = require('../base');
 const { NotFound, SpawnError } = require('../errors');
 const CONTRACT_VERSIONS = require('../contract-versions');
 const uris = require('../../lib/uris');
+const { ACTION_REQUEST } = require('../../lib/governance-contract');
 const { applyOntologyDecision, proposalFromRequest, canonicalDigest } = require('../../lib/ontology-apply');
 
 /** The ACSP panel whose cases are corpus proposals (nostr-bbs-core PANEL_ONTOLOGY_GOVERNANCE). */
@@ -582,7 +583,7 @@ class LocalProcessManagerOrchestratorAdapter extends BaseAdapter {
       const file = path.join(pods, owner, 'events', 'governance', `${eventId}.json`);
       try {
         const rec = JSON.parse(fs.readFileSync(file, 'utf8'));
-        if (rec && rec.event_id === eventId && rec.kind === 31402) return rec;
+        if (rec && rec.event_id === eventId && rec.kind === ACTION_REQUEST) return rec;
       } catch (_) { /* not this owner */ }
     }
     return null;

@@ -51,6 +51,16 @@ function getNostrTools() {
 
 // ─── Kind constants ────────────────────────────────────────────────────────────
 
+// The governance kinds come from the contract module (single reading of the
+// forum's contract, contracts/governance/v1). Vendored beside this file in the
+// management-api build; resolved from the source tree otherwise.
+let governanceContract;
+try { governanceContract = require('./governance-contract'); }
+catch (err) {
+  if (err.code !== 'MODULE_NOT_FOUND') throw err;
+  governanceContract = require('../../management-api/lib/governance-contract');
+}
+
 const kinds = Object.freeze({
   AUTH:            27235,  // NIP-98 HTTP auth
   CLIENT_AUTH:     22242,  // NIP-42 relay session auth (ephemeral)
@@ -58,12 +68,7 @@ const kinds = Object.freeze({
   BRIEF_REF:       30000,  // NIP-33 addressable — brief references
   BEAD_REF:        30001,  // NIP-33 addressable — bead/receipt references
   // Agent Control Surface Protocol (kinds 31400-31405)
-  PANEL_DEFINITION: 31400, // agent publishes interactive control panel schema
-  PANEL_STATE:      31401, // agent publishes current panel data snapshot
-  ACTION_REQUEST:   31402, // agent requests human decision
-  ACTION_RESPONSE:  31403, // human responds to action request
-  PANEL_UPDATE:     31404, // agent publishes incremental state diff
-  PANEL_RETIRED:    31405, // agent retires a control panel
+  ...governanceContract.KINDS, // PANEL_DEFINITION, PANEL_STATE, ACTION_REQUEST, ACTION_RESPONSE, PANEL_UPDATE, PANEL_RETIRED
   JOB_ESTIMATE:    38200,  // agent job cost estimate (payment system)
   JOB_SETTLEMENT:  38201,  // agent job receipt/settlement (payment system)
   // Generic NIP-33 range constants for subscription filters

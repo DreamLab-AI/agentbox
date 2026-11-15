@@ -1,0 +1,58 @@
+{
+  "content": "{\"fields\":{\"proposal_urn\":\"urn:agentbox:thing:golden:proposal-0123456789ab\",\"propose_iri\":\"urn:ngm:class:golden-example\",\"score\":0.92,\"term\":\"Golden example\"},\"reasoning\":\"Three independent notes define the term identically.\",\"context_url\":\"urn:ngm:class:golden-example\",\"risk_tier\":\"high\",\"confidence\":0.75,\"task_properties\":{\"verifiability\":\"partial\",\"reversibility\":\"compensable\",\"stakes\":\"significant\"},\"probe\":null}",
+  "created_at": 1790078402,
+  "id": "ef6ec8ae957aab07c2b6af4ccd69bdae182d0bac32a0ae072d55399d7db0d2f4",
+  "kind": 31402,
+  "pubkey": "4f355bdcb7cc0af728ef3cceb9615d90684bb5b2ca5f859ab0f0b704075871aa",
+  "sig": "54a43d9fbc195f538d086c11870e223f7aa833c94a5ee9ae18736d5bbbb4bbcf87a94fa05d84b9573573fb32cfb77b32b12e41d2c41cbc00bf2d1a032ae5d129",
+  "tags": [
+    [
+      "d",
+      "urn:agentbox:thing:golden:proposal-0123456789ab"
+    ],
+    [
+      "a",
+      "31400:4f355bdcb7cc0af728ef3cceb9615d90684bb5b2ca5f859ab0f0b704075871aa:ontology-governance"
+    ],
+    [
+      "priority",
+      "high"
+    ],
+    [
+      "category",
+      "knowledge_enrichment"
+    ],
+    [
+      "subject-kind",
+      "opaque"
+    ],
+    [
+      "subject-id",
+      "urn:ngm:class:golden-example"
+    ],
+    [
+      "title",
+      "Promote Golden example"
+    ],
+    [
+      "risk-tier",
+      "high"
+    ],
+    [
+      "context_url",
+      "urn:ngm:class:golden-example"
+    ],
+    [
+      "tp-verifiability",
+      "partial"
+    ],
+    [
+      "tp-reversibility",
+      "compensable"
+    ],
+    [
+      "tp-stakes",
+      "significant"
+    ]
+  ]
+}
