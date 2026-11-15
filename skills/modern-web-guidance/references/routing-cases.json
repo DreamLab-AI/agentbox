@@ -1,0 +1,12 @@
+{
+  "_role": "Focused runtime routing smoke cases, co-authored with this skill; not an independent accuracy benchmark. Run route.mjs --eval against the checkout skills directory.",
+  "items": [
+    {"truth":"modern-web-guidance","prompt":"Replace legacy JavaScript positioning and animation with native CSS anchor positioning, popovers and view transitions, checking browser compatibility and accessible fallbacks."},
+    {"truth":"modern-web-guidance","prompt":"Can we replace our resize listeners with CSS container queries? Check browser support and what fallback we need."},
+    {"truth":"modern-web-guidance","prompt":"Scan this frontend for legacy web platform patterns and suggest native browser replacements."},
+    {"truth":"browser","prompt":"Open the app in Chrome, fill in the login form and take a screenshot."},
+    {"truth":"qe-browser","prompt":"Run an accessibility audit and visual regression check on the staging page."},
+    {"truth":"leptos","prompt":"Fix the signal-disposed panic during hydration in our Leptos app."},
+    {"truth":"open-design","prompt":"Create an on-brand SaaS dashboard prototype using our locked design system."}
+  ]
+}

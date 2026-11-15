@@ -17,6 +17,8 @@ they emit the design system; this skill implements it in Leptos.
 
 ---
 
+For the HTML/CSS/DOM rendered by components, consult [modern-web-guidance](../modern-web-guidance/SKILL.md) when choosing platform APIs or browser fallbacks. Adapt its examples to Leptos lifecycles and DOM ownership.
+
 ## Routing Trigger
 
 Route here when the user is building, editing, debugging, or scaffolding a Leptos app, or

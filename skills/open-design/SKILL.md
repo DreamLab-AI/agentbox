@@ -31,6 +31,8 @@ Route to this skill when the user asks for UI mockups, visual documentation, des
 
 ---
 
+For HTML/CSS/DOM implementation choices, consult [modern-web-guidance](../modern-web-guidance/SKILL.md) for native platform patterns and browser fallbacks before adding custom JavaScript. Keep visual direction here.
+
 ## Workflow
 
 ### Phase 1 — Structured Intake

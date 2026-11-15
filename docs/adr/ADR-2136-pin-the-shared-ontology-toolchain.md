@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: 54d8619c28ddfaa8e8775ffd190d161429a34b0a
+verified_commit: b1640d820ab2d3b3eb3c9db6c4d6b2af3600b24e
 verified_paths: [lib/ontomark.nix]
 owner: jjohare
 review_trigger: Before shared workspace extraction or any consumer dependency or generation migration
@@ -131,3 +131,7 @@ Today's commits: `2d49681bf` (management API), `b7a1d0955` (ontology-augment), `
 `lib/ontomark.nix` moves from 0.6.0 to 0.6.1 for both the release asset and the `jev` source build (`4a07fbfb3`). 0.6.1 applies one CommonMark fence rule across the Ontomark workspace, so the baked CLI agrees with visionGraph's publish pipeline (also pinned to v0.6.1) about which pages carry outline residue (0.6.0 read a line such as ```` ```prose``` ```` as an opening fence and hid what followed). 0.6.1 is also on crates.io (`ontomark`, `ontomark-compile`, `ontomark-jev`, `ontomark-profile-estate`; `ontomark-parse` 0.1.3, `ontomark-ingest` 0.1.1), and its release assets are now built by Ontomark's `release.yml` from the tag. Statuses are unchanged: this record's decision is still `proposed`, and the running image carries 0.6.0 until the owner's rebuild.
 
 Re-verified at `484ee3497` (31 October 2026): the toolchain pin moves to Ontomark **v0.7.0** (release asset `2b814b04…`, source rev `0caae5d4`, lockfile `ontomark-0caae5d4.Cargo.lock`). The pinning method this record sets is unchanged.
+
+## Scoped provenance adoption — 2026-11-15
+
+Ontomark 0.9.0 is pinned for both the release binary and optional Jev source build. The release binary SHA-256 and version were executed successfully. Source NAR hashing used nix-nar-cli 0.6.0 and reproduced the prior pin exactly as a control; the new source hash and vendored Cargo.lock match release f9ba200b. The three Jev creation controls passed. Nix evaluation and image activation are not claimed: this container has no Nix CLI or host build pane. This does not complete the broader proposed migration.

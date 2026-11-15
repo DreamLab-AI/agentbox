@@ -17,6 +17,8 @@ QE-grade page checks from two live sources. No browser engine is installed local
 
 **browser sidecar** (`browser-gpu` MCP, see the `browser` skill): `navigate_page`, `take_snapshot` (accessibility tree), `take_screenshot`, `evaluate_script`, `list_console_messages`, `list_network_requests`, `lighthouse_audit`.
 
+When a finding requires choosing a replacement HTML/CSS/DOM pattern or browser fallback, consult [modern-web-guidance](../modern-web-guidance/SKILL.md), then verify the resulting behaviour here.
+
 ## Recipes
 
 - **Visual regression**: call `qe_visual_compare` with the page `urls` and a `baselineDir` kept in the repo under the test directory; the first run records baselines. Use browser-gpu `take_screenshot` to inspect a diff by eye.

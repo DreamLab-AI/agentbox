@@ -9,7 +9,7 @@
 > consultant-deepseek, consultant-perplexity, consultant-zai, consultant-antigravity) are
 > not skills; route to them directly via their `consult` tool when a second model opinion is wanted.
 
-Skills: 124 active, 0 deprecated redirects. Sections mirror SKILL-DIRECTORY.md Artefact 1.
+Skills: 125 active, 0 deprecated redirects. Sections mirror SKILL-DIRECTORY.md Artefact 1.
 
 ## How to route
 
@@ -56,6 +56,7 @@ Skills: 124 active, 0 deprecated redirects. Sections mirror SKILL-DIRECTORY.md A
 | `browser-automation` | **[ROUTER-ONLY]** Router reached via `/route` (not registered in the harness); the registered `browser` skill is the entry point for browser work. Router for browser-automation tasks — picks the right tool and points to the canonical sidecar setup. Use when driving a real browser: navigating pages, clicking, filling forms, taking screenshots, reading console or network traffic, debugging a web UI, or validating WebGPU/WebGL/GPU rendering on hardware. Sends GPU and standard automation to the browsercontainer sidecar, raw CDP scripting to chrome-cdp, and AQE visual, accessibility and URL checks to qe-browser. |
 | `chrome-cdp` | Raw Chrome DevTools Protocol scripting against a live Chrome session — direct WebSocket, no Puppeteer. Use when you need low-level CDP access: WebGPU/WebGL GPU testing, console/JS evaluation, screenshots, or performance traces on the browsercontainer GPU sidecar. For higher-level browser automation prefer the `browser` skill (chrome-devtools-mcp), which owns the canonical sidecar setup. |
 | `host-webserver-debug` | Stands up a self-signed HTTPS bridge from the container to a dev server on the Docker host (Vite, Next, Express) so the browser sidecar gets a secure-context origin and CORS works. Use for 'https bridge', 'CORS error accessing host', 'reach the host dev server from the container' or secure-context APIs failing over plain HTTP. Not for general browser automation or screenshots (browser), API testing without a browser (curl) or apps not on the Docker host. |
+| `modern-web-guidance` | Look up modern web-platform implementation patterns and browser compatibility before choosing HTML, CSS or DOM APIs. Use for native dialogs/popovers, anchor positioning, container queries, view transitions, browser fallbacks, Core Web Vitals fixes, or replacing legacy frontend patterns. Complements framework and design skills. Not for visual styling direction (open-design), framework internals (leptos), driving a browser (browser), or testing a running page (qe-browser). |
 | `qe-browser` | QE-style browser checks using the live agentic-qe MCP tools (qe_workflows_browser-load, qe_visual_compare, accessibility_test, qe_security_url-validate) with the browser sidecar (browser-gpu) for page state, snapshots and in-page assertions. Use for visual regression, accessibility audits and URL safety checks on a web page. Not for general browser driving (browser), raw CDP (chrome-cdp) or unit-test generation (agentic-qe skills). |
 
 ## Code Execution and Experiential Learning

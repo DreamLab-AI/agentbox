@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 18315de55b9be6f8fdaed6e9f33b6ad26da1cf4f
+verified_commit: c9f8ba2676af10d55096d026301817688c3bc64c
 verified_paths: [skills/lint-skills.mjs, skills/gen-routing-table.mjs, skills/SKILL-DIRECTORY.md, skills/system-one/scripts/route-eval.mjs]
 owner: jjohare
 review_trigger: the next time a skill is demoted, merged, or added to a cluster that already shows measured overlap
@@ -15,6 +15,16 @@ repo: agentbox
 ---
 
 # ADR-2089 — Make skill availability a contract field and gate progressive discovery on measurement
+
+## Scoped source check — 2026-11-15
+
+Reviewed at `c9f8ba2676af10d55096d026301817688c3bc64c`. The only
+governed-path delta is the modern-web-guidance inventory row and skill count
+124 to 125. Its MCP column agrees with the frontmatter; it remains routing-only.
+Skill lint, structural validation, count and generated-table freshness pass.
+The pinned wrapper's search and retrieval execute successfully. Status parsing,
+badge rendering and evaluation code are unchanged. These checks do not measure
+routing accuracy or cluster overlap, and do not authorise merging neighbours.
 
 ## Scoped source check — 2026-11-14
 
