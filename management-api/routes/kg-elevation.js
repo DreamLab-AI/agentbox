@@ -67,12 +67,32 @@ module.exports = async function kgElevationRoutes(fastify, options) {
   // standalone (gate off / no relays / no signing stack), live federation
   // otherwise. Never load-bearing — a publish failure degrades to a logged
   // no-op and the beam+propose response is returned unchanged (ADR-005).
-  const elevationPublisher =
-    options.elevationPublisher || buildElevationPublisher(manifest, { logger });
+  // When the gate is off the route answers 503 before it ever publishes, so no
+  // publisher is built (and nothing warns about a federation nobody asked for).
+  const gateOff = {
+    enabled: false,
+    reason: 'kg-elevation-disabled',
+    async publish() { return { published: false, reason: 'kg-elevation-disabled' }; },
+    status: () => ({ configured: false, reason: 'kg-elevation-disabled', published: 0, skipped: 0, failed: 0, last_error: null }),
+  };
+  const elevationPublisher = options.elevationPublisher
+    || (kgElevationEnabled(manifest) ? buildElevationPublisher(manifest, { logger }) : gateOff);
   logger.debug(
     { event: 'kg-elevation.federation', enabled: elevationPublisher.enabled, reason: elevationPublisher.reason },
     `kg-elevation Nostr federation ${elevationPublisher.enabled ? 'active' : 'inert'}`
   );
+
+  // Federation status: is the elevation → Nostr hop actually reaching the forum?
+  fastify.get('/v1/kg-elevation/federation', {
+    schema: {
+      tags: ['agent-events'],
+      description: 'Elevation → Nostr publisher status: configured, skipped count and last error',
+      response: { 200: { type: 'object', additionalProperties: true } },
+    },
+  }, async (request, reply) => reply.send({
+    gate: kgElevationEnabled(manifest),
+    ...elevationPublisher.status(),
+  }));
 
   fastify.post('/v1/kg-elevation/scan', {
     schema: {
