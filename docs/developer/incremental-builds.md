@@ -181,6 +181,13 @@ layers, and changed bytes do not by themselves predict transfer time.
 | 2026-11-10, registry delivery, source `f707c5690` (clean) | 25.77 GB | 1.65 GB | 4.58 GB | 2.02 GB | 1.11 GB | Prior base/dependency outputs cached; Bend assets/kernel and changed services built. Nix build 408.4 s; push 20.7 s; pull/extraction 427.2 s (~7 min); smoke 0.7 s. Toolchains, services and final root changed; platform and CLI blobs were unchanged. Changing a parent layer still required downstream extraction. |
 | 2026-11-13, registry delivery, source `5ec5de510` (clean) | 28.31 GiB | 1.54 GiB | 4.25 GiB | 2.34 GiB | 1.01 GiB | Native outputs warm; Gemini boot-gate fix. Nix build/package/evidence 194.4 s; push 48.2 s; pull/extraction 219.2 s; smoke 1.8 s (~7 min 44 s total). Platform, toolchain and CLI digests reused; only services and final application layer changed (3.35 GiB). These are end-to-end phase timings, not per-layer compilation measurements. |
 | 2026-11-14, registry delivery, source `573e0900f` (clean) | 28.31 GiB | 1.54 GiB | 4.25 GiB | 2.34 GiB | 1.01 GiB | Dependencies warm; paper-orchestra and memory changes. Nix build/package/evidence 251.2 s; push 48.0 s; pull/extraction 221.4 s; smoke 1.4 s (~8 min 42 s total). Only services and application layers changed. Separately, skill-tools reported 44 s in its build phase and 275 passing tests; this is not a whole-layer timing. |
+| 2026-11-15, registry delivery, source `c254a24bf` (clean) | 28.31 GiB | 1.54 GiB | 4.25 GiB | 2.34 GiB | 1.01 GiB | Systemscape 0.3.0, Ontomark 0.9.0 and 125 skills. Dependencies warm from the preceding preparation/standalone checks. Nix build/package/evidence 515.3 s; push 305.2 s; pull/extraction 1,739.2 s; smoke 0.7 s (~42 min 41 s total). Platform, services and application changed (31.66 GiB); toolchain/CLI digests reused but downstream snapshots still required extraction after the parent changed. Excludes PR review/CI and the superseded preparation. |
+
+The 2026-11-15 run illustrates a transfer-cost trap: small Rust binaries in
+`basePackages` (Systemscape and Ontomark here) can invalidate the 28.31 GiB
+platform layer even when their compilation is cheap or already cached. Check
+the changed layer digests, not only the remaining derivation count, before
+promising application-only timings. No Qt/WebKit or CUDA rebuild was involved.
 
 For each future run, record the source and dirty state, delivery mode, cache
 state, changed layer names and sizes, and the receipt's aggregate build,

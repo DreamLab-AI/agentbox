@@ -122,3 +122,15 @@ starts the new binary two seconds later.
 The Rust tests, strict Clippy checks, terminal smoke test and screenshot capture
 run inside the development container. Nix itself is not installed there, so
 actual Nix package and image builds must run on the host.
+
+### Host verification — 2026-11-15
+
+Agentbox PR #49 is merged. Official Nix prefetch reproduces the pinned source
+hash `sha256-Dr1qiXF3ntAm/MI0RDptUiKZzGZ4pH392VmSyDIa3Bk=`, and the vendored
+Cargo.lock is byte-identical to upstream `a123d8b0f09c681576c6e556b182537e9ea577ed`.
+The standalone Nix build passes all 32 tests. The image prepared from Agentbox
+`c254a24bfbfd3c7703193aaaa2e4cf0f8212d9fe` reports `systemscape 0.3.0` before
+and after cutover. Executed Docker PTY probes render synthetic activity and
+telemetry frames with RGB ANSI colours and Unicode half-block pixels; the
+activity fixture does not open real histories. These are rendering smoke checks,
+not a new claim about real-history coverage or every interactive control.

@@ -135,3 +135,15 @@ Re-verified at `484ee3497` (31 October 2026): the toolchain pin moves to Ontomar
 ## Scoped provenance adoption — 2026-11-15
 
 Ontomark 0.9.0 is pinned for both the release binary and optional Jev source build. The release binary SHA-256 and version were executed successfully. Source NAR hashing used nix-nar-cli 0.6.0 and reproduced the prior pin exactly as a control; the new source hash and vendored Cargo.lock match release f9ba200b. The three Jev creation controls passed. Nix evaluation and image activation are not claimed: this container has no Nix CLI or host build pane. This does not complete the broader proposed migration.
+
+## Scoped host activation evidence — 2026-11-15
+
+The subsequent host build from `c254a24bfbfd3c7703193aaaa2e4cf0f8212d9fe`
+completed the enabled Ontomark 0.9.0 Nix derivation and its upstream tests. The
+replacement Agentbox image
+`sha256:beb8f9792a5d4f20b873a62c5a23514530e01d74fa4cbbbbef2a2c3da301b925`
+passes `ontomark --version` both in the offline candidate and after activation.
+Persistent mounts are unchanged and readiness settles without degradation.
+This verifies adoption of the pinned CLI, not a corpus migration, provenance
+write or the broader proposed cross-estate extraction. The record's proposed,
+partial and inactive status axes therefore remain unchanged.
