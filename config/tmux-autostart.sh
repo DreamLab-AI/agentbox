@@ -343,8 +343,10 @@ tmux split-window -v -t "${SESSION}:4" -c "$WORKSPACE_DIR"
 # Window 5: System — SystemScape history + detailed live process telemetry
 # ============================================================================
 tmux new-window -t "${SESSION}:5" -n "System" -c "$WORKSPACE_DIR"
-# SystemScape provides the correlation view: rotating peak-hold history for
-# thermal, GPU, power, CPU, memory, disk IO, and network. Restart after an unexpected
+# SystemScape provides the correlation view: one labelled peak-hold ridge per
+# channel (temperatures, per-GPU load and VRAM, power, CPU, memory, disk IO and
+# network) over two hours. It pauses drawing while this window is off screen,
+# and holds its camera at 2 Hz while bottom has focus. Restart after an unexpected
 # exit so a transient sensor/terminal problem does not leave a dead dashboard.
 tmux send-keys -t "${SESSION}:5" "while true; systemscape; printf '\\nSystemScape exited (%s); restarting in 2s — Ctrl-C for shell\\n' \"\$status\"; sleep 2; end" C-m
 # Retain bottom's strengths (process tree, per-core load, disk/network rates)

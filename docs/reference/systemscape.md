@@ -1,43 +1,59 @@
 # SystemScape: system telemetry and agent activity
 
-Agentbox packages [dreamlab-AI/systemscape](https://github.com/DreamLab-AI/systemscape),
-previously named `thermal3d`. The binary remains `systemscape`. It uses
-`gemini-engine 1.2.1`, the current published renderer version checked on 12 September
-2026; it is not a Ratatui graphics pipeline. The System window also runs `bottom`
-for detailed process telemetry. It starts zoomed to the landscape; tmux prefix
-then `z` reveals the companion process monitor.
+Agentbox packages [DreamLab-AI/systemscape](https://github.com/DreamLab-AI/systemscape),
+previously named `thermal3d`. The binary remains `systemscape`. It renders with
+`gemini-engine 1.2.1` onto a supersampled half-block canvas: each terminal cell
+shows two square pixels through `▀` with separate foreground and background
+colours. It is not a Ratatui graphics pipeline. SystemScape 0.3 makes no model
+calls and needs no extra service or database.
 
-The new Activity window is normally index 10. It runs `systemscape --activity`,
-a continuous 3D tour inspired by [bough](https://github.com/nickelsec/bough).
-Time runs along textured paths on a procedural ASCII island. Agents occupy
-districts, and coloured beacons represent prompts, tool calls, failures and
-recorded commit receipts. The camera flies a relaxed 52-second circuit through
-the full-screen landscape, six times wider and deeper than the original, at an
-altitude of 30–46 world units with a moderately downward camera angle.
+## System window (index 5): telemetry ridges
 
-Both views separate vivid warm data colours from muted pastel terrain and
-landmarks. Amber, orange, red, gold and pink identify the data; black panels keep
-text readable. Telemetry bars use three times the original vertical relief,
-remaining linear in each channel's normalised value. Terrain relief is decorative.
-Record selection advances every four seconds. The tour traverses the retained
-record pages, lane pages and UTC days.
+The System window runs `systemscape` beside `bottom`, which handles process
+detail. It starts zoomed on SystemScape; tmux prefix then `z` shows `bottom`.
 
-## Controls and the centre reticule
+Each channel is a 3D ridge in its own colour, with its name and live value
+at the "now" end:
 
-Use arrows to rotate and tilt, `+`/`-` to zoom, `j`/`k` to select, `[`/`]` for
-days, Tab for lane pages and Page Up/Down for record pages. Navigation pauses
-the tour; Space resumes it. Enter shows the source path, `f` switches to a flat
-view, and `q` exits. Small panes use the flat view automatically.
+- CPU temperature, then one ridge per GPU for temperature, utilisation and VRAM.
+- Disk temperature, whole-system power, CPU load and memory.
+- Disk IO and network traffic, on a log scale so everyday traffic shows.
 
-In the 3D Activity view, a centre reticule describes the nearest action beacon
-within five columns and two rows of its centre. Depth resolves overlapping
-candidates. This is a small screen-space aiming aperture, not a terrain-occlusion
-ray trace. The opaque black panel hides graphics behind the summary and shows
-“No action in sight” when the aperture contains no beacon. Enter opens the aimed
-action's source; without a target it opens the selected record. The detailed HUD
-and flat view replace the reticule panel.
+Time always runs left to right, from `-2h` to `now`. The camera sways but never
+orbits. Each of the 48 slots keeps the peak of its 150 s, so short spikes
+survive. Panes under 80×20, or `f`, show one coloured sparkline per channel
+instead. Space holds the flight, the arrow keys steer, `+`/`-` zoom and `0`
+resets the camera.
 
-## Inputs and rendering
+## Activity window (normally index 10): the city
+
+The Activity window runs `systemscape --activity`. Recorded work is drawn as
+a city:
+
+- **Districts** are projects. **Towers** are sessions. **Floors** are recorded
+  actions, oldest at the ground, coloured by kind: shell, read, edit, web,
+  memory, delegated agent, other tool, prompt, error or commit.
+- A session with a record in the last five minutes is shown at full colour
+  with a pulsing roof. Idle sessions are dimmed.
+- The selected tower carries a callout, and a strip lists the five most recent
+  sessions with what each last did.
+- The tour follows live work, moving every six seconds to the next active
+  session.
+- Enter or `f` opens the detail view: every session of the day, then every
+  record of the selected one. Panes under 80×20 always use it.
+
+Tool records keep what the tool was given: a file path, the first line of a
+command, or a query. Codex `exec` scripts are reduced to the tool called
+inside them.
+
+Keys: `j`/`k` select a session (a record in the detail view), Enter opens the
+detail view or shows a record's source, `[`/`]` change day, `h` hides the
+strip, `?` shows source coverage, Space follows or holds, `q` quits.
+
+"Active" means a record arrived recently. It is evidence of logged activity,
+not proof that an agent is running or that a task succeeded.
+
+## Inputs
 
 Activity reads local Claude and Codex histories, profile histories under
 `$WORKSPACE/profiles`, and the shared event archive at
@@ -46,49 +62,63 @@ archive path. Other agents appear when they publish to that archive. Missing
 instrumentation is not treated as inactivity, and overlapping sources are not
 added together as task-completion or billing totals.
 
-The tour targets 18 frames per second, with panes up to 512×180 cells.
-Press `?` for details and coverage or `h` for the district sidebar; both are
-hidden by default to give the terrain more space. Paused views redraw only on change.
-Collection is bounded to 8 MiB per two-second poll, 1 MiB per file, 256 files
-and 5,000 retained records. Coverage shows pending files, omissions and limits.
-Both views compare front/back row buffers and publish changed rows plus panel
-regions inside synchronized terminal updates. Normal frames do not erase the
-screen; resizes clear stale content. This reduces clear-and-redraw flicker,
-although terminal support and transport latency still affect presentation.
+Each transcript is read as an append-only log from a saved offset, so a poll
+costs only the bytes written since the last one. Collection is bounded to
+8 MiB per two-second poll, 1 MiB per file and 256 files. It keeps the newest
+5,000 records and drops the oldest first. Commands are shown as recorded, so
+use `--demo` when sharing the screen.
 
-This feature makes no model calls and needs no additional service or database.
+## Off-screen behaviour
+
+Both views ask tmux every two seconds whether their window is the current
+window of an attached session. Focus reports (`focus-events on` in
+`config/tmux.conf`) make changes immediate.
+
+- **Off screen,** the activity view neither polls nor draws, and catches up
+  from its saved offsets when shown again. Telemetry stops drawing but keeps
+  sampling `/proc` and hwmon every two seconds, querying `nvidia-smi` every ten
+  seconds instead, so its two-hour history has no gaps.
+- **On screen but unfocused,** a view holds its camera and redraws twice a
+  second. This happens in the System window when `bottom` has focus, and is by
+  design.
 
 ## Screenshots and upstream documentation
 
 The [SystemScape README](https://github.com/DreamLab-AI/systemscape#readme)
-includes real terminal screenshots of the activity landscape, flat history and
-system telemetry. Its [capture guide](https://github.com/DreamLab-AI/systemscape/blob/main/docs/SCREENSHOTS.md)
-explains how to regenerate them from synthetic activity fixtures.
+shows real terminal captures of the activity city, the detail view, the
+telemetry ridges and the sparkline view. Its
+[capture guide](https://github.com/DreamLab-AI/systemscape/blob/main/docs/SCREENSHOTS.md)
+explains how to regenerate them from synthetic fixtures.
 
 ## Rebuild
 
-SystemScape 0.2 is a rebuild-class package update. On the build host:
+SystemScape 0.3 is a rebuild-class package update. On the build host:
 
 ```sh
 nix build .#systemscape
 ./result/bin/systemscape --activity --demo
+./result/bin/systemscape --demo
 ./agentbox.sh rebuild
 ```
 
-The Nix derivation pins the upstream commit, source NAR hash and a checked-in
-copy of its Cargo.lock. No `latest` download or runtime compilation is used.
-The lock copy must match upstream whenever the source pin changes.
+The Nix derivation pins the upstream commit, its source NAR hash and a
+checked-in byte copy of its `Cargo.lock`. No `latest` download or runtime
+compilation is used. The lock copy must match upstream whenever the source
+pin changes.
 
 The tmux launcher adds Activity to an existing session without restarting agents.
 It preserves a user window at index 10 and chooses another free index in that
 case. Repeated launches leave an existing Activity window alone. If the binary
 is absent or too old, the pane explains that a rebuild is needed. After an image
-upgrade, a previously restored notice pane can be restarted with:
+upgrade, restart the Activity pane onto the new binary with:
 
 ```sh
 tmux respawn-pane -k -t agentbox:Activity 'systemscape --activity'
 ```
 
-The Rust tests, strict Clippy checks, terminal captures and launcher regression
-tests run inside the development container. Nix itself is not installed here,
-so actual Nix package and image builds must run on the host.
+In the System window, press `q` in the SystemScape pane. Its restart loop
+starts the new binary two seconds later.
+
+The Rust tests, strict Clippy checks, terminal smoke test and screenshot capture
+run inside the development container. Nix itself is not installed there, so
+actual Nix package and image builds must run on the host.

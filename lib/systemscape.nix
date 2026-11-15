@@ -1,4 +1,4 @@
-# SystemScape — DreamLab's 3D telemetry and agent-activity flying tour.
+# SystemScape — DreamLab's 3D telemetry ridges and agent-activity city.
 #
 # Pin source and Cargo dependencies so the monitor is part of the immutable
 # Agentbox runtime rather than depending on a mutable workspace checkout.
@@ -6,13 +6,13 @@
 
 pkgs.rustPlatform.buildRustPackage rec {
   pname = "systemscape";
-  version = "0.2.0";
+  version = "0.3.0";
 
   src = pkgs.fetchFromGitHub {
     owner = "DreamLab-AI";
     repo = "systemscape";
-    rev = "caea5fe529f7c6c7e03cc3cb7c4d87fca49c4338";
-    hash = "sha256-Mk61SPRgh0Pl7XealkbxdB5fpitB14l4VevjYUc2cIc=";
+    rev = "a123d8b0f09c681576c6e556b182537e9ea577ed";
+    hash = "sha256-Dr1qiXF3ntAm/MI0RDptUiKZzGZ4pH392VmSyDIa3Bk=";
   };
 
   # Exact upstream lock, copied locally to avoid fetching source during evaluation.
