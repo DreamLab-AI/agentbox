@@ -18,7 +18,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const Fastify = require('../../management-api/node_modules/fastify');
+const Fastify = require(require.resolve('fastify', { paths: [path.join(__dirname, '../../management-api')] }));
 const llmRoutes = require('../../management-api/routes/llm-marketplace');
 const { buildAuthorityJournal } = require('../../management-api/lib/authority-journal');
 const auditChain = require('../../management-api/lib/audit-chain');
