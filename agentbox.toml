@@ -1266,7 +1266,8 @@ glm_review_cron = "47 2 * * *"
 # with a producer of the reviewer's own family the audit refuses to run.
 audit_min_interval_days = 7
 audit_min_changed_topics = 3
-audit_monthly_usd = 10
+# Deployment hold: do not enable Codex audit until turn/spend confinement lands.
+audit_monthly_usd = 0
 # The model family that authored the corpus; the reviewer must differ from it.
 producer_family = "anthropic"
 # true: the audit is considered only on the review tick (nightly by default; the

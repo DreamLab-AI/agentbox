@@ -153,6 +153,11 @@ in the public manifest.
   --provider codex`), per shard, only when `audit_min_interval_days` have passed,
   `audit_min_changed_topics` topics changed (or the shard's last GLM review found something
   high severity), and month-to-date spend plus a size estimate fits `audit_monthly_usd`.
+
+Deployment hold: `audit_monthly_usd = 0` disables the Codex audit, including
+zero-cost estimates. Keep it off until its turn/spend confinement is resolved;
+a budget reservation is not a hard cap on the external process. Existing GLM
+triage and review remain separate from this hold.
   Most-changed first. The reviewer is chosen with the consultants' model-diversity rule: always a
   different family from `producer_family` (default `anthropic`), and a refusal, never a same-family
   fallback, when there is none. This replaced a Gemini leg on 2026-11-16 (ADR-2131); a manual

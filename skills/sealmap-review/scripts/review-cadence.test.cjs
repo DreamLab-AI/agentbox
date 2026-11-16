@@ -27,7 +27,7 @@ const ER = require('./external-review.cjs');
 
 const NOW = new Date('2026-10-20T06:00:00Z');
 const daysAgo = (d) => new Date(NOW - d * 86400000).toISOString();
-const CFG = { ...C.DEFAULTS, enabled: true, glm_model: 'glm-test' };
+const CFG = { ...C.DEFAULTS, enabled: true, glm_model: 'glm-test', audit_monthly_usd: 10 };
 const rp = (p) => fs.realpathSync(p);
 
 function sh(dir, ...args) { return execFileSync('git', ['-C', dir, ...args], { encoding: 'utf8' }).trim(); }
@@ -91,7 +91,7 @@ test('loadConfig is disabled with the spec defaults when the manifest has no sec
   assert.deepEqual(cfg.repos, []);
   assert.equal(cfg.audit_min_interval_days, 7);
   assert.equal(cfg.audit_min_changed_topics, 3);
-  assert.equal(cfg.audit_monthly_usd, 10);
+  assert.equal(cfg.audit_monthly_usd, 0);
   assert.equal(cfg.weekly_window, true);
 });
 
@@ -198,6 +198,13 @@ test('month-to-date counts only audit spend in the same UTC month, across ledger
 // ── audit gate ─────────────────────────────────────────────────────────────────────────────
 
 const gate = (o) => C.decideAudit({ cfg: CFG, lastAudit: null, changedTopics: 5, glmHighSeverity: 0, mtdUsd: 0, estUsd: 1, now: NOW, ...o });
+
+test('zero audit budget is disabled even with a zero estimate and urgent findings', () => {
+  assert.equal(C.DEFAULTS.audit_monthly_usd, 0);
+  const result = gate({ cfg: { ...CFG, audit_monthly_usd: 0 }, estUsd: 0, mtdUsd: 0, glmHighSeverity: 10 });
+  assert.equal(result.run, false);
+  assert.match(result.reason, /budget disabled/);
+});
 
 test('gate opens with enough changed topics, a clear interval and budget', () => {
   assert.equal(gate({ lastAudit: { ts: daysAgo(8) } }).run, true);
@@ -544,6 +551,13 @@ test('audit-codex: without a key it logs one skip and does nothing', async () =>
   const res = await C.auditCodex(e.est, ctxFor({ env, runExternal: fakeExternal([]) }));
   assert.deepEqual(res, { skipped: 'no Codex credentials (no OPENAI_API_KEY and no codex login auth.json)' });
   assert.equal(C.readLedger(e.est).at(-1).shard, null);
+});
+
+test('audit-codex: disabled budget never invokes the external reviewer', async () => {
+  const e = estate(), calls = [];
+  await withCodex(() => C.auditCodex(e.est, ctxFor({ cfg: { ...CFG, audit_monthly_usd: 0 }, runExternal: fakeExternal(calls) })));
+  assert.equal(calls.length, 0);
+  assert.ok(C.readLedger(e.est).filter(r => r.kind === 'audit').every(r => r.skipped));
 });
 
 test('audit-codex: picks the changed shards most-changed first and stops at the budget', async () => {

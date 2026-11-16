@@ -823,7 +823,7 @@ glm_review_cron = "47 2 * * *"
 # different model family from the producer.
 audit_min_interval_days = 7
 audit_min_changed_topics = 3
-audit_monthly_usd = 10
+audit_monthly_usd = 0 # Held off pending Codex turn/spend confinement.
 producer_family = "anthropic"
 # true: the audit is considered only on the review tick (nightly by default; the
 # per-shard interval still holds it to one audit a week). false: after

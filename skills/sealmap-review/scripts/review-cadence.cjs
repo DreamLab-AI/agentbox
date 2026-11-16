@@ -110,7 +110,7 @@ const LOCAL_FILE = process.env.DIAGRAM_REVIEW_LOCAL_FILE || ( __dirname.startsWi
   : path.join(__dirname, '..', '..', '..', 'config', 'diagram-review.local'));
 const DEFAULTS = {
   enabled: false, repos: [], glm_triage_cron: '17 5 * * *', glm_review_cron: '47 2 * * *',
-  audit_min_interval_days: 7, audit_min_changed_topics: 3, audit_monthly_usd: 10, producer_family: DEFAULT_PRODUCER_FAMILY, weekly_window: true,
+  audit_min_interval_days: 7, audit_min_changed_topics: 3, audit_monthly_usd: 0, producer_family: DEFAULT_PRODUCER_FAMILY, weekly_window: true,
 };
 const DAY_MS = 86400000;
 const TOKENS_PER_BYTE = 1 / 3.3;
@@ -627,6 +627,8 @@ function isHighSeverity(f) {
  * @returns {{run: boolean, reason: string}}
  */
 function decideAudit({ cfg, lastAudit, changedTopics, glmHighSeverity, mtdUsd, estUsd, now }) {
+  // A zero budget is an explicit off switch, even when the estimate is zero.
+  if (!(cfg.audit_monthly_usd > 0)) return { run: false, reason: 'budget disabled: audit_monthly_usd must be positive' };
   if (lastAudit) {
     const days = (new Date(now) - new Date(lastAudit.ts)) / DAY_MS;
     if (days < cfg.audit_min_interval_days) {
