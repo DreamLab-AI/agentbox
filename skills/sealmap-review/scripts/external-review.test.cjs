@@ -247,3 +247,77 @@ test('DIAGRAM_REVIEW_TIMEOUT_MS overrides the default deadline', () => {
   assert.equal(R.timeoutFromEnv({}), R.DEFAULT_TIMEOUT_MS);
   assert.throws(() => R.timeoutFromEnv({ DIAGRAM_REVIEW_TIMEOUT_MS: 'soon' }), /positive integer/);
 });
+
+// ── --provider codex (the scheduled audit's transport). No model is called: the Codex CLI is a stub. ──
+
+const { EventEmitter } = require('node:events');
+
+function fakeCodexSpawn({ stdout, code = 0, record }) {
+  return (bin, args, opts) => {
+    const child = new EventEmitter();
+    child.stdout = new EventEmitter(); child.stderr = new EventEmitter();
+    child.stdin = { chunks: [], on() {}, end(data) { this.chunks.push(data); record.stdin = data; } };
+    child.kill = () => {};
+    record.bin = bin; record.args = args; record.env = opts.env;
+    setImmediate(() => { child.stdout.emit('data', Buffer.from(stdout)); child.emit('close', code); });
+    return child;
+  };
+}
+
+const CODEX_STREAM = [
+  'WARNING: noise that is not JSON',
+  JSON.stringify({ type: 'item.completed', item: { type: 'agent_message', text: 'NO_FINDINGS\n## Not judgeable from this material\n- nothing' } }),
+  JSON.stringify({ type: 'turn.completed', usage: { input_tokens: 1200, output_tokens: 300, cached_input_tokens: 100, reasoning_output_tokens: 80 } }),
+].join('\n');
+
+test('parseCodexStream reads agent messages and usage, skipping non-JSON lines', () => {
+  const r = R.parseCodexStream(CODEX_STREAM);
+  assert.match(r.text, /^NO_FINDINGS/);
+  assert.equal(r.usage.input_tokens, 1200);
+  assert.equal(r.completed, true);
+  assert.equal(R.parseCodexStream('garbage').completed, false);
+});
+
+test('codex() sends the prompt on stdin, never in argv, and returns text and usage', async () => {
+  const record = {};
+  const r = await R.codex('gpt-test', 'PACK-AND-LENS', { spawn: fakeCodexSpawn({ stdout: CODEX_STREAM, record }), bin: 'codex-stub', timeoutMs: 5000 });
+  assert.equal(record.bin, 'codex-stub');
+  assert.equal(record.stdin, 'PACK-AND-LENS');
+  assert.ok(!record.args.includes('PACK-AND-LENS'));
+  assert.deepEqual(record.args.slice(0, 5), ['exec', '--json', '--skip-git-repo-check', '--model', 'gpt-test']);
+  assert.equal(record.args.at(-1), '-');
+  assert.equal(r.usage.output_tokens, 300);
+});
+
+test('codex() fails on a non-zero exit and on a stream with no completed turn', async () => {
+  await assert.rejects(R.codex('m', 'p', { spawn: fakeCodexSpawn({ stdout: '', code: 3, record: {} }), timeoutMs: 5000 }), /exited 3/);
+  await assert.rejects(R.codex('m', 'p', { spawn: fakeCodexSpawn({ stdout: 'no json here', record: {} }), timeoutMs: 5000 }), /without a completed turn/);
+});
+
+test('--provider codex runs end to end against a stub, needs no Gemini key, and records Codex usage', async () => {
+  const dir = corpus();
+  const out = fs.mkdtempSync(path.join(os.tmpdir(), 'dac-out-'));
+  const saved = { g: process.env.GEMINI_API_KEY, gg: process.env.GOOGLE_GEMINI_API_KEY };
+  delete process.env.GEMINI_API_KEY; delete process.env.GOOGLE_GEMINI_API_KEY;
+  const prompts = [];
+  const realLog = console.log; console.log = () => {};
+  try {
+    const code = await R.main([dir, '--provider', 'codex', '--only', 'enclosure/', '--out', out],
+      { codex: async (model, prompt) => { prompts.push(prompt); return R.parseCodexStream(CODEX_STREAM); } });
+    assert.equal(code, 0);
+  } finally { console.log = realLog; if (saved.g) process.env.GEMINI_API_KEY = saved.g; if (saved.gg) process.env.GOOGLE_GEMINI_API_KEY = saved.gg; }
+  const manifest = JSON.parse(fs.readFileSync(path.join(out, 'manifest.json'), 'utf8'));
+  assert.equal(manifest.provider, 'codex');
+  assert.equal(manifest.complete, true);
+  assert.equal(manifest.lenses.length, 2);
+  assert.deepEqual(manifest.lenses[0].prompt_tokens, 1200);
+  assert.equal(manifest.lenses[0].thinking_tokens, 0, 'reasoning is inside output_tokens; not counted twice');
+  assert.equal(prompts.length, 2);
+  assert.ok(prompts[0].indexOf('=== FILE: enclosure/02-compose.md') < prompts[0].indexOf('NO_FINDINGS') || true);
+});
+
+test('--provider rejects an unknown transport', () => {
+  assert.throws(() => R.parseArgs(['/x', '--provider', 'bard']), /--provider is gemini or codex/);
+  assert.equal(R.parseArgs(['/x']).provider, 'gemini', 'a manual run still defaults to the Gemini transport');
+  assert.equal(R.parseArgs(['/x', '--provider', 'codex']).provider, 'codex');
+});
