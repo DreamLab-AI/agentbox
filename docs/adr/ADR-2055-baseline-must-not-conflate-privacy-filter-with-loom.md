@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 18315de55b9be6f8fdaed6e9f33b6ad26da1cf4f
+verified_commit: e188960d90d78e11c99cf599b60c416bd3df02e5
 verified_paths: [docs/BASELINE-container.md]
 owner: jjohare
 review_trigger: a change to [privacy_filter].port, to the [program:opf-router] supervisor block, or to the BASELINE-container supervised-program table

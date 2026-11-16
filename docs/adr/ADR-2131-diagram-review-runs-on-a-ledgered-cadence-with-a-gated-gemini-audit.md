@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 25f751250f4ce1545e98d1ed80aed1bc8cb2c354
+verified_commit: e188960d90d78e11c99cf599b60c416bd3df02e5
 verified_paths: [mcp/consultants/shared/model-diversity.js, skills/sealmap-review/scripts/review-cadence.cjs, skills/sealmap-review/scripts/external-review.cjs, skills/sealmap-review/scripts/review-context.cjs, skills/sealmap-review/scripts/merge-findings.cjs, skills/sealmap-review/run-cron.sh, skills/sealmap-review/crontab, schema/agentbox.toml.schema.json]
 owner: jjohare
 review_trigger: the first real Codex audit (compare ledger cost with the estimate, and confirm the codex CLI reads the pack on stdin under the cron's environment); a change to Gemini or Z.AI pricing; a GLM model change behind [consultants.zai]; a second corpus joining repos
@@ -323,3 +323,5 @@ Re-verified 2026-11-11 at `237178730` (ADR-2192, ADR-2193, ADR-2194 at `04638a61
 Re-verified 2026-11-11 at `0ed05167b` (ADR-2196, removal of the dead `skills.browser.playwright` switch). Governed-path delta since `237178730`: `schema/agentbox.toml.schema.json` removes the `skills.browser.playwright` property and the `security.exceptions.playwright` block. No published port, mount, secret, identity, route, vault path or registry entry changes, so what this record decides is not touched. Run on this commit: the manifest validator, manifest catalogue, configuration jest (301), agentbox-manifest cargo tests (235), skill lint (124). The flake edits are two whole-line deletions, not evaluated. The decision and status axes are unchanged.
 
 Re-verified 2026-11-11 at `f475e0b8e` (ADR-2196, removal of the dead `skills.browser.qe_browser` switch). Governed-path delta since `0ed05167b`: `schema/agentbox.toml.schema.json` removes the `skills.browser.qe_browser` property. No published port, mount, secret, identity, route, vault path or registry entry changes, so what this record decides is not touched. Run on this commit: the manifest validator (live and default manifests), manifest catalogue, configuration jest (301), the TUI non-interactive validation (5), agentbox-manifest cargo tests (235). The flake edit is one whole-line deletion, not evaluated. The decision and status axes are unchanged.
+
+Re-verified 2026-11-16 at `e188960d9`: the audit leg's code, tests and docs were read against the amendment above; the Codex binary check, the containment flags and the cron `PATH` (`flake.nix`) were added after review. Decision and status axes are unchanged (`activation_status` stays `staged`).
