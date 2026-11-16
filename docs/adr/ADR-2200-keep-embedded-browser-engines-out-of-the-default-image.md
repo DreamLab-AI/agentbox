@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: e188960d90d78e11c99cf599b60c416bd3df02e5
+verified_commit: 350772de92685339dfff117e66088d8adeb44bec
 verified_paths: [agentbox.toml, flake.nix, management-api/lib/system-manifest.js, schema/agentbox.toml.schema.json, services/agentbox-manifest/src/tui_read.rs, services/agentbox-manifest/src/tui_fields.rs, skills/browser/references/latex-diagram-workflows.md]
 owner: jjohare
 review_trigger: Re-enable local QGIS or CAD printing; change PDF comparison workflow or nixpkgs pin
@@ -19,6 +19,12 @@ acceptance_boundary: Source gates, schema/setup round-trip tests and browser ras
 ---
 
 # ADR-2200 — Keep embedded browser engines out of the default image
+
+
+## Scoped deployment review — 2026-11-16
+
+Reviewed at `350772de92685339dfff117e66088d8adeb44bec`; governed changes since the prior stamp: `agentbox.toml`. The reviewed rollout is limited to the journal/review integration, its Codex cron PATH and the operator-approved zero-budget audit hold. The guard refuses even a zero estimate; no model is called by its tests. Review/transport tests (83), journal tests (43) and cron checks (21) pass. Existing decision/status axes and unrelated acceptance limits remain. In particular, the Codex audit stays off until turn/spend confinement is implemented; this is not its activation receipt.
+
 
 ## Context
 
