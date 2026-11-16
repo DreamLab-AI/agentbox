@@ -82,7 +82,9 @@ async function systemRoutes(fastify, options) {
     if (request.query.days) {
       files = files.slice(-request.query.days);
     }
-    const result = auditChain.verifyFiles(files.map((f) => path.join(dir, f)));
+    // A ?days=N window is not the whole journal: a declared boundary for a file
+    // outside it is not an error there, but it is on a full verification.
+    const result = auditChain.verifyFiles(files.map((f) => path.join(dir, f)), { complete: !request.query.days });
     if (!result.ok) {
       logger.warn({ event: 'audit-chain.broken', ...result }, 'Events log hash chain verification FAILED');
     }

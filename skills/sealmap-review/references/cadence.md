@@ -27,11 +27,12 @@ belongs in `agentbox.toml`. `status` prints the resolved list and where it came 
 enabled = true                       # rebuild-class: flake.nix bakes the supervisor block
 repos = []                           # empty = auto-discover (above)
 glm_triage_cron = "17 5 * * *"       # daily GLM triage (UTC)
-glm_review_cron = "47 2 * * *"       # nightly GLM review (after the 01:00 dream window), then the Gemini gate
-gemini_min_interval_days = 7
-gemini_min_changed_topics = 3
-gemini_monthly_usd = 10
-weekly_window = true                 # Gemini gate only on the review tick
+glm_review_cron = "47 2 * * *"       # nightly GLM review (after the 01:00 dream window), then the audit gate
+audit_min_interval_days = 7
+audit_min_changed_topics = 3
+audit_monthly_usd = 10
+producer_family = "anthropic"        # the reviewer must be a different model family
+weekly_window = true                 # audit gate only on the review tick
 ```
 
 `enabled` decides whether `[program:diagram-review-cron]` exists, so flipping it
@@ -70,10 +71,10 @@ corpus (reviewed separately: its areas and the estate's areas are different topi
 Reviews are not whole-corpus. Packs are built **per area** (the first path segment under
 `docs/diagrams`); an area over the shard budget (150,000 tokens, `DIAGRAM_REVIEW_SHARD_TOKENS`)
 is split into consecutive chunks named `area`, `area#2`, and so on; one topic over the budget
-gets a chunk of its own. The same shards feed GLM and Gemini, so "the last GLM review of this
+gets a chunk of its own. The same shards feed GLM and the audit, so "the last GLM review of this
 shard" is well defined. The pack-hash skip, the change thresholds, the interval and the budget
 all apply per shard, and the ledger lines carry `shard`. A whole-estate pack (about 850k tokens)
-would sit at Gemini's limit and over GLM's; the cost of sharding is that a contradiction between
+would sit at the audit model's limit and over GLM's; the cost of sharding is that a contradiction between
 two areas is not seen by one reviewer, which is what the estate area and the nightly cadence are for.
 
 ## How the crontab is made
@@ -88,8 +89,8 @@ the rendered file never does.
 
 With `weekly_window = true` the audit runs after `review-glm` on the review tick (nightly by default).
 With `false` it is also tried after each triage. The per-shard interval and the budget
-apply either way, so this changes how often the gate is read, not how often Gemini is
-paid: a shard is audited at most once per `gemini_min_interval_days`.
+apply either way, so this changes how often the gate is read, not how often the audit is
+paid: a shard is audited at most once per `audit_min_interval_days`.
 
 GLM is treated as effectively free, so both GLM passes run daily. Repeated refusals of
 the same kind for a shard (and repeated "pack unchanged" skips) are written to the ledger
@@ -99,12 +100,12 @@ once, not every night.
 
 ```bash
 C=skills/sealmap-review/scripts/review-cadence.cjs
-node $C triage|review-glm|audit-gemini|status [--manifest f] [--repo dir]... [--dry-run] [--now ISO]
+node $C triage|review-glm|audit-codex|status [--manifest f] [--repo dir]... [--dry-run] [--now ISO]
 ```
 
 `--repo` (repeatable) selects which repositories to review and runs even when
 `enabled` is false (for a manual run); `--workspace` changes the scan root.
-Gemini accounting still includes every configured or discovered repository,
+Audit accounting still includes every configured or discovered repository,
 explicit invocation repository and repository remembered by this month's budget
 witness, deduplicated by canonical path. Removing a corpus or excluding a
 repository from review does not remove its previously observed spend.
@@ -113,7 +114,7 @@ model. Exit 1 when any repo failed; a normal budget refusal is not a failure.
 
 ### merge
 
-`merge` takes the newest `*-glm.json` and `*-gemini.json` in `docs/review/` and
+`merge` takes the newest `*-glm.json` and `*-codex.json` (a historical `*-gemini.json` is not picked up) in `docs/review/` and
 writes `<date>-merged.{md,json}` through `scripts/merge-findings.cjs`. Two
 findings from different families agree when they share a topic id (`CP-03.2` is
 topic `cp-03`) or a cited file, and their claim text (title, evidence, failure)
@@ -161,26 +162,34 @@ from `ZAI_ANTHROPIC_API_KEY` then `ZAI_API_KEY`, following
 (`DIAGRAM_REVIEW_GLM_MODEL` overrides). The key goes in an `Authorization` header
 only and is never printed, logged or written.
 
-### audit-gemini
+### audit-codex
+
+The audit leg is run by the Codex consultant (`external-review.cjs --provider codex`, the CLI
+the `codex` consultant wraps, the pack on stdin). On 2026-11-16 it replaced a Gemini leg whose
+key returned 401 and which never completed a run (ADR-2131, amendment). The reviewer comes from
+`mcp/consultants/shared/model-diversity.js` `selectVerifier({ producerFamily, candidates:
+['codex'] })`: a different family from `producer_family`, and when there is none (the producer is
+itself OpenAI, or the helper is missing) the audit logs `no cross-vendor reviewer` and does not
+run. The legacy `gemini_*` limit names in a manifest are still read as aliases.
 
 Each shard is judged separately. All of these must hold, checked in this order; the first
 that fails is that shard's logged reason.
 
-1. At least `gemini_min_interval_days` since the shard's last completed audit (none yet
+1. At least `audit_min_interval_days` since the shard's last completed audit (none yet
    means the interval is clear).
-2. At least `gemini_min_changed_topics` topics of the shard changed since its last audit
+2. At least `audit_min_changed_topics` topics of the shard changed since its last audit
    (per source repository, from the audit line's `commits` map; all of its topics when it
    was never audited), or the shard's last GLM review recorded a high-severity finding
    newer than its last audit (an escalation counts once).
-3. Month-to-date Gemini spend across all repos plus the estimate for this shard is within
-   `gemini_monthly_usd`. A high-severity finding never overrides the budget.
+3. Month-to-date audit spend across all repos plus the estimate for this shard is within
+   `audit_monthly_usd`. A high-severity finding never overrides the budget.
 
-Shards that pass 1 and 2 are tried **most-changed first**; each one's `countTokens`
+Shards that pass 1 and 2 are tried **most-changed first**; each one's size
 estimate is checked against what is left of the cap, so a tight budget is spent where the
 corpus has drifted most and a shard that does not fit is logged as a budget refusal.
 
-The reservation comes from free `countTokens` calls for both lenses: the larger count
-at the uncached input rate for each lens, plus an enforced maximum of 30,000 output and
+The reservation comes from the shard's own size estimate (Codex has no free token-count call)
+plus the lens text: the estimate at the uncached input rate for each lens, plus an enforced maximum of 30,000 output and
 thinking tokens per lens. Cache hits lower the settlement, never the reservation.
 The run itself is `external-review.cjs --files-from`, given
 exactly the shard's topics; the ledger records the cost from the usage it reports.
@@ -188,17 +197,17 @@ Each valid shard settles immediately against its retained `runs/<run>/<shard>/fi
 and manifest, before another shard starts. A later malformed manifest, missing
 usage or failed generation retains that shard's estimated charge without losing
 earlier successful settlements. A rerun therefore observes the completed shard's
-interval. One `docs/review/<date>-gemini.md` and `.json` present the combined run;
+interval. One `docs/review/<date>-codex.md` and `.json` present the combined run;
 failure to write that presentation cannot erase a completed settlement.
 
 Prices (USD per million tokens), constants at the top of `review-cadence.cjs`,
-Gemini 3.8 Flash, checked against [Google's pricing](https://ai.google.dev/gemini-api/docs/pricing)
-on 2026-10-06: input 0.75, cached input 0.075, output including thinking 3.75.
-These introductory rates end after 2026-12-31; review them before that date.
+the Codex consultant's `gpt-6-astra`, as `mcp/consultants/codex/server.js` prices it (verified
+2026-09-08): input 10, output including reasoning 50. Cached input is charged at the full input
+rate, an over-estimate that keeps the cap a cap. Refresh both files together on a model change.
 The scheduled runner refuses another model until its pricing is reviewed.
-GLM runs under the Z.AI plan and counts as 0, so it never uses the Gemini cap.
+GLM runs under the Z.AI plan and counts as 0, so it never uses the audit cap.
 
-A failed `generateContent` is booked at its estimate and counts toward the month,
+A failed audit call is booked at its estimate and counts toward the month,
 because a timed-out call may already have been billed. It does not reset the
 interval. External review never retries a billable call, and neither does this.
 The reservation is appended before generation, so interruption or corrupt output
@@ -207,7 +216,7 @@ in the monthly total. CLI audits hold a kernel `flock` across all repos; a concu
 audit skips, and termination releases the lock automatically.
 
 Before paid work, the runner checks a small monthly integrity witness at
-`$XDG_STATE_HOME/sealmap-review/gemini-budget-YYYY-MM.json`, defaulting to
+`$XDG_STATE_HOME/sealmap-review/audit-budget-YYYY-MM.json`, defaulting to
 `~/.local/state/sealmap-review/`. It retains canonical repository paths, observed
 ledger byte lengths and SHA-256 hashes. It contains no source, findings or cost
 records: the append-only JSONL ledgers remain authoritative. The 0600 witness is
@@ -234,7 +243,7 @@ path; the baked default reads `config/diagram-review.local` in the mounted Agent
 
 `docs/diagrams/review-ledger.jsonl` in each repo, append-only, one JSON line per
 run (per shard for reviews and audits). Fields: `ts`, `kind` (`triage`, `review`, `audit`, `audit-reservation`),
-`reviewer` (`glm`, `gemini`), `shard`, `commit`, `commits` (repository to commit),
+`reviewer` (`glm`, `codex`; historical lines may say `gemini`), `shard`, `commit`, `commits` (repository to commit),
 `unresolved` (skipped source paths), `pack_sha256`, `tokens`, `est_usd`, `findings` (path),
 `high_severity`, `changed_topics`, `skipped` (the reason, or null), plus `error`
 on a failed call. Audit settlements have `reservation_at` matching the reservation's
@@ -246,8 +255,8 @@ only appends.
 ## Operating notes
 
 - With no corpus repo in the workspace the cron finds nothing and spends nothing.
-- The cron needs `ZAI_ANTHROPIC_API_KEY` (or `ZAI_API_KEY`) and `GEMINI_API_KEY`
-  in the container environment (`.env`). Without the Gemini key an audit is logged
+- The cron needs `ZAI_ANTHROPIC_API_KEY` (or `ZAI_API_KEY`) and, for the audit, `OPENAI_API_KEY`
+  or a `codex login` credential in the container environment. Without Codex credentials an audit is logged
   as skipped; without the Z.AI key triage lists every candidate (unsure means yes)
   and the GLM review fails.
 - Logs: `/var/log/diagram-review-cron.log` and `.error.log`.
@@ -262,12 +271,12 @@ is reconstructed from those rows; older `## Re-author` lists are imported as ope
 hypotheses. A quiet tick retains the queue without another model call. An edited
 flagged topic gets a new check; only its later unambiguous `VERDICT: NO` closes the
 flag. Ambiguous, quoted, contradictory and failed replies remain flagged.
-Paid Gemini audits refuse shards with pending flags. This is a freshness guard,
+Paid audits refuse shards with pending flags. This is a freshness guard,
 not proof that other topics are correct or that all sources were available.
 
 Review output records a run identifier, full corpus revision, tracked dirty state,
 exact pack and scope hashes, register mode, model/provider and lens prompt hash.
-Diagram-review GLM and Gemini keep packs, raw replies and manifests in `docs/review/runs/`;
+Diagram-review GLM and Codex keep packs, raw replies and manifests in `docs/review/runs/`;
 partial output is retained there even when a lens fails. Successful transport
 completion and complete finding fields (or explicit `NO_FINDINGS`) are required
 before a run can suppress another review of the same pack. Snapshot changes
@@ -281,7 +290,7 @@ Each raw export remains immutable; [review receipts](review-receipts.md) carry
 subsequent dispositions and delivery evidence through the Sealmap Rust validator.
 
 A missing ledger with no observed prefix means no history. Read errors, malformed/torn rows and invalid
-Gemini costs do not: paid work refuses them. `status` remains diagnostic and says
+Audit costs do not: paid work refuses them. `status` remains diagnostic and says
 accounting is inconclusive. Preserve the raw ledger and restore accounting from
 verified run/reservation evidence; do not delete a damaged history to reopen the
 budget. A complete last row without a newline is preserved before appending.

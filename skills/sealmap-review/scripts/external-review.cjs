@@ -7,9 +7,14 @@
  *   thinking, once per review lens, and writes each review plus a findings list for triage.
  *   Zero dependencies, Node >= 18.
  *
- *     node external-review.cjs <corpus> [--lens critical,premortem] [--only <substr>]
- *          [--files-from <file listing topic paths, one per line>]
+ *     node external-review.cjs <corpus> [--provider gemini|codex] [--lens critical,premortem]
+ *          [--only <substr>] [--files-from <file listing topic paths, one per line>]
  *          [--register include|strip] [--count 15] [--out <dir>] [--dry-run]
+ *
+ *   Two transports. `--provider gemini` (the default, for a manual run) is a Gemini REST call and
+ *   needs GEMINI_API_KEY. `--provider codex` runs the Codex CLI the codex consultant wraps
+ *   (`codex exec`, the pack on stdin) and is what the scheduled audit (review-cadence.cjs
+ *   audit-codex, ADR-2131 as amended 2026-11-16) uses; it needs OPENAI_API_KEY or a `codex login`.
  *
  * WHY IT IS THIS WAY
  *   The corpus is the distillation; the point is an efficient outside read of a project too
@@ -29,10 +34,11 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
+const os = require('node:os');
 const { reviewContext } = require('./review-context.cjs');
 const http = require('node:http');
 const https = require('node:https');
-const { execFileSync } = require('node:child_process');
+const { execFileSync, spawn } = require('node:child_process');
 
 // Mirrors diagrams-as-code's diagram-index-gen.cjs so the review reads exactly the files that gate checks.
 const DEFAULT_SKIP_DIRS = ['rendered', 'tools', 'scripts', 'hero', 'archive', 'src', 'assets', 'node_modules'];
@@ -45,6 +51,10 @@ const TOKEN_BUDGET = 1_000_000;
 // before the first byte. Built-in fetch (undici) gives up after 300 s of silence, which
 // surfaced as a bare "fetch failed"; node:https has no such limit, so this is the only one.
 const DEFAULT_TIMEOUT_MS = 1_800_000;
+// The model the codex consultant uses (mcp/consultants/codex/server.js); overridable by env.
+const CODEX_DEFAULT_MODEL = 'gpt-6-astra';
+// Codex is an agent that can run commands and read files; the review is of the pack alone.
+const CODEX_PREAMBLE = 'Answer from the material below only. Do not run commands, open files or browse; the diagrams are the whole input, and the code is deliberately not part of this review.';
 // Includes thinking tokens; the scheduled runner reserves this maximum for each lens.
 const MAX_OUTPUT_TOKENS = 30000;
 
@@ -139,12 +149,13 @@ function checkedFindings(markdown, lens) {
 }
 
 function parseArgs(argv) {
-  const opts = { lens: ['critical', 'premortem'], register: 'include', count: 15, dryRun: false };
+  const opts = { lens: ['critical', 'premortem'], register: 'include', count: 15, dryRun: false, provider: 'gemini' };
   const rest = [];
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     const next = () => { if (i + 1 >= argv.length) throw new Error(`${a} needs a value`); return argv[++i]; };
     if (a === '--lens') opts.lens = next().split(',').map((s) => s.trim()).filter(Boolean);
+    else if (a === '--provider') opts.provider = next();
     else if (a === '--only') opts.only = next();
     else if (a === '--files-from') opts.filesFrom = next();
     else if (a === '--register') opts.register = next();
@@ -156,6 +167,7 @@ function parseArgs(argv) {
   }
   if (rest.length !== 1) throw new Error('give exactly one corpus directory');
   if (!['include', 'strip'].includes(opts.register)) throw new Error('--register is include or strip');
+  if (!['gemini', 'codex'].includes(opts.provider)) throw new Error('--provider is gemini or codex');
   if (!Number.isInteger(opts.count) || opts.count < 1) throw new Error('--count is a positive integer');
   opts.corpus = path.resolve(rest[0]);
   return opts;
@@ -229,6 +241,77 @@ async function gemini(method, model, key, body, opts = {}) {
   }
 }
 
+/** Read the Codex CLI's `--json` event stream the way mcp/consultants/codex/server.js does:
+ *  `item.completed` agent messages are the reply, `turn.completed.usage` the token counts. */
+function parseCodexStream(stdout) {
+  const messages = [];
+  let usage = null;
+  let completed = false;
+  for (const line of String(stdout).split('\n')) {
+    const t = line.trim();
+    if (!t.startsWith('{')) continue;
+    let obj;
+    try { obj = JSON.parse(t); } catch { continue; }
+    if (obj.type === 'item.completed' && obj.item && obj.item.type === 'agent_message' && obj.item.text) messages.push(obj.item.text);
+    else if (obj.type === 'turn.completed') { completed = true; if (obj.usage) usage = obj.usage; }
+  }
+  return { text: messages.join('\n\n'), usage, completed };
+}
+
+/** Where the Codex login lives for this process: the consultant's AGENTBOX_CODEX_HOME if set,
+ *  otherwise CODEX_HOME, the runner's own ~/.codex, then the legacy pseudo-user directory.
+ *  Returns the first directory holding auth.json, or null (an OPENAI_API_KEY may still do). */
+function codexHome(env = process.env) {
+  const dirs = env.AGENTBOX_CODEX_HOME
+    ? [env.AGENTBOX_CODEX_HOME]
+    : [env.CODEX_HOME, env.HOME && path.join(env.HOME, '.codex'), '/home/openai-user/.codex'];
+  return dirs.filter(Boolean).find((d) => fs.existsSync(path.join(d, 'auth.json'))) ?? null;
+}
+
+function codexBin(env = process.env) {
+  return env.AGENTBOX_CODEX_BIN || (fs.existsSync('/usr/local/bin/codex') ? '/usr/local/bin/codex' : 'codex');
+}
+
+/** One `codex exec` call with the prompt on stdin (a pack is far over the argv limit). Resolves
+ *  { text, usage, completed }. One deadline for the whole call; a timeout, a non-zero exit or a
+ *  stream with no completed turn is an error, and the caller books it as possibly billed. */
+function codex(model, prompt, opts = {}) {
+  const bin = opts.bin ?? codexBin();
+  const timeoutMs = opts.timeoutMs ?? timeoutFromEnv();
+  const effort = opts.effort ?? process.env.DIAGRAM_REVIEW_THINKING ?? 'high';
+  // `codex exec` is an agent, not a single completion. Contain it: an empty scratch working
+  // directory, a read-only sandbox (no writes, no commands that change anything) and no session
+  // file, so the private pack is not left under CODEX_HOME/sessions. It can still READ any file the
+  // cron user can read; the instruction below is a prompt-level limit, not a technical one.
+  const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-audit-'));
+  const args = ['exec', '--json', '--skip-git-repo-check', '--ephemeral', '--sandbox', 'read-only', '-C', scratch, '--model', model, '-c', `model_reasoning_effort="${effort}"`, '-'];
+  const env = { ...process.env, AGENTBOX_AGENT_ID: 'diagram-review-audit' };
+  const home = codexHome(process.env);
+  if (home) env.CODEX_HOME = home;
+  return new Promise((resolve, reject) => {
+    let done = false;
+    const out = [];
+    const err = [];
+    const child = (opts.spawn ?? spawn)(bin, args, { env, stdio: ['pipe', 'pipe', 'pipe'] });
+    const finish = (fn, v) => { if (!done) { done = true; clearTimeout(timer); fs.rmSync(scratch, { recursive: true, force: true }); fn(v); } };
+    const timer = setTimeout(() => {
+      finish(reject, new Error(`codex exec timed out after ${timeoutMs / 1000} s (not retried, it may already be billed)`));
+      child.kill('SIGKILL');
+    }, timeoutMs);
+    child.stdout.on('data', (c) => out.push(c));
+    child.stderr.on('data', (c) => err.push(c));
+    child.on('error', (e) => finish(reject, new Error(`codex exec could not start: ${e.message}`)));
+    child.on('close', (code) => {
+      if (code !== 0) { finish(reject, new Error(`codex exec exited ${code}: ${Buffer.concat(err).toString('utf8').slice(0, 300)}`)); return; }
+      const parsed = parseCodexStream(Buffer.concat(out).toString('utf8'));
+      if (!parsed.completed) { finish(reject, new Error('codex exec ended without a completed turn')); return; }
+      finish(resolve, parsed);
+    });
+    child.stdin.on('error', () => { /* the close handler reports the failure */ });
+    child.stdin.end(prompt);
+  });
+}
+
 function gitRev(dir) {
   try { return execFileSync('git', ['-C', dir, 'rev-parse', 'HEAD'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim(); }
   catch { return null; }
@@ -239,7 +322,7 @@ function gitDirty(dir) {
   catch { return null; }
 }
 
-async function main(argv) {
+async function main(argv, deps = {}) {
   const opts = parseArgs(argv);
   const cfgPath = path.join(opts.corpus, 'diagrams.config.json');
   const cfg = fs.existsSync(cfgPath) ? JSON.parse(fs.readFileSync(cfgPath, 'utf8')) : {};
@@ -269,47 +352,74 @@ async function main(argv) {
     console.log(`dry run: about ${Math.round(manifest.pack_bytes / 3.3)} tokens; nothing sent`);
     return 0;
   }
-  const key = process.env.GEMINI_API_KEY || process.env.GOOGLE_GEMINI_API_KEY;
-  if (!key) throw new Error('set GEMINI_API_KEY (or GOOGLE_GEMINI_API_KEY) in the environment');
-  const model = process.env.DIAGRAM_REVIEW_MODEL || 'gemini-3.8-flash';
+  const isCodex = opts.provider === 'codex';
+  const key = isCodex ? null : (process.env.GEMINI_API_KEY || process.env.GOOGLE_GEMINI_API_KEY);
+  if (!isCodex && !key) throw new Error('set GEMINI_API_KEY (or GOOGLE_GEMINI_API_KEY) in the environment');
+  const model = isCodex
+    ? (process.env.DIAGRAM_REVIEW_MODEL || process.env.AGENTBOX_CODEX_MODEL || CODEX_DEFAULT_MODEL)
+    : (process.env.DIAGRAM_REVIEW_MODEL || 'gemini-3.8-flash');
   const timeoutMs = timeoutFromEnv();
   manifest.model = model;
+  manifest.provider = opts.provider;
   manifest.timeout_ms = timeoutMs;
   fs.writeFileSync(path.join(out, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n');
 
   const contentsFor = (lensText) => [{ role: 'user', parts: [{ text: pack }, { text: lensText }] }];
-  const { totalTokens } = await gemini('countTokens', model, key, { contents: contentsFor(lenses[0].text) }, { timeoutMs });
-  manifest.pack_tokens = totalTokens;
-  if (totalTokens > TOKEN_BUDGET) {
-    const areas = [...new Set(files.map((f) => f.split('/')[0]))].join(', ');
-    fs.writeFileSync(path.join(out, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n');
-    throw new Error(`pack is ${totalTokens} tokens, over the ${TOKEN_BUDGET} budget; review one area at a time with --only (areas: ${areas})`);
+  if (isCodex) {
+    // No free token-count call: size is estimated from bytes, and the model refuses an
+    // over-long prompt by itself. The scheduled runner keeps each shard well inside the window.
+    manifest.pack_tokens = Math.round(manifest.pack_bytes / 3.3);
+    console.log(`pack about ${manifest.pack_tokens} tokens on ${model} (codex)`);
+  } else {
+    const { totalTokens } = await gemini('countTokens', model, key, { contents: contentsFor(lenses[0].text) }, { timeoutMs });
+    manifest.pack_tokens = totalTokens;
+    if (totalTokens > TOKEN_BUDGET) {
+      const areas = [...new Set(files.map((f) => f.split('/')[0]))].join(', ');
+      fs.writeFileSync(path.join(out, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n');
+      throw new Error(`pack is ${totalTokens} tokens, over the ${TOKEN_BUDGET} budget; review one area at a time with --only (areas: ${areas})`);
+    }
+    console.log(`pack ${totalTokens} tokens on ${model}`);
   }
-  console.log(`pack ${totalTokens} tokens on ${model}`);
 
   const findings = [];
   for (const lens of lenses) { // sequential: each lens after the first reads the pack from cache
     const started = Date.now();
-    const res = await gemini('generateContent', model, key, {
-      contents: contentsFor(lens.text),
-      generationConfig: { maxOutputTokens: MAX_OUTPUT_TOKENS, thinkingConfig: { thinkingLevel: process.env.DIAGRAM_REVIEW_THINKING || 'high' }, temperature: 0 },
-    }, { timeoutMs });
-    const text = res.candidates?.[0]?.content?.parts?.filter((p) => p.text && !p.thought).map((p) => p.text).join('') ?? '';
-    if (!text) throw new Error(`lens ${lens.name}: empty reply (finishReason ${res.candidates?.[0]?.finishReason ?? 'none'})`);
-    fs.writeFileSync(path.join(out, `${lens.name}.md`), text.endsWith('\n') ? text : `${text}\n`);
-    fs.writeFileSync(path.join(out, `${lens.name}.completion.json`), JSON.stringify({ finish_reason: res.candidates?.[0]?.finishReason ?? null, usage: res.usageMetadata ?? null }, null, 2) + '\n');
-    if (res.candidates?.[0]?.finishReason !== 'STOP') throw new Error(`lens ${lens.name}: inconclusive finishReason ${res.candidates?.[0]?.finishReason ?? 'missing'}`);
-    const origin = reviewContext({ pack, files, model, provider: 'gemini', revision: manifest.revision, dirty: manifest.dirty, register: opts.register, lens: lens.name, prompt: lens.text, runId: manifest.run_id, reviewedAt: manifest.reviewed_at });
+    let text; let usage; let finish;
+    if (isCodex) {
+      // The pack first and the lens last, as for Gemini, so a provider cache can serve the pack.
+      const r = await (deps.codex ?? codex)(model, `${CODEX_PREAMBLE}\n\n${pack}\n\n${lens.text}`, { timeoutMs });
+      text = r.text;
+      usage = r.usage ? {
+        prompt_tokens: r.usage.input_tokens, cached_tokens: r.usage.cached_input_tokens ?? 0,
+        // OpenAI counts reasoning inside output_tokens; recorded for information, not added again.
+        thinking_tokens: 0, output_tokens: r.usage.output_tokens, reasoning_tokens: r.usage.reasoning_output_tokens ?? 0,
+      } : {};
+      finish = r.completed ? 'STOP' : null;
+      if (!text) throw new Error(`lens ${lens.name}: empty reply`);
+      fs.writeFileSync(path.join(out, `${lens.name}.md`), text.endsWith('\n') ? text : `${text}\n`);
+      fs.writeFileSync(path.join(out, `${lens.name}.completion.json`), JSON.stringify({ finish_reason: finish, usage: r.usage ?? null }, null, 2) + '\n');
+      if (finish !== 'STOP') throw new Error(`lens ${lens.name}: inconclusive, no completed turn`);
+    } else {
+      const res = await gemini('generateContent', model, key, {
+        contents: contentsFor(lens.text),
+        generationConfig: { maxOutputTokens: MAX_OUTPUT_TOKENS, thinkingConfig: { thinkingLevel: process.env.DIAGRAM_REVIEW_THINKING || 'high' }, temperature: 0 },
+      }, { timeoutMs });
+      text = res.candidates?.[0]?.content?.parts?.filter((p) => p.text && !p.thought).map((p) => p.text).join('') ?? '';
+      if (!text) throw new Error(`lens ${lens.name}: empty reply (finishReason ${res.candidates?.[0]?.finishReason ?? 'none'})`);
+      fs.writeFileSync(path.join(out, `${lens.name}.md`), text.endsWith('\n') ? text : `${text}\n`);
+      fs.writeFileSync(path.join(out, `${lens.name}.completion.json`), JSON.stringify({ finish_reason: res.candidates?.[0]?.finishReason ?? null, usage: res.usageMetadata ?? null }, null, 2) + '\n');
+      if (res.candidates?.[0]?.finishReason !== 'STOP') throw new Error(`lens ${lens.name}: inconclusive finishReason ${res.candidates?.[0]?.finishReason ?? 'missing'}`);
+      const u = res.usageMetadata || {};
+      usage = { prompt_tokens: u.promptTokenCount, cached_tokens: u.cachedContentTokenCount ?? 0, thinking_tokens: u.thoughtsTokenCount, output_tokens: u.candidatesTokenCount };
+    }
+    const origin = reviewContext({ pack, files, model, provider: isCodex ? 'codex' : 'gemini', revision: manifest.revision, dirty: manifest.dirty, register: opts.register, lens: lens.name, prompt: lens.text, runId: manifest.run_id, reviewedAt: manifest.reviewed_at });
     const parsed = checkedFindings(text, lens.name);
     findings.push(...parsed.map((f) => ({ ...f, origin })));
-    const u = res.usageMetadata || {};
     manifest.lenses.push({
-      name: lens.name, seconds: Math.round((Date.now() - started) / 100) / 10, findings: parsed.length,
-      prompt_tokens: u.promptTokenCount, cached_tokens: u.cachedContentTokenCount ?? 0,
-      thinking_tokens: u.thoughtsTokenCount, output_tokens: u.candidatesTokenCount,
+      name: lens.name, seconds: Math.round((Date.now() - started) / 100) / 10, findings: parsed.length, ...usage,
     });
     fs.writeFileSync(path.join(out, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n');
-    console.log(`${lens.name}: ${parsed.length} findings, ${manifest.lenses.at(-1).seconds} s, ${u.cachedContentTokenCount ?? 0} tokens from cache`);
+    console.log(`${lens.name}: ${parsed.length} findings, ${manifest.lenses.at(-1).seconds} s, ${usage.cached_tokens ?? 0} tokens from cache`);
   }
   manifest.complete = true;
   fs.writeFileSync(path.join(out, 'findings.json'), JSON.stringify(findings, null, 2) + '\n');
@@ -319,7 +429,7 @@ async function main(argv) {
 }
 
 module.exports = {
-  listTopics, stripRegister, buildPack, loadLens, parseFindings, checkedFindings, gitRev, gitDirty, parseArgs, gemini, postJson, timeoutFromEnv, DEFAULT_TIMEOUT_MS, MAX_OUTPUT_TOKENS,
+  listTopics, stripRegister, buildPack, loadLens, parseFindings, checkedFindings, gitRev, gitDirty, parseArgs, gemini, codex, codexHome, codexBin, parseCodexStream, main, postJson, timeoutFromEnv, DEFAULT_TIMEOUT_MS, MAX_OUTPUT_TOKENS,
 };
 
 if (require.main === module) {

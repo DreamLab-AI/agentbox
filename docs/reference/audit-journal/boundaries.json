@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "boundaries": [
+    {
+      "file": "2026-10-12.jsonl",
+      "line": 35,
+      "sha256": "798976ac19915e4c00ed87c3bb9be2ea65b2929835924a26e9d309c868b8013b",
+      "reason": "Interrupted write. A write was cut off mid-record and the next record was appended onto the unterminated fragment, so this line is a fragment with one complete record (seq 1983, which verifies on its own) fused to its end. Cause: an interrupted write, not an edit; no tampering is suspected, but none can be excluded by the journal itself. Continuity across this boundary cannot be proved.",
+      "recorded_at": "2026-11-16",
+      "recorded_by": "owner decision 2026-11-16 (jjohare), computed read-only by Claude Code",
+      "note": "Line 36 (seq 1984) links to the fused seq 1983 record, not to line 34, so the verifier reports this boundary as a gap."
+    },
+    {
+      "file": "2026-10-12.jsonl",
+      "line": 64,
+      "sha256": "e985b2a6de4e00d42fc29c3bb13f9f7d600f00d6dcb87681f1503c4c3bc9a963",
+      "reason": "Interrupted write. The file ends in a truncated, unterminated record (the final line of the file). Cause: an interrupted write, not an edit; no tampering is suspected, but none can be excluded by the journal itself. Continuity across this boundary cannot be proved from this file alone.",
+      "recorded_at": "2026-11-16",
+      "recorded_by": "owner decision 2026-11-16 (jjohare), computed read-only by Claude Code",
+      "note": "The first record of 2026-10-13.jsonl (seq 2012) links directly to line 63 (the last intact record), so the truncated line never advanced the chain."
+    }
+  ]
+}

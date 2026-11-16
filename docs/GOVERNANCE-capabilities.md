@@ -735,7 +735,7 @@ the egress path ADR-2053 names. Tiers are lowered one step at a time while accur
 `sealmap-review` reaches Gemini 3.8 Flash directly with `GEMINI_API_KEY` from `.env`. It is a
 review transport outside `[model_routing]` and is not a `seal-review` substitute.
 
-**Scheduled review (ADR-2131).** With `[diagram_review].enabled` (shipped on, rebuild-class; corpus repos auto-discovered, never named in the manifest) `[program:diagram-review-cron]` runs GLM triage and a GLM review of each configured corpus, and the Gemini audit, one area-shard at a time, only when `gemini_min_interval_days`, `gemini_min_changed_topics` (or a high-severity GLM finding) and `gemini_monthly_usd` all allow it. Each run, refusals included, is a line in `docs/diagrams/review-ledger.jsonl`; findings are unverified hypotheses in `docs/review/`. Detail: `skills/sealmap-review/references/cadence.md`.
+**Scheduled review (ADR-2131).** With `[diagram_review].enabled` (shipped on, rebuild-class; corpus repos auto-discovered, never named in the manifest) `[program:diagram-review-cron]` runs GLM triage and a GLM review of each configured corpus, and the cross-vendor Codex audit, one area-shard at a time, only when `audit_min_interval_days`, `audit_min_changed_topics` (or a high-severity GLM finding) and `audit_monthly_usd` all allow it. Each run, refusals included, is a line in `docs/diagrams/review-ledger.jsonl`; findings are unverified hypotheses in `docs/review/`. Detail: `skills/sealmap-review/references/cadence.md`.
 
 **Landed 2026-10-31 (agentbox side).** `routing.rs` admits `claude|codex|loom|zai` as start and rung,
 `host_provider` has explicit arms (`loom` and `zai` retain unconstructible labels,

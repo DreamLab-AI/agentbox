@@ -1,7 +1,7 @@
 'use strict';
 /**
  * WHAT THIS IS
- *   The offline suite for review-cadence.cjs: repo discovery, the Gemini gate (interval, changed
+ *   The offline suite for review-cadence.cjs: repo discovery, the audit gate (interval, changed
  *   topics, high-severity escalation, budget refusal), the per-shard pack-hash skip, ledger
  *   appends, sharding by token budget, and change detection across several git repositories
  *   (symlinked spellings of one path, a nested submodule, a missing sibling, a dangling link),
@@ -79,19 +79,19 @@ test('readSection reads strings, numbers, booleans and multi-line arrays, ignori
     '[other]', 'enabled = true',
     '[diagram_review]  # the cadence',
     'enabled = true', 'repos = [', '  "/a/b",  # first', '  "/c d",', ']',
-    'glm_triage_cron = "17 5 * * *"', 'gemini_monthly_usd = 12.5', 'weekly_window = false',
+    'glm_triage_cron = "17 5 * * *"', 'audit_monthly_usd = 12.5', 'weekly_window = false',
     '[next]', 'enabled = false',
   ].join('\n'), 'diagram_review');
-  assert.deepEqual(s, { enabled: true, repos: ['/a/b', '/c d'], glm_triage_cron: '17 5 * * *', gemini_monthly_usd: 12.5, weekly_window: false });
+  assert.deepEqual(s, { enabled: true, repos: ['/a/b', '/c d'], glm_triage_cron: '17 5 * * *', audit_monthly_usd: 12.5, weekly_window: false });
 });
 
 test('loadConfig is disabled with the spec defaults when the manifest has no section or no file', () => {
   const cfg = C.loadConfig('/nonexistent/agentbox.toml');
   assert.equal(cfg.enabled, false);
   assert.deepEqual(cfg.repos, []);
-  assert.equal(cfg.gemini_min_interval_days, 7);
-  assert.equal(cfg.gemini_min_changed_topics, 3);
-  assert.equal(cfg.gemini_monthly_usd, 10);
+  assert.equal(cfg.audit_min_interval_days, 7);
+  assert.equal(cfg.audit_min_changed_topics, 3);
+  assert.equal(cfg.audit_monthly_usd, 10);
   assert.equal(cfg.weekly_window, true);
 });
 
@@ -185,19 +185,19 @@ test('ledger is append-only: lines accumulate in order and earlier lines are unt
   assert.throws(() => C.readLedger(est), /invalid review ledger/, 'a torn line stops accounting without discarding history');
 });
 
-test('month-to-date counts only Gemini spend in the same UTC month, across ledgers', () => {
+test('month-to-date counts only audit spend in the same UTC month, across ledgers', () => {
   const l1 = [
-    { reviewer: 'gemini', est_usd: 2.5, ts: '2026-10-02T00:00:00Z' },
-    { reviewer: 'gemini', est_usd: 9, ts: '2026-09-30T23:59:00Z' },
+    { reviewer: 'codex', est_usd: 2.5, ts: '2026-10-02T00:00:00Z' },
+    { reviewer: 'codex', est_usd: 9, ts: '2026-09-30T23:59:00Z' },
     { reviewer: 'glm', est_usd: 5, ts: '2026-10-03T00:00:00Z' },
   ];
-  const l2 = [{ reviewer: 'gemini', est_usd: 1.25, ts: '2026-10-19T00:00:00Z', skipped: 'error: timeout' }];
+  const l2 = [{ reviewer: 'codex', est_usd: 1.25, ts: '2026-10-19T00:00:00Z', skipped: 'error: timeout' }];
   assert.equal(C.monthToDateUsd([l1, l2], NOW), 3.75);
 });
 
-// ── Gemini gate ─────────────────────────────────────────────────────────────────────────────
+// ── audit gate ─────────────────────────────────────────────────────────────────────────────
 
-const gate = (o) => C.decideGemini({ cfg: CFG, lastAudit: null, changedTopics: 5, glmHighSeverity: 0, mtdUsd: 0, estUsd: 1, now: NOW, ...o });
+const gate = (o) => C.decideAudit({ cfg: CFG, lastAudit: null, changedTopics: 5, glmHighSeverity: 0, mtdUsd: 0, estUsd: 1, now: NOW, ...o });
 
 test('gate opens with enough changed topics, a clear interval and budget', () => {
   assert.equal(gate({ lastAudit: { ts: daysAgo(8) } }).run, true);
@@ -230,12 +230,13 @@ test('gate refuses when month-to-date plus the estimate would pass the monthly c
 });
 
 test('cost reservation covers uncached input for both lenses and the enforced output maximum', () => {
-  const usd = C.estimateGeminiUsd(200000, 2);
-  const expected = (2 * 200000 * 0.75 + 2 * ER.MAX_OUTPUT_TOKENS * 3.75) / 1e6;
+  const usd = C.estimateAuditUsd(200000, 2);
+  const P = C.AUDIT_USD_PER_M;
+  const expected = (2 * 200000 * P.input + 2 * ER.MAX_OUTPUT_TOKENS * P.output) / 1e6;
   assert.ok(Math.abs(usd - expected) < 1e-9);
-  const actual = C.actualGeminiUsd([{ prompt_tokens: 200000, cached_tokens: 0, thinking_tokens: 10000, output_tokens: 5000 },
+  const actual = C.actualAuditUsd([{ prompt_tokens: 200000, cached_tokens: 0, thinking_tokens: 10000, output_tokens: 5000 },
     { prompt_tokens: 200000, cached_tokens: 190000, thinking_tokens: 8000, output_tokens: 4000 }]);
-  const want = ((200000 * 0.75 + 15000 * 3.75) + (10000 * 0.75 + 190000 * 0.075 + 12000 * 3.75)) / 1e6;
+  const want = ((200000 * P.input + 15000 * P.output) + (10000 * P.input + 190000 * P.cached + 12000 * P.output)) / 1e6;
   assert.ok(Math.abs(actual - want) < 1e-6);
 });
 
@@ -355,7 +356,11 @@ function fakePost(reply, seen = []) {
     return { status: 200, json: { stop_reason: 'end_turn', content: [{ type: 'text', text: reply(body) }], usage: { input_tokens: 100, output_tokens: 20 } } };
   };
 }
-const ctxFor = (extra = {}) => ({ now: NOW, cfg: CFG, dryRun: false, env: { ZAI_API_KEY: 'secret-key-value' }, mtd: 0, model: 'gemini-test', ...extra });
+// A stand-in `codex` on PATH: the audit refuses (free) when the binary is missing, so tests that
+// reach the gate need one to exist. It is never executed: runExternal is always a stub.
+const FAKE_BIN_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'fake-codex-'));
+fs.writeFileSync(path.join(FAKE_BIN_DIR, 'codex'), '#!/bin/sh\nexit 99\n', { mode: 0o755 });
+const ctxFor = (extra = {}) => ({ now: NOW, cfg: CFG, dryRun: false, env: { ZAI_API_KEY: 'secret-key-value', OPENAI_API_KEY: 'sk-test-placeholder', PATH: FAKE_BIN_DIR }, mtd: 0, model: 'gpt-test', packTokens: 100000, ...extra });
 
 test('triage: the first run baselines every repository and spends nothing; the next flags across repositories and records a commit map', async () => {
   const e = estate();
@@ -465,16 +470,16 @@ test('nightly ticks do not repeat themselves: an identical skip is ledgered once
   assert.equal(C.readLedger(e.est).filter((r) => r.kind === 'review' && r.skipped).length, 2, 'one "unchanged" line per shard, not one per night');
 
   const head = C.headsOf(C.reposOf(C.loadTopics(e.est)));
-  for (const shard of ['core', 'edge']) C.appendLedger(e.est, { ts: daysAgo(3), kind: 'audit', reviewer: 'gemini', shard, commits: head, est_usd: 1 });
-  process.env.GEMINI_API_KEY = 'gem-secret';
+  for (const shard of ['core', 'edge']) C.appendLedger(e.est, { ts: daysAgo(3), kind: 'audit', reviewer: 'codex', shard, commits: head, est_usd: 1 });
+  process.env.OPENAI_API_KEY = 'sk-test-placeholder';
   try {
-    for (let i = 0; i < 3; i++) await C.auditGemini(e.est, ctxFor({ runExternal: fakeExternal([]) }));
-  } finally { delete process.env.GEMINI_API_KEY; }
+    for (let i = 0; i < 3; i++) await C.auditCodex(e.est, ctxFor({ runExternal: fakeExternal([]) }));
+  } finally { delete process.env.OPENAI_API_KEY; }
   const skips = C.readLedger(e.est).filter((r) => r.kind === 'audit' && r.skipped);
   assert.equal(skips.length, 2, 'one interval refusal per shard across three nights');
   // Once the interval has passed the reason changes ("no cause"), and that is worth a line.
-  process.env.GEMINI_API_KEY = 'gem-secret';
-  try { await C.auditGemini(e.est, ctxFor({ now: new Date(NOW.getTime() + 8 * 86400000), runExternal: fakeExternal([]) })); } finally { delete process.env.GEMINI_API_KEY; }
+  process.env.OPENAI_API_KEY = 'sk-test-placeholder';
+  try { await C.auditCodex(e.est, ctxFor({ now: new Date(NOW.getTime() + 8 * 86400000), runExternal: fakeExternal([]) })); } finally { delete process.env.OPENAI_API_KEY; }
   assert.equal(C.readLedger(e.est).filter((r) => r.kind === 'audit' && /^no cause/.test(r.skipped ?? '')).length, 2);
 });
 
@@ -500,52 +505,56 @@ function fakeExternal(calls) {
     fs.writeFileSync(path.join(out, 'critical.md'), '### F-01 — t\n- Confidence: high\n');
     fs.writeFileSync(path.join(out, 'premortem.md'), '### R-1 — t\n');
     fs.writeFileSync(path.join(out, 'findings.json'), JSON.stringify([{ id: 'critical:F-01', status: 'unverified' }]));
-    fs.writeFileSync(path.join(out, 'manifest.json'), JSON.stringify({ model: 'gemini-test', complete: true, pack_sha256: require('node:crypto').createHash('sha256').update(ER.buildPack(corpus, files)).digest('hex'), lenses: [
+    fs.writeFileSync(path.join(out, 'manifest.json'), JSON.stringify({ model: 'gpt-test', complete: true, pack_sha256: require('node:crypto').createHash('sha256').update(ER.buildPack(corpus, files)).digest('hex'), lenses: [
       { name: 'critical', prompt_tokens: 100000, cached_tokens: 0, thinking_tokens: 10000, output_tokens: 2000 },
       { name: 'premortem', prompt_tokens: 100000, cached_tokens: 100000, thinking_tokens: 10000, output_tokens: 2000 }] }));
   };
 }
-const ACTUAL_ONE_SHARD = (100000 * 0.75 + 12000 * 3.75 + 100000 * 0.075 + 12000 * 3.75) / 1e6; // $0.1725 booked per shard; the pre-flight estimate for one is $0.3075
+const ACTUAL_ONE_SHARD = (100000 * 10 + 12000 * 50 + 100000 * 10 + 12000 * 50) / 1e6; // $2.6 booked per shard; the pre-flight estimate for one is $5.0
 
-async function withGemini(fn) {
-  process.env.GEMINI_API_KEY = 'gem-secret';
-  const real = ER.gemini;
-  ER.gemini = async () => ({ totalTokens: 100000 });
-  try { return await fn(); } finally { ER.gemini = real; delete process.env.GEMINI_API_KEY; }
+// The audit reserves on the shard's size estimate; pin it so the money arithmetic is exact.
+// No model is ever called: runExternal is always a stub and the credentials are a placeholder.
+const PINNED_PACK_TOKENS = 100000;
+async function withCodex(fn) {
+  process.env.OPENAI_API_KEY = 'sk-test-placeholder';
+  process.env.AGENTBOX_CODEX_BIN = path.join(FAKE_BIN_DIR, 'codex');
+  try { return await fn(); } finally { delete process.env.OPENAI_API_KEY; delete process.env.AGENTBOX_CODEX_BIN; }
 }
 
-test('audit-gemini: refusals are per shard, logged with their reason, and never reach the network', async () => {
+test('audit-codex: refusals are per shard, logged with their reason, and never reach the network', async () => {
   const e = estate();
   const calls = [];
   const head = C.headsOf(C.reposOf(C.loadTopics(e.est)));
-  for (const shard of ['core', 'edge']) C.appendLedger(e.est, { ts: daysAgo(3), kind: 'audit', reviewer: 'gemini', shard, commits: head, est_usd: 1 });
-  process.env.GEMINI_API_KEY = 'gem-secret';
+  for (const shard of ['core', 'edge']) C.appendLedger(e.est, { ts: daysAgo(3), kind: 'audit', reviewer: 'codex', shard, commits: head, est_usd: 1 });
+  process.env.OPENAI_API_KEY = 'sk-test-placeholder';
   try {
-    const res = await C.auditGemini(e.est, ctxFor({ runExternal: fakeExternal(calls) }));
+    const res = await C.auditCodex(e.est, ctxFor({ runExternal: fakeExternal(calls) }));
     assert.equal(res.skipped, 'no shard passed the gate');
-  } finally { delete process.env.GEMINI_API_KEY; }
+  } finally { delete process.env.OPENAI_API_KEY; }
   assert.equal(calls.length, 0);
   const skips = C.readLedger(e.est).filter((r) => r.skipped);
   assert.deepEqual(skips.map((r) => r.shard), ['core', 'edge']);
   assert.ok(skips.every((r) => /^interval/.test(r.skipped) && r.est_usd === 0));
 });
 
-test('audit-gemini: without a key it logs one skip and does nothing', async () => {
+test('audit-codex: without a key it logs one skip and does nothing', async () => {
   const e = estate();
-  delete process.env.GEMINI_API_KEY; delete process.env.GOOGLE_GEMINI_API_KEY;
-  assert.deepEqual(await C.auditGemini(e.est, ctxFor({ runExternal: fakeExternal([]) })), { skipped: 'no GEMINI_API_KEY in the environment' });
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-home-'));
+  const env = { AGENTBOX_CODEX_HOME: home }; // no OPENAI_API_KEY, no auth.json
+  const res = await C.auditCodex(e.est, ctxFor({ env, runExternal: fakeExternal([]) }));
+  assert.deepEqual(res, { skipped: 'no Codex credentials (no OPENAI_API_KEY and no codex login auth.json)' });
   assert.equal(C.readLedger(e.est).at(-1).shard, null);
 });
 
-test('audit-gemini: picks the changed shards most-changed first and stops at the budget', async () => {
+test('audit-codex: picks the changed shards most-changed first and stops at the budget', async () => {
   const e = estate();
   // 'wide' has more topics than 'core' and 'edge', so with no audit yet it is the most changed.
   for (const n of ['01', '02', '03', '04']) put(e.est, `docs/diagrams/wide/${n}-w.md`, topic(`WD-${n}`, ['../beta/src/b.rs']));
   commitAll(e.est, 'wide');
   const calls = [];
-  // Estimate $0.3075, booked $0.1725: after the first shard 0.1725 + 0.3075 > 0.4, so exactly one fits.
-  const cfg = { ...CFG, gemini_min_changed_topics: 1, gemini_monthly_usd: 0.4 };
-  const res = await withGemini(() => C.auditGemini(e.est, ctxFor({ cfg, runExternal: fakeExternal(calls) })));
+  // Estimate $5.0, booked $2.6: the first shard fits under $6, and after it 2.6 + 5.0 > 6, so exactly one fits.
+  const cfg = { ...CFG, audit_min_changed_topics: 1, audit_monthly_usd: 6 };
+  const res = await withCodex(() => C.auditCodex(e.est, ctxFor({ cfg, runExternal: fakeExternal(calls) })));
   assert.deepEqual(res.shards, ['wide'], 'the most-changed shard went first and used the budget');
   assert.equal(calls.length, 1);
   assert.deepEqual(calls[0], ['wide/01-w.md', 'wide/02-w.md', 'wide/03-w.md', 'wide/04-w.md'], 'external review was given exactly the shard\'s topics');
@@ -561,43 +570,43 @@ test('audit-gemini: picks the changed shards most-changed first and stops at the
   assert.ok(fs.readFileSync(path.join(e.est, res.findings), 'utf8').includes('wide / critical'));
 });
 
-test('audit-gemini: after an audit, only shards whose sources changed since qualify; the per-shard interval then blocks the rest', async () => {
+test('audit-codex: after an audit, only shards whose sources changed since qualify; the per-shard interval then blocks the rest', async () => {
   const e = estate();
-  const cfg = { ...CFG, gemini_min_changed_topics: 1, gemini_min_interval_days: 7 };
+  const cfg = { ...CFG, audit_min_changed_topics: 1, audit_min_interval_days: 7 };
   const calls = [];
-  await withGemini(() => C.auditGemini(e.est, ctxFor({ cfg, runExternal: fakeExternal(calls) })));
+  await withCodex(() => C.auditCodex(e.est, ctxFor({ cfg, runExternal: fakeExternal(calls) })));
   assert.equal(calls.length, 2, 'first audit: every shard counts as changed');
   const later = new Date(NOW.getTime() + 8 * 86400000);
   change(e.alpha, 'src/a.rs', 'fn a() { 5 }\n');   // only the core area cites alpha
   calls.length = 0;
-  const res = await withGemini(() => C.auditGemini(e.est, ctxFor({ cfg, now: later, runExternal: fakeExternal(calls) })));
+  const res = await withCodex(() => C.auditCodex(e.est, ctxFor({ cfg, now: later, runExternal: fakeExternal(calls) })));
   assert.deepEqual(res.shards, ['core']);
   assert.deepEqual(calls[0], ['core/01-a.md', 'core/02-b.md']);
   const row = C.readLedger(e.est).filter((r) => r.skipped).find((r) => r.shard === 'edge' && r.ts === later.toISOString());
   assert.match(row.skipped, /^no cause: 0 topics changed/);
 });
 
-test('audit-gemini: a high-severity GLM finding opens a quiet shard once, and only after the last audit', async () => {
+test('audit-codex: a high-severity GLM finding opens a quiet shard once, and only after the last audit', async () => {
   const e = estate();
-  const cfg = { ...CFG, gemini_min_changed_topics: 5 };
+  const cfg = { ...CFG, audit_min_changed_topics: 5 };
   const head = C.headsOf(C.reposOf(C.loadTopics(e.est)));
-  C.appendLedger(e.est, { ts: daysAgo(10), kind: 'audit', reviewer: 'gemini', shard: 'edge', commits: head, est_usd: 1 });
+  C.appendLedger(e.est, { ts: daysAgo(10), kind: 'audit', reviewer: 'codex', shard: 'edge', commits: head, est_usd: 1 });
   C.appendLedger(e.est, { ts: daysAgo(9), kind: 'review', reviewer: 'glm', shard: 'edge', pack_sha256: 'x', high_severity: 2 });
-  C.appendLedger(e.est, { ts: daysAgo(10), kind: 'audit', reviewer: 'gemini', shard: 'core', commits: head, est_usd: 1 });
+  C.appendLedger(e.est, { ts: daysAgo(10), kind: 'audit', reviewer: 'codex', shard: 'core', commits: head, est_usd: 1 });
   C.appendLedger(e.est, { ts: daysAgo(9), kind: 'review', reviewer: 'glm', shard: 'core', pack_sha256: 'y', high_severity: 0 });
   const calls = [];
-  const res = await withGemini(() => C.auditGemini(e.est, ctxFor({ cfg, runExternal: fakeExternal(calls) })));
+  const res = await withCodex(() => C.auditCodex(e.est, ctxFor({ cfg, runExternal: fakeExternal(calls) })));
   assert.deepEqual(res.shards, ['edge']);
   // The escalation is consumed: a new audit of edge now needs a new reason.
   const later = new Date(NOW.getTime() + 8 * 86400000);
-  const again = await withGemini(() => C.auditGemini(e.est, ctxFor({ cfg, now: later, runExternal: fakeExternal(calls) })));
+  const again = await withCodex(() => C.auditCodex(e.est, ctxFor({ cfg, now: later, runExternal: fakeExternal(calls) })));
   assert.equal(again.skipped, 'no shard passed the gate');
 });
 
-test('audit-gemini: a failed generation is booked at its estimate, because it may have been billed', async () => {
+test('audit-codex: a failed generation is booked at its estimate, because it may have been billed', async () => {
   const e = estate();
-  const cfg = { ...CFG, gemini_min_changed_topics: 1 };
-  await assert.rejects(withGemini(() => C.auditGemini(e.est, ctxFor({ cfg, runExternal: async () => { throw new Error('timed out after 1800 s'); } }))), /timed out/);
+  const cfg = { ...CFG, audit_min_changed_topics: 1 };
+  await assert.rejects(withCodex(() => C.auditCodex(e.est, ctxFor({ cfg, runExternal: async () => { throw new Error('timed out after 1800 s'); } }))), /timed out/);
   const rows = C.readLedger(e.est).filter((r) => r.error);
   assert.equal(rows.length, 2, 'each shard that was tried');
   assert.ok(rows.every((r) => r.est_usd > 0 && /^error/.test(r.skipped)));
@@ -605,19 +614,19 @@ test('audit-gemini: a failed generation is booked at its estimate, because it ma
 });
 
 test('budget counts interrupted reservations and replaces only their matching settlement', () => {
-  const reservation = { ts: NOW.toISOString(), kind: 'audit-reservation', reviewer: 'gemini', shard: 'core', pack_sha256: 'abc', est_usd: 0.5 };
+  const reservation = { ts: NOW.toISOString(), kind: 'audit-reservation', reviewer: 'codex', shard: 'core', pack_sha256: 'abc', est_usd: 0.5 };
   assert.equal(C.monthToDateUsd([[reservation]], NOW), 0.5);
   const settlement = { ...reservation, kind: 'audit', reservation_at: reservation.ts, est_usd: 0.2 };
   assert.equal(C.monthToDateUsd([[reservation, settlement]], NOW), 0.2);
   assert.equal(C.monthToDateUsd([[reservation, { ...settlement, shard: 'other' }]], NOW), 0.7);
 });
 
-for (const badOutput of ['manifest', 'usage']) test(`audit-gemini: a later malformed ${badOutput} cannot erase an earlier successful settlement or rebuy it`, async () => {
+for (const badOutput of ['manifest', 'usage']) test(`audit-codex: a later malformed ${badOutput} cannot erase an earlier successful settlement or rebuy it`, async () => {
   const e = estate();
-  const cfg = { ...CFG, gemini_min_changed_topics: 1 };
+  const cfg = { ...CFG, audit_min_changed_topics: 1 };
   const calls = [];
   const valid = fakeExternal(calls);
-  await assert.rejects(withGemini(() => C.auditGemini(e.est, ctxFor({ cfg, runExternal: async (...args) => {
+  await assert.rejects(withCodex(() => C.auditCodex(e.est, ctxFor({ cfg, runExternal: async (...args) => {
     await valid(...args);
     if (args[2][0].startsWith('edge/')) {
       const output = path.join(args[1], 'manifest.json');
@@ -630,18 +639,18 @@ for (const badOutput of ['manifest', 'usage']) test(`audit-gemini: a later malfo
   assert.ok(fs.existsSync(path.join(e.est, settled[0].findings)), 'settled evidence exists before another shard is tried');
   assert.ok(C.readLedger(e.est).some((r) => r.shard === 'edge' && r.error && r.est_usd > 0));
   calls.length = 0;
-  await withGemini(() => C.auditGemini(e.est, ctxFor({ cfg, now: new Date(NOW.getTime() + 60000), runExternal: valid })));
+  await withCodex(() => C.auditCodex(e.est, ctxFor({ cfg, now: new Date(NOW.getTime() + 60000), runExternal: valid })));
   assert.deepEqual(calls.map((files) => files[0].split('/')[0]), ['edge'], 'successful core shard is not bought again');
 });
 
 for (const source of ['configured', 'discovered']) test(`main: an explicit repo subset still accounts for spend in every ${source} repo`, async () => {
   const e = estate();
   if (source === 'discovered') put(e.alpha, 'docs/diagrams/alpha/01-t.md', topic('AL-01', ['src/a.rs']));
-  C.appendLedger(e.alpha, { ts: NOW.toISOString(), kind: 'audit', reviewer: 'gemini', est_usd: 0.9 });
+  C.appendLedger(e.alpha, { ts: NOW.toISOString(), kind: 'audit', reviewer: 'codex', est_usd: 0.9 });
   const manifest = path.join(e.ws, 'budget.toml');
-  fs.writeFileSync(manifest, `[diagram_review]\nenabled = true\ngemini_min_changed_topics = 1\ngemini_monthly_usd = 1\nrepos = ${JSON.stringify(source === 'configured' ? [e.alpha] : [])}\n`);
+  fs.writeFileSync(manifest, `[diagram_review]\nenabled = true\naudit_min_changed_topics = 1\naudit_monthly_usd = 1\nrepos = ${JSON.stringify(source === 'configured' ? [e.alpha] : [])}\n`);
   const calls = [];
-  const result = await withGemini(() => C.main(['audit-gemini', '--repo', e.est, '--workspace', e.ws,
+  const result = await withCodex(() => C.main(['audit-codex', '--repo', e.est, '--workspace', e.ws,
     '--manifest', manifest, '--now', NOW.toISOString()], {
     localFile: path.join(e.ws, 'none.local'), budgetStateDir: path.join(e.ws, 'state'), runExternal: fakeExternal(calls),
   }));
@@ -653,11 +662,11 @@ for (const source of ['configured', 'discovered']) test(`main: an explicit repo 
 test('main: witness persistence failure stops subsequent paid shards without duplicating a successful settlement', async () => {
   const e = estate(), calls = [], valid = fakeExternal(calls);
   const stateDir = path.join(e.ws, 'state'), manifest = path.join(e.ws, 'budget.toml');
-  const witness = path.join(stateDir, 'gemini-budget-2026-10.json');
-  fs.writeFileSync(manifest, '[diagram_review]\nenabled = true\ngemini_min_changed_topics = 1\ngemini_monthly_usd = 10\nrepos = []\n');
-  const argv = ['audit-gemini', '--repo', e.est, '--workspace', e.ws, '--manifest', manifest, '--now', NOW.toISOString()];
+  const witness = path.join(stateDir, 'audit-budget-2026-10.json');
+  fs.writeFileSync(manifest, '[diagram_review]\nenabled = true\naudit_min_changed_topics = 1\naudit_monthly_usd = 10\nrepos = []\n');
+  const argv = ['audit-codex', '--repo', e.est, '--workspace', e.ws, '--manifest', manifest, '--now', NOW.toISOString()];
   let beforeCall;
-  const result = await withGemini(() => C.main(argv, {
+  const result = await withCodex(() => C.main(argv, {
     localFile: path.join(e.ws, 'none.local'), budgetStateDir: stateDir,
     runExternal: async (...args) => {
       beforeCall = fs.readFileSync(witness);
@@ -673,21 +682,21 @@ test('main: witness persistence failure stops subsequent paid shards without dup
   fs.writeFileSync(witness, beforeCall); // Restore observed bytes; append-only settlement is valid.
   calls.length = 0;
   argv[argv.length - 1] = new Date(NOW.getTime() + 60000).toISOString();
-  assert.equal(await withGemini(() => C.main(argv, { localFile: path.join(e.ws, 'none.local'), budgetStateDir: stateDir, runExternal: valid })), 0);
+  assert.equal(await withCodex(() => C.main(argv, { localFile: path.join(e.ws, 'none.local'), budgetStateDir: stateDir, runExternal: valid })), 0);
   assert.deepEqual(calls.map((files) => files[0].split('/')[0]), ['edge']);
   assert.equal(C.budgetLedgers([], NOW, { stateDir, persist: false }).mtd, ACTUAL_ONE_SHARD * 2);
 });
 
 test('missing usage never settles potentially billed generation as free', () => {
-  assert.throws(() => C.actualGeminiUsd([]), /incomplete Gemini usage/);
-  assert.throws(() => C.actualGeminiUsd([{}, {}]), /invalid Gemini usage/);
+  assert.throws(() => C.actualAuditUsd([]), /incomplete audit usage/);
+  assert.throws(() => C.actualAuditUsd([{}, {}]), /invalid audit usage/);
 });
 
 test('concurrent CLI audits skip while the budget lock is held', () => {
   const dir = tmp();
   const script = path.join(__dirname, 'review-cadence.cjs');
   const out = execFileSync('flock', [path.join(dir, 'agentbox-diagram-review-budget.lock'),
-    process.execPath, script, 'audit-gemini', '--dry-run'], {
+    process.execPath, script, 'audit-codex', '--dry-run'], {
     env: { ...process.env, TMPDIR: dir, DIAGRAM_REVIEW_BUDGET_LOCKED: '' }, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'],
   });
   assert.equal(out, '', 'the lock loser never starts discovery or model calls');
@@ -695,8 +704,8 @@ test('concurrent CLI audits skip while the budget lock is held', () => {
 
 test('audit reserves spend before invoking a model and retains it if result parsing fails', async () => {
   const e = estate();
-  const cfg = { ...CFG, gemini_min_changed_topics: 1 };
-  await assert.rejects(withGemini(() => C.auditGemini(e.est, ctxFor({ cfg, runExternal: async () => {
+  const cfg = { ...CFG, audit_min_changed_topics: 1 };
+  await assert.rejects(withCodex(() => C.auditCodex(e.est, ctxFor({ cfg, runExternal: async () => {
     assert.ok(C.monthToDateUsd([C.readLedger(e.est)], NOW) > 0, 'reservation exists before the paid call');
     // A killed child or broken output leaves no manifest, even if generation was billed.
   } }))), /ENOENT/);
@@ -707,13 +716,13 @@ test('status prints the resolved repos, ledger lines, overlap with sibling corpo
   const e = estate();
   put(e.alpha, 'docs/diagrams/area/01-t.md', topic('AL-01', ['src/a.rs']));
   commitAll(e.alpha, 'own corpus');
-  C.appendLedger(e.est, { ts: daysAgo(2), kind: 'audit', reviewer: 'gemini', shard: 'core', est_usd: 3.1, findings: 'docs/review/x-gemini.md' });
+  C.appendLedger(e.est, { ts: daysAgo(2), kind: 'audit', reviewer: 'codex', shard: 'core', est_usd: 3.1, findings: 'docs/review/x-codex.md' });
   C.appendLedger(e.est, { ts: daysAgo(1), kind: 'review', reviewer: 'glm', skipped: 'pack unchanged since the last GLM review of this shard' });
   const { text, mtd } = C.statusOf([e.alpha, e.est], NOW, { source: 'discovered under /ws', added: 0, excluded: 0 });
   assert.equal(mtd, 3.1);
   assert.match(text, /^Repos \(discovered under \/ws\): 2\n  .*alpha\n  .*estate\n/);
-  assert.match(text, /Gemini spend 2026-10: \$3\.10/);
-  assert.match(text, /audit\/gemini: last run .*\(core\).*docs\/review\/x-gemini\.md/);
+  assert.match(text, /audit spend 2026-10: \$3\.10/);
+  assert.match(text, /audit\/codex: last run .*\(core\).*docs\/review\/x-codex\.md/);
   assert.match(text, /review\/glm: never run; latest skip: pack unchanged/);
   assert.match(text, /cites 4 other repo\(s\): .*alpha \(has its own corpus, reviewed separately/);
   assert.match(text, /2 cited path\(s\) not attributable: 1 no git repository.*1 dangling link/);
@@ -752,14 +761,14 @@ test('merge: ranks findings two families raised first, and skips with a reason w
   const dir = path.join(e.est, 'docs/review');
   fs.mkdirSync(dir, { recursive: true });
   const mk = (id, topics, title, evidence, model = 'glm-test') => ({ id, topics, title, evidence, failure: '', status: 'unverified', origin: { schema: 1, run_id: model, pack_sha256: 'a'.repeat(64), scope_sha256: 'b'.repeat(64), register: 'include', complete: true, reviewer: { model } } });
-  assert.match(C.mergeReviews(e.est, { now: Date.parse('2026-10-06T00:00:00Z') }).skipped, /no glm or gemini/);
+  assert.match(C.mergeReviews(e.est, { now: Date.parse('2026-10-06T00:00:00Z') }).skipped, /no glm or codex/);
   fs.writeFileSync(path.join(dir, '2026-10-05-glm.json'), JSON.stringify([
     mk('s:critical:F-01', 'AA-01', 'Queue drops jobs on restart', 'worker queue is in memory so pending jobs vanish on restart src/q.rs:9'),
     mk('s:critical:F-02', 'AA-02', 'Unrelated glm finding', 'something entirely different about logging verbosity'),
   ]));
-  assert.match(C.mergeReviews(e.est, { now: Date.parse('2026-10-06T00:00:00Z') }).skipped, /no gemini/);
-  fs.writeFileSync(path.join(dir, '2026-10-05-gemini.json'), JSON.stringify([
-    mk('s:critical:F-07', 'AA-01', 'Pending jobs are lost when the worker restarts', 'the in memory worker queue loses pending jobs on restart src/q.rs:9', 'gemini-test'),
+  assert.match(C.mergeReviews(e.est, { now: Date.parse('2026-10-06T00:00:00Z') }).skipped, /no codex/);
+  fs.writeFileSync(path.join(dir, '2026-10-05-codex.json'), JSON.stringify([
+    mk('s:critical:F-07', 'AA-01', 'Pending jobs are lost when the worker restarts', 'the in memory worker queue loses pending jobs on restart src/q.rs:9', 'gpt-test'),
   ]));
   const dry = C.mergeReviews(e.est, { now: Date.parse('2026-10-06T00:00:00Z'), dryRun: true });
   assert.equal(dry.agreed, 2);
@@ -781,7 +790,7 @@ test('outstanding triage survives an unchanged tick, blocks paid audit and clear
   const quiet = await C.triage(e.est, ctxFor({ post: async () => { throw new Error('must not spend'); } }));
   assert.equal(quiet.outstanding, 1);
   assert.match(C.statusOf([e.est], NOW).text, /outstanding triage: 1/);
-  const paid = await C.auditGemini(e.est, ctxFor({ dryRun: true }));
+  const paid = await C.auditCodex(e.est, ctxFor({ dryRun: true }));
   assert.ok(paid.refused.some((r) => r.shard === 'core' && r.reason.startsWith('freshness:')));
   fs.appendFileSync(path.join(e.est, 'docs/diagrams/core/02-b.md'), '\nUpdated explanation.\n');
   assert.equal(C.outstandingTriage(e.est, C.loadTopics(e.est), C.readLedger(e.est)).length, 1, 'editing prose alone does not close a flag');
@@ -792,7 +801,7 @@ test('outstanding triage survives an unchanged tick, blocks paid audit and clear
 test('merge selects numbered reruns numerically without inventing provenance for historical files', () => {
   const e = estate();
   for (const n of ['', '-2', '-10']) put(e.est, `docs/review/2026-11-03-glm${n}.json`, JSON.stringify([{ id: n || 'first', title: 'historic', status: 'unverified' }]));
-  put(e.est, 'docs/review/2026-11-03-gemini.json', '[]');
+  put(e.est, 'docs/review/2026-11-03-codex.json', '[]');
   const result = C.mergeReviews(e.est, { now: NOW, dryRun: true });
   assert.ok(result.would_merge.includes('2026-11-03-glm-10.json'));
   assert.equal(result.agreed, 0);
@@ -842,4 +851,100 @@ test('a conflicting private ignore rule refuses before a source prompt or model 
   await assert.rejects(C.triage(e.est, ctxFor({ post: async () => { calls++; throw new Error('must not call'); } })), /not gitignored/);
   assert.equal(calls, 0);
   assert.deepEqual(fs.readdirSync(path.join(e.est, '.diagram-review/triage')), ['.gitignore']);
+});
+
+// ── The reviewer is a different model family from the producer (ADR-2131, amended 2026-11-16) ──
+// No test here makes a model call: runExternal is a stub, the credentials are a placeholder.
+
+test('audit-codex: a Claude-produced change is reviewed by the codex consultant, and the choice is recorded', async () => {
+  const e = estate();
+  const calls = [];
+  const cfg = { ...CFG, audit_min_changed_topics: 1, audit_monthly_usd: 100, producer_family: 'claude-opus-5' };
+  const res = await withCodex(() => C.auditCodex(e.est, ctxFor({ cfg, runExternal: fakeExternal(calls) })));
+  assert.ok(res.shards.length >= 1, 'the audit ran');
+  assert.equal(calls.length, res.shards.length);
+  const rows = C.readLedger(e.est).filter((r) => r.kind === 'audit' && !r.skipped);
+  assert.ok(rows.length >= 1 && rows.every((r) => r.reviewer === 'codex'));
+  const report = fs.readFileSync(path.join(e.est, res.findings), 'utf8');
+  assert.match(report, /Reviewer codex \(openai family\) for producer family anthropic/);
+  assert.match(res.findings, /-codex\.md$/);
+});
+
+test('audit-codex: the same family as the producer is refused before any call, and the refusal is ledgered once', async () => {
+  const e = estate();
+  const calls = [];
+  for (const producer of ['openai', 'gpt-6-astra', 'codex']) {
+    const cfg = { ...CFG, audit_min_changed_topics: 1, audit_monthly_usd: 100, producer_family: producer };
+    const res = await withCodex(() => C.auditCodex(e.est, ctxFor({ cfg, runExternal: fakeExternal(calls) })));
+    assert.match(res.skipped, /^no cross-vendor reviewer: the producer family 'openai' is the same family as the codex reviewer$/, producer);
+  }
+  assert.equal(calls.length, 0, 'no external review was started');
+  const skips = C.readLedger(e.est).filter((r) => /^no cross-vendor reviewer/.test(r.skipped ?? ''));
+  assert.equal(skips.length, 1, 'repeated identical refusals are ledgered once');
+  assert.equal(skips[0].reviewer, 'codex');
+  assert.equal(skips[0].est_usd, 0);
+});
+
+test('audit-codex: with the model-diversity helper missing it refuses rather than choosing a reviewer unchecked', async () => {
+  const e = estate();
+  const calls = [];
+  const res = await withCodex(() => C.auditCodex(e.est, ctxFor({ diversity: null, runExternal: fakeExternal(calls) })));
+  assert.match(res.skipped, /model-diversity\.js is not available/);
+  assert.equal(calls.length, 0);
+});
+
+test('audit-codex: the shipped helper resolves from the repository layout and selects codex for anthropic', () => {
+  const d = C.loadModelDiversity();
+  assert.ok(d, 'mcp/consultants/shared/model-diversity.js is reachable from the skill');
+  const pick = d.selectVerifier({ producerFamily: 'anthropic', candidates: ['codex'] });
+  assert.equal(pick.consultant, 'codex');
+  assert.equal(pick.family, 'openai');
+  assert.equal(d.selectVerifier({ producerFamily: 'openai', candidates: ['codex'] }), null);
+});
+
+test('audit-codex: no Gemini key or code path remains on the audit leg', async () => {
+  const e = estate();
+  const calls = [];
+  process.env.GEMINI_API_KEY = 'would-have-been-needed'; // present and irrelevant
+  try {
+    delete process.env.OPENAI_API_KEY;
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-home-'));
+    const res = await C.auditCodex(e.est, ctxFor({ env: { AGENTBOX_CODEX_HOME: home }, runExternal: fakeExternal(calls) }));
+    assert.match(res.skipped, /no Codex credentials/);
+  } finally { delete process.env.GEMINI_API_KEY; }
+  assert.equal(C.codexReady({ OPENAI_API_KEY: 'x', PATH: FAKE_BIN_DIR }).ok, true);
+  const src = fs.readFileSync(path.join(__dirname, 'review-cadence.cjs'), 'utf8');
+  assert.doesNotMatch(src, /ER\.gemini|GEMINI_API_KEY|generateContent|countTokens/);
+});
+
+test('loadConfig: manifest keys written before the Gemini leg was retired are still honoured; the new name wins', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dr-manifest-'));
+  const file = path.join(dir, 'agentbox.toml');
+  fs.writeFileSync(file, '[diagram_review]\nenabled = true\ngemini_min_interval_days = 3\ngemini_monthly_usd = 2\naudit_monthly_usd = 4\n');
+  const cfg = C.loadConfig(file);
+  assert.equal(cfg.audit_min_interval_days, 3);
+  assert.equal(cfg.audit_monthly_usd, 4);
+  assert.equal(cfg.audit_min_changed_topics, 3);
+  assert.equal(cfg.producer_family, 'anthropic');
+});
+
+test('audit-codex: a missing codex binary is a free, logged skip, not a reservation for a call that never started', async () => {
+  const e = estate();
+  const calls = [];
+  const cfg = { ...CFG, audit_min_changed_topics: 1, audit_monthly_usd: 100 };
+  const res = await C.auditCodex(e.est, ctxFor({ cfg, env: { OPENAI_API_KEY: 'sk-test-placeholder', PATH: '/nonexistent-dir' }, runExternal: fakeExternal(calls) }));
+  assert.match(res.skipped, /^codex binary not found \(codex\); set AGENTBOX_CODEX_BIN or put codex on the cron PATH$/);
+  assert.equal(calls.length, 0);
+  const rows = C.readLedger(e.est);
+  assert.ok(rows.every((r) => r.kind !== 'audit-reservation'), 'nothing was reserved');
+  assert.equal(C.monthToDateUsd([rows], NOW), 0, 'no spend is booked');
+  assert.equal(C.codexReady({ OPENAI_API_KEY: 'x', PATH: FAKE_BIN_DIR }).ok, true);
+  assert.equal(C.codexReady({ OPENAI_API_KEY: 'x', AGENTBOX_CODEX_BIN: '/nonexistent/codex' }).ok, false);
+});
+
+test('audit-codex: setting AGENTBOX_CODEX_MODEL cannot move the priced model', () => {
+  const e = estate();
+  const r = require('node:child_process').spawnSync(process.execPath, [path.join(__dirname, 'review-cadence.cjs'), 'audit-codex', '--repo', e.est, '--workspace', e.ws, '--dry-run'],
+    { encoding: 'utf8', env: { ...process.env, AGENTBOX_CODEX_MODEL: 'some-other-model', DIAGRAM_REVIEW_MODEL: '' , DIAGRAM_REVIEW_BUDGET_LOCKED: '1' } });
+  assert.match(r.stderr + r.stdout, /scheduled audit pricing is pinned to gpt-6-astra/);
 });

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Multi-model agreement: merge findings from more than one external reviewer family
- * (GLM nightly review, Gemini audit) for the same pack, and rank first the findings that two
+ * (GLM nightly review, Codex audit; historical Gemini audits still merge) for the same pack, and rank first the findings that two
  * families raised independently.
  *
  * The match is deterministic and deliberately simple. Two findings from DIFFERENT families
@@ -13,7 +13,7 @@
  * model are not independent). Agreement ranks; it does not verify. Every finding stays an
  * unverified hypothesis for visioncraft triage.
  *
- *   node merge-findings.cjs glm.json gemini.json [--out merged.json]
+ *   node merge-findings.cjs glm.json codex.json [--out merged.json]
  *
  * Agreement requires completed origin metadata for identical pack bytes, scope and register
  * mode. Model family is derived from the recorded model; filename labels carry no authority.
@@ -64,7 +64,8 @@ function agree(a, b) {
 /** Family of a source file, from its name. */
 function familyOf(file) {
   const base = path.basename(file).toLowerCase();
-  if (base.includes('gemini')) return 'gemini';
+  if (base.includes('gemini')) return 'gemini'; // historical audits
+  if (base.includes('codex')) return 'codex';
   if (base.includes('glm')) return 'glm';
   return base.replace(/\.json$/, '');
 }

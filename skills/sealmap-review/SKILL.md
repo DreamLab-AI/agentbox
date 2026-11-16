@@ -149,10 +149,14 @@ in the public manifest.
 - **review-glm** (GLM, nightly after the dream window): critical and premortem lenses, one
   pack per area (large areas split by token budget). GLM is effectively free, and a shard
   whose pack hash is unchanged is skipped, so a quiet night costs nothing.
-- **audit-gemini**: the external review above, per shard, only when
-  `gemini_min_interval_days` have passed, `gemini_min_changed_topics` topics changed
-  (or the shard's last GLM review found something high severity), and month-to-date
-  spend plus a `countTokens` estimate fits `gemini_monthly_usd`. Most-changed first.
+- **audit-codex**: the external review above, run by the Codex consultant (`external-review.cjs
+  --provider codex`), per shard, only when `audit_min_interval_days` have passed,
+  `audit_min_changed_topics` topics changed (or the shard's last GLM review found something
+  high severity), and month-to-date spend plus a size estimate fits `audit_monthly_usd`.
+  Most-changed first. The reviewer is chosen with the consultants' model-diversity rule: always a
+  different family from `producer_family` (default `anthropic`), and a refusal, never a same-family
+  fallback, when there is none. This replaced a Gemini leg on 2026-11-16 (ADR-2131); a manual
+  external run (`external-review.cjs` without `--provider`) still uses Gemini.
 
 Outstanding triage flags survive quiet ticks and appear in `status`; editing a topic
 triggers another check and does not itself clear the flag. A paid audit refuses a
@@ -170,8 +174,8 @@ Preserve the ledger and investigate it before repairing accounting.
 ```bash
 C=skills/sealmap-review/scripts/review-cadence.cjs
 node $C status                 # resolved repos, ledger summary, month-to-date spend
-node $C audit-gemini --dry-run # which shards would the gate open, at what estimate?
-node $C merge                  # rank findings both GLM and Gemini raised first
+node $C audit-codex --dry-run  # which shards would the gate open, at what estimate?
+node $C merge                  # rank findings both GLM and Codex raised first
 ```
 
 Gate, ledger fields, discovery, sharding and pricing: [references/cadence.md](references/cadence.md).

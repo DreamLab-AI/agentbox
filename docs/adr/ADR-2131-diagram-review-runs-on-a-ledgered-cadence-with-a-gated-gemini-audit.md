@@ -7,16 +7,33 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 9fa78f77ebaa8862c2e2e74c0e8617ac87a69fc5
-verified_paths: [skills/sealmap-review/scripts/review-cadence.cjs, skills/sealmap-review/scripts/external-review.cjs, skills/sealmap-review/scripts/review-context.cjs, skills/sealmap-review/scripts/merge-findings.cjs, skills/sealmap-review/run-cron.sh, skills/sealmap-review/crontab, schema/agentbox.toml.schema.json]
+verified_commit: e188960d90d78e11c99cf599b60c416bd3df02e5
+verified_paths: [mcp/consultants/shared/model-diversity.js, skills/sealmap-review/scripts/review-cadence.cjs, skills/sealmap-review/scripts/external-review.cjs, skills/sealmap-review/scripts/review-context.cjs, skills/sealmap-review/scripts/merge-findings.cjs, skills/sealmap-review/run-cron.sh, skills/sealmap-review/crontab, schema/agentbox.toml.schema.json]
 owner: jjohare
-review_trigger: the first month of real Gemini spend (compare ledger cost with the estimate); a change to Gemini or Z.AI pricing; a GLM model change behind [consultants.zai]; a second corpus joining repos
+review_trigger: the first real Codex audit (compare ledger cost with the estimate, and confirm the codex CLI reads the pack on stdin under the cron's environment); a change to Gemini or Z.AI pricing; a GLM model change behind [consultants.zai]; a second corpus joining repos
 repo: agentbox
 domain: GOVERNANCE-capabilities
 lineage: ADR-2130 (external review is a transport outside [model_routing]; seal review is cross-family); ADR-2057 (a supervised program gated on a manifest key); ADR-2053 (Z.AI egress); ADR-039 (honest apply classes); ADR-2122 (a program holds a role only when it holds a secret file)
 ---
 
 # ADR-2131 — Diagram review runs on a ledgered cadence with a gated Gemini audit
+
+## Amendment — 2026-11-16 (owner ruling: the Gemini audit leg is retired; Codex is the cross-vendor reviewer)
+
+**Ruling.** The owner decided on 2026-11-16 to retire the Gemini audit leg and to name Codex as the cross-vendor reviewer. The Gemini key returned 401 and the leg never completed a run, so nothing it produced is lost. This amendment supersedes every Gemini-specific statement below (the title, the "Gemini audit" decision point, the Gemini price constants, the `GEMINI_API_KEY` consequence); those passages are kept as history.
+
+**What is now true.**
+
+- The runner subcommand is `audit-codex` (it was `audit-gemini`). It runs `external-review.cjs --provider codex`, which executes the Codex CLI that the `codex` consultant wraps, with the pack on stdin. It needs `OPENAI_API_KEY` or a `codex login` credential; `GEMINI_API_KEY` is no longer read by the audit leg.
+- **The reviewer is always a different model family from the producer.** `auditCodex` calls `selectVerifier({ producerFamily, candidates: ['codex'] })` from `mcp/consultants/shared/model-diversity.js`. The producer family is `[diagram_review].producer_family` (default `anthropic`). If it is OpenAI's own family, or the helper cannot be loaded, the audit logs `no cross-vendor reviewer: …` once in the ledger and makes no call. There is no same-family fallback.
+- The gate is unchanged in shape (interval, changed topics or a high-severity GLM finding, monthly cap), under new key names: `audit_min_interval_days`, `audit_min_changed_topics`, `audit_monthly_usd`. A manifest still carrying `gemini_*` is read as an alias, and `audit_*` wins if both are present.
+- **Cost.** There is no free token-count call, so the reservation is made on the shard's size estimate plus the lens. Prices follow `mcp/consultants/codex/server.js` for `gpt-6-astra`: input $10 and output $50 per million tokens, cached input charged at the full input rate (an over-estimate that keeps the cap a cap). At the shard ceiling of 150k tokens one audit reserves about $6 for two lenses, so the unchanged `audit_monthly_usd = 10` allows roughly one shard a month. The owner may raise it; that is a cap choice, not a design one. The ledger's `reviewer` is `codex`; the budget witness file is `audit-budget-YYYY-MM.json`, so the Codex cap starts at zero and old Gemini ledger lines are not counted.
+- Findings go to `docs/review/<date>-codex.{md,json}`; `merge` pairs the newest GLM and Codex files.
+- A manual external review (`external-review.cjs` with no `--provider`, the `sealmap-review` skill's external mode) still uses Gemini; so do the `antigravity` consultant, the `gemini-url-context` skill and the `[providers.gemini]` entry. None of those is touched.
+- **Binary and containment.** `auditCodex` checks that the `codex` binary resolves before it reserves anything (a missing binary is a free, logged skip, not a booked estimate for a call that never started). The cron program's `PATH` in `flake.nix` now includes the baked Codex package when `[toolchains].codex` is on. `codex exec` is an agent, so it is run with `--sandbox read-only --ephemeral` in an empty scratch directory, and the pack is preceded by an instruction to answer from the material alone. That is containment of writes and of the session file; it does **not** stop the model reading files the cron user can read, and it does not bound the number of turns, so output can exceed the 30,000-token-per-lens reservation. Both are open items for the owner, not solved here.
+- Tests: `review-cadence.test.cjs` (a Claude-produced change selects `codex`; a same-family producer is refused with no call; a missing helper is refused; the leg contains no Gemini path) and `external-review.test.cjs` (the Codex transport against a stubbed CLI). No test makes a model call.
+
+**Status.** `decision_status` stays `accepted` and `implementation_status` `complete`. `activation_status` stays `staged`: the Codex leg has not made a real call, the cron has not been rebuilt with the new keys and PATH, and the credentials path has only been inspected, not exercised: on 2026-11-16 the running cron's environment carries `CODEX_HOME=/home/devuser/.codex` (an `auth.json` is present there) and an `OPENAI_API_KEY`, but its `PATH` does not contain the Codex binary until the rebuilt image applies the `flake.nix` change. `ADR-2020`'s sentence about "a `gemini_monthly_usd` cap" is now historical.
 
 ## Scoped source check — 2026-11-14
 
@@ -306,3 +323,5 @@ Re-verified 2026-11-11 at `237178730` (ADR-2192, ADR-2193, ADR-2194 at `04638a61
 Re-verified 2026-11-11 at `0ed05167b` (ADR-2196, removal of the dead `skills.browser.playwright` switch). Governed-path delta since `237178730`: `schema/agentbox.toml.schema.json` removes the `skills.browser.playwright` property and the `security.exceptions.playwright` block. No published port, mount, secret, identity, route, vault path or registry entry changes, so what this record decides is not touched. Run on this commit: the manifest validator, manifest catalogue, configuration jest (301), agentbox-manifest cargo tests (235), skill lint (124). The flake edits are two whole-line deletions, not evaluated. The decision and status axes are unchanged.
 
 Re-verified 2026-11-11 at `f475e0b8e` (ADR-2196, removal of the dead `skills.browser.qe_browser` switch). Governed-path delta since `0ed05167b`: `schema/agentbox.toml.schema.json` removes the `skills.browser.qe_browser` property. No published port, mount, secret, identity, route, vault path or registry entry changes, so what this record decides is not touched. Run on this commit: the manifest validator (live and default manifests), manifest catalogue, configuration jest (301), the TUI non-interactive validation (5), agentbox-manifest cargo tests (235). The flake edit is one whole-line deletion, not evaluated. The decision and status axes are unchanged.
+
+Re-verified 2026-11-16 at `e188960d9`: the audit leg's code, tests and docs were read against the amendment above; the Codex binary check, the containment flags and the cron `PATH` (`flake.nix`) were added after review. Decision and status axes are unchanged (`activation_status` stays `staged`).

@@ -47,7 +47,7 @@ WINDOW="$(manifest_bool diagram_review.weekly_window)"
 
 AUDIT_AFTER_TRIAGE=''
 if [ "$WINDOW" = "0" ]; then
-  AUDIT_AFTER_TRIAGE=" ; node $HERE/scripts/review-cadence.cjs audit-gemini 2>&1"
+  AUDIT_AFTER_TRIAGE=" ; node $HERE/scripts/review-cadence.cjs audit-codex 2>&1"
 fi
 
 if [ ! -r "$TEMPLATE" ]; then

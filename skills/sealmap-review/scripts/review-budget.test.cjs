@@ -15,9 +15,9 @@ function fixture(t) {
   const repo = path.join(root, 'repo'), stateDir = path.join(root, 'private-state');
   fs.mkdirSync(repo);
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
-  return { root, repo, stateDir, witness: path.join(stateDir, 'gemini-budget-2026-11.json') };
+  return { root, repo, stateDir, witness: path.join(stateDir, 'audit-budget-2026-11.json') };
 }
-const reservation = { ts: NOW.toISOString(), kind: 'audit-reservation', reviewer: 'gemini', shard: 'core', pack_sha256: 'a'.repeat(64), est_usd: 2 };
+const reservation = { ts: NOW.toISOString(), kind: 'audit-reservation', reviewer: 'codex', shard: 'core', pack_sha256: 'a'.repeat(64), est_usd: 2 };
 
 test('budget witness deduplicates aliases and accepts append-only settlement refunds', (t) => {
   const f = fixture(t), alias = path.join(f.root, 'alias');
