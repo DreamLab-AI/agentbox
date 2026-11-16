@@ -2,7 +2,7 @@
 id: ADR-2162
 title: The mesh block gets one reader — pinned peers, a node federation key and the dataspace crossing
 date: 2026-10-30
-decision_status: proposed
+decision_status: accepted
 implementation_status: none
 activation_status: inactive
 supersedes: []
@@ -75,3 +75,6 @@ Same-operator is the scope **for now** (operator, 2026-10-30); multi-operator fe
 - The signing socket is a new local trust boundary. It is uid-gated and signs only the federation payload types, so a compromised VisionClaw process can sign catalogues and notices but cannot use the key for anything else.
 - The kind-map change is paired. The fixture asserts that VisionClaw's translator agrees once the submodule is re-pinned. Until then VisionClaw refuses `dataspace`, which fails closed.
 - Governing doc updated in this change: `PROTOCOL-registry.md` (the dataspace crossing, the mesh projection file and the signing socket).
+
+## Owner ruling (2026-11-16)
+Accepted as a design. Nothing is built and nothing is activated: `implementation_status` stays `none` and `activation_status` stays `inactive` until the activation prerequisites above pass.
