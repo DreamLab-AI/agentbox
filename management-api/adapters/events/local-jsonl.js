@@ -31,6 +31,7 @@ const { NotFound, ValidationError } = require('../errors');
 const CONTRACT_VERSIONS = require('../contract-versions');
 const uris = require('../../lib/uris');
 const auditChain = require('../../lib/audit-chain');
+const journalAppend = require('../../lib/journal-append');
 
 const REQUIRED_FIELDS = ['kind'];
 
@@ -38,7 +39,7 @@ class LocalJsonlEventsAdapter extends BaseAdapter {
   /**
    * @param {object} [opts]
    * @param {string} [opts.eventsDir='$WORKSPACE/events'] - Directory for JSONL files
-   * @param {Function} [opts.appendFn] - Override fs.appendFileSync for tests
+   * @param {Function} [opts.appendFn] - Override the line writer for tests
    */
   constructor(opts = {}) {
     super('events', 'local-jsonl', CONTRACT_VERSIONS.events);
@@ -139,7 +140,7 @@ class LocalJsonlEventsAdapter extends BaseAdapter {
     }
     try {
       fs.mkdirSync(this._dir, { recursive: true });
-      fs.appendFileSync(this._filePath(), line, 'utf8');
+      journalAppend.appendLine(this._filePath(), line);
       return true;
     } catch (err) {
       // Non-fatal: event is still dispatched to in-process subscribers
