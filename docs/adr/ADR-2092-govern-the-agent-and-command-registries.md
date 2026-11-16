@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 9ce9c2c2cd3be8e339139c7786657b5c3d158bc5
+verified_commit: 25f751250f4ce1545e98d1ed80aed1bc8cb2c354
 verified_paths: [agents/registered-agents.txt, scripts/reconcile-agents.sh, scripts/reconcile-commands.sh, scripts/project-skill-roots.mjs, config/registered-commands.txt, config/entrypoint-unified.sh, flake.nix, tests/config/agent-reconcile.test.sh, scripts/reconcile-skills.sh, skills/registered-skills.txt, skills/codex-registered-skills.txt, tests/config/visioncraft-cutover.test.mjs]
 owner: jjohare
 review_trigger: a new subagent worth always-loading, or evidence the router surfaces baked-but-unregistered skills too slowly; a reconcile audit on the running image showing ~/.claude/agents matches agents/registered-agents.txt (activation → live)
@@ -470,3 +470,7 @@ Re-verified 2026-11-11 at `0ed05167b` (ADR-2196, removal of the dead `skills.bro
 Re-verified 2026-11-11 at `f475e0b8e` (ADR-2196, removal of the dead `skills.browser.qe_browser` switch). Governed-path delta since `0ed05167b`: `flake.nix` drops `ENABLE_QE_BROWSER` from the image environment (nothing read it). No published port, mount, secret, identity, route, vault path or registry entry changes, so what this record decides is not touched. Run on this commit: the manifest validator (live and default manifests), manifest catalogue, configuration jest (301), the TUI non-interactive validation (5), agentbox-manifest cargo tests (235). The flake edit is one whole-line deletion, not evaluated. The decision and status axes are unchanged.
 
 Re-verified 2026-11-11 at `2c4b365b4` (ADR-2196, second pass). Governed-path delta since `f475e0b8e`: `flake.nix` puts `torch-bin` and `torchvision-bin` inside `pythonRuntimeEnv` behind `[skills.data_science].pytorch` (replacing a bare, unimportable package), adds `openssl.bin`, `gdal`, `pngquant`, `bun` and `manim` to `basePackages`, `trunk`, `cargo-leptos`, `leptosfmt` and `rust-analyzer` to `wasmPackages`, `arnisPkg` (lib/arnis.nix, pinned v3.4.0) to `skillToolPackages`, and drops the lichtfeld comment from the GPU-wrap list. No published port, mount, secret, identity, route, vault path or registry entry changes, so what this record decides is not touched. Run on this commit: skill lint (123), skill-count, routing-table, manifest validator and catalogue, configuration jest (301), corpus and parity tests (the baked-versus-repo comparison fails in-container until the rebuild), system-one-eval. arnis's source hash was reproduced independently with scripts/nar-hash.py, which also reproduces the pinned StatCraft hash. The Nix is not evaluated or built. The decision and status axes are unchanged.
+
+## Scoped source check — 2026-11-16
+
+The only change to this record's governed paths since its previous `verified_commit` is `25f751250` (the diagram-review audit leg: `[diagram_review]` keys `gemini_*` renamed `audit_*` with aliases, `producer_family` added, system-manifest and setup-seed text, a supervisor comment; ADR-2131 amendment of the same date). Checked mechanically: nothing else touched these paths in between. The change does not concern this record's decision, and its claims were not otherwise re-read. Decision and status axes are unchanged.
