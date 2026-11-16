@@ -3995,26 +3995,49 @@
         "glm_review_cron": {
           "type": "string",
           "pattern": "^\\S+( \\S+){4}$",
-          "description": "Five-field cron expression for the GLM review (and, with weekly_window, the Gemini audit gate)."
+          "description": "Five-field cron expression for the GLM review (and, with weekly_window, the audit gate)."
         },
-        "gemini_min_interval_days": {
+        "audit_min_interval_days": {
           "type": "number",
           "minimum": 0,
-          "description": "Minimum days between Gemini audits."
+          "description": "Minimum days between audits of a shard (the cross-vendor Codex audit)."
         },
-        "gemini_min_changed_topics": {
+        "audit_min_changed_topics": {
           "type": "integer",
           "minimum": 0,
           "description": "Topics changed since the last audit that open the gate, unless the last GLM review recorded a high-severity finding."
         },
+        "audit_monthly_usd": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Cap on estimated audit spend per UTC month, across all repos."
+        },
+        "producer_family": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Model family (or model id) that authored the corpus. The audit reviewer must be a different family (mcp/consultants/shared/model-diversity.js); a same-family producer makes the audit refuse to run. Default anthropic."
+        },
+        "gemini_min_interval_days": {
+          "type": "number",
+          "minimum": 0,
+          "deprecated": true,
+          "description": "DEPRECATED alias of audit_min_interval_days (the Gemini leg was retired 2026-11-16). Still honoured when audit_min_interval_days is absent."
+        },
+        "gemini_min_changed_topics": {
+          "type": "integer",
+          "minimum": 0,
+          "deprecated": true,
+          "description": "DEPRECATED alias of audit_min_changed_topics. Still honoured when audit_min_changed_topics is absent."
+        },
         "gemini_monthly_usd": {
           "type": "number",
           "minimum": 0,
-          "description": "Cap on estimated Gemini spend per UTC month, across all repos."
+          "deprecated": true,
+          "description": "DEPRECATED alias of audit_monthly_usd. Still honoured when audit_monthly_usd is absent."
         },
         "weekly_window": {
           "type": "boolean",
-          "description": "true ⇒ the Gemini gate is considered only on the review tick (nightly by default; the per-shard interval still holds Gemini to one audit a week); false ⇒ after each triage run too."
+          "description": "true ⇒ the audit gate is considered only on the review tick (nightly by default; the per-shard interval still holds it to one audit a week); false ⇒ after each triage run too."
         }
       }
     },

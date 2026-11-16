@@ -75,7 +75,7 @@ schema_out="$(cd "$REPO" && node -e '
 const s = require("./schema/agentbox.toml.schema.json");
 const d = s.properties.diagram_review;
 if (!d || d.additionalProperties !== false) { console.log("missing or open"); process.exit(0); }
-const need = ["enabled","repos","glm_triage_cron","glm_review_cron","gemini_min_interval_days","gemini_min_changed_topics","gemini_monthly_usd","weekly_window"];
+const need = ["enabled","repos","glm_triage_cron","glm_review_cron","audit_min_interval_days","audit_min_changed_topics","audit_monthly_usd","producer_family","weekly_window"];
 console.log(need.every((k) => d.properties[k]) ? "ok" : "keys missing");
 ' 2>&1)"
 if [ "$schema_out" = ok ]; then ok "schema declares every [diagram_review] key and is closed"
@@ -118,7 +118,7 @@ glm_review_cron = "30 3 * * 6"
 weekly_window = true')"
   if has '^5 4 \* \* 2 node .*review-cadence.cjs triage' && has '^30 3 \* \* 6 node .*review-cadence.cjs review-glm'; then
     ok "triage and review take the manifest schedules"; else bad "triage and review take the manifest schedules" "$out"; fi
-  if [ "$(printf '%s\n' "$out" | grep -c audit-gemini)" = 1 ] && has '^30 3.*audit-gemini'; then
+  if [ "$(printf '%s\n' "$out" | grep -c audit-codex)" = 1 ] && has '^30 3.*audit-codex'; then
     ok "weekly_window = true: the audit runs only on the review (nightly) line"; else bad "weekly_window = true: the audit runs only on the review (nightly) line" "$out"; fi
   if ! has '@[A-Z_]+@'; then ok "no placeholder left unfilled"; else bad "no placeholder left unfilled" "$out"; fi
   if ! grep -q '/nix/store' "$ROOT/out.crontab"; then ok "no /nix/store path in the rendered crontab"
@@ -126,7 +126,7 @@ weekly_window = true')"
 
   out="$(render '[diagram_review]
 weekly_window = false')"
-  if has 'triage 2>&1 ; node .*audit-gemini'; then ok "weekly_window = false: the audit is also considered after triage"
+  if has 'triage 2>&1 ; node .*audit-codex'; then ok "weekly_window = false: the audit is also considered after triage"
   else bad "weekly_window = false: the audit is also considered after triage" "$out"; fi
   if has '^17 5 \* \* \* node' && has '^47 2 \* \* \* node'; then ok "unset schedules take the shipped defaults"
   else bad "unset schedules take the shipped defaults" "$out"; fi

@@ -1234,8 +1234,9 @@ enabled = true
 # ADR-2131: scheduled, cost-controlled review of diagrams-as-code corpora.
 # [program:diagram-review-cron] (supercronic over skills/sealmap-review/crontab,
 # rendered at boot by skills/sealmap-review/run-cron.sh) runs GLM triage and a
-# GLM review on the two schedules below, and an external Gemini audit only when
-# its gate opens (interval, changed topics or a high-severity GLM finding, and
+# GLM review on the two schedules below, and an external cross-vendor audit by
+# the Codex consultant (ADR-2131, amended 2026-11-16; it replaced a Gemini leg
+# that never ran) only when its gate opens (interval, changed topics or a high-severity GLM finding, and
 # the monthly budget), one shard (area) at a time, most-changed first.
 # ON by default: it goes live at the next ./agentbox.sh rebuild. With no
 # repo it finds nothing and spends nothing.
@@ -1243,8 +1244,8 @@ enabled = true
 # keys are read at boot by the cron wrapper and on every run by the runner.
 # Findings land in <repo>/docs/review/ and the ledger in
 # <repo>/docs/diagrams/review-ledger.jsonl; nothing edits a topic or commits.
-# Needs ZAI_ANTHROPIC_API_KEY (or ZAI_API_KEY) and GEMINI_API_KEY in the
-# environment, never in this file.
+# Needs ZAI_ANTHROPIC_API_KEY (or ZAI_API_KEY) and, for the audit, OPENAI_API_KEY
+# or a `codex login` credential in the environment, never in this file.
 enabled = true
 # Corpus repos. EMPTY (the default) means auto-discover: $WORKSPACE (default
 # /home/devuser/workspace) is scanned to depth 3 for docs/diagrams/<area>/NN-*.md,
@@ -1257,14 +1258,18 @@ repos = []
 # passes run every day: triage at 05:17, and the review nightly at 02:47, after
 # the 01:00 dream window. The per-shard pack-hash skip keeps unchanged areas
 # free, so a quiet night costs nothing. The review tick then considers the
-# Gemini audit; its interval, change and budget gates keep that rare.
+# audit; its interval, change and budget gates keep that rare.
 glm_triage_cron = "17 5 * * *"
 glm_review_cron = "47 2 * * *"
-# Gemini audit gate: every condition must hold, per shard.
-gemini_min_interval_days = 7
-gemini_min_changed_topics = 3
-gemini_monthly_usd = 10
-# true: Gemini is considered only on the review tick (nightly by default; the
+# Audit gate: every condition must hold, per shard. The reviewer is always a
+# different model family from the producer (mcp/consultants/shared/model-diversity.js):
+# with a producer of the reviewer's own family the audit refuses to run.
+audit_min_interval_days = 7
+audit_min_changed_topics = 3
+audit_monthly_usd = 10
+# The model family that authored the corpus; the reviewer must differ from it.
+producer_family = "anthropic"
+# true: the audit is considered only on the review tick (nightly by default; the
 # per-shard interval still holds it to one audit a week). false: after
 # each triage run as well (the interval and budget still apply).
 weekly_window = true

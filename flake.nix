@@ -3228,8 +3228,8 @@ ${lib.optionalString diagramReviewEnabled ''
 ; the manifest into /run/agentbox (tmpfs) and execs supercronic on it, so a
 ; schedule edit needs a restart and no store path reaches a persistent file.
 ; The program holds no secret of its own: it inherits ZAI_ANTHROPIC_API_KEY and
-; GEMINI_API_KEY from the container environment like podcast-cron, so it needs
-; no ADR-2122 role. node, git and agentbox-manifest are pinned into PATH.
+; OPENAI_API_KEY (or a codex login) from the container environment like
+; podcast-cron, so it needs no ADR-2122 role. The audit leg runs the Codex CLI. node, git and agentbox-manifest are pinned into PATH.
 ; REBUILD-class.
 [program:diagram-review-cron]
 command=${bgNice}${pkgs.bash}/bin/bash /opt/agentbox/skills/sealmap-review/run-cron.sh ${supercronicPkg}/bin/supercronic

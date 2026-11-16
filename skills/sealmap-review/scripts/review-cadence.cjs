@@ -9,10 +9,11 @@
  *                    writes docs/review/<date>-triage.md, the list of topics to re-author.
  *     review-glm     the critical and premortem lenses with GLM as reviewer, one pack per shard;
  *                    a shard whose pack is byte-identical to its last GLM review is skipped.
- *     audit-gemini   the external Gemini review, one shard at a time, only for shards that pass a
- *                    four-part gate (interval, changed topics or a high-severity GLM finding, and
+ *     audit-codex    the external cross-vendor review by the Codex consultant (ADR-2131 as amended
+ *                    2026-11-16; it replaced a Gemini leg whose key never worked), one shard at a
+ *                    time, only for shards that pass a four-part gate (interval, changed topics or a high-severity GLM finding, and
  *                    the monthly budget); the most-changed shards go first, within budget.
- *     status         the resolved repo list, what the ledger says, month-to-date Gemini spend.
+ *     status         the resolved repo list, what the ledger says, month-to-date audit spend.
  *
  *     node review-cadence.cjs <subcommand> [--manifest <agentbox.toml>] [--repo <dir>]...
  *          [--workspace <dir>] [--dry-run] [--now <ISO time>]
@@ -28,7 +29,7 @@
  *   `!` excludes a path) adds to the list.
  *
  * WHY IT IS THIS WAY
- *   Gemini with high thinking on a whole corpus is the expensive step, so it is the rare one.
+ *   An outside model with high reasoning on a whole corpus is the expensive step, so it is the rare one.
  *   GLM is cheap and runs often, and its job is to decide when the expensive step is worth it.
  *   An estate corpus cites files in many repositories, so change is detected per source
  *   repository: every cited path is resolved by realpath (a workspace symlink and the real path
@@ -40,8 +41,8 @@
  *   Every run, refusals included, appends one line to docs/diagrams/review-ledger.jsonl, so
  *   spend, intervals and "what did we already review" are read from one append-only file. A
  *   failed model call never blocks the cadence: triage treats an unanswered topic as "yes,
- *   re-author", and a failed Gemini call is recorded at its estimated cost, because a timed-out
- *   generateContent may already have been billed. A cited path whose repository is missing, or
+ *   re-author", and a failed audit call is recorded at its estimated cost, because a timed-out
+ *   call may already have been billed. A cited path whose repository is missing, or
  *   whose link dangles, is a logged skip, not a crash.
  *   Nothing here edits a topic or commits anything. Findings are unverified hypotheses for
  *   visioncraft. The keys are read from the environment and never printed or stored.
@@ -63,23 +64,31 @@ const ER = require('./external-review.cjs');
 const MF = require('./merge-findings.cjs');
 const { reviewContext } = require('./review-context.cjs');
 
-// ── Pricing (USD per million tokens). Gemini 3.8 Flash list price as of 2026-10-06, taken from
-//    the operator's brief; check ai.google.dev/pricing before trusting the budget to the cent.
-//    Output includes thinking tokens. GLM is billed under the Z.AI plan, not per token, so it
-//    costs 0 here and never counts against the Gemini cap.
-const GEMINI_USD_PER_M = { input: 0.75, cached: 0.075, output: 3.75 };
+// ── Pricing (USD per million tokens). The audit reviewer is the Codex consultant on gpt-6-astra,
+//    priced as mcp/consultants/codex/server.js prices it ($10 input, $50 output per million,
+//    verified 2026-09-08; refresh both together on a model change). Output includes reasoning
+//    tokens. Cached input is charged at the full input rate: an over-estimate, so the cap stays
+//    a cap whether or not the provider discounts the cache. GLM is billed under the Z.AI plan,
+//    not per token, so it costs 0 here and never counts against the audit cap.
+const AUDIT_USD_PER_M = { input: 10, cached: 10, output: 50 };
+const AUDIT_CONSULTANT = 'codex';
+const AUDIT_MODEL = process.env.AGENTBOX_CODEX_MODEL || 'gpt-6-astra';
+// What the producing corpus authors are, for the different-family rule. The corpus is drafted
+// by Claude; a manifest `producer_family` overrides it, and a producer of the reviewer's own
+// family makes the audit refuse to run (mcp/consultants/shared/model-diversity.js).
+const DEFAULT_PRODUCER_FAMILY = 'anthropic';
 const GLM_USD_PER_M = { input: 0, output: 0 };
 // A lens reply plus its thinking. Used only for the pre-flight estimate; the ledger records
 // the usage the API reports.
-const GEMINI_ASSUMED_OUTPUT_TOKENS_PER_LENS = ER.MAX_OUTPUT_TOKENS;
-const GEMINI_LENSES = 2;
+const AUDIT_ASSUMED_OUTPUT_TOKENS_PER_LENS = ER.MAX_OUTPUT_TOKENS;
+const AUDIT_LENSES = 2;
 
 const LEDGER_REL = path.join('docs', 'diagrams', 'review-ledger.jsonl');
 const CORPUS_REL = path.join('docs', 'diagrams');
 const REVIEW_REL = path.join('docs', 'review');
 const GLM_DEFAULT_MODEL = 'glm-5.3';
-// GLM has a smaller window than Gemini, so one shard is at most this many tokens. The same
-// shards feed the Gemini audit, so "the last GLM review of this shard" is well defined.
+// GLM has a smaller window than the audit model, so one shard is at most this many tokens. The same
+// shards feed the Codex audit, so "the last GLM review of this shard" is well defined.
 const DEFAULT_SHARD_TOKENS = 150000;
 const GLM_MAX_OUTPUT_TOKENS = 32000;
 // GLM thinks by default and the thinking counts against max_tokens, and an explicit thinking
@@ -100,7 +109,7 @@ const LOCAL_FILE = process.env.DIAGRAM_REVIEW_LOCAL_FILE || ( __dirname.startsWi
   : path.join(__dirname, '..', '..', '..', 'config', 'diagram-review.local'));
 const DEFAULTS = {
   enabled: false, repos: [], glm_triage_cron: '17 5 * * *', glm_review_cron: '47 2 * * *',
-  gemini_min_interval_days: 7, gemini_min_changed_topics: 3, gemini_monthly_usd: 10, weekly_window: true,
+  audit_min_interval_days: 7, audit_min_changed_topics: 3, audit_monthly_usd: 10, producer_family: DEFAULT_PRODUCER_FAMILY, weekly_window: true,
 };
 const DAY_MS = 86400000;
 const TOKENS_PER_BYTE = 1 / 3.3;
@@ -174,9 +183,17 @@ function readSection(text, name) {
 function loadConfig(manifestPath) {
   let text = '';
   try { text = fs.readFileSync(manifestPath, 'utf8'); } catch { /* fail-open: defaults, disabled */ }
-  const cfg = { ...DEFAULTS, ...readSection(text, 'diagram_review') };
+  const section = readSection(text, 'diagram_review');
+  // A manifest written before the Gemini leg was retired (2026-11-16) still carries the
+  // gemini_* names; they mean the same three limits, so honour them rather than silently
+  // reverting a tightened cap to the default. The audit_* name wins when both are present.
+  for (const k of ['min_interval_days', 'min_changed_topics', 'monthly_usd']) {
+    if (section[`audit_${k}`] === undefined && section[`gemini_${k}`] !== undefined) section[`audit_${k}`] = section[`gemini_${k}`];
+  }
+  const cfg = { ...DEFAULTS, ...section };
+  if (typeof cfg.producer_family !== 'string' || !cfg.producer_family.trim()) cfg.producer_family = DEFAULT_PRODUCER_FAMILY;
   cfg.repos = (Array.isArray(cfg.repos) ? cfg.repos : []).filter((r) => typeof r === 'string' && r);
-  for (const k of ['gemini_min_interval_days', 'gemini_min_changed_topics', 'gemini_monthly_usd']) {
+  for (const k of ['audit_min_interval_days', 'audit_min_changed_topics', 'audit_monthly_usd']) {
     if (typeof cfg[k] !== 'number' || !(cfg[k] >= 0)) cfg[k] = DEFAULTS[k];
   }
   cfg.glm_model = process.env.DIAGRAM_REVIEW_GLM_MODEL || readSection(text, 'consultants.zai').model || GLM_DEFAULT_MODEL;
@@ -326,19 +343,19 @@ function repeatsLastSkip(ledger, kind, reviewer, shard, reason) {
   return Boolean(last && last.skipped && !last.error && key(last.skipped) === key(reason));
 }
 
-/** Gemini spend recorded in the UTC month of `now`, across the given ledgers. Failed calls count
+/** audit spend recorded in the UTC month of `now`, across the given ledgers. Failed calls count
  *  at their estimate, because a timed-out generation may have been billed. */
 function monthToDateUsd(ledgers, now) {
   const month = new Date(now).toISOString().slice(0, 7);
   let total = 0;
   for (const ledger of ledgers) {
-    for (const e of ledger) if (e.reviewer === 'gemini' && (!Number.isFinite(e.est_usd) || e.est_usd < 0 || !Number.isFinite(Date.parse(e.ts)))) throw new Error('invalid Gemini spend record; accounting is inconclusive');
+    for (const e of ledger) if (e.reviewer === 'codex' && (!Number.isFinite(e.est_usd) || e.est_usd < 0 || !Number.isFinite(Date.parse(e.ts)))) throw new Error('invalid audit spend record; accounting is inconclusive');
     // A reservation survives termination, lost replies and output-processing errors.
     // A settlement replaces it, rather than counting the same call twice.
     const settled = new Set(ledger.filter((e) => e.reservation_at).map((e) => `${e.reservation_at}:${e.shard}:${e.pack_sha256}`));
     for (const e of ledger) {
       if (e.kind === 'audit-reservation' && settled.has(`${e.ts}:${e.shard}:${e.pack_sha256}`)) continue;
-      if (e.reviewer === 'gemini' && typeof e.est_usd === 'number' && String(e.ts).slice(0, 7) === month) total += e.est_usd;
+      if (e.reviewer === 'codex' && typeof e.est_usd === 'number' && String(e.ts).slice(0, 7) === month) total += e.est_usd;
     }
   }
   return Math.round(total * 1e6) / 1e6;
@@ -350,7 +367,7 @@ function monthToDateUsd(ledgers, now) {
  * ordinary checkout/reset/deletion must not silently reopen the budget. */
 function budgetLedgers(repos, now, { stateDir = path.join(process.env.XDG_STATE_HOME || path.join(os.homedir(), '.local', 'state'), 'sealmap-review'), persist = true } = {}) {
   const month = new Date(now).toISOString().slice(0, 7);
-  const file = path.join(stateDir, `gemini-budget-${month}.json`);
+  const file = path.join(stateDir, `audit-budget-${month}.json`);
   let previous = { version: 1, month, ledgers: {} };
   try {
     previous = JSON.parse(fs.readFileSync(file, 'utf8'));
@@ -365,7 +382,7 @@ function budgetLedgers(repos, now, { stateDir = path.join(process.env.XDG_STATE_
       if (current && current !== repo) throw new Error(`remembered repository changed identity: ${repo}`);
     }
   } catch (err) {
-    if (err.code !== 'ENOENT') throw new Error(`Gemini budget witness is inconclusive (${file}): ${err.message}; preserve and restore verified accounting`);
+    if (err.code !== 'ENOENT') throw new Error(`audit budget witness is inconclusive (${file}): ${err.message}; preserve and restore verified accounting`);
   }
   const all = [...new Set([...repos.map((repo) => real(repo) || path.resolve(repo)), ...Object.keys(previous.ledgers)])].sort();
   // Resolve existing ancestors too: a not-yet-created directory below a
@@ -377,7 +394,7 @@ function budgetLedgers(repos, now, { stateDir = path.join(process.env.XDG_STATE_
   }
   const stateRoot = path.join(real(ancestor) || ancestor, ...tail);
   if (all.some((repo) => stateRoot === repo || stateRoot.startsWith(`${repo}${path.sep}`))) {
-    throw new Error('Gemini budget witness must be outside every reviewed working tree');
+    throw new Error('audit budget witness must be outside every reviewed working tree');
   }
   const next = { version: 1, month, ledgers: Object.create(null) };
   const ledgers = [];
@@ -385,7 +402,7 @@ function budgetLedgers(repos, now, { stateDir = path.join(process.env.XDG_STATE_
     const bytes = ledgerBytes(repo);
     const observed = previous.ledgers[repo];
     if (observed && (bytes.length < observed.bytes || sha256(bytes.subarray(0, observed.bytes)) !== observed.sha256)) {
-      throw new Error(`Gemini ledger rewind or rewrite detected: ${ledgerPath(repo)}; preserve and restore the observed prefix before paid review`);
+      throw new Error(`audit ledger rewind or rewrite detected: ${ledgerPath(repo)}; preserve and restore the observed prefix before paid review`);
     }
     ledgers.push(parseLedger(bytes, repo));
     next.ledgers[repo] = { bytes: bytes.length, sha256: sha256(bytes) };
@@ -406,7 +423,7 @@ function budgetLedgers(repos, now, { stateDir = path.join(process.env.XDG_STATE_
     } catch (err) {
       if (fd !== undefined) fs.closeSync(fd);
       try { fs.unlinkSync(temporary); } catch (cleanup) { if (cleanup.code !== 'ENOENT') throw cleanup; }
-      throw new Error(`cannot persist Gemini budget witness: ${err.message}; paid review refused`);
+      throw new Error(`cannot persist audit budget witness: ${err.message}; paid review refused`);
     }
   }
   return { repos: all, ledgers, mtd, witness: file };
@@ -600,51 +617,52 @@ function isHighSeverity(f) {
 }
 
 /**
- * The Gemini gate, applied to one shard. Every condition must hold; the first that fails is the
+ * The audit gate, applied to one shard. Every condition must hold; the first that fails is the
  * logged reason.
- *   - at least `gemini_min_interval_days` since the shard's last audit
- *   - at least `gemini_min_changed_topics` topics changed since it, OR the shard's last GLM
+ *   - at least `audit_min_interval_days` since the shard's last audit
+ *   - at least `audit_min_changed_topics` topics changed since it, OR the shard's last GLM
  *     review recorded a high-severity finding
- *   - month-to-date spend plus this run's estimate within `gemini_monthly_usd`
+ *   - month-to-date spend plus this run's estimate within `audit_monthly_usd`
  * @returns {{run: boolean, reason: string}}
  */
-function decideGemini({ cfg, lastAudit, changedTopics, glmHighSeverity, mtdUsd, estUsd, now }) {
+function decideAudit({ cfg, lastAudit, changedTopics, glmHighSeverity, mtdUsd, estUsd, now }) {
   if (lastAudit) {
     const days = (new Date(now) - new Date(lastAudit.ts)) / DAY_MS;
-    if (days < cfg.gemini_min_interval_days) {
-      return { run: false, reason: `interval: ${days.toFixed(1)} d since the last audit, need ${cfg.gemini_min_interval_days}` };
+    if (days < cfg.audit_min_interval_days) {
+      return { run: false, reason: `interval: ${days.toFixed(1)} d since the last audit, need ${cfg.audit_min_interval_days}` };
     }
   }
-  if (changedTopics < cfg.gemini_min_changed_topics && !(glmHighSeverity > 0)) {
-    return { run: false, reason: `no cause: ${changedTopics} topics changed (need ${cfg.gemini_min_changed_topics}) and no high-severity GLM finding` };
+  if (changedTopics < cfg.audit_min_changed_topics && !(glmHighSeverity > 0)) {
+    return { run: false, reason: `no cause: ${changedTopics} topics changed (need ${cfg.audit_min_changed_topics}) and no high-severity GLM finding` };
   }
-  if (mtdUsd + estUsd > cfg.gemini_monthly_usd) {
-    return { run: false, reason: `budget: $${mtdUsd.toFixed(2)} spent this month + $${estUsd.toFixed(2)} estimated exceeds $${cfg.gemini_monthly_usd}` };
+  if (mtdUsd + estUsd > cfg.audit_monthly_usd) {
+    return { run: false, reason: `budget: $${mtdUsd.toFixed(2)} spent this month + $${estUsd.toFixed(2)} estimated exceeds $${cfg.audit_monthly_usd}` };
   }
   const cause = glmHighSeverity > 0 ? `${glmHighSeverity} high-severity GLM finding(s)` : `${changedTopics} changed topics`;
-  return { run: true, reason: `gate open: ${cause}, $${(mtdUsd + estUsd).toFixed(2)} of $${cfg.gemini_monthly_usd} after this run` };
+  return { run: true, reason: `gate open: ${cause}, $${(mtdUsd + estUsd).toFixed(2)} of $${cfg.audit_monthly_usd} after this run` };
 }
 
 /** Reserve uncached input for every lens and the enforced maximum output, including thinking.
  * Cache hits are an optimisation, never a prerequisite for staying within the cap. */
-function estimateGeminiUsd(packTokens, lenses = GEMINI_LENSES) {
+function estimateAuditUsd(packTokens, lenses = AUDIT_LENSES) {
   const m = 1e6;
-  return (lenses * packTokens * GEMINI_USD_PER_M.input
-    + lenses * GEMINI_ASSUMED_OUTPUT_TOKENS_PER_LENS * GEMINI_USD_PER_M.output) / m;
+  return (lenses * packTokens * AUDIT_USD_PER_M.input
+    + lenses * AUDIT_ASSUMED_OUTPUT_TOKENS_PER_LENS * AUDIT_USD_PER_M.output) / m;
 }
 
-/** What Gemini actually billed, from external-review's per-lens usage. */
-function actualGeminiUsd(lenses) {
-  if (!Array.isArray(lenses) || lenses.length !== GEMINI_LENSES) throw new Error('incomplete Gemini usage; reservation retained');
+/** What the audit actually cost, from external-review's per-lens usage. For Codex `output_tokens`
+ *  already includes reasoning, so `thinking_tokens` is 0 there and nothing is counted twice. */
+function actualAuditUsd(lenses) {
+  if (!Array.isArray(lenses) || lenses.length !== AUDIT_LENSES) throw new Error('incomplete audit usage; reservation retained');
   let usd = 0;
   for (const l of lenses ?? []) {
     if (![l.prompt_tokens, l.output_tokens, l.thinking_tokens ?? 0, l.cached_tokens ?? 0].every((n) => Number.isSafeInteger(n) && n >= 0)
       || !(l.prompt_tokens > 0) || (l.cached_tokens ?? 0) > l.prompt_tokens) {
-      throw new Error('invalid Gemini usage; reservation retained');
+      throw new Error('invalid audit usage; reservation retained');
     }
     const cached = l.cached_tokens ?? 0;
-    usd += (((l.prompt_tokens ?? 0) - cached) * GEMINI_USD_PER_M.input + cached * GEMINI_USD_PER_M.cached
-      + ((l.thinking_tokens ?? 0) + (l.output_tokens ?? 0)) * GEMINI_USD_PER_M.output) / 1e6;
+    usd += (((l.prompt_tokens ?? 0) - cached) * AUDIT_USD_PER_M.input + cached * AUDIT_USD_PER_M.cached
+      + ((l.thinking_tokens ?? 0) + (l.output_tokens ?? 0)) * AUDIT_USD_PER_M.output) / 1e6;
   }
   return Math.round(usd * 1e6) / 1e6;
 }
@@ -964,7 +982,28 @@ async function reviewGlm(repo, ctx) {
   return { findings: rel(repo, out), count: findings.length, high: findings.filter((f) => f.high).length, shards: done.length, unchanged: skipped.length };
 }
 
-async function auditGemini(repo, ctx) {
+/** The model-family rule shared with the consultants. Resolved from the repo layout and from the
+ *  baked layout; `null` when neither exists, which the audit treats as a refusal, never as
+ *  permission to pick a reviewer without the different-family check. */
+function loadModelDiversity() {
+  const here = [
+    path.join(__dirname, '..', '..', '..', 'mcp', 'consultants', 'shared', 'model-diversity.js'),
+    path.join(__dirname, '..', '..', '..', 'mcp', 'consultants', 'package', 'shared', 'model-diversity.js'),
+  ];
+  for (const file of here) {
+    try { if (fs.existsSync(file)) return require(file); } catch { /* try the next layout */ }
+  }
+  return null;
+}
+
+/** Can the Codex CLI authenticate? Mirrors the consultant's health check, without a model call:
+ *  an API key, or a `codex login` credential file (see external-review.cjs codexHome). */
+function codexReady(env = process.env) {
+  if (env.OPENAI_API_KEY || ER.codexHome(env)) return { ok: true };
+  return { ok: false, reason: 'no Codex credentials (no OPENAI_API_KEY and no codex login auth.json)' };
+}
+
+async function auditCodex(repo, ctx) {
   const { now, cfg, dryRun } = ctx;
   const ledger = readLedger(repo);
   const head = headCommit(repo);
@@ -973,11 +1012,23 @@ async function auditGemini(repo, ctx) {
   const topics = loadTopics(repo, resolver);
   const shards = buildShards(repo, ctx.shardTokens ?? shardBudget(ctx.env));
   const pending = outstandingTriage(repo, topics, ledger);
-  const key = process.env.GEMINI_API_KEY || process.env.GOOGLE_GEMINI_API_KEY;
   const log = (shard, reason, extra = {}) => {
-    if (!dryRun && !repeatsLastSkip(ledger, 'audit', 'gemini', shard?.name ?? null, reason)) appendLedger(repo, { ts: stamp, kind: 'audit', reviewer: 'gemini', shard: shard?.name ?? null, commit: head, pack_sha256: shard?.sha ?? null, skipped: reason, ...extra });
+    if (!dryRun && !repeatsLastSkip(ledger, 'audit', 'codex', shard?.name ?? null, reason)) appendLedger(repo, { ts: stamp, kind: 'audit', reviewer: 'codex', shard: shard?.name ?? null, commit: head, pack_sha256: shard?.sha ?? null, skipped: reason, ...extra });
   };
-  if (!key && !dryRun) { log(null, 'no GEMINI_API_KEY in the environment'); return { skipped: 'no GEMINI_API_KEY in the environment' }; }
+  // The reviewer is chosen by the consultants' own rule: a NAMED consultant from a family other
+  // than the producer's, and none at all (a refusal, never a same-family fallback) otherwise.
+  const diversity = ctx.diversity === undefined ? loadModelDiversity() : ctx.diversity;
+  const producerFamily = cfg.producer_family || DEFAULT_PRODUCER_FAMILY;
+  const selection = diversity ? diversity.selectVerifier({ producerFamily, candidates: [AUDIT_CONSULTANT] }) : null;
+  if (!selection) {
+    const reason = diversity
+      ? `no cross-vendor reviewer: the producer family '${diversity.familyOf(producerFamily)}' is the same family as the ${AUDIT_CONSULTANT} reviewer`
+      : 'no cross-vendor reviewer: mcp/consultants/shared/model-diversity.js is not available, so the different-family rule cannot be applied';
+    if (!dryRun) log(null, reason);
+    return { skipped: reason };
+  }
+  const ready = (ctx.codexReady ?? codexReady)(ctx.env ?? process.env);
+  if (!ready.ok && !dryRun) { log(null, ready.reason); return { skipped: ready.reason }; }
 
   // The cheap checks first, per shard, so a refused shard never needs a network call.
   let mtd = ctx.mtd;
@@ -987,12 +1038,12 @@ async function auditGemini(repo, ctx) {
     const shardTopics = topics.filter((t) => inShard.has(t.rel));
     const open = pending.filter((t) => inShard.has(t.topic));
     if (open.length) { refused.push({ shard, reason: `freshness: ${open.length} outstanding triage topic(s) require verification`, changed: 0 }); continue; }
-    const lastAudit = lastOf(ledger, 'audit', 'gemini', shard.name);
+    const lastAudit = lastOf(ledger, 'audit', 'codex', shard.name);
     const lastGlm = lastOf(ledger, 'review', 'glm', shard.name);
     // A high-severity GLM finding escalates once: it counts only if it is newer than the last audit.
     const high = lastGlm && (!lastAudit || new Date(lastGlm.ts) > new Date(lastAudit.ts)) ? lastGlm.high_severity ?? 0 : 0;
     const changed = shardChangedTopics(shardTopics, lastAudit);
-    const first = decideGemini({ cfg, lastAudit, changedTopics: changed, glmHighSeverity: high, mtdUsd: mtd, estUsd: 0, now });
+    const first = decideAudit({ cfg, lastAudit, changedTopics: changed, glmHighSeverity: high, mtdUsd: mtd, estUsd: 0, now });
     if (first.run) eligible.push({ shard, shardTopics, lastAudit, high, changed });
     else refused.push({ shard, reason: first.reason, changed });
   }
@@ -1000,31 +1051,25 @@ async function auditGemini(repo, ctx) {
   // Most-changed shards first, so a tight budget is spent where the corpus has drifted most.
   eligible.sort((a, b) => b.changed - a.changed || (a.shard.name < b.shard.name ? -1 : 1));
   if (dryRun) {
-    return { would_consider: eligible.map((e) => ({ shard: e.shard.name, changed: e.changed, high: e.high, est_usd: estimateGeminiUsd(e.shard.tokens) })), refused: refused.map((r) => ({ shard: r.shard.name, reason: r.reason })) };
+    return { would_consider: eligible.map((e) => ({ shard: e.shard.name, changed: e.changed, high: e.high, est_usd: estimateAuditUsd(e.shard.tokens) })), refused: refused.map((r) => ({ shard: r.shard.name, reason: r.reason })) };
   }
 
-  const run = runDirectory(repo, 'gemini', now);
+  const run = runDirectory(repo, 'codex', now);
   const ran = [], findings = [], docs = [];
   const errors = [];
   for (const e of eligible) {
     const { shard } = e;
-    let packTokens;
-    try {
-      packTokens = 0;
-      for (const lens of ['critical', 'premortem']) {
-        const counted = await ER.gemini('countTokens', ctx.model, key, { contents: [{ role: 'user', parts: [{ text: shard.pack }, { text: ER.loadLens(lens, 15) }] }] });
-        if (!Number.isSafeInteger(counted.totalTokens) || counted.totalTokens <= 0) throw new Error('invalid token count');
-        packTokens = Math.max(packTokens, counted.totalTokens);
-      }
-    } catch (err) { log(shard, `countTokens failed: ${err.message.slice(0, 160)}`, { changed_topics: e.changed }); continue; }
-    const estUsd = estimateGeminiUsd(packTokens);
-    const decision = decideGemini({ cfg, lastAudit: e.lastAudit, changedTopics: e.changed, glmHighSeverity: e.high, mtdUsd: mtd, estUsd, now });
+    // Codex has no free token-count call, so the reservation is made on the shard's own size
+    // estimate plus the lens text; the settlement then books what the CLI reports.
+    const packTokens = ctx.packTokens ?? (shard.tokens + Math.ceil(ER.loadLens('critical', 15).length * TOKENS_PER_BYTE));
+    const estUsd = estimateAuditUsd(packTokens);
+    const decision = decideAudit({ cfg, lastAudit: e.lastAudit, changedTopics: e.changed, glmHighSeverity: e.high, mtdUsd: mtd, estUsd, now });
     if (!decision.run) { log(shard, decision.reason, { tokens: { input: packTokens }, changed_topics: e.changed }); continue; }
 
     const outDir = path.join(run.dir, encodeURIComponent(shard.name));
     fs.mkdirSync(outDir, { recursive: true });
     const reviewedCommits = headsOf(reposOf(e.shardTopics));
-    appendLedger(repo, { ts: stamp, kind: 'audit-reservation', reviewer: 'gemini', shard: shard.name,
+    appendLedger(repo, { ts: stamp, kind: 'audit-reservation', reviewer: 'codex', shard: shard.name,
       pack_sha256: shard.sha, est_usd: estUsd, skipped: 'reserved before generation; charged until settled' });
     ctx.checkpoint?.(); // Persist the observed reservation outside Git before billable work.
     mtd += estUsd;
@@ -1035,20 +1080,20 @@ async function auditGemini(repo, ctx) {
       if (manifest.complete !== true || manifest.pack_sha256 !== shard.sha) throw new Error(`inconclusive audit ${shard.name}: incomplete result or pack changed during review; reservation retained`);
       const sFindings = JSON.parse(fs.readFileSync(path.join(outDir, 'findings.json'), 'utf8')).map((f) => ({ ...f, id: `${shard.name}:${f.id}`, shard: shard.name }));
       const sDocs = (manifest.lenses ?? []).map((l) => `## ${shard.name} / ${l.name}\n\n${fs.readFileSync(path.join(outDir, `${l.name}.md`), 'utf8').trim()}\n`);
-      const usd = actualGeminiUsd(manifest.lenses);
+      const usd = actualAuditUsd(manifest.lenses);
       const sum = (k) => (manifest.lenses ?? []).reduce((a, l) => a + (l[k] ?? 0), 0);
       result = { shard, usd, changed: e.changed, model: manifest.model, findings: sFindings, docs: sDocs,
         tokens: { input: sum('prompt_tokens'), cached: sum('cached_tokens'), output: sum('thinking_tokens') + sum('output_tokens') },
         commits: reviewedCommits, artefacts: rel(repo, outDir) };
       // Each successful shard owns durable evidence and a settlement before the next
       // shard starts. The combined report below is presentation, not the receipt.
-      appendLedger(repo, { ts: stamp, reservation_at: stamp, kind: 'audit', reviewer: 'gemini', shard: shard.name,
+      appendLedger(repo, { ts: stamp, reservation_at: stamp, kind: 'audit', reviewer: 'codex', shard: shard.name,
         commit: head, commits: reviewedCommits, pack_sha256: shard.sha, tokens: result.tokens, est_usd: usd,
         findings: rel(repo, path.join(outDir, 'findings.json')), changed_topics: e.changed,
         artefacts: result.artefacts, run_id: run.runId });
     } catch (err) {
       // Generation and any later output/usage validation may fail after billing.
-      appendLedger(repo, { ts: stamp, reservation_at: stamp, kind: 'audit', reviewer: 'gemini', shard: shard.name, commit: head, pack_sha256: shard.sha, tokens: { input: packTokens }, est_usd: estUsd, error: err.message.slice(0, 300), skipped: `error: ${err.message.slice(0, 160)}`, artefacts: rel(repo, outDir), run_id: run.runId });
+      appendLedger(repo, { ts: stamp, reservation_at: stamp, kind: 'audit', reviewer: 'codex', shard: shard.name, commit: head, pack_sha256: shard.sha, tokens: { input: packTokens }, est_usd: estUsd, error: err.message.slice(0, 300), skipped: `error: ${err.message.slice(0, 160)}`, artefacts: rel(repo, outDir), run_id: run.runId });
       ctx.checkpoint?.();
       errors.push(`${shard.name}: ${err.message.slice(0, 160)}`);
       continue;
@@ -1061,9 +1106,9 @@ async function auditGemini(repo, ctx) {
   }
   let out = null;
   if (ran.length) {
-    out = uniquePath(path.join(repo, REVIEW_REL), `${utcDate(now)}-gemini`, '.md');
-    fs.writeFileSync(out, [`# Gemini audit ${utcDate(now)} (${ran[0].model}): ${findings.length} findings, ${ran.length} shard(s)`, '',
-      `Revision ${head ? head.slice(0, 12) : 'unknown'}. Shards: ${ran.map((r) => r.shard.name).join(', ')}. Unverified hypotheses: reproduce each with a failing test or check (visioncraft) before acting.`, '', ...docs].join('\n'));
+    out = uniquePath(path.join(repo, REVIEW_REL), `${utcDate(now)}-codex`, '.md');
+    fs.writeFileSync(out, [`# Codex audit ${utcDate(now)} (${ran[0].model}): ${findings.length} findings, ${ran.length} shard(s)`, '',
+      `Reviewer ${selection.consultant} (${selection.family} family) for producer family ${selection.producer_family}. Revision ${head ? head.slice(0, 12) : 'unknown'}. Shards: ${ran.map((r) => r.shard.name).join(', ')}. Unverified hypotheses: reproduce each with a failing test or check (visioncraft) before acting.`, '', ...docs].join('\n'));
     fs.writeFileSync(out.replace(/\.md$/, '.json'), `${JSON.stringify(findings, null, 2)}\n`);
   }
   if (errors.length) throw new Error(`${errors.length} shard(s) failed: ${errors.join('; ')}`);
@@ -1072,12 +1117,12 @@ async function auditGemini(repo, ctx) {
     : { skipped: 'no shard passed the gate', refused: refused.length };
 }
 
-/** Merge the newest GLM and Gemini findings files in docs/review and rank findings that both
+/** Merge the newest GLM and Codex findings files in docs/review and rank findings that both
  *  families raised independently first (merge-findings.cjs). Writes `<date>-merged.{md,json}`. */
 function mergeReviews(repo, ctx) {
   const dir = path.join(repo, REVIEW_REL);
-  const newest = (suffix) => (fs.existsSync(dir) ? fs.readdirSync(dir).filter((f) => new RegExp(`-${suffix}(?:-\\d+)?\\.json$`).test(f)).sort((a, b) => { const key = (f) => { const m = /^(.*)-(?:glm|gemini)(?:-(\d+))?\.json$/.exec(f); return [m[1], Number(m[2] ?? 1)]; }; const x = key(a), y = key(b); return x[0].localeCompare(y[0]) || x[1] - y[1]; }).pop() : null);
-  const picked = ['glm', 'gemini'].map((k) => ({ family: k, file: newest(k) }));
+  const newest = (suffix) => (fs.existsSync(dir) ? fs.readdirSync(dir).filter((f) => new RegExp(`-${suffix}(?:-\\d+)?\\.json$`).test(f)).sort((a, b) => { const key = (f) => { const m = /^(.*)-(?:glm|codex)(?:-(\d+))?\.json$/.exec(f); return [m[1], Number(m[2] ?? 1)]; }; const x = key(a), y = key(b); return x[0].localeCompare(y[0]) || x[1] - y[1]; }).pop() : null);
+  const picked = ['glm', 'codex'].map((k) => ({ family: k, file: newest(k) }));
   const missing = picked.filter((p) => !p.file).map((p) => p.family);
   if (missing.length) return { skipped: `need findings from two families; no ${missing.join(' or ')} findings file in ${REVIEW_REL}` };
   const groups = picked.map((p) => ({ family: p.family, findings: JSON.parse(fs.readFileSync(path.join(dir, p.file), 'utf8')) }));
@@ -1094,7 +1139,7 @@ function runExternalChild(corpus, outDir, files) {
   const list = path.join(outDir, 'files.txt');
   fs.writeFileSync(list, `${files.join('\n')}\n`);
   try {
-    execFileSync(process.execPath, [path.join(__dirname, 'external-review.cjs'), corpus, '--out', outDir, '--files-from', list], { stdio: ['ignore', 'pipe', 'pipe'], encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+    execFileSync(process.execPath, [path.join(__dirname, 'external-review.cjs'), corpus, '--provider', 'codex', '--out', outDir, '--files-from', list], { stdio: ['ignore', 'pipe', 'pipe'], encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
   } catch (err) { throw new Error(String(err.stderr || err.message).trim().split('\n').pop() || 'external-review failed'); }
 }
 
@@ -1108,7 +1153,7 @@ function statusOf(repos, now, info = {}, budget = null) {
   for (const { repo, ledger, error } of ledgers) {
     if (error) { lines.push(`${repo}: INCONCLUSIVE — ${error}`); continue; }
     lines.push(`${repo}: ${ledger.length} ledger lines`);
-    for (const [kind, reviewer] of [['triage', 'glm'], ['review', 'glm'], ['audit', 'gemini']]) {
+    for (const [kind, reviewer] of [['triage', 'glm'], ['review', 'glm'], ['audit', 'codex']]) {
       const ran = lastOf(ledger, kind, reviewer);
       const last = [...ledger].reverse().find((e) => e.kind === kind && e.reviewer === reviewer);
       const skipNote = last && last.skipped && last !== ran ? `; latest skip: ${last.skipped}` : '';
@@ -1133,10 +1178,10 @@ function statusOf(repos, now, info = {}, budget = null) {
     if (budget) {
       const accounting = budgetLedgers(budget.repos, now, { stateDir: budget.stateDir, persist: false });
       mtd = accounting.mtd;
-      lines.push(`Gemini budget scope: ${accounting.repos.length} configured, discovered, explicit or previously observed repo(s)`);
+      lines.push(`audit budget scope: ${accounting.repos.length} configured, discovered, explicit or previously observed repo(s)`);
     } else mtd = monthToDateUsd(ledgers.map((l) => l.ledger), now);
-  } catch (err) { lines.push(`Gemini accounting INCONCLUSIVE: ${err.message}; paid audits refuse to run`); }
-  if (mtd !== null) lines.push(`Gemini spend ${new Date(now).toISOString().slice(0, 7)}: $${mtd.toFixed(2)}`);
+  } catch (err) { lines.push(`audit accounting INCONCLUSIVE: ${err.message}; paid audits refuse to run`); }
+  if (mtd !== null) lines.push(`audit spend ${new Date(now).toISOString().slice(0, 7)}: $${mtd.toFixed(2)}`);
   return { text: lines.join('\n'), mtd };
 }
 
@@ -1155,8 +1200,8 @@ function parseArgs(argv) {
     else if (a === '--window') { /* accepted: the crontab passes it; the gate is the interval */ }
     else throw new Error(`unknown option ${a}`);
   }
-  if (!['triage', 'review-glm', 'audit-gemini', 'merge', 'status'].includes(opts.cmd)) {
-    throw new Error('usage: review-cadence.cjs <triage|review-glm|audit-gemini|merge|status> [--manifest f] [--repo dir]... [--workspace dir] [--dry-run] [--now ISO]');
+  if (!['triage', 'review-glm', 'audit-codex', 'merge', 'status'].includes(opts.cmd)) {
+    throw new Error('usage: review-cadence.cjs <triage|review-glm|audit-codex|merge|status> [--manifest f] [--repo dir]... [--workspace dir] [--dry-run] [--now ISO]');
   }
   if (opts.now && Number.isNaN(Date.parse(opts.now))) throw new Error('--now is an ISO time');
   return opts;
@@ -1197,17 +1242,17 @@ async function main(argv, deps = {}) {
 
   const ctx = {
     now, cfg, dryRun: opts.dryRun, env: process.env, post: deps.post, runExternal: deps.runExternal ?? runExternalChild,
-    model: process.env.DIAGRAM_REVIEW_MODEL || 'gemini-3.8-flash',
+    model: process.env.DIAGRAM_REVIEW_MODEL || AUDIT_MODEL,
   };
-  const fn = { triage, 'review-glm': reviewGlm, 'audit-gemini': auditGemini, merge: mergeReviews }[opts.cmd];
-  if (opts.cmd === 'audit-gemini' && ctx.model !== 'gemini-3.8-flash') {
-    throw new Error('scheduled Gemini pricing is pinned to gemini-3.8-flash; review pricing before changing the model');
+  const fn = { triage, 'review-glm': reviewGlm, 'audit-codex': auditCodex, merge: mergeReviews }[opts.cmd];
+  if (opts.cmd === 'audit-codex' && ctx.model !== AUDIT_MODEL) {
+    throw new Error(`scheduled audit pricing is pinned to ${AUDIT_MODEL}; review pricing before changing the model`);
   }
-  if (opts.cmd === 'audit-gemini') ctx.checkpoint = () => budgetLedgers(accountingRepos, now, { stateDir: deps.budgetStateDir, persist: !opts.dryRun });
+  if (opts.cmd === 'audit-codex') ctx.checkpoint = () => budgetLedgers(accountingRepos, now, { stateDir: deps.budgetStateDir, persist: !opts.dryRun });
   let failed = 0;
   for (const repo of repos) {
     try {
-      // Refuse an inconclusive global balance before countTokens or generation.
+      // Refuse an inconclusive global balance before any billable work.
       if (ctx.checkpoint) ctx.mtd = ctx.checkpoint().mtd;
       console.log(`${opts.cmd} ${repo}: ${JSON.stringify(await fn(repo, ctx))}`);
     }
@@ -1219,21 +1264,21 @@ async function main(argv, deps = {}) {
 module.exports = {
   readSection, loadConfig, discoverRepos, isLinkedWorktree, hasCorpus, readLocalFile, resolveRepos, createResolver, parseSources, loadTopics,
   triageCandidates, outstandingTriage, changedByRepo, headsOf, reposOf, buildShards, shardChangedTopics, readLedger, appendLedger, monthToDateUsd, budgetLedgers,
-  ledgerPath, decideGemini, estimateGeminiUsd, actualGeminiUsd, packUnchanged, isHighSeverity, parseVerdict, zaiSettings, glm,
-  triage, reviewGlm, auditGemini, mergeReviews, statusOf, receiptCommand, main, parseArgs, DEFAULTS, GEMINI_USD_PER_M, GLM_TRIAGE_MAX_OUTPUT_TOKENS,
+  ledgerPath, decideAudit, estimateAuditUsd, actualAuditUsd, packUnchanged, isHighSeverity, parseVerdict, zaiSettings, glm,
+  triage, reviewGlm, auditCodex, loadModelDiversity, codexReady, mergeReviews, statusOf, receiptCommand, main, parseArgs, DEFAULTS, AUDIT_USD_PER_M, GLM_TRIAGE_MAX_OUTPUT_TOKENS,
 };
 
 if (require.main === module) {
   // Serialize the whole multi-repo budget transaction. The kernel releases this lock
   // even after SIGKILL; no stale PID files or paid jobs racing on the same ledger.
-  if (process.argv[2] === 'audit-gemini' && !process.env.DIAGRAM_REVIEW_BUDGET_LOCKED) {
+  if (process.argv[2] === 'audit-codex' && !process.env.DIAGRAM_REVIEW_BUDGET_LOCKED) {
     const { spawnSync } = require('node:child_process');
     const child = spawnSync('flock', ['-n', '-E', '75', path.join(os.tmpdir(), 'agentbox-diagram-review-budget.lock'),
       process.execPath, __filename, ...process.argv.slice(2)], {
       stdio: 'inherit', env: { ...process.env, DIAGRAM_REVIEW_BUDGET_LOCKED: '1' },
     });
     if (child.error) console.error(`review-cadence: cannot acquire budget lock: ${child.error.message}`);
-    if (child.status === 75) console.error('review-cadence: another Gemini audit holds the budget lock; skipped');
+    if (child.status === 75) console.error('review-cadence: another Codex audit holds the budget lock; skipped');
     process.exit(child.status === 75 ? 0 : child.status ?? 1);
   }
   main(process.argv.slice(2)).then((code) => process.exit(code), (err) => {

@@ -40,7 +40,7 @@ test('corrupt ledger and invalid spend refuse paid accounting without changing t
     const raw = '{"kind":"audit-reservation","est_usd":'; fs.writeFileSync(file, raw);
     assert.throws(() => C.readLedger(repo), /ledger/);
     assert.equal(fs.readFileSync(file, 'utf8'), raw);
-    assert.throws(() => C.monthToDateUsd([[{ reviewer: 'gemini', ts: '2026-11-03', est_usd: -5 }]], new Date('2026-11-03')), /spend/);
+    assert.throws(() => C.monthToDateUsd([[{ reviewer: 'codex', ts: '2026-11-03', est_usd: -5 }]], new Date('2026-11-03')), /spend/);
   } finally { fs.rmSync(repo, { recursive: true }); }
 });
 
@@ -59,9 +59,9 @@ test('diagnostic status preserves a corrupt ledger, while an audit refuses befor
     fs.mkdirSync(path.dirname(C.ledgerPath(repo)), { recursive: true });
     fs.writeFileSync(C.ledgerPath(repo), '{broken');
     assert.match(C.statusOf([repo], new Date()).text, /accounting INCONCLUSIVE/);
-    await assert.rejects(C.auditGemini(repo, { now: new Date(), cfg: C.DEFAULTS, dryRun: false, runExternal: () => { throw new Error('must never call'); } }), /invalid review ledger/);
+    await assert.rejects(C.auditCodex(repo, { now: new Date(), cfg: C.DEFAULTS, dryRun: false, runExternal: () => { throw new Error('must never call'); } }), /invalid review ledger/);
     assert.equal(fs.readFileSync(C.ledgerPath(repo), 'utf8'), '{broken');
-    fs.writeFileSync(C.ledgerPath(repo), JSON.stringify({ ts: '2026-11-03', reviewer: 'gemini', kind: 'audit', est_usd: 2 }));
+    fs.writeFileSync(C.ledgerPath(repo), JSON.stringify({ ts: '2026-11-03', reviewer: 'codex', kind: 'audit', est_usd: 2 }));
     C.appendLedger(repo, { reviewer: 'glm', kind: 'triage' });
     assert.equal(C.readLedger(repo).length, 2, 'a complete EOF row is separated without rewriting it');
   } finally { fs.rmSync(repo, { recursive: true }); }
