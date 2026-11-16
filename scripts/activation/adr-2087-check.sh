@@ -222,8 +222,12 @@ api() { # method path [json-body] → body on stdout, status in $SCRATCH/status
 
 count_denies() { # since-iso → count of mandate_revoke authority.deny records at or after it
   local since="$1"
-  cat "$EVENTS_DIR"/*.jsonl 2>/dev/null | jq -c --arg since "$since" \
-    'select(.kind=="authority.deny" and .payload.action_class=="mandate_revoke" and .ts >= $since)' 2>/dev/null | wc -l
+  # `-R` + `fromjson?` reads line by line and skips a line that is not JSON. A bare
+  # `jq` over the concatenated files stops at the first torn line (2026-10-12), so
+  # every later record read as absent and B4 reported "not journalled" while the
+  # deny was in the log. Whether the chain itself is intact is B5's question.
+  cat "$EVENTS_DIR"/*.jsonl 2>/dev/null | jq -R -c --arg since "$since" \
+    'fromjson? | select(type=="object" and .kind=="authority.deny" and .payload.action_class=="mandate_revoke" and .ts >= $since)' 2>/dev/null | wc -l
 }
 
 if [ "$LIVE_PROBE" = 0 ]; then
@@ -262,8 +266,8 @@ else
     {
       echo "authority.deny (mandate_revoke) records in $EVENTS_DIR since $PROBE_START_ISO: before=$before after=$after"
       echo "matching /v1/agent-events records since $PROBE_START_MS: $published"
-      cat "$EVENTS_DIR"/*.jsonl 2>/dev/null | jq -c --arg since "$PROBE_START_ISO" \
-        'select(.kind=="authority.deny" and .ts >= $since) | {ts, kind, seq, hash, payload: {stage: .payload.stage, reason: .payload.reason, action_class: .payload.action_class, authority_class: .payload.authority_class, task_properties: .payload.task_properties}}' 2>/dev/null
+      cat "$EVENTS_DIR"/*.jsonl 2>/dev/null | jq -R -c --arg since "$PROBE_START_ISO" \
+        'fromjson? | select(type=="object" and .kind=="authority.deny" and .ts >= $since) | {ts, kind, seq, hash, payload: {stage: .payload.stage, reason: .payload.reason, action_class: .payload.action_class, authority_class: .payload.authority_class, task_properties: .payload.task_properties}}' 2>/dev/null
     } > "$SCRATCH/B4.txt"
     if [ "$after" -eq $((before + 1)) ] && [ "${published:-0}" -ge 1 ]; then
       record B4 PASS 1 "the deny is in the hash-chained events log (+1) and at /v1/agent-events ($published)" "$SCRATCH/B4.txt"
