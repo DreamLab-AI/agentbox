@@ -138,7 +138,7 @@ Supervisord runs as PID 1 root; every long-running program drops to `user=devuse
 | `xvnc` / `x11vnc` / `wayvnc` / `xorg-nvidia` / `hyprland` / `i3wm` / `xwayland-session` | desktop stack (gated `desktop.enabled`) | `127.0.0.1:5901` |
 | `tailscaled` / `tailscale-up` | mesh networking (gated) | — |
 | `podcast-cron` / `forum-backup-cron` | scheduled jobs | — |
-| `diagram-review-cron` | GLM triage and review of diagram corpora, Gemini audit behind an interval, change and USD-cap gate (gated `[diagram_review]`, shipped on, rebuild-class; ADR-2131). Its crontab is rendered at boot into `/run/agentbox`; the program holds no secret file | — |
+| `diagram-review-cron` | GLM triage and review of diagram corpora, cross-vendor Codex audit behind an interval, change and USD-cap gate (gated `[diagram_review]`, shipped on, rebuild-class; ADR-2131). Its crontab is rendered at boot into `/run/agentbox`; the program holds no secret file | — |
 | `sidestr-producer` / `sidestr-mirror` / `sidestr-faucet` | sidestr:dreamlab chain, Pages mirror, DREAM faucet (gated `[sidechain]`, rebuild-class). The producer runs the read-only Nix bake of `config/sidechain/upstream-pins` (`/opt/agentbox/sidestr/upstream`), never a workspace checkout unless `SIDESTR_ALLOW_UNPINNED=1` | `127.0.0.1:3450` |
 
 QGIS's `qgis` gate keeps the proxy to the GUI sidecar; `qgis_local` independently

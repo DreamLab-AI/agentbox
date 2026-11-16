@@ -284,8 +284,12 @@ test('codex() sends the prompt on stdin, never in argv, and returns text and usa
   assert.equal(record.bin, 'codex-stub');
   assert.equal(record.stdin, 'PACK-AND-LENS');
   assert.ok(!record.args.includes('PACK-AND-LENS'));
-  assert.deepEqual(record.args.slice(0, 5), ['exec', '--json', '--skip-git-repo-check', '--model', 'gpt-test']);
+  assert.deepEqual(record.args.slice(0, 3), ['exec', '--json', '--skip-git-repo-check']);
+  assert.equal(record.args[record.args.indexOf('--model') + 1], 'gpt-test');
   assert.equal(record.args.at(-1), '-');
+  for (const flag of ['--ephemeral', '--sandbox', 'read-only', '-C']) assert.ok(record.args.includes(flag), `contained: ${flag}`);
+  const scratch = record.args[record.args.indexOf('-C') + 1];
+  assert.ok(!fs.existsSync(scratch), 'the scratch working directory is removed after the call');
   assert.equal(r.usage.output_tokens, 300);
 });
 
@@ -313,7 +317,9 @@ test('--provider codex runs end to end against a stub, needs no Gemini key, and 
   assert.deepEqual(manifest.lenses[0].prompt_tokens, 1200);
   assert.equal(manifest.lenses[0].thinking_tokens, 0, 'reasoning is inside output_tokens; not counted twice');
   assert.equal(prompts.length, 2);
-  assert.ok(prompts[0].indexOf('=== FILE: enclosure/02-compose.md') < prompts[0].indexOf('NO_FINDINGS') || true);
+  const at = (needle) => prompts[0].indexOf(needle);
+  assert.ok(at('Answer from the material below only') === 0, 'the instruction not to read or run anything comes first');
+  assert.ok(at('=== FILE: enclosure/02-compose.md') > 0, 'the pack follows');
 });
 
 test('--provider rejects an unknown transport', () => {

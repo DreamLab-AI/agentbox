@@ -72,7 +72,8 @@ const { reviewContext } = require('./review-context.cjs');
 //    not per token, so it costs 0 here and never counts against the audit cap.
 const AUDIT_USD_PER_M = { input: 10, cached: 10, output: 50 };
 const AUDIT_CONSULTANT = 'codex';
-const AUDIT_MODEL = process.env.AGENTBOX_CODEX_MODEL || 'gpt-6-astra';
+const PRICED_AUDIT_MODEL = 'gpt-6-astra';
+const AUDIT_MODEL = process.env.AGENTBOX_CODEX_MODEL || PRICED_AUDIT_MODEL;
 // What the producing corpus authors are, for the different-family rule. The corpus is drafted
 // by Claude; a manifest `producer_family` overrides it, and a producer of the reviewer's own
 // family makes the audit refuse to run (mcp/consultants/shared/model-diversity.js).
@@ -999,8 +1000,15 @@ function loadModelDiversity() {
 /** Can the Codex CLI authenticate? Mirrors the consultant's health check, without a model call:
  *  an API key, or a `codex login` credential file (see external-review.cjs codexHome). */
 function codexReady(env = process.env) {
-  if (env.OPENAI_API_KEY || ER.codexHome(env)) return { ok: true };
-  return { ok: false, reason: 'no Codex credentials (no OPENAI_API_KEY and no codex login auth.json)' };
+  if (!env.OPENAI_API_KEY && !ER.codexHome(env)) return { ok: false, reason: 'no Codex credentials (no OPENAI_API_KEY and no codex login auth.json)' };
+  // A binary that cannot start fails AFTER the reservation and would book a possibly-billed
+  // charge for a call that never happened, so a missing one is a free, logged skip instead.
+  const bin = ER.codexBin(env);
+  const found = path.isAbsolute(bin)
+    ? fs.existsSync(bin)
+    : String(env.PATH || '').split(path.delimiter).filter(Boolean).some((d) => fs.existsSync(path.join(d, bin)));
+  if (!found) return { ok: false, reason: `codex binary not found (${bin}); set AGENTBOX_CODEX_BIN or put codex on the cron PATH` };
+  return { ok: true };
 }
 
 async function auditCodex(repo, ctx) {
@@ -1245,8 +1253,8 @@ async function main(argv, deps = {}) {
     model: process.env.DIAGRAM_REVIEW_MODEL || AUDIT_MODEL,
   };
   const fn = { triage, 'review-glm': reviewGlm, 'audit-codex': auditCodex, merge: mergeReviews }[opts.cmd];
-  if (opts.cmd === 'audit-codex' && ctx.model !== AUDIT_MODEL) {
-    throw new Error(`scheduled audit pricing is pinned to ${AUDIT_MODEL}; review pricing before changing the model`);
+  if (opts.cmd === 'audit-codex' && ctx.model !== PRICED_AUDIT_MODEL) {
+    throw new Error(`scheduled audit pricing is pinned to ${PRICED_AUDIT_MODEL}; review pricing before changing the model`);
   }
   if (opts.cmd === 'audit-codex') ctx.checkpoint = () => budgetLedgers(accountingRepos, now, { stateDir: deps.budgetStateDir, persist: !opts.dryRun });
   let failed = 0;

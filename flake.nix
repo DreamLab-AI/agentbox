@@ -3234,7 +3234,7 @@ ${lib.optionalString diagramReviewEnabled ''
 [program:diagram-review-cron]
 command=${bgNice}${pkgs.bash}/bin/bash /opt/agentbox/skills/sealmap-review/run-cron.sh ${supercronicPkg}/bin/supercronic
 user=devuser
-environment=HOME="/home/devuser",TZ="UTC",PATH="${agentboxManifestPkg}/bin:${lib.makeBinPath [ pkgs.coreutils pkgs.gnugrep pkgs.findutils pkgs.git pkgs.nodejs_22 pkgs.util-linux ]}:/usr/local/bin:/bin:/usr/bin"
+environment=HOME="/home/devuser",TZ="UTC",PATH="${agentboxManifestPkg}/bin:${lib.makeBinPath ([ pkgs.coreutils pkgs.gnugrep pkgs.findutils pkgs.git pkgs.nodejs_22 pkgs.util-linux ] ++ codexPackages)}:/usr/local/bin:/bin:/usr/bin"
 autostart=true
 autorestart=true
 startsecs=0

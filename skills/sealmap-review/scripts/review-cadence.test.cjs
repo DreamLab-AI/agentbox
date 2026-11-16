@@ -356,7 +356,11 @@ function fakePost(reply, seen = []) {
     return { status: 200, json: { stop_reason: 'end_turn', content: [{ type: 'text', text: reply(body) }], usage: { input_tokens: 100, output_tokens: 20 } } };
   };
 }
-const ctxFor = (extra = {}) => ({ now: NOW, cfg: CFG, dryRun: false, env: { ZAI_API_KEY: 'secret-key-value', OPENAI_API_KEY: 'sk-test-placeholder' }, mtd: 0, model: 'gpt-test', packTokens: 100000, ...extra });
+// A stand-in `codex` on PATH: the audit refuses (free) when the binary is missing, so tests that
+// reach the gate need one to exist. It is never executed: runExternal is always a stub.
+const FAKE_BIN_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'fake-codex-'));
+fs.writeFileSync(path.join(FAKE_BIN_DIR, 'codex'), '#!/bin/sh\nexit 99\n', { mode: 0o755 });
+const ctxFor = (extra = {}) => ({ now: NOW, cfg: CFG, dryRun: false, env: { ZAI_API_KEY: 'secret-key-value', OPENAI_API_KEY: 'sk-test-placeholder', PATH: FAKE_BIN_DIR }, mtd: 0, model: 'gpt-test', packTokens: 100000, ...extra });
 
 test('triage: the first run baselines every repository and spends nothing; the next flags across repositories and records a commit map', async () => {
   const e = estate();
@@ -513,7 +517,8 @@ const ACTUAL_ONE_SHARD = (100000 * 10 + 12000 * 50 + 100000 * 10 + 12000 * 50) /
 const PINNED_PACK_TOKENS = 100000;
 async function withCodex(fn) {
   process.env.OPENAI_API_KEY = 'sk-test-placeholder';
-  try { return await fn(); } finally { delete process.env.OPENAI_API_KEY; }
+  process.env.AGENTBOX_CODEX_BIN = path.join(FAKE_BIN_DIR, 'codex');
+  try { return await fn(); } finally { delete process.env.OPENAI_API_KEY; delete process.env.AGENTBOX_CODEX_BIN; }
 }
 
 test('audit-codex: refusals are per shard, logged with their reason, and never reach the network', async () => {
@@ -907,7 +912,7 @@ test('audit-codex: no Gemini key or code path remains on the audit leg', async (
     const res = await C.auditCodex(e.est, ctxFor({ env: { AGENTBOX_CODEX_HOME: home }, runExternal: fakeExternal(calls) }));
     assert.match(res.skipped, /no Codex credentials/);
   } finally { delete process.env.GEMINI_API_KEY; }
-  assert.equal(C.codexReady({ OPENAI_API_KEY: 'x' }).ok, true);
+  assert.equal(C.codexReady({ OPENAI_API_KEY: 'x', PATH: FAKE_BIN_DIR }).ok, true);
   const src = fs.readFileSync(path.join(__dirname, 'review-cadence.cjs'), 'utf8');
   assert.doesNotMatch(src, /ER\.gemini|GEMINI_API_KEY|generateContent|countTokens/);
 });
@@ -921,4 +926,25 @@ test('loadConfig: manifest keys written before the Gemini leg was retired are st
   assert.equal(cfg.audit_monthly_usd, 4);
   assert.equal(cfg.audit_min_changed_topics, 3);
   assert.equal(cfg.producer_family, 'anthropic');
+});
+
+test('audit-codex: a missing codex binary is a free, logged skip, not a reservation for a call that never started', async () => {
+  const e = estate();
+  const calls = [];
+  const cfg = { ...CFG, audit_min_changed_topics: 1, audit_monthly_usd: 100 };
+  const res = await C.auditCodex(e.est, ctxFor({ cfg, env: { OPENAI_API_KEY: 'sk-test-placeholder', PATH: '/nonexistent-dir' }, runExternal: fakeExternal(calls) }));
+  assert.match(res.skipped, /^codex binary not found \(codex\); set AGENTBOX_CODEX_BIN or put codex on the cron PATH$/);
+  assert.equal(calls.length, 0);
+  const rows = C.readLedger(e.est);
+  assert.ok(rows.every((r) => r.kind !== 'audit-reservation'), 'nothing was reserved');
+  assert.equal(C.monthToDateUsd([rows], NOW), 0, 'no spend is booked');
+  assert.equal(C.codexReady({ OPENAI_API_KEY: 'x', PATH: FAKE_BIN_DIR }).ok, true);
+  assert.equal(C.codexReady({ OPENAI_API_KEY: 'x', AGENTBOX_CODEX_BIN: '/nonexistent/codex' }).ok, false);
+});
+
+test('audit-codex: setting AGENTBOX_CODEX_MODEL cannot move the priced model', () => {
+  const e = estate();
+  const r = require('node:child_process').spawnSync(process.execPath, [path.join(__dirname, 'review-cadence.cjs'), 'audit-codex', '--repo', e.est, '--workspace', e.ws, '--dry-run'],
+    { encoding: 'utf8', env: { ...process.env, AGENTBOX_CODEX_MODEL: 'some-other-model', DIAGRAM_REVIEW_MODEL: '' , DIAGRAM_REVIEW_BUDGET_LOCKED: '1' } });
+  assert.match(r.stderr + r.stdout, /scheduled audit pricing is pinned to gpt-6-astra/);
 });

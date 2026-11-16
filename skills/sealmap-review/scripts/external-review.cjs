@@ -34,6 +34,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
+const os = require('node:os');
 const { reviewContext } = require('./review-context.cjs');
 const http = require('node:http');
 const https = require('node:https');
@@ -52,6 +53,8 @@ const TOKEN_BUDGET = 1_000_000;
 const DEFAULT_TIMEOUT_MS = 1_800_000;
 // The model the codex consultant uses (mcp/consultants/codex/server.js); overridable by env.
 const CODEX_DEFAULT_MODEL = 'gpt-6-astra';
+// Codex is an agent that can run commands and read files; the review is of the pack alone.
+const CODEX_PREAMBLE = 'Answer from the material below only. Do not run commands, open files or browse; the diagrams are the whole input, and the code is deliberately not part of this review.';
 // Includes thinking tokens; the scheduled runner reserves this maximum for each lens.
 const MAX_OUTPUT_TOKENS = 30000;
 
@@ -276,7 +279,12 @@ function codex(model, prompt, opts = {}) {
   const bin = opts.bin ?? codexBin();
   const timeoutMs = opts.timeoutMs ?? timeoutFromEnv();
   const effort = opts.effort ?? process.env.DIAGRAM_REVIEW_THINKING ?? 'high';
-  const args = ['exec', '--json', '--skip-git-repo-check', '--model', model, '-c', `model_reasoning_effort="${effort}"`, '-'];
+  // `codex exec` is an agent, not a single completion. Contain it: an empty scratch working
+  // directory, a read-only sandbox (no writes, no commands that change anything) and no session
+  // file, so the private pack is not left under CODEX_HOME/sessions. It can still READ any file the
+  // cron user can read; the instruction below is a prompt-level limit, not a technical one.
+  const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-audit-'));
+  const args = ['exec', '--json', '--skip-git-repo-check', '--ephemeral', '--sandbox', 'read-only', '-C', scratch, '--model', model, '-c', `model_reasoning_effort="${effort}"`, '-'];
   const env = { ...process.env, AGENTBOX_AGENT_ID: 'diagram-review-audit' };
   const home = codexHome(process.env);
   if (home) env.CODEX_HOME = home;
@@ -285,7 +293,7 @@ function codex(model, prompt, opts = {}) {
     const out = [];
     const err = [];
     const child = (opts.spawn ?? spawn)(bin, args, { env, stdio: ['pipe', 'pipe', 'pipe'] });
-    const finish = (fn, v) => { if (!done) { done = true; clearTimeout(timer); fn(v); } };
+    const finish = (fn, v) => { if (!done) { done = true; clearTimeout(timer); fs.rmSync(scratch, { recursive: true, force: true }); fn(v); } };
     const timer = setTimeout(() => {
       finish(reject, new Error(`codex exec timed out after ${timeoutMs / 1000} s (not retried, it may already be billed)`));
       child.kill('SIGKILL');
@@ -379,7 +387,7 @@ async function main(argv, deps = {}) {
     let text; let usage; let finish;
     if (isCodex) {
       // The pack first and the lens last, as for Gemini, so a provider cache can serve the pack.
-      const r = await (deps.codex ?? codex)(model, `${pack}\n\n${lens.text}`, { timeoutMs });
+      const r = await (deps.codex ?? codex)(model, `${CODEX_PREAMBLE}\n\n${pack}\n\n${lens.text}`, { timeoutMs });
       text = r.text;
       usage = r.usage ? {
         prompt_tokens: r.usage.input_tokens, cached_tokens: r.usage.cached_input_tokens ?? 0,

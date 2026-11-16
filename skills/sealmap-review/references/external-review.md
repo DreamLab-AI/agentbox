@@ -14,7 +14,8 @@
 | Variable | Default | Effect |
 |---|---|---|
 | `GEMINI_API_KEY` (or `GOOGLE_GEMINI_API_KEY`) | none | AI Studio key, read from the environment only. In agentbox it reaches the container from `.env` via `docker-compose.yml`. |
-| `DIAGRAM_REVIEW_MODEL` | `gemini-3.8-flash` | model id on `generativelanguage.googleapis.com/v1beta` |
+| `DIAGRAM_REVIEW_MODEL` | `gemini-3.8-flash` | model id on `generativelanguage.googleapis.com/v1beta` (with `--provider codex`: a Codex model id, default `gpt-6-astra`) |
+| `--provider codex` | off | run the Codex CLI instead of Gemini (stdin, read-only sandbox, ephemeral); needs `OPENAI_API_KEY` or a `codex login`. This is what the scheduled audit uses (ADR-2131, amended 2026-11-16). Findings and usage land in the same manifest shape. |
 | `DIAGRAM_REVIEW_THINKING` | `high` | `thinkingConfig.thinkingLevel` |
 | `DIAGRAM_REVIEW_TIMEOUT_MS` | 1800000 | overall deadline for each API call, in ms |
 
