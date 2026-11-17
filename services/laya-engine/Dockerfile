@@ -30,10 +30,19 @@ FROM ${RUST_IMAGE} AS facade-builder
 
 WORKDIR /build
 # reqwest is built with rustls (workspace feature set), so no OpenSSL here.
-COPY --from=crates . /build/system-one
+# Copy the workspace sources explicitly: named local contexts can otherwise
+# sweep a worker's multi-GB target/ into the builder layer and hide it under
+# the cache mount below. Keep this list in step with workspace members.
+COPY --from=crates Cargo.toml Cargo.lock /build/system-one/
+COPY --from=crates system-one-core /build/system-one/system-one-core
+COPY --from=crates system-one-client /build/system-one/system-one-client
+COPY --from=crates system-one-facade /build/system-one/system-one-facade
+COPY --from=crates system-one-eval /build/system-one/system-one-eval
+COPY --from=crates system-one-proxy /build/system-one/system-one-proxy
+ARG CARGO_BUILD_JOBS=12
 RUN --mount=type=cache,target=/usr/local/cargo/registry,sharing=locked \
     --mount=type=cache,target=/build/system-one/target,sharing=locked \
-    cargo build --release --manifest-path /build/system-one/Cargo.toml \
+    cargo build --locked --release --manifest-path /build/system-one/Cargo.toml \
         --bin system-one-facade --bin system-one-eval \
     && mkdir -p /out \
     && cp /build/system-one/target/release/system-one-facade \
