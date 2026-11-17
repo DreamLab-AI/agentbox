@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: c7c2f76b93bfe81dadd8e3bb8c3104cda6b57bec
+verified_commit: 8c895455ae96bf3c1b07c56dc1c2756b23f22a80
 verified_paths: [management-api/lib/ontology-apply.js, management-api/lib/ontology-propose.js, management-api/lib/kg-proposal-extractor.js, management-api/lib/elevation-publisher.js, management-api/routes/kg-elevation.js, management-api/adapters/orchestrator/local-process-manager.js, management-api/tests/ontology-apply.test.js, management-api/tests/ontology-propose-vault.test.js]
 owner: jjohare
 review_trigger: the `vault` binary landing on PATH (VisionClaw WS-C), or Loom deploying `/loom/attest` (WS-H)
@@ -161,3 +161,5 @@ Governed-path delta since `3e3e09b1d` is the RuVector Postgres credential custod
 - `management-api/adapters/orchestrator/local-process-manager.js`: `RUVECTOR_PG_CONNINFO` is removed from the child env allowlist.
 
 Nothing this record decides is changed; its status axes are unchanged. Re-run: `git diff 3e3e09b1d..cc949bb79 -- management-api/adapters/orchestrator/local-process-manager.js`.
+
+**Re-verified 2026-11-17 at 8c895455a (consistent; strengthens the publisher end).** Two changes touch this record's governed paths and neither alters what it decides. (1) `management-api/adapters/orchestrator/local-process-manager.js:586` matches the stored forum request on `ACTION_REQUEST` from `lib/governance-contract.js` rather than the literal 31402 (same value). (2) `management-api/lib/elevation-publisher.js` no longer fails silently when federation is unavailable: the start-up no-op now logs a warning (`elevation-publish.disabled`), the first skipped publish logs one more (`noteSkip`, `:94`), every skip, failure and success is counted, and `status()` returns `{ configured, reason, published, skipped, failed, last_error }`; `publicStatus()` (`:286`) reduces that to counts and a fixed reason class for `/ready`, which lists the publisher under `components` and as degraded (`management-api/server.js:570-576`). `management-api/routes/kg-elevation.js:86` adds `GET /v1/kg-elevation/federation` with the full status, and builds no publisher when the `kg_elevation` gate is off. The publisher still never throws into the request path and still returns the beam-and-propose response unchanged, so Decision 1 to 12 (the vault-edit apply path, the signed IRI, the fail-open Loom ledger) are unaffected. Whether that route is behind the management API's authentication was not checked here; the code comment says it is.

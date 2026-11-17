@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: e188960d90d78e11c99cf599b60c416bd3df02e5
+verified_commit: 8c895455ae96bf3c1b07c56dc1c2756b23f22a80
 verified_paths: [scripts/ci/check-ports-loopback.sh, scripts/ci/check-ports-loopback.mjs, tests/security/ports-gate.test.mjs, .github/workflows/invariants.yml, flake.nix, docker-compose*.yml]
 owner: jjohare
 review_trigger: Any new entry on the SANCTIONED list, or a new compose overlay file
@@ -536,3 +536,12 @@ Re-verified 2026-11-11 at `2c4b365b4` (ADR-2196, second pass). Governed-path del
 ## Scoped source check — 2026-11-16
 
 The only change to this record's governed paths since its previous `verified_commit` is `25f751250` plus `e188960d9` (a `flake.nix` PATH edit for the same leg) (the diagram-review audit leg: `[diagram_review]` keys `gemini_*` renamed `audit_*` with aliases, `producer_family` added, system-manifest and setup-seed text, a supervisor comment; ADR-2131 amendment of the same date). Checked mechanically: nothing else touched these paths in between. The change does not concern this record's decision, and its claims were not otherwise re-read. Decision and status axes are unchanged.
+
+**Amendment (2026-11-17).** The sidecar ports are no longer sanctioned; they publish on a loopback default. Merged to main at `8c895455a` (`fix/estate-review-hardening`). This replaces the Decision's enumeration of sanctioned exposures that includes browsercontainer 5903/8931/9222, gui-tools 5905/9876/9877 and xr-runtime 5904, and the Acceptance note "Sanctioned list - ten entries, not two". What is true now:
+
+- `SANCTIONED` (`scripts/ci/check-ports-loopback.mjs:100-104`) has three entries: `docker-compose.yml` 9096 and `docker-compose.voice.yml` 8443 and 8444. The seven sidecar entries are gone.
+- The seven sidecar ports are published as `${AGENTBOX_SIDECAR_BIND:-127.0.0.1}:<port>:<target>` (`docker-compose.browsercontainer.yml:48-53`, `docker-compose.gui-tools.yml:46-50`, `docker-compose.xr-runtime.yml:64`). Loopback is the default; exporting one address before `docker compose up` moves every sidecar port together to that address.
+- This narrows the 2026-11-14 statement that the gate rejects interpolated binds: exactly one form is now accepted, `${AGENTBOX_SIDECAR_BIND:-127.0.0.1}:` as a host prefix, and only in the three files in `SIDECAR_BIND_FILES` (`:97-98`, `:535-542`, `:657-660`). Any other interpolation, the same variable in another file, a non-loopback default, and a sidecar port left on `0.0.0.0` all fail. `tests/security/ports-gate.test.mjs` adds three reject cases and one accept case.
+- Limit, stated plainly: CI now proves the default, not the deployed address. Setting `AGENTBOX_SIDECAR_BIND=0.0.0.0` publishes seven unauthenticated ports (VNC, CDP, browser MCP, Blender and QGIS MCP) and the gate still passes, because it cannot see the environment. `docs/LAN-door-threat-model.md` now says a LAN bind is not an authentication mechanism, and the browsercontainer and gui-tools READMEs say `0.0.0.0` belongs only on a trusted network. This record's `review_trigger` names new `SANCTIONED` entries and new overlays but not a change to `SIDECAR_BIND_FILES`; the trigger was left as written.
+
+Checked: `node scripts/ci/check-ports-loopback.mjs` exits 0 (15 compose files, 14 port blocks; listener audit unchanged) and `node --test tests/security/ports-gate.test.mjs` passes 1 of 1. The running sidecars were not inspected: a container created before this commit keeps its old publish until recreated, so the 9096 and voice facts hold while the sidecar change takes effect at the next `docker compose up`. Status axes are unchanged; `implementation_status: partial` retains its existing reasons (resolved deployment input is not audited).

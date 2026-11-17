@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: 350772de92685339dfff117e66088d8adeb44bec
+verified_commit: 8c895455ae96bf3c1b07c56dc1c2756b23f22a80
 verified_paths: [agentbox.toml, schema/agentbox.toml.schema.json, scripts/agentbox-config-validate.js, config/entrypoint-unified.sh, config/hooks/skill-route.cjs, config/hooks/lib/skill-route.cjs, skills/skill-router/scripts/route.mjs, config/egress-policy.json, tests/config/skill-route.test.js]
 owner: jjohare
 review_trigger: the first project whose content must not reach the judge, or any proposal to widen this beyond skill routing
@@ -198,3 +198,5 @@ Re-verified 2026-11-11 at `f475e0b8e` (ADR-2196, removal of the dead `skills.bro
 ## Scoped source check — 2026-11-16
 
 The only change to this record's governed paths since its previous `verified_commit` is `25f751250` (the diagram-review audit leg: `[diagram_review]` keys `gemini_*` renamed `audit_*` with aliases, `producer_family` added, system-manifest and setup-seed text, a supervisor comment; ADR-2131 amendment of the same date). Checked mechanically: nothing else touched these paths in between. The change does not concern this record's decision, and its claims were not otherwise re-read. Decision and status axes are unchanged.
+
+**Amendment (2026-11-17).** The shipped default no longer egresses. The cross-reference of 2026-10-03 says the router sends the user's turn to `api.typesafe.ai`, and the Decision says routing may egress by default. On main at `8c895455a` the shipped `[system_one].backend` is `laya` (`agentbox.toml:915`, ADR-2139 amendment of the same date), and the skill router is one of the consumers that follows `backend` (comment at `agentbox.toml:918-924`). With the System One proxy on, as shipped, the router's escalation is therefore a keyless LAN call and the user's turn does not leave the LAN. `DEFAULT_API = 'https://api.typesafe.ai/v1/systemone'` (`config/hooks/lib/skill-route.cjs:36`) still applies when the proxy is off, and egress to TypeSafe returns when the operator selects a cloud backend. The decision (routing prompts may egress to the judge, per-project bypass deferred then built) is unchanged and still permits it; only the default state of the system changed. The register row for `skill-router` in `config/egress-policy.json` describes the route's maximum and was not edited. The router's accuracy cost under laya is recorded in the ADR-2139 amendment. Source reading only; no router call was made.
