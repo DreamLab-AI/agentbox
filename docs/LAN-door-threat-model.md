@@ -10,8 +10,8 @@ separate evidence.
 |---|---|---|
 | AoE via NIP-98 proxy :9096 | Proxy verifies request identity; loopback AoE :9095 independently requires bearer token | Same-UID readers are not isolated from owner-only files; no per-agent confinement claim |
 | Desktop VNC | Loopback host publish; wayvnc/x11vnc explicitly sanctioned as unauthenticated container listeners | Docker siblings remain trusted for this profile; no LAN publication added |
-| Browser CDP / browser automation sidecar | Separate compose publications, enumerated in check-ports-loopback SANCTIONED | CDP can drive authenticated browser state; the sanctioned publication is not an authentication mechanism |
-| Voice and GUI tools | Separate sanctioned voice/UI/MCP publications | Endpoint-specific credentials/transport must be reviewed; AoE NIP-98 does not protect these ports |
+| Browser CDP / browser automation sidecar | Separate compose publications bound to `${AGENTBOX_SIDECAR_BIND:-127.0.0.1}` (loopback unless the owner sets the variable); no longer in check-ports-loopback SANCTIONED | CDP can drive authenticated browser state; a LAN bind is not an authentication mechanism |
+| Voice and GUI tools | Voice stays a sanctioned publication; GUI tools (VNC, Blender/QGIS MCP) bind `${AGENTBOX_SIDECAR_BIND:-127.0.0.1}` | Endpoint-specific credentials/transport must be reviewed; AoE NIP-98 does not protect these ports |
 | Nostr relay | Allowlist admission and local bridge; expose=false | Rail/LAN opening deferred until distinct publisher custody and bilateral admission receipts |
 | Loom façade :8084 | Named outbound grounding service; caller trusts the selected service | Generation response is service identity, not cryptographic remote attestation; mismatched content/model refused by staged client |
 | Loom raw model :8085 | Named agent-choice/benchmark egress | No automatic fallback for knowledge work; purpose restriction remains policy, not runtime isolation |

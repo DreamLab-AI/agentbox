@@ -45,12 +45,12 @@ services:
               device_ids: ['${NVIDIA_VISIBLE_DEVICES:-all}']
     ports:
       # VNC: view Chrome desktop
-      - "0.0.0.0:5903:5903"
+      - "${AGENTBOX_SIDECAR_BIND:-127.0.0.1}:5903:5903"
       # MCP SSE: chrome-devtools-mcp bridge (agents connect here)
-      - "0.0.0.0:8931:8931"
+      - "${AGENTBOX_SIDECAR_BIND:-127.0.0.1}:8931:8931"
       # CDP proxy: host:9222 → socat:9223 → Chrome:9222
       # socat rebinds so CDP /json/list returns connectable ws:// URLs
-      - "0.0.0.0:9222:9223"
+      - "${AGENTBOX_SIDECAR_BIND:-127.0.0.1}:9222:9223"
     networks:
       - visionclaw
     shm_size: '2gb'

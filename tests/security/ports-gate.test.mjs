@@ -80,6 +80,15 @@ const CASES = [
   ['environment interpolation in the host address', 1, {
     'docker-compose.yml': 'services:\n  fixture:\n    image: fixture:no-launch\n    ports:\n      - "${HOST:-0.0.0.0}:45678:45678"\n',
   }],
+  ['sidecar bind variable outside the sidecar files', 1, {
+    'docker-compose.yml': 'services:\n  fixture:\n    image: fixture:no-launch\n    ports:\n      - "${AGENTBOX_SIDECAR_BIND:-127.0.0.1}:45678:45678"\n',
+  }],
+  ['sidecar bind variable with a non-loopback default', 1, {
+    'docker-compose.gui-tools.yml': 'services:\n  fixture:\n    image: fixture:no-launch\n    ports:\n      - "${AGENTBOX_SIDECAR_BIND:-0.0.0.0}:5905:5905"\n',
+  }],
+  ['sidecar port left on 0.0.0.0 (no longer sanctioned)', 1, {
+    'docker-compose.browsercontainer.yml': 'services:\n  fixture:\n    image: fixture:no-launch\n    ports:\n      - "0.0.0.0:5903:5903"\n',
+  }],
   ['port range', 1, {
     'docker-compose.yml': 'services:\n  fixture:\n    image: fixture:no-launch\n    ports:\n      - "127.0.0.1:45000-45005:45000-45005"\n',
   }],
@@ -145,6 +154,9 @@ const CASES = [
   }],
   ['a sanctioned mapping in its governing file', 0, {
     'docker-compose.yml': 'services:\n  fixture:\n    image: x\n    ports:\n      - "9096:9096"\n',
+  }],
+  ['sidecar bind variable with loopback default in a sidecar file', 0, {
+    'docker-compose.gui-tools.yml': 'services:\n  fixture:\n    image: x\n    ports:\n      - "${AGENTBOX_SIDECAR_BIND:-127.0.0.1}:5905:5905"\n',
   }],
   ['comments and block scalars do not confuse the parser', 0, {
     'docker-compose.yml': 'services:\n  fixture:\n    image: x   # trailing comment\n    command: |\n      ports:\n        - "0.0.0.0:45678:45678"\n    ports:\n      # a comment inside the block\n      - "127.0.0.1:45678:45678"\n',

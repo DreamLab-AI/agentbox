@@ -43,11 +43,11 @@ services:
               device_ids: ['${NVIDIA_VISIBLE_DEVICES:-all}']
     ports:
       # VNC: view the Blender/QGIS desktop
-      - "0.0.0.0:5905:5905"
+      - "${AGENTBOX_SIDECAR_BIND:-127.0.0.1}:5905:5905"
       # BlenderMCP socket (agentbox proxy / uvx blender-mcp connect here)
-      - "0.0.0.0:9876:9876"
+      - "${AGENTBOX_SIDECAR_BIND:-127.0.0.1}:9876:9876"
       # QGIS MCP endpoint (stub)
-      - "0.0.0.0:9877:9877"
+      - "${AGENTBOX_SIDECAR_BIND:-127.0.0.1}:9877:9877"
     networks:
       - visionclaw
     expose:

@@ -912,10 +912,36 @@ usd_per_mtok_in = 0.042          # input price used for the /jev-checkpoints cos
 #                   off-LAN url), W076 (active vendor).
 enabled = true
 local_backend = "laya"           # keyless LAN route for private-data consumers
-backend = "typesafe"               # typesafe | subq | laya | kev | any [system_one.backends.<name>]
+backend = "laya"                   # LOCAL by default (2026-11-15 estate review): nothing leaves the LAN. typesafe | subq | laya | kev | any [system_one.backends.<name>]; a cloud vendor is an explicit opt-in (see local_only)
 bind = "0.0.0.0:8094"            # private docker networks only (never published); this container dials loopback
 network = true                   # host containers on visionclaw_network reach it as agentbox:8094 (ADR-2139, 2026-10-30)
-local_only = []                  # consumers pinned to local_backend for private data; empty = all take the selected backend
+# Consumers pinned to local_backend for private data. Every consumer that has a private
+# route is listed, so even if `backend` is later switched to a cloud vendor these stay on
+# the keyless LAN route (ALLOW_CLOUD=0). A consumer opts IN to the cloud vendor by being
+# removed from this list AND `backend` being switched to that vendor
+# (`./agentbox.sh systemone backend <name>`; local→cloud needs a restart). Consumers
+# with no private route (skill router, factrail compaction, advisor checkpoints) follow
+# `backend`, which is local.
+local_only = [
+  "failure_taxonomy",
+  "manifest_plan",
+  "voice_intent",
+  "approval_review",
+  "memory_rerank",
+  "headroom_evidence",
+  "consult_advice",
+  "trajectory_classify",
+  "ontology_relevance",
+  "ontology_rerank",
+  "ontology_proposals",
+  "governance_rubric",
+  "dream_triage",
+  "visionflow_advisories",
+  "website_advisories",
+  "solid_pod_advisories",
+  "vault_rank",
+  "ontomark_suggestions",
+]
 skill_list_at_least = 0.6        # skill router lists runner-ups at/above this verify rate (measured 2026-10-29; needs consumers.skill_verify)
 log = "/home/devuser/.local/share/system-one-proxy/requests.jsonl"  # one line per request: backend, status, ms, tokens — never content
 

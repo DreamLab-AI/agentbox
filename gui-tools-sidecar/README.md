@@ -70,3 +70,5 @@ the existing socket. Startup exposes its gateway internally at
 is published. Set `DCC_MCP_ENABLED=0` to disable it. See the Blender skill's
 [control-plane reference](../skills/blender/references/control-planes.md).
 `python-cattrs` is installed for Blender 5.2's extension-manager imports.
+
+**Host publish address (`AGENTBOX_SIDECAR_BIND`)**: these ports have no authentication, so the sidecar compose files (`docker-compose.browsercontainer.yml`, `docker-compose.gui-tools.yml`, `docker-compose.xr-runtime.yml`) publish them on `${AGENTBOX_SIDECAR_BIND:-127.0.0.1}`. The default is loopback. To let a second machine reach them, export one LAN address (for example `AGENTBOX_SIDECAR_BIND=192.168.2.10`) before `docker compose up`; that moves every sidecar port together. `0.0.0.0` publishes on every interface and should only be used on a trusted network. `scripts/ci/check-ports-loopback.sh` accepts this variable only in those three files and only with the loopback default. The in-container listeners stay on `0.0.0.0` because the agentbox proxy reaches them across the docker network.
