@@ -1,0 +1,1 @@
+Copied verbatim from nostr-rust-forum contracts/governance/v1 at commit da0eee5 (branch feat/governance-contract-v1, 2026-11-15). Refresh by re-copying; never edit v1 by hand.

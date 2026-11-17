@@ -1,6 +1,7 @@
 'use strict';
 
 const { createHash } = require('node:crypto');
+const { ACTION_REQUEST, ACTION_RESPONSE } = require('./governance-contract');
 
 function content(event) {
   try { return typeof event?.content === 'string' ? JSON.parse(event.content) : (event?.content || {}); }
@@ -19,7 +20,7 @@ function requestReference(event) {
   return ids.size === 1 ? [...ids][0] : null;
 }
 function responseMatchesRequest(response, request) {
-  if (response?.kind !== 31403 || request?.kind !== 31402 || !request.id
+  if (response?.kind !== ACTION_RESPONSE || request?.kind !== ACTION_REQUEST || !request.id
       || requestReference(response) !== request.id) return false;
   const d = tag(response, 'd');
   if (d && d !== tag(request, 'd')) return false;

@@ -1,0 +1,18 @@
+{
+  "content": "{\"action\":\"promote\",\"case_id\":\"urn:agentbox:thing:golden:proposal-0123456789ab\",\"iri\":\"urn:ngm:class:golden-example\",\"reasoning\":\"The definition matches the cited sources and the diff is limited to the stated page.\"}",
+  "created_at": 1790078460,
+  "id": "4c4695d51452f59da530ff38a4aaa4aa71ec7cc0f2fc1fa3111141f587958fa1",
+  "kind": 31403,
+  "pubkey": "466d7fcae563e5cb09a0d1870bb580344804617879a14949cf22285f1bae3f27",
+  "sig": "4b5c8f6f70d569b74928dd62788fe7ffc9dfd76c2ca2db492c6da8228785a1c4b873bd536480b62c4551bdceec2884809500b91f3c3975ebccef82c2d1add8f8",
+  "tags": [
+    [
+      "d",
+      "urn:agentbox:thing:golden:proposal-0123456789ab"
+    ],
+    [
+      "e",
+      "ef6ec8ae957aab07c2b6af4ccd69bdae182d0bac32a0ae072d55399d7db0d2f4"
+    ]
+  ]
+}

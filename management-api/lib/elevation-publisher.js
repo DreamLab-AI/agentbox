@@ -18,9 +18,12 @@
  *
  * Standalone-or-federated contract (ADR-005):
  *   - The publisher is built ONCE at boot with the resolved manifest. It is a
- *     no-op (returns `{ published: false, reason }`, logged at debug) whenever
- *     the federation surface is unavailable: nostr_bridge gate off, NOSTR_RELAYS
- *     empty, no signing stack, nostr-tools absent, or the key won't decrypt.
+ *     no-op (returns `{ published: false, reason }`) whenever the federation
+ *     surface is unavailable: nostr_bridge gate off, NOSTR_RELAYS empty, no
+ *     signing stack, nostr-tools absent, or the key won't decrypt. A no-op is
+ *     never silent: one warning at start-up, one on the first skipped publish,
+ *     every skip counted, and `status()` reports `{ configured, skipped,
+ *     last_error }` for the management API's status routes.
  *   - It NEVER throws into the request path: a relay/signing failure for one
  *     proposal degrades to a logged no-op and the existing beam+propose response
  *     is returned unchanged. Federation is additive, never load-bearing.
@@ -75,11 +78,36 @@ function nostrBridgeEnabled(manifest) {
  * @param {Function} [deps.publishPanelEvent] - override for tests
  * @param {object}   [deps.signerOpts]        - forwarded to loadSigner
  * @returns {{ enabled: boolean, reason: string|null,
- *             publish(proposal: object): Promise<object> }}
+ *             publish(proposal: object): Promise<object>,
+ *             status(): { configured: boolean, reason: string|null, published: number,
+ *                         skipped: number, failed: number, last_error: string|null } }}
  */
 function buildElevationPublisher(manifest, deps = {}) {
   const env = deps.env || process.env;
   const logger = deps.logger || { debug() {}, warn() {} };
+
+  // Observable counters: a skipped publish must be visible, not just logged at
+  // debug. `skipped` = never attempted (federation unavailable); `failed` =
+  // attempted and errored.
+  const counters = { published: 0, skipped: 0, failed: 0, lastError: null };
+  let warnedSkip = false;
+  const noteSkip = (why) => {
+    counters.skipped += 1;
+    counters.lastError = why;
+    if (!warnedSkip) {
+      warnedSkip = true;
+      logger.warn({ event: 'elevation-publish.skipped', reason: why },
+        'elevation→Nostr publish SKIPPED — proposals are not reaching the forum; further skips are counted, not logged');
+    }
+  };
+  const buildStatus = (configured, reason) => () => ({
+    configured: configured(),
+    reason: reason(),
+    published: counters.published,
+    skipped: counters.skipped,
+    failed: counters.failed,
+    last_error: counters.lastError,
+  });
   const publishPanelEvent = deps.publishPanelEvent || acs.publishPanelEvent;
 
   // ── Static eligibility (decided once, at boot) ──
@@ -95,12 +123,14 @@ function buildElevationPublisher(manifest, deps = {}) {
   }
 
   if (reason) {
-    logger.debug({ event: 'elevation-publish.disabled', reason },
-      'elevation→Nostr federation inert (standalone or unconfigured)');
+    counters.lastError = reason;
+    logger.warn({ event: 'elevation-publish.disabled', reason },
+      'elevation→Nostr federation NOT configured — governed elevation proposals will not be published');
     return {
       enabled: false,
       reason,
-      async publish() { return { published: false, reason }; },
+      async publish() { noteSkip(reason); return { published: false, reason }; },
+      status: buildStatus(() => false, () => reason),
     };
   }
 
@@ -138,6 +168,7 @@ function buildElevationPublisher(manifest, deps = {}) {
     } catch (err) {
       loadFailed = true;
       loadFailReason = err.message;
+      counters.lastError = err.message;
       logger.warn({ event: 'elevation-publish.load-failed', err: err.message },
         'elevation→Nostr federation unavailable — signing/bridge load failed');
       return false;
@@ -151,7 +182,9 @@ function buildElevationPublisher(manifest, deps = {}) {
    */
   async function publish(proposal) {
     if (!ensureConnected()) {
-      return { published: false, reason: loadFailReason || 'load-failed' };
+      const why = loadFailReason || 'load-failed';
+      noteSkip(why);
+      return { published: false, reason: why };
     }
     if (!proposal || !proposal.proposal_urn) {
       return { published: false, reason: 'invalid-proposal' };
@@ -211,6 +244,7 @@ function buildElevationPublisher(manifest, deps = {}) {
         { event: 'elevation-publish.ok', proposal_urn: proposal.proposal_urn, event_id: signed && signed.id },
         'governed ontology-elevation proposal published to Nostr'
       );
+      counters.published += 1;
       const result = { published: true, event_id: signed ? signed.id : null, kind: unsigned.kind };
       // Jev option (ES-05-S1-01, off by default): an advisory evidence-quality signal bound to the
       // request digest, computed AFTER the card is built and signed, recorded in a sidecar and
@@ -227,11 +261,37 @@ function buildElevationPublisher(manifest, deps = {}) {
         { event: 'elevation-publish.error', proposal_urn: proposal && proposal.proposal_urn, err: err.message },
         'elevation→Nostr publish failed — degrading to no-op (beam+propose unaffected)'
       );
+      counters.failed += 1;
+      counters.lastError = err.message;
       return { published: false, reason: err.message };
     }
   }
 
-  return { enabled: true, reason: null, publish };
+  return {
+    enabled: true,
+    reason: null,
+    publish,
+    status: buildStatus(() => !loadFailed, () => (loadFailed ? loadFailReason : null)),
+  };
 }
 
-module.exports = { buildElevationPublisher, resolveRelays, nostrBridgeEnabled };
+const STATIC_REASONS = new Set(['nostr-bridge-gate-off', 'no-relays', 'no-signing-stack', 'kg-elevation-disabled']);
+
+/**
+ * The part of a publisher `status()` that is safe on a PUBLIC probe (/ready):
+ * the counts and a fixed reason class, never raw error text (which can carry
+ * hostnames or key-file paths). The full status stays on the authenticated
+ * GET /v1/kg-elevation/federation.
+ */
+function publicStatus(status) {
+  const reason = status.reason == null ? null : (STATIC_REASONS.has(status.reason) ? status.reason : 'load-failed');
+  return {
+    configured: status.configured,
+    reason,
+    published: status.published,
+    skipped: status.skipped,
+    failed: status.failed,
+  };
+}
+
+module.exports = { buildElevationPublisher, resolveRelays, nostrBridgeEnabled, publicStatus };

@@ -923,6 +923,9 @@
             # vendored sibling ./nostr-bridge (above). default-intent-spec is dependency-free.
             cp ${./mcp/nostr-bridge/relay-consumer.js} lib/relay-consumer.js
             cp ${./mcp/nostr-bridge/default-intent-spec.js} lib/default-intent-spec.js
+            # Governance contract (contracts/governance/v1): governance-contract.js reads the
+            # manifest from ./governance-contract-v1 beside itself when packaged.
+            cp -r --no-preserve=mode ${./contracts/governance/v1} lib/governance-contract-v1
           '';
         };
 
@@ -931,6 +934,13 @@
           name        = "nostr-bridge";
           src         = ./mcp;
           entry       = "servers/nostr-bridge.js";
+          # The standalone service package only contains ./mcp, so vendor the governance
+          # contract module and its manifest beside servers/nostr-bridge.js (which requires
+          # ./governance-contract first, the source-tree path second).
+          buildPhaseExtra = ''
+            cp ${./management-api/lib/governance-contract.js} servers/governance-contract.js
+            cp -r --no-preserve=mode ${./contracts/governance/v1} servers/governance-contract-v1
+          '';
           # Prefetched 2026-04-24 after regenerating mcp/package-lock.json
           # (the shipped lockfile predated the nostr-tools dep addition).
           # Refresh: nix run nixpkgs#prefetch-npm-deps -- mcp/package-lock.json

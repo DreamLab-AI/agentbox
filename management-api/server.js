@@ -465,6 +465,10 @@ function readySidechainProbes(manifest) {
   });
 }
 
+// The elevation → Nostr publisher, built at route mount when [sovereign_mesh].kg_elevation
+// is on. /ready reports it (degraded, never blocking) so a silent no-op is visible.
+let elevationPublisher = null;
+
 // Readiness probe — returns 503 until ALL requirements are satisfied.
 app.get('/ready', {
   schema: {
@@ -477,7 +481,9 @@ app.get('/ready', {
           ready:        { type: 'boolean' },
           since:        { type: 'string' },
           requirements: { type: 'array', items: { type: 'string' } },
-          degraded:     { type: 'array', items: { type: 'string' } }
+          degraded:     { type: 'array', items: { type: 'string' } },
+          // component -> { configured, skipped, last_error, ... } for optional hops that can no-op
+          components:   { type: 'object', additionalProperties: true }
         }
       },
       503: {
@@ -486,7 +492,8 @@ app.get('/ready', {
           ready:    { type: 'boolean' },
           reason:   { type: 'string' },
           missing:  { type: 'array', items: { type: 'string' } },
-          degraded: { type: 'array', items: { type: 'string' } }
+          degraded: { type: 'array', items: { type: 'string' } },
+          components: { type: 'object', additionalProperties: true }
         }
       }
     }
@@ -558,12 +565,23 @@ app.get('/ready', {
     if (tip.status !== 'healthy') degraded.push(`${chain}: ${tip.reason}`);
   }));
 
+  // The elevation publisher no-ops when relays or the signer are missing; say so.
+  const components = {};
+  if (elevationPublisher) {
+    // /ready is public: counts and a fixed reason class only. last_error is on the authenticated route.
+    const st = require('./lib/elevation-publisher').publicStatus(elevationPublisher.status());
+    components.elevation_publisher = st;
+    if (!st.configured) degraded.push(`elevation_publisher: not configured (${st.reason || 'unknown'}); ${st.skipped} publish(es) skipped`);
+    else if (st.skipped > 0 || st.failed > 0) degraded.push(`elevation_publisher: ${st.skipped} skipped, ${st.failed} failed`);
+  }
+
   if (missing.length > 0) {
     reply.code(503).send({
       ready: false,
       reason: `${missing.length} requirement(s) not met`,
       missing,
-      degraded
+      degraded,
+      components
     });
     return;
   }
@@ -572,7 +590,8 @@ app.get('/ready', {
     ready: true,
     since: bootstrapState.since,
     requirements: ['bootstrap.done', 'adapters:healthy', 'paths:accessible'],
-    degraded
+    degraded,
+    components
   };
 });
 
@@ -1069,8 +1088,11 @@ async function start() {
     // descriptors. Gated by [sovereign_mesh].kg_elevation (route self-gates).
     {
       try {
-        await app.register(require('./routes/kg-elevation'), { logger, manifest });
         const on = (manifest.sovereign_mesh || {}).kg_elevation === true;
+        if (on) {
+          elevationPublisher = require('./lib/elevation-publisher').buildElevationPublisher(manifest, { logger });
+        }
+        await app.register(require('./routes/kg-elevation'), { logger, manifest, elevationPublisher: elevationPublisher || undefined });
         logger.debug({ event: 'kg-elevation.mounted', enabled: on }, 'Personal-KG elevation route ready at /v1/kg-elevation/scan');
       } catch (err) {
         logger.error({ err: err.message }, 'Personal-KG elevation route failed to mount');

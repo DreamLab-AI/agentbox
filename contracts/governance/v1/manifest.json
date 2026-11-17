@@ -1,0 +1,267 @@
+{
+  "contract": "governance",
+  "enums": {
+    "action_priorities": [
+      "critical",
+      "high",
+      "medium",
+      "low"
+    ],
+    "action_styles": [
+      "primary",
+      "secondary",
+      "destructive"
+    ],
+    "case_categories": [
+      "contributor_mesh_share",
+      "workflow_review",
+      "policy_exception",
+      "trust_alert",
+      "manual_submission",
+      "knowledge_enrichment"
+    ],
+    "decision_actions": [
+      "approve",
+      "reject",
+      "amend",
+      "delegate",
+      "promote",
+      "demote",
+      "precedent"
+    ],
+    "field_types": [
+      "string",
+      "int",
+      "float",
+      "bool",
+      "json",
+      "enum",
+      "timestamp"
+    ],
+    "layout_hints": [
+      "inbox-table",
+      "kanban",
+      "card-grid",
+      "split-detail"
+    ],
+    "panel_capabilities": [
+      "bulk-action",
+      "filter",
+      "search",
+      "sort",
+      "export"
+    ],
+    "panel_schemas": [
+      "action-inbox",
+      "dashboard",
+      "config-form",
+      "status-board",
+      "chat-bridge"
+    ],
+    "receipt_stages": [
+      "signed",
+      "relay-accepted",
+      "projection-committed",
+      "projection-failed",
+      "consumer-received",
+      "applied",
+      "not-applied",
+      "applied-manually",
+      "escalated-on-age",
+      "expired"
+    ],
+    "reversibility": [
+      "reversible",
+      "compensable",
+      "irreversible"
+    ],
+    "risk_tiers": [
+      "low",
+      "medium",
+      "high",
+      "critical"
+    ],
+    "stakes": [
+      "bounded",
+      "significant",
+      "critical"
+    ],
+    "subject_kinds": [
+      "work_artifact",
+      "skill_package",
+      "automation_proposal",
+      "policy_exception",
+      "opaque"
+    ],
+    "verifiability": [
+      "inspectable",
+      "partial",
+      "opaque"
+    ]
+  },
+  "fixture_keys": {
+    "agent_pubkey": "4f355bdcb7cc0af728ef3cceb9615d90684bb5b2ca5f859ab0f0b704075871aa",
+    "human_pubkey": "466d7fcae563e5cb09a0d1870bb580344804617879a14949cf22285f1bae3f27"
+  },
+  "kind_range": {
+    "max": 31405,
+    "min": 31400
+  },
+  "kinds": [
+    {
+      "content_optional": [
+        "version",
+        "capabilities",
+        "refresh_secs",
+        "task_properties",
+        "calibration_sample_rate",
+        "max_pending_hours",
+        "probe_agent"
+      ],
+      "content_required": [
+        "title",
+        "description",
+        "schema",
+        "fields",
+        "actions",
+        "layout"
+      ],
+      "file": "31400-panel-definition.json",
+      "kind": 31400,
+      "name": "panel-definition",
+      "optional_tags": [
+        "tp-verifiability",
+        "tp-reversibility",
+        "tp-stakes",
+        "calibration-sample-rate",
+        "max-pending-hours",
+        "probe-agent"
+      ],
+      "publisher": "agent",
+      "required_tags": [
+        "d"
+      ]
+    },
+    {
+      "content_optional": [],
+      "content_required": [],
+      "file": "31401-panel-state.json",
+      "kind": 31401,
+      "name": "panel-state",
+      "optional_tags": [],
+      "publisher": "agent",
+      "required_tags": [
+        "d"
+      ]
+    },
+    {
+      "content_optional": [
+        "reasoning",
+        "context_url",
+        "risk_tier",
+        "confidence",
+        "task_properties",
+        "probe"
+      ],
+      "content_required": [
+        "fields"
+      ],
+      "file": "31402-action-request.json",
+      "kind": 31402,
+      "name": "action-request",
+      "optional_tags": [
+        "a",
+        "priority",
+        "category",
+        "subject-kind",
+        "subject-id",
+        "title",
+        "risk-tier",
+        "context_url",
+        "tp-verifiability",
+        "tp-reversibility",
+        "tp-stakes",
+        "probe"
+      ],
+      "publisher": "agent",
+      "required_tags": [
+        "d"
+      ]
+    },
+    {
+      "content_optional": [
+        "reasoning",
+        "case_id",
+        "iri",
+        "diff",
+        "delegate_to",
+        "scope"
+      ],
+      "content_required": [
+        "action"
+      ],
+      "file": "31403-action-response.json",
+      "kind": 31403,
+      "name": "action-response",
+      "optional_tags": [],
+      "publisher": "human",
+      "required_tags": [
+        "d",
+        "e"
+      ]
+    },
+    {
+      "content_optional": [],
+      "content_required": [],
+      "file": "31404-panel-update.json",
+      "kind": 31404,
+      "name": "panel-update",
+      "optional_tags": [],
+      "publisher": "agent",
+      "required_tags": [
+        "d"
+      ]
+    },
+    {
+      "content_optional": [],
+      "content_required": [],
+      "file": "31405-panel-retired.json",
+      "kind": 31405,
+      "name": "panel-retired",
+      "optional_tags": [],
+      "publisher": "agent",
+      "required_tags": [
+        "d"
+      ]
+    }
+  ],
+  "rules": {
+    "d_tag_required_non_empty": true,
+    "default_calibration_sample_rate": 0.1,
+    "default_max_pending_hours": 72,
+    "min_human_rationale_chars": 20,
+    "rationale_required_actions": [
+      "approve",
+      "reject",
+      "amend",
+      "delegate",
+      "promote",
+      "demote"
+    ],
+    "rationale_required_tiers": [
+      "high",
+      "critical"
+    ],
+    "response_binds_request_by": "e tag carrying the 31402 event id; d tag equals the 31402 d tag (the case id)"
+  },
+  "tag_names": {
+    "calibration_sample_rate": "calibration-sample-rate",
+    "max_pending_hours": "max-pending-hours",
+    "probe": "probe",
+    "probe_agent": "probe-agent",
+    "task_reversibility": "tp-reversibility",
+    "task_stakes": "tp-stakes",
+    "task_verifiability": "tp-verifiability"
+  },
+  "version": 1
+}

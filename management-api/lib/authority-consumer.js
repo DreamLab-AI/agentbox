@@ -44,7 +44,8 @@ const authz = require('./authz');
 
 const { requestReference, responseMatchesRequest } = require('./governance-correlation');
 
-const ACTION_RESPONSE_KIND = acs.kinds.ACTION_RESPONSE; // 31403 — we CONSUME
+const governanceContract = require('./governance-contract');
+const ACTION_RESPONSE_KIND = acs.kinds.ACTION_RESPONSE; // the signed decision kind — we CONSUME
 const DEFAULT_TIMEOUT_MS = 120000;
 const DECIDED_CACHE_MAX = 512; // bound the decided-request cache
 
@@ -102,7 +103,12 @@ function buildActionResponse(p = {}) {
   if (p.requesterPubkey) tags.push(['p', p.requesterPubkey]);
   tags.push(['t', 'action-response']);
 
+  // `action` is the contract's decision field (forum DecisionOutcome, serde tag
+  // "action"); without it the forum cannot parse this as a decision. `outcome`
+  // stays for agentbox's own readers (authority.readOutcome reads outcome ?? action).
+  // `defer` has no contract equivalent, so it carries `outcome` only.
   const content = JSON.stringify({
+    ...(governanceContract.ENUMS.decision_actions.includes(outcome) ? { action: outcome } : {}),
     outcome,
     case_id: typeof p.caseId === 'string' ? p.caseId : null,
     reasoning: typeof p.reasoning === 'string' ? p.reasoning : null,
