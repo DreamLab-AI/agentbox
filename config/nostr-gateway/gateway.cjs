@@ -175,7 +175,20 @@ const relayUrl = /^wss?:\/\//i.test(process.env.NOSTR_MIRROR_RELAY || '') ? proc
 
 // ── singleton lock (survives concurrent SessionStart nudges) ────────────────
 fs.mkdirSync(INBOX, { recursive: true });
-function alive(pid) { try { process.kill(pid, 0); return true; } catch { return false; } }
+// A lock holder counts only if it is a live GATEWAY. PIDs restart from low
+// numbers on every container boot, so a stale lock's PID is usually in use by
+// something else (even another process's thread id answers kill(pid, 0)).
+function alive(pid) {
+  if (pid === process.pid) return false; // our own PID in the file is a previous boot's
+  try { process.kill(pid, 0); } catch { return false; }
+  try {
+    // A thread id has a /proc entry too, carrying its owner's command line
+    // (possibly ours): only a thread-group leader is a process.
+    const tgid = /^Tgid:\s*(\d+)/m.exec(fs.readFileSync(`/proc/${pid}/status`, 'utf8'));
+    if (!tgid || Number(tgid[1]) !== pid) return false;
+    return fs.readFileSync(`/proc/${pid}/cmdline`, 'utf8').split('\0').some((a) => path.basename(a) === path.basename(__filename));
+  } catch { return !fs.existsSync('/proc/self/cmdline'); } // no procfs at all: fall back to the signal check
+}
 function acquire() {
   try { fs.writeFileSync(LOCK, String(process.pid), { flag: 'wx' }); return true; }
   catch {
