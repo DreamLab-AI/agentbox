@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: [ADR-2002, ADR-2063, ADR-2079]
 superseded_by: []
-verified_commit: 8c895455ae96bf3c1b07c56dc1c2756b23f22a80
+verified_commit: 2e4c7032bbde20d63fb43737ddb1f9bb6f85e942
 verified_paths: [services/agentbox-sessions, config/session-plane, lib/agentbox-sessions.nix, flake.nix, flake.lock, agentbox.toml, config/entrypoint-unified.sh, config/role-accounts.json, config/custody/session-plane-acl.json, config/tab0-bridge, config/nostr-gateway/gateway.cjs, config/nip98-proxy, config/tmux-autostart.sh, config/hooks/session-state.cjs, config/registered-hooks.txt, scripts/session-provision.mjs, scripts/session-control.cjs, scripts/activation/session-plane-acceptance.mjs, management-api/lib/system-manifest.js, schema/agentbox.toml.schema.json, services/agentbox-manifest/src/stacks.rs, services/agentbox-manifest/src/stacks_env.rs, tests/cli/session-launch-contract.test.mjs, tests/cli/session-control.test.cjs, tests/config/session-plane-notify.test.sh]
 owner: jjohare
 review_trigger: Antigravity signed in and OpenRouter answering the canned round trip (closes §11 acceptance → implementation complete); any AoE consumer found to have been missed
@@ -15,6 +15,16 @@ repo: agentbox
 ---
 
 # ADR-2153 — Replace Agent of Empires with an owned, tmux-backed session plane that reconciles to the manifest
+
+### Scoped gateway verification — 2026-11-17
+
+The gateway singleton check now rejects reused PIDs belonging to other programs,
+threads (Tgid differs from PID), or its own previous-boot PID. The process check
+does not change session ownership, role authority or route authentication.
+Six isolated regression cases cover those branches and the no-procfs fallback
+(`tests/config/nostr-gateway-lock.test.cjs`). Concurrent stale-lock takeover is
+still a known race; this verification does not claim to fix it or promote the
+record's partial implementation status.
 
 
 ## Scoped deployment review — 2026-11-16
