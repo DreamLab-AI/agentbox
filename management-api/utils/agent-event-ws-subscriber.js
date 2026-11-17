@@ -16,6 +16,19 @@
  *   host_ws_url = "ws://visionclaw_container:4000/wss/agent-events"
  *
  * Or env override: AGENTBOX_HOST_WS_URL
+ *
+ * Credential (required whenever a URL is set): AGENTBOX_HOST_WS_TOKEN, a
+ * session token the host's `nostr_service.get_session` accepts. It is sent as
+ * `Authorization: Bearer <token>` on the upgrade request (never in the URL, so
+ * it stays out of access logs). VisionClaw release builds answer 401 without
+ * it (src/agent_events/ingest.rs `authenticate`). No existing agentbox secret
+ * is reused: VISIONCLAW_DEV_TOKEN is a dev-build literal and MANAGEMENT_API_KEY
+ * is agentbox's own key, neither of which a release host would recognise.
+ *
+ * Wire shape: outbound events are sent as the JSON-RPC
+ * `notifications/agent_action` envelope built by
+ * `agentEventPublisher.createMcpNotification`, which is what VisionClaw's
+ * `AgentActionNotification` parser accepts; a bare event is dropped as Malformed.
  */
 
 const WebSocket = require('ws');
@@ -30,6 +43,8 @@ const RECONNECT_MAX_MS = 30000;
 class AgentEventWsSubscriber {
   constructor(options = {}) {
     this.url = options.url || process.env.AGENTBOX_HOST_WS_URL;
+    // Held privately and never included in status() or log output.
+    this._token = options.token || process.env.AGENTBOX_HOST_WS_TOKEN || '';
     this.logger = options.logger || console;
     this.ws = null;
     this.connected = false;
@@ -56,6 +71,13 @@ class AgentEventWsSubscriber {
     if (!this.url) {
       this.logger.info('[agent-events-ws] AGENTBOX_HOST_WS_URL not set — subscriber disabled');
       return;
+    }
+    if (!this._token) {
+      const msg = 'AGENTBOX_HOST_WS_TOKEN is not set: the host refuses unauthenticated ' +
+        `agent-event sockets (${this.url}). Set it to a host session token, or unset ` +
+        'AGENTBOX_HOST_WS_URL to disable the forwarder.';
+      this.logger.error(`[agent-events-ws] ${msg}`);
+      throw new Error(msg);
     }
     this._connect();
   }
@@ -91,7 +113,9 @@ class AgentEventWsSubscriber {
 
   _connect() {
     try {
-      this.ws = new WebSocket(this.url, [SUBPROTOCOL]);
+      this.ws = new WebSocket(this.url, [SUBPROTOCOL], {
+        headers: { Authorization: `Bearer ${this._token}` },
+      });
     } catch (err) {
       this.logger.error(`[agent-events-ws] WebSocket construction failed: ${err.message}`);
       this._scheduleReconnect();
@@ -143,8 +167,11 @@ class AgentEventWsSubscriber {
 
   _forwardOutbound(event) {
     if (!this.connected || !this.ws) return;
+    // Only agent actions have a wire envelope; other event types are not
+    // part of the host's ingest contract.
+    if (event.type && event.type !== 'agent_action') return;
     try {
-      this.ws.send(JSON.stringify(event));
+      this.ws.send(JSON.stringify(agentEventPublisher.createMcpNotification(event)));
     } catch (err) {
       this.logger.warn(`[agent-events-ws] send failed: ${err.message}`);
     }

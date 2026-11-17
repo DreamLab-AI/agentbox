@@ -16,10 +16,11 @@ const EventEmitter = require('events');
 // ---------------------------------------------------------------------------
 
 class MockWebSocket extends EventEmitter {
-  constructor(url, protocols) {
+  constructor(url, protocols, options) {
     super();
     this.url = url;
     this.protocols = protocols;
+    this.options = options;
     this.protocol = Array.isArray(protocols) ? protocols[0] : protocols;
     this.sent = [];
     MockWebSocket.instances.push(this);
@@ -45,6 +46,8 @@ const { agentEventPublisher } = require('../utils/agent-event-publisher');
 
 // Silence the subscriber's logger in tests.
 const silentLogger = { info: () => {}, warn: () => {}, error: () => {}, debug: () => {} };
+
+process.env.AGENTBOX_HOST_WS_TOKEN = 'test-host-token';
 
 beforeEach(() => {
   MockWebSocket.instances = [];
@@ -290,13 +293,67 @@ describe('AgentEventWsSubscriber outbound forwarding', () => {
 
     const ws = MockWebSocket.instances[0];
     expect(ws.sent).toHaveLength(1);
+    // Shape source: VisionClaw src/agent_events/schema.rs
+    // (`AgentActionNotification::is_canonical`, METHOD) and the canonical frame
+    // in src/agent_events/ingest.rs tests. `process_frame` returns Malformed for
+    // a bare event, so the wire frame must be the JSON-RPC notification.
     const sent = JSON.parse(ws.sent[0]);
-    expect(sent.type).toBe('agent_action');
-    expect(sent.version).toBe(3);
-    expect(sent.direction).toBe('outbound');
-    expect(sent.id).toBe(evt.id);
+    expect(sent.jsonrpc).toBe('2.0');
+    expect(sent.method).toBe('notifications/agent_action');
+    expect(sent.params.type).toBe('agent_action');
+    expect(sent.params.message_type).toBe(0x23);
+    expect(sent.params.protocol_version).toBe(2);
+    expect(typeof sent.params.timestamp).toBe('string');
+    expect(sent.params.event.version).toBe(3);
+    expect(sent.params.event.id).toBe(evt.id);
+    expect(sent.params.event.source_agent_id).toBe(1);
+    expect(sent.params.event.target_node_id).toBe(2);
+    expect(sent.params.event.action_type).toBe(0);
+    expect(sent.params.event.action_type_name).toEqual(expect.any(String));
+    expect(sent.params.event.duration_ms).toBe(100);
+    expect(typeof sent.params.event.timestamp).toBe('number');
+    // Types of the non-Option fields of VisionClaw's `AgentActionEnvelope`
+    // (schema.rs: version u8, id u64, source_agent_id u32, target_node_id u32,
+    // action_type u8, action_type_name String, timestamp u64, duration_ms u32).
+    for (const key of ['version', 'id', 'source_agent_id', 'target_node_id', 'action_type', 'timestamp', 'duration_ms']) {
+      expect(Number.isInteger(sent.params.event[key])).toBe(true);
+    }
+    expect(typeof sent.params.event.action_type_name).toBe('string');
+    // Bare-event fields must not leak to the top level.
+    expect(sent.type).toBeUndefined();
+    expect(sent.direction).toBeUndefined();
 
     sub.stop();
+  });
+
+  test('sends the host token as a Bearer header on the upgrade request', async () => {
+    const sub = new AgentEventWsSubscriber({
+      url: 'ws://localhost:9999/wss/agent-events',
+      token: 'session-token-value',
+      logger: silentLogger,
+      persistInbound: false,
+    });
+    await sub.start();
+    await new Promise((r) => setImmediate(r));
+    const ws = MockWebSocket.instances[0];
+    expect(ws.protocols).toEqual([SUBPROTOCOL]);
+    expect(ws.options.headers.Authorization).toBe('Bearer session-token-value');
+    expect(ws.url).not.toContain('session-token-value');
+    sub.stop();
+  });
+
+  test('start() fails loudly when a URL is set but no token is configured', async () => {
+    const saved = process.env.AGENTBOX_HOST_WS_TOKEN;
+    delete process.env.AGENTBOX_HOST_WS_TOKEN;
+    const sub = new AgentEventWsSubscriber({
+      url: 'ws://localhost:9999/wss/agent-events',
+      logger: silentLogger,
+      persistInbound: false,
+    });
+    await expect(sub.start()).rejects.toThrow(/AGENTBOX_HOST_WS_TOKEN/);
+    expect(MockWebSocket.instances).toHaveLength(0);
+    sub.stop();
+    if (saved !== undefined) process.env.AGENTBOX_HOST_WS_TOKEN = saved;
   });
 
   test('inbound-tagged events are NOT echoed back over WS', async () => {

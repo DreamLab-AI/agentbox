@@ -158,6 +158,13 @@ class RelayConsumer {
     this._multiUser = opts.multiUser || { enabled: false };
     this._allowedKinds = opts.allowedKinds || this._defaultKinds();
     this._ingressPolicy = opts.ingressPolicy || 'allowlist';
+    if (this._ingressPolicy === 'allowlist' && this._allowedPubkeys.size === 0) {
+      (opts.logger || console).warn(
+        'relay-ingress-allowlist-empty: the ingress allowlist is empty, so every relay author ' +
+        'is refused. Set AGENTBOX_RELAY_ALLOWED_PUBKEYS (comma-separated hex or npub), or choose ' +
+        'AGENTBOX_RELAY_POLICY=open|signed-only deliberately.'
+      );
+    }
     this._podRoot = opts.podRoot || DEFAULT_POD_ROOT;
     this._stack = opts.stack || 'default';
     this._fanout = opts.fanout || 'off';
@@ -763,8 +770,10 @@ class RelayConsumer {
         return typeof event.sig === 'string' && event.sig.length > 0;
       case 'allowlist':
       default:
-        return this._allowedPubkeys.size === 0
-          || this._allowedPubkeys.has(event.pubkey)
+        // Fail closed: an empty or unset allowlist admits nobody. Use the
+        // explicit 'open' or 'signed-only' policy to widen ingress.
+        if (this._allowedPubkeys.size === 0) return false;
+        return this._allowedPubkeys.has(event.pubkey)
           || this._allowedPubkeys.has(this._hexToNpub(event.pubkey));
     }
   }
