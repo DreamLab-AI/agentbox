@@ -132,6 +132,14 @@ impl Facade {
     pub async fn answer(&self, request: Request) -> Result<Response> {
         let started = Instant::now();
         validate(&request)?;
+        if request.questions.len() > self.cfg.max_questions {
+            return Err(system_one_core::ValidationError::LimitExceeded {
+                what: "question count",
+                actual: request.questions.len(),
+                limit: self.cfg.max_questions,
+            }
+            .into());
+        }
 
         // The engine declares itself; the façade adapts to the declaration and
         // never to an engine's name. An engine that declares nothing gets the
@@ -596,7 +604,14 @@ impl Facade {
             .collect())
     }
 
-    /// Run one engine call per window, batching the questions that selected it.
+    /// Run the engine over each window, batching the questions that selected it.
+    ///
+    /// A window's batch is split into calls of at most
+    /// [`Config::engine_max_questions`]: the engines refuse a larger call with a
+    /// 413, and a caller such as transcript compaction can ask a hundred
+    /// questions over one state. Questions are judged independently, so the
+    /// split changes the number of calls and never an answer. The request's
+    /// own ceiling is [`Config::max_questions`].
     async fn ask_engine(
         &self,
         prepared: &[Prepared],
@@ -613,31 +628,42 @@ impl Facade {
             }
         }
 
-        let started = Instant::now();
-        let calls = batches.iter().map(|(window, questions)| {
-            let request = PredictRequest {
-                state: windows
-                    .get(*window)
-                    .map(|w| w.text.clone())
-                    .unwrap_or_default(),
-                questions: questions.clone(),
-                truncate_left: true,
-            };
-            async move {
-                self.engine
-                    .predict(&request)
-                    .await
-                    .map(|(r, _)| (*window, r))
+        let per_call = self.cfg.engine_max_questions.max(1);
+        let mut requests: Vec<(usize, PredictRequest)> = Vec::new();
+        for (window, questions) in batches {
+            let state = windows
+                .get(window)
+                .map(|w| w.text.clone())
+                .unwrap_or_default();
+            let mut pending = questions.into_iter().peekable();
+            while pending.peek().is_some() {
+                requests.push((
+                    window,
+                    PredictRequest {
+                        state: state.clone(),
+                        questions: pending.by_ref().take(per_call).collect(),
+                        truncate_left: true,
+                    },
+                ));
             }
-        });
-        let results = futures::future::try_join_all(calls).await?;
+        }
+
+        // One call at a time. The engine serialises predictions behind a
+        // per-model lock, so concurrent calls gain nothing and each one's
+        // timeout would count the time it spent queued behind the others.
+        let started = Instant::now();
+        let mut results = Vec::with_capacity(requests.len());
+        for (window, request) in &requests {
+            let (response, _) = self.engine.predict(request).await?;
+            results.push((*window, response));
+        }
         let engine_ms = started.elapsed().as_millis() as u64;
 
         let mut input_tokens = 0u64;
-        let mut by_window = BTreeMap::new();
+        let mut by_window: BTreeMap<usize, IndexMap<String, EngineAnswer>> = BTreeMap::new();
         for (window, response) in results {
             input_tokens += response.usage.input_tokens;
-            by_window.insert(window, response.answers);
+            by_window.entry(window).or_default().extend(response.answers);
         }
         Ok((by_window, engine_ms, input_tokens))
     }

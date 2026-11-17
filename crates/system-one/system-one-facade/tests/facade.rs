@@ -44,6 +44,9 @@ struct EngineStub {
     hide_scale: bool,
     /// When set, `/predict` fails with this status and body.
     fail: Option<(u16, String)>,
+    /// When set, `/predict` refuses a call carrying more questions, as the
+    /// real engines do.
+    max_questions: Option<usize>,
 }
 
 /// Hashed bag-of-words encoder: deterministic, and similar texts are similar.
@@ -115,6 +118,16 @@ async fn engine_predict(
     let state_vector = encode(&state);
     let mut answers = serde_json::Map::new();
     let questions = body["questions"].as_object().cloned().unwrap_or_default();
+    if let Some(limit) = stub.max_questions.filter(|limit| questions.len() > *limit) {
+        return (
+            axum::http::StatusCode::PAYLOAD_TOO_LARGE,
+            format!(
+                "{} questions exceeds the engine limit of {limit}",
+                questions.len()
+            ),
+        )
+            .into_response();
+    }
     for (name, question) in questions {
         let kind = question["type"].as_str().unwrap_or("noul");
         match kind {
@@ -352,6 +365,7 @@ fn stub() -> EngineStub {
         report_raw_scores: false,
         hide_scale: false,
         fail: None,
+        max_questions: None,
     }
 }
 
@@ -795,6 +809,66 @@ async fn a_small_choice_is_passed_through_whole() {
             .len(),
         2
     );
+}
+
+#[tokio::test]
+async fn more_questions_than_the_engine_takes_are_split_across_calls() {
+    // The engines refuse more than 64 questions in one call. A compaction pass
+    // asks one per transcript turn, so a hundred is an ordinary request.
+    let h = harness(
+        EngineStub {
+            max_questions: Some(64),
+            ..stub()
+        },
+        |_| {},
+    )
+    .await;
+    let questions: serde_json::Map<String, Value> = (0..100)
+        .map(|i| {
+            (
+                format!("turn_{i:03}"),
+                json!({"type": "noul", "instructions": format!("does turn {i} matter?")}),
+            )
+        })
+        .collect();
+    let (status, body) = h
+        .post(
+            json!({"state": {"user_request": "keep what matters"}, "questions": questions}),
+            None,
+        )
+        .await;
+
+    assert_eq!(status, 200, "{body}");
+    let answers = body["answers"].as_object().unwrap();
+    assert_eq!(answers.len(), 100, "every question is answered");
+    assert_eq!(
+        answers.keys().next().map(String::as_str),
+        Some("turn_000"),
+        "in the caller's order"
+    );
+    let sizes: Vec<usize> = h
+        .engine_calls()
+        .iter()
+        .map(|call| call["questions"].as_object().unwrap().len())
+        .collect();
+    assert_eq!(sizes.iter().sum::<usize>(), 100, "each asked exactly once");
+    assert!(sizes.iter().all(|n| *n <= 64), "no call over the limit: {sizes:?}");
+    assert_eq!(sizes.len(), 2, "and no more calls than needed: {sizes:?}");
+}
+
+#[tokio::test]
+async fn a_request_over_the_facades_own_question_ceiling_is_refused_unasked() {
+    let h = harness(stub(), |cfg| cfg.max_questions = 3).await;
+    let questions: serde_json::Map<String, Value> = (0..4)
+        .map(|i| (format!("q{i}"), json!({"type": "noul", "instructions": "matters?"})))
+        .collect();
+    let (status, body) = h
+        .post(json!({"state": {"user_request": "x"}, "questions": questions}), None)
+        .await;
+
+    assert!((400..500).contains(&status), "{status} {body}");
+    assert!(body.to_string().contains("question count"), "{body}");
+    assert!(h.engine_calls().is_empty(), "the engine was never asked");
 }
 
 // ───────────────────────────────────────────────────────────────────────────

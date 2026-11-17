@@ -16,6 +16,8 @@
 //! | `SSO_EMBEDDINGS_BATCH` | `32` | inputs per embeddings request |
 //! | `SSO_CACHE_PATH` | `$HOME/.cache/agentbox/system-one/embeddings.jsonl` | embedding cache (`off` disables) |
 //! | `SSO_ENGINE_TIMEOUT_MS` | `30000` | per engine call |
+//! | `SSO_MAX_QUESTIONS` | `1024` | most questions one request may carry; more is refused |
+//! | `SSO_ENGINE_MAX_QUESTIONS` | `64` | questions per engine call; a larger request is split across calls |
 //! | `SSO_EMBEDDINGS_TIMEOUT_MS` | `15000` | per embeddings call |
 //! | `SSO_BUDGET_TTL_S` | `300` | how long the engine's reported budget is cached |
 //! | `SSO_OPTION_MAX_TOKENS` | `48` | per-option ceiling assumed when the engine reports none |
@@ -84,6 +86,14 @@ pub struct Config {
     pub cache_path: Option<PathBuf>,
     /// Per engine call.
     pub engine_timeout: Duration,
+    /// Most questions sent in one engine call. Both engines refuse more than
+    /// their own `*_MAX_QUESTIONS` (64 by default) with a 413, so a larger
+    /// request is split into calls of at most this many.
+    pub engine_max_questions: usize,
+    /// Most questions one request may carry. Splitting removes the engine's
+    /// own refusal as a ceiling, so the façade keeps one: engine calls run one
+    /// at a time, and an unbounded request would hold the GPU from everyone.
+    pub max_questions: usize,
     /// Per embeddings call.
     pub embeddings_timeout: Duration,
     /// Engine budget cache lifetime.
@@ -137,6 +147,8 @@ impl Default for Config {
             embeddings_batch: 32,
             cache_path: None,
             engine_timeout: Duration::from_millis(30_000),
+            engine_max_questions: 64,
+            max_questions: 1024,
             embeddings_timeout: Duration::from_millis(15_000),
             budget_ttl: Duration::from_secs(300),
             option_max_tokens: 48,
@@ -217,6 +229,8 @@ impl Config {
             embeddings_batch: parse("SSO_EMBEDDINGS_BATCH", 32usize)?.max(1),
             cache_path,
             engine_timeout: Duration::from_millis(parse("SSO_ENGINE_TIMEOUT_MS", 30_000u64)?),
+            engine_max_questions: parse("SSO_ENGINE_MAX_QUESTIONS", 64usize)?.max(1),
+            max_questions: parse("SSO_MAX_QUESTIONS", 1024usize)?.max(1),
             embeddings_timeout: Duration::from_millis(parse(
                 "SSO_EMBEDDINGS_TIMEOUT_MS",
                 15_000u64,
