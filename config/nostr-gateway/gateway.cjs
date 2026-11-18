@@ -81,13 +81,18 @@ const path = require('path');
 // Custody W2: the operator key, file-only under [security].role_isolation.
 const { operatorKeyHex } = require(path.join(__dirname, '..', 'hooks', 'lib', 'operator-key.cjs'));
 const { execFile, execFileSync } = require('child_process');
+// Caps never cut silently: parts are numbered, cuts are marked (2026-11-18).
+const { clip, clipTail, splitParts } = require(path.join(__dirname, 'dm-parts.cjs'));
 
 // ── constants (mirror parity) ───────────────────────────────────────────────
 const DEFAULT_RELAY = 'wss://dreamlab-nostr-relay.solitary-paper-764d.workers.dev';
 const KIND_GIFT_WRAP = 1059;
 const KIND_DM_RUMOR = 14;
 const KIND_AUTH = 22242;   // NIP-42
-const MAX_BODY = 3500;
+const MAX_BODY = 3500;      // one DM part; a longer reply goes as numbered parts (relay allows 64 KiB)
+// An instruction typed into a session. Was a silent 500; 3,500 matches one DM and stays
+// under the ~16 KB tmux send-keys ceiling even at three UTF-8 bytes per character.
+const MAX_INSTR = 3500;
 const WRAP_LOOKBACK = 50 * 3600; // NIP-59 randomizes gift-wrap timestamps up to ~48h into the PAST; query wider or the relay filters them out
 const CONFIRM_TTL = 300;   // an unresolved clarification / pending route expires after 5 min
 const HOME = os.homedir();
@@ -246,7 +251,11 @@ const HELP = [
 // ── shell helpers ───────────────────────────────────────────────────────────
 function sh(cmd, args) { try { return execFileSync(cmd, args, { encoding: 'utf8', timeout: 8000 }); } catch (e) { return String((e && e.stdout) || ''); } }
 function stripAnsi(s) { return String(s).replace(/\[[0-9;?]*[a-zA-Z]/g, ''); }
-function sanitize(s) { return String(s || '').replace(/[\r\n\t]+/g, ' ').replace(/[`$\\]/g, '').trim().slice(0, 500); }
+// Newlines and `$ \\ stay stripped: a pane may be sitting at a shell prompt. Only the
+// cap changed: it is larger and a cut is marked rather than silent.
+function sanitize(s) { return clip(String(s || '').replace(/[\r\n\t]+/g, ' ').replace(/[`$\\]/g, '').trim(), MAX_INSTR); }
+// What an echo shows of a sent instruction: the start and the length, not a silent slice.
+function echo(s) { const cs = [...String(s)]; return cs.length <= 160 ? `"${s}"` : `"${cs.slice(0, 150).join('')}…" (${cs.length} chars, all sent)`; }
 
 function allWindows() {
   const out = sh('tmux', ['list-windows', '-a', '-F', '#{window_index}\t#{window_name}\t#{pane_current_command}']);
@@ -280,17 +289,29 @@ function listTabs() {
 // Enter as a newline, so the prompt is never submitted. The Enter is scheduled
 // rather than slept for, so a broadcast never stalls the relay socket.
 function sendKeys(idx, text) {
-  sh('tmux', ['send-keys', '-t', idx, '-l', text]);
+  // sh() swallows errors; a failed send must at least reach the log.
+  try { execFileSync('tmux', ['send-keys', '-t', idx, '-l', text], { encoding: 'utf8', timeout: 8000 }); } catch (e) {
+    log(`send-keys to tab ${idx} failed (${String(text).length} chars):`, String((e && e.stderr) || (e && e.message) || e).trim().slice(0, 200));
+    return false;
+  }
   setTimeout(() => sh('tmux', ['send-keys', '-t', idx, 'Enter']), 1500);
+  return true;
 }
 
 // ── crypto: reply on the live authed socket ─────────────────────────────────
 function buildWrap(text) {
-  if (PORT_SELECTED) return identityPort.requestSync('nip17_wrap', { key: PORT_KEY, recipient: replyTo, content: String(text).slice(0, MAX_BODY) }).event;
-  const rumor = { kind: KIND_DM_RUMOR, created_at: nowSec(), tags: [['p', replyTo], ['client', 'agentbox-nostr-gateway']], content: String(text).slice(0, MAX_BODY), pubkey: pub };
+  if (PORT_SELECTED) return identityPort.requestSync('nip17_wrap', { key: PORT_KEY, recipient: replyTo, content: clip(text, MAX_BODY) }).event;
+  const rumor = { kind: KIND_DM_RUMOR, created_at: nowSec(), tags: [['p', replyTo], ['client', 'agentbox-nostr-gateway']], content: clip(text, MAX_BODY), pubkey: pub };
   return tools.nip59.wrapEvent(rumor, sk, replyTo); // gateway → operator (your phone)
 }
-function reply(ws, text) { try { ws.send(JSON.stringify(['EVENT', buildWrap(text)])); log('reply:', text.slice(0, 60).replace(/\n/g, ' ⏎ ')); } catch (e) { log('reply failed', e.message); } }
+// A reply longer than one DM goes as numbered parts; see dm-parts.cjs.
+function reply(ws, text) {
+  const parts = splitParts(String(text), MAX_BODY);
+  for (const part of parts) {
+    try { ws.send(JSON.stringify(['EVENT', buildWrap(part)])); } catch (e) { log('reply failed', e.message); return; }
+  }
+  log(`reply${parts.length > 1 ? ` (${parts.length} parts)` : ''}:`, String(text).slice(0, 60).replace(/\n/g, ' ⏎ '));
+}
 
 function audit(cmd) { try { fs.appendFileSync(AUDIT, JSON.stringify({ ts: nowSec(), cmd }) + '\n'); } catch { /* noop */ } }
 
@@ -309,7 +330,9 @@ function dispatch(ws, text) {
       if (!/^\d+$/.test(idx || '')) return reply(ws, 'usage: /peek <n> [lines]');
       const k = Math.min(Math.max(parseInt(kRaw, 10) || 20, 5), 60);
       const tail = capture(idx, k + 5, k).trim() || '(pane empty)';
-      return reply(ws, `👁 tab ${idx} · last ${k} lines · ${STATE_BADGE[paneState(idx)]}\n${tail}`.slice(0, MAX_BODY));
+      // Keep the newest lines: the old .slice(0, MAX_BODY) dropped the end of the tail.
+      const head = `👁 tab ${idx} · last ${k} lines · ${STATE_BADGE[paneState(idx)]}\n`;
+      return reply(ws, head + clipTail(tail, MAX_BODY - head.length));
     }
     if (verb === 'tab') {
       // Explicit override: operator names the tab, so skip routing and send now.
@@ -326,7 +349,7 @@ function dispatch(ws, text) {
       if (!wins.length) return reply(ws, 'no active Claude tabs');
       wins.forEach((p) => sendKeys(p[0], instr));
       const states = wins.map((p) => `  tab ${p[0]} ${STATE_BADGE[paneState(p[0])]}`).join('\n');
-      return reply(ws, `✔ broadcast → tabs ${wins.map((p) => p[0]).join(',')}: "${instr}"\n${states}`);
+      return reply(ws, `✔ broadcast → tabs ${wins.map((p) => p[0]).join(',')}: ${echo(instr)}\n${states}`);
     }
     if (verb === 'spawn' || verb === 'cd') {
       // /spawn <dir> [agent] [instruction] — agent word optional, defaults dsp.
@@ -363,10 +386,10 @@ function doSend(ws, idx, msg, why) {
   const clean = sanitize(msg);
   if (!clean) return reply(ws, 'nothing to send');
   const st = paneState(idx);
-  sendKeys(idx, clean);
+  if (!sendKeys(idx, clean)) return reply(ws, `⚠ tab ${idx}: the send failed and nothing was typed — see the gateway log`);
   watchTab(idx);
   const flag = st === 'waiting' ? `🛑 tab was ⏸ WAITING on a dialog — text may have answered it; /peek ${idx} to check\n` : '';
-  return reply(ws, `${flag}✔ tab ${idx} ${win[1]} ← "${clean}"  ${STATE_BADGE[st]}${why ? '\n↳ ' + String(why).slice(0, 120) : ''}`);
+  return reply(ws, `${flag}✔ tab ${idx} ${win[1]} ← ${echo(clean)}  ${STATE_BADGE[st]}${why ? '\n↳ ' + String(why).slice(0, 120) : ''}`);
 }
 
 // Ordinary operator Nostr text is chat with the main agent, not a fleet
@@ -385,7 +408,7 @@ async function chatTab0(ws, msg) {
     });
     if (!response.ok) throw new Error(`bridge returned ${response.status}`);
     watchTab('0');
-    reply(ws, `💬 tab 0 ← "${clean}"  ${STATE_BADGE[st]}`);
+    reply(ws, `💬 tab 0 ← ${echo(clean)}  ${STATE_BADGE[st]}`);
   } catch (e) {
     // Keep the control plane useful during a bridge restart; the fallback does
     // not mirror the input in the browser feed, but still reaches tab 0.
@@ -492,7 +515,7 @@ async function doSpawn(ws, dirSpec, agentName, instr, why) {
     try {
       const sess = await sessionCreate(r.dir, agent.sessionTool, name);
       const short = sess.id.slice(0, 8);
-      reply(ws, `🚀 session ${short} · ${name} · ${r.rel} · ${agent.sessionTool} · ${sess.status}${follow ? `\n⏳ sending "${follow}"` : ''}${why ? '\n↳ ' + String(why).slice(0, 120) : ''}`);
+      reply(ws, `🚀 session ${short} · ${name} · ${r.rel} · ${agent.sessionTool} · ${sess.status}${follow ? `\n⏳ sending ${echo(follow)}` : ''}${why ? '\n↳ ' + String(why).slice(0, 120) : ''}`);
       if (follow) {
         let sent = false;
         try { sent = await sessionSend(sess.id, follow); } catch (e) { log('session-plane follow-up send failed', e.message); }
@@ -520,7 +543,7 @@ function doSpawnTmux(ws, r, agent, name, follow, why) {
     polls += 1;
     const cmd = (allWindows().find((w) => w[0] === idx) || [])[2] || '';
     if (polls >= 2 && cmd && !/fish|bash|sh$/i.test(cmd) && paneState(idx) === 'idle') {
-      clearInterval(timer); sendKeys(idx, follow); watchTab(idx); reply(ws, `✔ tab ${idx} ← "${follow}"`);
+      clearInterval(timer); sendKeys(idx, follow); watchTab(idx); reply(ws, `✔ tab ${idx} ← ${echo(follow)}`);
     } else if (polls >= 20) {
       clearInterval(timer); reply(ws, `⚠ tab ${idx}: agent didn't reach a prompt in 60s — /peek ${idx}, then /tab ${idx} <text>`);
     }

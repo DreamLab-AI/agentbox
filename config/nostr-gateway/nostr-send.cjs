@@ -16,6 +16,9 @@ const crypto = require('crypto');
 const path = require('path');
 // Custody W2: the operator key, file-only under [security].role_isolation.
 const { operatorKeyHex } = require(path.join(__dirname, '..', 'hooks', 'lib', 'operator-key.cjs'));
+// A long message goes as numbered parts, never a silent 3,500-char cut (2026-11-18).
+const { splitParts } = require(path.join(__dirname, 'dm-parts.cjs'));
+const MAX_BODY = 3500;
 
 const DEFAULT_RELAY = 'wss://dreamlab-nostr-relay.solitary-paper-764d.workers.dev';
 const KIND_DM_RUMOR = 14;
@@ -55,16 +58,27 @@ function readInput() {
 
 (async () => {
   const text = (await readInput()) || '(empty)';
-  const rumor = { kind: KIND_DM_RUMOR, created_at: nowSec(), tags: [['p', pub], ['client', 'agentbox-nostr-send']], content: text.slice(0, 3500), pubkey: pub };
-  const wrap = tools.nip59.wrapEvent(rumor, sk, pub);
+  const wraps = splitParts(text, MAX_BODY).map((content) => tools.nip59.wrapEvent(
+    { kind: KIND_DM_RUMOR, created_at: nowSec(), tags: [['p', pub], ['client', 'agentbox-nostr-send']], content, pubkey: pub }, sk, pub));
+  const pending = new Map(wraps.map((w) => [w.id, w]));
+  let rejected = '';
   const ws = new WS(relay);
   const done = (code) => { try { ws.close(); } catch { /* noop */ } process.exit(code); };
-  const timer = setTimeout(() => done(0), 8000);
-  ws.on('open', () => ws.send(JSON.stringify(['EVENT', wrap])));
+  const timer = setTimeout(() => done(0), 8000 + 1000 * wraps.length);
+  const publish = () => { for (const w of pending.values()) ws.send(JSON.stringify(['EVENT', w])); };
+  ws.on('open', publish);
   ws.on('message', (d) => {
     let m; try { m = JSON.parse(typeof d === 'string' ? d : d.toString('utf8')); } catch { return; }
-    if (m[0] === 'AUTH') { try { const e = tools.finalizeEvent({ kind: KIND_AUTH, created_at: nowSec(), tags: [['relay', relay], ['challenge', String(m[1])]], content: '' }, sk); ws.send(JSON.stringify(['AUTH', e])); ws.send(JSON.stringify(['EVENT', wrap])); } catch { /* noop */ } }
-    if (m[0] === 'OK' && m[1] === wrap.id) { clearTimeout(timer); process.stdout.write(m[2] ? 'sent\n' : ('rejected: ' + (m[3] || '') + '\n')); done(m[2] ? 0 : 1); }
+    if (m[0] === 'AUTH') { try { const e = tools.finalizeEvent({ kind: KIND_AUTH, created_at: nowSec(), tags: [['relay', relay], ['challenge', String(m[1])]], content: '' }, sk); ws.send(JSON.stringify(['AUTH', e])); publish(); } catch { /* noop */ } }
+    if (m[0] === 'OK' && pending.has(m[1])) {
+      if (!m[2]) rejected = rejected || String(m[3] || 'rejected');
+      pending.delete(m[1]);
+      if (!pending.size) {
+        clearTimeout(timer);
+        process.stdout.write(rejected ? `rejected: ${rejected}\n` : `sent${wraps.length > 1 ? ` (${wraps.length} parts)` : ''}\n`);
+        done(rejected ? 1 : 0);
+      }
+    }
   });
   ws.on('error', () => done(0));
 })();

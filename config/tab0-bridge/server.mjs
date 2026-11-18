@@ -32,6 +32,17 @@ import { createRequire } from 'node:module';
 import readline from 'node:readline';
 import { WebSocketServer } from 'ws';
 
+// A cut is always marked with how much went, never silent (2026-11-18). Inline
+// rather than shared: the live copy of this file runs from ~/workspace/tab0-bridge.
+function clipMarked(text, max) {
+  const s = String(text ?? '');
+  if (s.length <= max) return s;
+  let keep = Math.max(0, max - `…[+${s.length} chars cut]`.length);
+  const c = s.charCodeAt(keep - 1);
+  if (keep > 0 && c >= 0xd800 && c <= 0xdbff) keep -= 1;
+  return `${s.slice(0, keep)}…[+${s.length - keep} chars cut]`;
+}
+
 const PORT = Number(process.env.BRIDGE_PORT || 8971);
 const MODEL = process.env.BRIDGE_MODEL || 'haiku';
 const TMUX_SESSION = process.env.BRIDGE_TMUX_SESSION || 'agentbox';
@@ -244,7 +255,7 @@ async function summarise(text, kind) {
       prompt:
         'Summarise the following coding-agent turn for a spoken voice interface. ' +
         'Reply with one to three short plain sentences, no markdown, no code, no lists. ' +
-        `Lead with the outcome or intent.\n\n---\n${text.slice(0, 12000)}`,
+        `Lead with the outcome or intent.\n\n---\n${clipMarked(text, 12000)}`,
     });
     return out || null;
   } catch (err) {
@@ -385,7 +396,7 @@ async function chatCompletion(body, res) {
   // Surface what the STT transcribed as a feed turn — phantom turns from
   // speaker echo or room noise become visible in the console instead of
   // manifesting only as unprompted replies.
-  pushTurn('voice-user', userText.slice(0, 500));
+  pushTurn('voice-user', clipMarked(userText, 500));
 
   const sendChunk = (delta, finish = null) => {
     const payload = {
@@ -418,7 +429,7 @@ async function chatCompletion(body, res) {
     full = full || apology;
   }
 
-  if (full.trim()) pushTurn('voice-reply', full.slice(0, 1000));
+  if (full.trim()) pushTurn('voice-reply', clipMarked(full, 1000));
 
   if (stream) {
     sendChunk({}, 'stop');
@@ -613,7 +624,7 @@ const server = http.createServer(async (req, res) => {
       const { event, text } = await readBody(req);
       if (!text) return json(res, 200, { ok: true, ignored: true });
       const kind = event === 'UserPromptSubmit' ? 'user' : 'assistant';
-      const turn = pushTurn(kind, String(text).slice(0, 20000));
+      const turn = pushTurn(kind, clipMarked(text, 20000));
       if (kind === 'assistant' && turn.text.length > 350) {
         summarise(turn.text, kind).then((s) => {
           if (s) { turn.summary = s; broadcast({ type: 'turn-update', turn }); }
@@ -638,7 +649,9 @@ const server = http.createServer(async (req, res) => {
     }
     if (path === '/nostr/send' && req.method === 'POST') {
       const { text } = await readBody(req);
-      const clean = String(text || '').trim().slice(0, 3500);
+      // nostr-send.cjs splits into numbered DMs (six parts of ~3,500); the cap here is
+      // that capacity, and a cut is marked rather than a silent 3,500.
+      const clean = clipMarked(String(text || '').trim(), 20000);
       if (!clean) return json(res, 400, { error: 'empty text' });
       const ok = await nostrSend(clean);
       if (ok) pushTurn('nostr-out', clean);

@@ -438,8 +438,8 @@
           "prompt"
         ],
         "destination_class": "public internet",
-        "destination": "Cloud relay (`config/nostr-gateway/gateway.cjs:84`)",
-        "gate": "`AGENTBOX_NOSTR_GATEWAY=0` (`config/nostr-gateway/gateway.cjs:166`; `flake.nix:2087`)",
+        "destination": "Cloud relay (`config/nostr-gateway/gateway.cjs:88`)",
+        "gate": "`AGENTBOX_NOSTR_GATEWAY=0` (`config/nostr-gateway/gateway.cjs:135`; `flake.nix:2087`)",
         "accepted_egress": "none.",
         "markers": [
           "no-accepted-record"

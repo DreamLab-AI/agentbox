@@ -12,7 +12,9 @@
 
 use anyhow::{anyhow, bail, Result};
 use std::path::Path;
-use std::process::Command;
+use std::io::Write;
+use std::process::{Command, Stdio};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 
 /// Session name prefix. Deliberately not `aoe_`, so a leftover Agent of Empires
@@ -23,6 +25,15 @@ pub const OPT_SLUG: &str = "@agentbox-slug";
 pub const OPT_FP: &str = "@agentbox-fp";
 pub const OPT_ORIGIN: &str = "@agentbox-origin";
 pub const OPT_TOOL: &str = "@agentbox-tool";
+
+/// Largest text typed with one `send-keys -l`. tmux refuses a single command
+/// over its ~16 KB message size ("command too long"; measured on tmux 3.8,
+/// 2026-11-18: 16,000 bytes pass, 20,000 fail). Longer text goes through a
+/// private paste buffer instead. Kept well under the ceiling, in bytes.
+pub const SEND_KEYS_MAX_BYTES: usize = 8 * 1024;
+
+/// Per-process counter for private paste-buffer names.
+static BUFFER_SEQ: AtomicU64 = AtomicU64::new(0);
 
 pub fn session_name(slug: &str) -> String {
     format!("{PREFIX}{slug}")
@@ -78,6 +89,43 @@ impl Tmux {
             c.arg("-L").arg(s);
         }
         c
+    }
+
+    /// Run a command with `input` on its stdin (for `load-buffer -`).
+    fn run_stdin(&self, args: &[&str], input: &[u8]) -> Result<()> {
+        let mut child = self
+            .command()
+            .args(args)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::null())
+            .stderr(Stdio::piped())
+            .spawn()
+            .map_err(|e| anyhow!("tmux: {e}"))?;
+        child.stdin.take().ok_or_else(|| anyhow!("tmux: no stdin"))?.write_all(input)?;
+        let out = child.wait_with_output().map_err(|e| anyhow!("tmux: {e}"))?;
+        if !out.status.success() {
+            bail!("tmux {}: {}", args.first().copied().unwrap_or(""), String::from_utf8_lossy(&out.stderr).trim());
+        }
+        Ok(())
+    }
+
+    /// Type `text` into `target` exactly, at any length. Short text is one
+    /// `send-keys -l`, unchanged from before. Text past [`SEND_KEYS_MAX_BYTES`]
+    /// is loaded into a uniquely named buffer (never the default buffer, which
+    /// is the operator's clipboard) and pasted with `-r`, so a newline stays a
+    /// newline as it does under `send-keys -l`, and `-p`, so a TUI that asked
+    /// for bracketed paste receives it as one paste. `-d` deletes the buffer.
+    fn type_literal(&self, target: &str, text: &str) -> Result<()> {
+        if text.len() <= SEND_KEYS_MAX_BYTES {
+            return self.run(&["send-keys", "-t", target, "-l", "--", text]).map(|_| ());
+        }
+        let name = format!("abs-send-{}-{}", std::process::id(), BUFFER_SEQ.fetch_add(1, Ordering::Relaxed));
+        self.run_stdin(&["load-buffer", "-b", &name, "-"], text.as_bytes())?;
+        let pasted = self.run(&["paste-buffer", "-d", "-r", "-p", "-b", &name, "-t", target]).map(|_| ());
+        if pasted.is_err() {
+            let _ = self.run(&["delete-buffer", "-b", &name]);
+        }
+        pasted
     }
 
     fn run(&self, args: &[&str]) -> Result<String> {
@@ -175,7 +223,7 @@ impl Tmux {
     /// pause is part of the contract.
     pub fn send_text(&self, name: &str, text: &str, pause: Duration) -> Result<()> {
         let target = format!("={name}:");
-        self.run(&["send-keys", "-t", &target, "-l", "--", text])?;
+        self.type_literal(&target, text)?;
         std::thread::sleep(pause);
         self.run(&["send-keys", "-t", &target, "Enter"]).map(|_| ())
     }
@@ -222,7 +270,7 @@ impl Tmux {
     }
 
     pub fn send_text_to_target(&self, target: &str, text: &str, pause: Duration) -> Result<()> {
-        self.run(&["send-keys", "-t", target, "-l", "--", text])?;
+        self.type_literal(target, text)?;
         std::thread::sleep(pause);
         self.run(&["send-keys", "-t", target, "Enter"]).map(|_| ())
     }

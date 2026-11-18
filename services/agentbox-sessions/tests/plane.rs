@@ -355,6 +355,46 @@ fn send_types_pauses_then_submits_and_refuses_dead_or_blocked_sessions() {
 }
 
 #[test]
+fn a_message_past_the_send_keys_ceiling_arrives_whole_and_byte_exact() {
+    // tmux 3.8 refuses one `send-keys` command over ~16 KB ("command too long"), so a
+    // long agent-to-agent message failed outright. Measured 2026-11-18: 16,000 bytes
+    // pass, 20,000 fail. The short path must stay byte-identical to what it was.
+    let dir = tempfile::tempdir().unwrap();
+    let sink = |name: &str| dir.path().join(name);
+    let tools = json!({
+        "rawlong": { "argv": ["sh", "-c", format!("stty raw -echo; exec cat > {}", sink("long.out").display())] },
+        "rawshort": { "argv": ["sh", "-c", format!("stty raw -echo; exec cat > {}", sink("short.out").display())] },
+    });
+    let fx = Fx::new(
+        tools,
+        "[[interaction_plane.session_seeds]]\nslug = \"long\"\ntool = \"rawlong\"\n[[interaction_plane.session_seeds]]\nslug = \"short\"\ntool = \"rawshort\"\n",
+    );
+    let p = fx.plane();
+    p.reconcile_once(false);
+    for name in ["abs_long", "abs_short"] {
+        wait_for(name, 5, || p.tmux.list().unwrap().iter().any(|x| x.name == name && !x.dead));
+    }
+    // Give `stty raw` a moment to take effect before anything is typed.
+    std::thread::sleep(Duration::from_millis(300));
+
+    let unit = "agent → agent: café, naïve, 漢字 and a tab\there.\nNext line keeps its newline. ";
+    let long: String = unit.repeat(40_000 / unit.len() + 1);
+    assert!(long.len() > 40_000, "the long message is well past the ceiling");
+    let short = "short message\nwith a second line";
+
+    p.send("long", &long).unwrap();
+    p.send("short", short).unwrap();
+
+    let want_long = format!("{long}\r");
+    let want_short = format!("{short}\r");
+    let read = |f: &str| std::fs::read(sink(f)).unwrap_or_default();
+    wait_for("the long message and its Enter", 10, || read("long.out").len() >= want_long.len());
+    wait_for("the short message and its Enter", 5, || read("short.out").len() >= want_short.len());
+    assert_eq!(String::from_utf8(read("long.out")).unwrap(), want_long, "long message altered or truncated");
+    assert_eq!(String::from_utf8(read("short.out")).unwrap(), want_short, "short message altered");
+}
+
+#[test]
 fn on_request_sessions_can_be_created_listed_and_closed_but_are_never_reconciled() {
     let fx = Fx::new(json!({ "echo": { "argv": ["cat"] }, "sleeper": { "argv": ["sleep", "600"] } }), A);
     let p = fx.plane();

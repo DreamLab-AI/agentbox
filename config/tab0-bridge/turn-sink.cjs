@@ -6,6 +6,17 @@
 const fs = require('fs');
 const http = require('http');
 
+// A cut is always marked with how much went, never silent (2026-11-18). Inline
+// rather than shared: the live copy of this file runs from ~/workspace/tab0-bridge.
+function clipMarked(text, max) {
+  const s = String(text ?? '');
+  if (s.length <= max) return s;
+  let keep = Math.max(0, max - `…[+${s.length} chars cut]`.length);
+  const c = s.charCodeAt(keep - 1);
+  if (keep > 0 && c >= 0xd800 && c <= 0xdbff) keep -= 1;
+  return `${s.slice(0, keep)}…[+${s.length - keep} chars cut]`;
+}
+
 const BRIDGE = process.env.BRIDGE_URL || 'http://127.0.0.1:8971';
 const event = process.argv[2] || 'Stop';
 
@@ -52,7 +63,7 @@ process.stdin.on('end', () => {
 
   if (!text) return finish();
 
-  const body = JSON.stringify({ event, text: text.slice(0, 20000) });
+  const body = JSON.stringify({ event, text: clipMarked(text, 20000) });
   const req = http.request(`${BRIDGE}/hook/turn`, {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'content-length': Buffer.byteLength(body) },
