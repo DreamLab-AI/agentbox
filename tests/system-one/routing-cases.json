@@ -877,11 +877,11 @@
     },
     {
       "prompt": "Slice this STL for my Prusa MK4 at 0.2 mm layers and tell me how to get the file onto the printer.",
-      "expected_skill": "cad-print",
-      "rationale": "Slicing a model to G-code is cad-print; whether the part is printable is cad's manufacturability check.",
-      "class": "near-neighbour",
+      "expected_skill": "none",
+      "rationale": "Slicing is cad-print's, and cad-print is gated off (skills.spatial_and_3d.cad_print = false, ADR-2195). cad's own rubric says 'not for slicing (cad-print)', so with cad-print off the router should decline; relabel to cad-print if the gate opens.",
+      "class": "boundary",
       "provenance": "directory-derived",
-      "late_discriminative": true
+      "late_discriminative": false
     },
     {
       "prompt": "I want a photoreal hero shot of the enclosure model for the README, plus a slow turntable.",
@@ -1529,7 +1529,7 @@
       "rationale": "Idea plus experimental log to an arXiv paper is paper-orchestra's write mode; latex-documents only compiles source that already exists, and report-builder researches a white paper rather than writing up results.",
       "class": "near-neighbour",
       "provenance": "directory-derived",
-      "late_discriminative": false
+      "late_discriminative": true
     },
     {
       "prompt": "We submitted the paper to arXiv last week. Can you review it like a tough referee and see whether a revised version would actually be better?",
@@ -1537,7 +1537,7 @@
       "rationale": "Simulated peer review and refinement of an existing paper is paper-orchestra's refine mode; book-publishing mentions arXiv but owns manuscript-to-book conversion, not reviewing a research paper.",
       "class": "near-neighbour",
       "provenance": "directory-derived",
-      "late_discriminative": false
+      "late_discriminative": true
     },
     {
       "prompt": "Check every number in the results section of my draft against the experiment ledger, and tell me which claims have no evidence behind them.",
@@ -1545,7 +1545,7 @@
       "rationale": "The claim-evidence gate against a log or results ledger belongs to paper-orchestra; no other skill checks a paper's numbers against its evidence.",
       "class": "single",
       "provenance": "directory-derived",
-      "late_discriminative": false
+      "late_discriminative": true
     },
     {
       "prompt": "Here are two versions of the same paper. Which one reads better to a reviewer? Judge them blind.",
@@ -1553,7 +1553,7 @@
       "rationale": "Blind side-by-side comparison of two paper drafts is paper-orchestra's autorater; prose-sanitiser reviews one draft's prose and does not compare papers.",
       "class": "near-neighbour",
       "provenance": "directory-derived",
-      "late_discriminative": false
+      "late_discriminative": true
     },
     {
       "prompt": "main.tex stopped compiling after I added the natbib package: undefined control sequence on every citation. Fix the build.",
@@ -1585,7 +1585,7 @@
       "rationale": "An arXiv preflight of a research paper's source, abstract and references is paper-orchestra; book-publishing prepares a book manuscript, and nothing here is a compile error for latex-documents.",
       "class": "near-neighbour",
       "provenance": "directory-derived",
-      "late_discriminative": false
+      "late_discriminative": true
     },
     {
       "prompt": "Fix the compile error in my arXiv paper, latexmk dies on a missing brace somewhere in the methods section.",
@@ -1601,7 +1601,7 @@
       "rationale": "Revising a submitted research paper into a new arXiv version is paper-orchestra's refine mode; book-publishing prepares a book manuscript and latex-documents only compiles.",
       "class": "near-neighbour",
       "provenance": "directory-derived",
-      "late_discriminative": false
+      "late_discriminative": true
     }
   ]
 }

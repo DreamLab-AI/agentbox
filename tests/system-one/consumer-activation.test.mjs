@@ -9,9 +9,17 @@ const root = new URL('../../', import.meta.url).pathname;
 const manifest = toml.parse(fs.readFileSync(`${root}agentbox.toml`, 'utf8'));
 const { CATALOGUE, stateOf } = require('../../management-api/lib/system-manifest.js');
 
+// Consumers switched off on measured evidence. Each stays catalogued so it can be
+// turned back on; anything else off is drift.
+const MEASURED_OFF = {
+  // 46b3fd616 (2026-11-11): identical picks on the 86 labelled cases at half the cost;
+  // the blind pick it adds was never adopted (0 of 2,162 turns).
+  skill_intent: true,
+};
+
 test('each requested consumer is enabled and catalogue prerequisites resolve', () => {
   for (const [key, value] of Object.entries(manifest.system_one.consumers)) {
-    assert.equal(value, true, key);
+    assert.equal(value, !MEASURED_OFF[key], key);
     const entry = CATALOGUE.find(e => e.gate === `system_one.consumers.${key}`);
     assert.ok(entry, key);
     // Resolve real prerequisites, not capability IDs masquerading as TOML paths.
