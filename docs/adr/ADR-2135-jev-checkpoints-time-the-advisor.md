@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 8c895455ae96bf3c1b07c56dc1c2756b23f22a80
+verified_commit: de01d60a408b9eb057a3b6257aabd9f764671c94
 verified_paths: [agentbox.toml, schema/agentbox.toml.schema.json, management-api/lib/system-manifest.js, flake.nix, config/entrypoint-unified.sh, config/claude-plugins/.claude-plugin/marketplace.json, scripts/ci/check-manifest-catalogue.js, tests/config/jev-checkpoints.test.mjs, tests/config/factrail-projection.test.sh, tests/config/ruflo-console.test.mjs]
 owner: jjohare
 review_trigger: the first soak report of injections per hundred turns and USD per session, a measured shadow-log agreement rate for spawn routing (ADR-2110 labels), a change to the advisor checkpoints in ADR-2134, or a Claude Code function-hook API change
@@ -270,3 +270,13 @@ Re-verified 2026-11-11 at `2c4b365b4` (ADR-2196, second pass). Governed-path del
 The only change to this record's governed paths since its previous `verified_commit` is `25f751250` plus `e188960d9` (a `flake.nix` PATH edit for the same leg) (the diagram-review audit leg: `[diagram_review]` keys `gemini_*` renamed `audit_*` with aliases, `producer_family` added, system-manifest and setup-seed text, a supervisor comment; ADR-2131 amendment of the same date). Checked mechanically: nothing else touched these paths in between. The change does not concern this record's decision, and its claims were not otherwise re-read. Decision and status axes are unchanged.
 
 **Amendment (2026-11-17).** The checkpoint calls are local by default. The Consequences say "done and plan are the only cloud calls" and put the cost at about $0.005 per qualifying event. On main at `8c895455a` the shipped `[system_one].backend` is `laya` (`agentbox.toml:915`) and the advisor checkpoints follow `backend` (comment at `agentbox.toml:918-924`; ADR-2139 amendment of the same date), so with the System One proxy on those two calls are keyless LAN calls with no vendor cost until a cloud backend is selected. The Decision is unchanged: the email carve-out, `backendLocal` declared per backend and never inferred, fail-open behaviour and shadow-only spawn routing all still apply, and they now bind only when an operator opts in to a cloud backend. `config/claude-plugins/jev-checkpoints/hooks/jev.ts` was not changed or re-read beyond the `isTypeSafeApi`/`egress` guard. Source reading only; no checkpoint call was made.
+
+## Scoped SystemScape mount review — 2026-11-18
+
+Reviewed at `de01d60a408b9eb057a3b6257aabd9f764671c94`; governed deltas: config/entrypoint-unified.sh, flake.nix.
+The reviewed source delta is limited to the read-only SystemScape settings mount
+and its boot-time link, plus the 0.4.0 package pin and exact upstream lock.
+No published port, credential, identity, role or adapter authority changes.
+Package tests (49), hosts-layer checks (8), actual boot-block fixture and
+persistent-volume checks passed. Production mount acceptance remains separate;
+this scoped review does not re-audit unrelated history or promote status axes.

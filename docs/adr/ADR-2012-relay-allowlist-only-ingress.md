@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 8c895455ae96bf3c1b07c56dc1c2756b23f22a80
+verified_commit: de01d60a408b9eb057a3b6257aabd9f764671c94
 verified_paths: [agentbox.toml, flake.nix]
 owner: jjohare
 review_trigger: ingress_policy changes from allowlist, or the ADR-040 D3 governance-publisher key-split lands
@@ -568,3 +568,13 @@ Re-verified 2026-11-11 at `2c4b365b4` (ADR-2196, second pass). Governed-path del
 The only change to this record's governed paths since its previous `verified_commit` is `25f751250` plus `e188960d9` (a `flake.nix` PATH edit for the same leg) (the diagram-review audit leg: `[diagram_review]` keys `gemini_*` renamed `audit_*` with aliases, `producer_family` added, system-manifest and setup-seed text, a supervisor comment; ADR-2131 amendment of the same date). Checked mechanically: nothing else touched these paths in between. The change does not concern this record's decision, and its claims were not otherwise re-read. Decision and status axes are unchanged.
 
 **Amendment (2026-11-17).** The Node relay consumer now enforces deny-all on an empty allowlist. The Decision says an empty allowlist drops every inbound event. The Rust admission work recorded above (`services/nostr-pod-bridge/src/admission.rs`) already did, but the Node `RelayConsumer` that `management-api/server.js` builds (`:1452-1455`) did not: its allowlist case read `this._allowedPubkeys.size === 0 || ...`, so an empty list admitted every author, and the supervised management-api process was not given a list (`AGENTBOX_RELAY_ALLOWED_PUBKEYS` was not in its `environment=` line, so the consumer ran with `[]` unless something outside the image set it). On main at `8c895455a` both halves are closed. `mcp/nostr-bridge/relay-consumer.js:773-777` fails closed (an empty or unset allowlist admits nobody; widening needs the explicit `open` or `signed-only` policy) and `:161-167` logs `relay-ingress-allowlist-empty` once at construction. `flake.nix:2882` passes `AGENTBOX_RELAY_ALLOWED_PUBKEYS="${relayAllowedPubkeysCsv}"` to the management API, the same build-baked list (`flake.nix:2064-2066`, from `[sovereign_mesh.relay].allowed_pubkeys`, `agentbox.toml:156`, non-empty on main) that the relay bridge already receives as `AGENTBOX_ALLOWED_PUBKEYS` (`flake.nix:2966`). Behaviour change for the consumer: it now admits only the listed authors, where before it admitted all. The Decision text stands unedited; the Node consumer now matches it. `implementation_status` stays `partial` (the publisher key split is still pending) and `activation_status` is unchanged: the running management API has not been rebuilt or restarted on this commit. Test: `NODE_PATH=<primary checkout>/node_modules node --test tests/sovereign/relay-consumer-allowlist.test.cjs` gave 5 pass, 0 fail (without `ws` on the path the file cannot load).
+
+## Scoped SystemScape mount review — 2026-11-18
+
+Reviewed at `de01d60a408b9eb057a3b6257aabd9f764671c94`; governed deltas: flake.nix.
+The rollout adds only the read-only SystemScape settings mount and its boot-time
+link, plus the 0.4.0 package pin and exact upstream lock. No published port,
+credential, identity, role or adapter authority changes. Package tests (49),
+hosts-layer checks (8), actual boot-block fixture and persistent-volume checks
+passed. Production mount acceptance remains a separate deployment check;
+this source stamp does not promote this record's status axes.

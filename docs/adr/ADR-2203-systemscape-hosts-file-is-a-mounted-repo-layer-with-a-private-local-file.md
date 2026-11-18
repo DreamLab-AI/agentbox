@@ -7,8 +7,8 @@ implementation_status: partial
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit:
-verified_paths: []
+verified_commit: de01d60a408b9eb057a3b6257aabd9f764671c94
+verified_paths: [config/systemscape/README.md, config/systemscape/hosts.example.toml, config/entrypoint-unified.sh, flake.nix, docker-compose.yml, lib/systemscape.nix, lib/systemscape-Cargo.lock, tests/config/systemscape-hosts-layer.test.sh, tests/config/systemscape-hosts-boot.test.cjs]
 owner: operator
 review_trigger: the SystemScape pin moves to 0.4.0 or later, or a second consumer of config/systemscape/ appears
 repo: agentbox
@@ -62,3 +62,14 @@ gitignored `local/`, mounted read-only and never baked into the image.
   file.
 - Not yet verified: a host `nix build .#compose`, a rebuilt image booting with
   the mount, and the pinned 0.4.0 binary in the System pane.
+
+### Host package verification — 2026-11-18
+
+Upstream fbd780511de2c3d264d53b8cb097f983b8ec156c is pushed, pinned at 0.4.0,
+and host-prefetched with NAR hash
+`sha256-hvAQpf+9SfBfSvHL70wmDyfD3YxTgvKxSVwwUCTapko=`. The lock copy is
+byte-identical. `nix build .#systemscape` passed all 49 tests and the binary
+reports 0.4.0. The actual boot block also passed temporary-filesystem tests for
+absence, linking, repeat execution, link removal, regular-file preservation
+and preservation of an unrelated dangling symlink. Image/production activation
+evidence is deliberately not claimed by this source-only verification.

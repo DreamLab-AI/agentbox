@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: 9ce9c2c2cd3be8e339139c7786657b5c3d158bc5
+verified_commit: de01d60a408b9eb057a3b6257aabd9f764671c94
 verified_paths: [config/hooks/activity-sink.cjs, config/entrypoint-unified.sh, services/agentbox-manifest/src/stacks.rs, services/agentbox-manifest/src/stacks_env.rs, tests/config/activity-sink.test.js, config/egress-policy.json]
 owner: jjohare
 review_trigger: a second consumer of the sink, a change to the wire body, a new event or tool class, moving the token under role isolation (ADR-2122), or any change to the ADR-2026 redactor
@@ -166,3 +166,13 @@ Governed-path delta since `09067b095`: `config/entrypoint-unified.sh`: the crede
 Re-verified 2026-11-11 at `237178730` (ADR-2192, ADR-2193, ADR-2194 at `04638a618`; ADR-2195 at this commit). Governed-path delta since `e2b49adfc`: `config/egress-policy.json` re-anchors three `skill-route.cjs` line citations that the router edit moved; no route, host, class or policy field changes; `config/entrypoint-unified.sh` reads `[skills.routing].scope` and, only when it is `all`, adds `AGENTBOX_SKILL_ROUTE_SCOPE=all` to the routing hook command and to `runtime-env.sh` (which also gains one comment line). The changes add a routing scope setting, a launcher for PID 1, one Rust skill tool and a gated-off CAD feature. They add no published port, mount, volume, secret, identity, model route, vault path, registry entry or Nostr kind, and alter no existing gate, so what this record decides is not touched. Run on this commit in the container: the configuration jest suites (294 passed), `skill-lint`, `skill-count-check`, the manifest validator, the egress register check, the secret inventory, the crate licensing check, the role-isolation and runtime-contract shell tests, `python-runtime-path` and `cad-launcher`. The flake was NOT evaluated (no Nix in the container) and no image has been built from it. The decision and status axes are unchanged. Re-run: `git diff e2b49adfc..237178730 -- <verified_paths>`.
 
 Re-verified 2026-11-11 at `924f4282a` (ADR-2196). Governed-path delta since `237178730`: `config/entrypoint-unified.sh` drops the `_probe_closure` of the deleted openai-codex MCP server, which would have failed the boot under `ENABLE_CODEX`. No published port, mount, secret, identity, route, vault path or registry entry changes, so what this record decides is not touched. Run on this commit: skill lint (124), skill-count, routing-table, the manifest validator, router and configuration jest, the corpus test (its baked-versus-repo comparison fails in-container until the next rebuild), and the agentbox-manifest and podcast-ingest cargo tests. The Nix changes are not evaluated or built. The decision and status axes are unchanged.
+
+## Scoped SystemScape mount review — 2026-11-18
+
+Reviewed at `de01d60a408b9eb057a3b6257aabd9f764671c94`; governed deltas: config/entrypoint-unified.sh.
+The reviewed source delta is limited to the read-only SystemScape settings mount
+and its boot-time link, plus the 0.4.0 package pin and exact upstream lock.
+No published port, credential, identity, role or adapter authority changes.
+Package tests (49), hosts-layer checks (8), actual boot-block fixture and
+persistent-volume checks passed. Production mount acceptance remains separate;
+this scoped review does not re-audit unrelated history or promote status axes.

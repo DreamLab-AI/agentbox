@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 8c895455ae96bf3c1b07c56dc1c2756b23f22a80
+verified_commit: de01d60a408b9eb057a3b6257aabd9f764671c94
 verified_paths: [agentbox.toml, schema/agentbox.toml.schema.json, crates/system-one/system-one-proxy/src/config.rs, crates/system-one/system-one-proxy/tests/proxy.rs, tests/config/semantic-rules.test.js, crates/system-one/system-one-proxy/src/server.rs, crates/system-one/system-one-proxy/src/key.rs, services/agentbox-manifest/src/system_one.rs, config/entrypoint-unified.sh, config/hooks/lib/skill-route.cjs, config/seal-bootstrap.sh, lib/system-one-proxy.nix, flake.nix, scripts/agentbox-config-validate.js, agentbox.sh]
 owner: jjohare
 review_trigger: SubQ Snap leaving public preview or changing its price, retention default or the Decisions request shape; a Kev, Clef or pplx-decider release that serves /v1/systemone on a 9B-class checkpoint; a system-one-eval run on the ADR-2089 corpus that moves any backend by more than 5 points; the first compaction replay whose keep-rate is above 5%
@@ -451,3 +451,13 @@ The only change to this record's governed paths since its previous `verified_com
 - The 2026-10-30 consequence "any container on those networks can spend the vendor key" holds only once a cloud backend is selected.
 
 Cost the owner accepted, from this record's own Context: laya measured 53.5% on the 86-case routing corpus against Jev's 93.0%, so the skill router's escalations are less accurate by default until a better local engine is adopted; the measurement was not repeated here. Checked by reading `git diff c0d8382a2 8c895455a -- agentbox.toml`; no proxy was started and no projection was run, so what the running proxy serves is unchecked and follows the next boot. Decision, implementation and activation statuses are unchanged: the amendment changes a default, not the decision.
+
+## Scoped SystemScape mount review — 2026-11-18
+
+Reviewed at `de01d60a408b9eb057a3b6257aabd9f764671c94`; governed deltas: config/entrypoint-unified.sh, flake.nix.
+The reviewed source delta is limited to the read-only SystemScape settings mount
+and its boot-time link, plus the 0.4.0 package pin and exact upstream lock.
+No published port, credential, identity, role or adapter authority changes.
+Package tests (49), hosts-layer checks (8), actual boot-block fixture and
+persistent-volume checks passed. Production mount acceptance remains separate;
+this scoped review does not re-audit unrelated history or promote status axes.

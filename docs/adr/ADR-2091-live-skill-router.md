@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 9ce9c2c2cd3be8e339139c7786657b5c3d158bc5
+verified_commit: de01d60a408b9eb057a3b6257aabd9f764671c94
 verified_paths: [config/hooks/lib/skill-route.cjs, config/hooks/skill-route.cjs, skills/skill-router/scripts/route.mjs, config/entrypoint-unified.sh, tests/config/skill-route.test.js, skills/visioncraft/SKILL.md, skills/registered-skills.txt, skills/codex-registered-skills.txt, tests/system-one/visioncraft-picker.test.mjs]
 owner: jjohare
 review_trigger: the first project that needs a per-project routing bypass (ADR-2090), a Jev model change, or a measured runtime-path accuracy below 85% on the 40-item set
@@ -330,3 +330,13 @@ Re-verified 2026-11-11 at `237178730` (ADR-2192, ADR-2193, ADR-2194 at `04638a61
 Re-verified 2026-11-11 at `a1d16473e` (skill-estate audit). Governed-path delta since `237178730`: `config/hooks/lib/skill-route.cjs` keeps the request timer armed until the reply body is parsed, reads `description`/`status`/`deprecated` only from the frontmatter block, no longer resurrects a synced skill excluded by status through its manifest description, lets a baked skill win over a plugin or synced extra of the same bare name, excludes the three synced skills that need the Claude desktop app (`DESKTOP_ONLY_SYNCED`), and counts a registration symlink as registered only when it resolves to the baked skill; `tests/config/skill-route.test.js` gains 24 tests covering those fixes (104 pass). **Review trigger considered** (accuracy). Measured 2026-11-11 through `lib.route` at scope `all`: 83 of 86 on the original labelled cases. The fail-open paths are unchanged, and a stalled reply body now fails as `timeout` inside the hook's own limit instead of being killed by Claude Code unlogged. Run on this commit: skill lint and its self-test, skill-count, routing-table, the manifest validator, the router jest suites (104) and configuration jest (301), corpus and parity tests (the corpus's baked-versus-repo comparison fails in this container until the next rebuild carries the new descriptions; CI has no baked tree and skips it). The decision and status axes are unchanged.
 
 Re-verified 2026-11-11 at `924f4282a` (ADR-2196). Governed-path delta since `a1d16473e`: `config/entrypoint-unified.sh` drops the `_probe_closure` of the deleted openai-codex MCP server, which would have failed the boot under `ENABLE_CODEX`; `config/hooks/lib/skill-route.cjs` offers a skill naming a `gate:` only while that key is literally true in the `agentbox.toml` beside the skills tree (`gateOpen`, `loadCandidates`); `skills/registered-skills.txt` changes one comment (playwright gone, qe-browser live); no entry changes; `tests/config/skill-route.test.js` gains the gate test. No published port, mount, secret, identity, route, vault path or registry entry changes, so what this record decides is not touched. Run on this commit: skill lint (124), skill-count, routing-table, the manifest validator, router and configuration jest, the corpus test (its baked-versus-repo comparison fails in-container until the next rebuild), and the agentbox-manifest and podcast-ingest cargo tests. The Nix changes are not evaluated or built. The decision and status axes are unchanged.
+
+## Scoped SystemScape mount review — 2026-11-18
+
+Reviewed at `de01d60a408b9eb057a3b6257aabd9f764671c94`; governed deltas: config/entrypoint-unified.sh.
+The reviewed source delta is limited to the read-only SystemScape settings mount
+and its boot-time link, plus the 0.4.0 package pin and exact upstream lock.
+No published port, credential, identity, role or adapter authority changes.
+Package tests (49), hosts-layer checks (8), actual boot-block fixture and
+persistent-volume checks passed. Production mount acceptance remains separate;
+this scoped review does not re-audit unrelated history or promote status axes.

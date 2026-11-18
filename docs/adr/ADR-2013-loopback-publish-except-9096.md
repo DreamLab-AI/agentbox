@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 8c895455ae96bf3c1b07c56dc1c2756b23f22a80
+verified_commit: de01d60a408b9eb057a3b6257aabd9f764671c94
 verified_paths: [scripts/ci/check-ports-loopback.sh, scripts/ci/check-ports-loopback.mjs, tests/security/ports-gate.test.mjs, .github/workflows/invariants.yml, flake.nix, docker-compose*.yml]
 owner: jjohare
 review_trigger: Any new entry on the SANCTIONED list, or a new compose overlay file
@@ -545,3 +545,13 @@ The only change to this record's governed paths since its previous `verified_com
 - Limit, stated plainly: CI now proves the default, not the deployed address. Setting `AGENTBOX_SIDECAR_BIND=0.0.0.0` publishes seven unauthenticated ports (VNC, CDP, browser MCP, Blender and QGIS MCP) and the gate still passes, because it cannot see the environment. `docs/LAN-door-threat-model.md` now says a LAN bind is not an authentication mechanism, and the browsercontainer and gui-tools READMEs say `0.0.0.0` belongs only on a trusted network. This record's `review_trigger` names new `SANCTIONED` entries and new overlays but not a change to `SIDECAR_BIND_FILES`; the trigger was left as written.
 
 Checked: `node scripts/ci/check-ports-loopback.mjs` exits 0 (15 compose files, 14 port blocks; listener audit unchanged) and `node --test tests/security/ports-gate.test.mjs` passes 1 of 1. The running sidecars were not inspected: a container created before this commit keeps its old publish until recreated, so the 9096 and voice facts hold while the sidecar change takes effect at the next `docker compose up`. Status axes are unchanged; `implementation_status: partial` retains its existing reasons (resolved deployment input is not audited).
+
+## Scoped SystemScape mount review — 2026-11-18
+
+Reviewed at `de01d60a408b9eb057a3b6257aabd9f764671c94`; governed deltas: docker-compose.yml, flake.nix.
+The rollout adds only the read-only SystemScape settings mount and its boot-time
+link, plus the 0.4.0 package pin and exact upstream lock. No published port,
+credential, identity, role or adapter authority changes. Package tests (49),
+hosts-layer checks (8), actual boot-block fixture and persistent-volume checks
+passed. Production mount acceptance remains a separate deployment check;
+this source stamp does not promote this record's status axes.
