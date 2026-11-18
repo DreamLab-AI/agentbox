@@ -108,7 +108,8 @@ adding it. A missing file leaves the pane exactly as before. The pinned
 
 ## Rebuild
 
-SystemScape 0.3 is a rebuild-class package update. On the build host:
+SystemScape package updates (including 0.4's remote-host support) are rebuild-class.
+On the build host:
 
 ```sh
 nix build .#systemscape
@@ -150,3 +151,17 @@ and after cutover. Executed Docker PTY probes render synthetic activity and
 telemetry frames with RGB ANSI colours and Unicode half-block pixels; the
 activity fixture does not open real histories. These are rendering smoke checks,
 not a new claim about real-history coverage or every interactive control.
+
+### Nix package verification — 2026-11-18
+
+Version 0.4.0 is pinned to `fbd780511de2c3d264d53b8cb097f983b8ec156c`.
+The host prefetch produced
+`sha256-hvAQpf+9SfBfSvHL70wmDyfD3YxTgvKxSVwwUCTapko=`, the vendored lock
+is byte-identical to that commit, and the standalone Nix build passed all 49
+tests (including its process/timeout tests). The binary reports 0.4.0.
+
+The first image activation also adds the read-only hosts mount. Ordinary fast
+activation deliberately refuses a changed mount set: use a separately reviewed
+migration that permits only `config/systemscape` at `/etc/agentbox/systemscape`
+read-only and verifies every existing durable mount unchanged. Do not weaken
+the generic lifecycle guard or regenerate private host settings into the image.
