@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: de01d60a408b9eb057a3b6257aabd9f764671c94
+verified_commit: f976283812cc913b3ac8dcd15f8789979b54a030
 verified_paths: [config/systemscape/README.md, config/systemscape/hosts.example.toml, config/entrypoint-unified.sh, flake.nix, docker-compose.yml, lib/systemscape.nix, lib/systemscape-Cargo.lock, tests/config/systemscape-hosts-layer.test.sh, tests/config/systemscape-hosts-boot.test.cjs]
 owner: operator
 review_trigger: the SystemScape pin moves to 0.4.0 or later, or a second consumer of config/systemscape/ appears
@@ -17,6 +17,16 @@ acceptance_boundary:
 ---
 
 # ADR-2203 — The SystemScape hosts file is a mounted repo layer with a private local file
+
+## Scoped package check — 2026-11-18 (SystemScape 0.5)
+
+The new source pin is `7faffcd29a13f5d0d217434a6e7fafe8407492a1`, version
+0.5.0. Host prefetch confirms `sha256-t+7REjvDMzmAzQhJJB6VxDn/ni0BRHR0e2Ti7V8bA/Q=`;
+the vendored lock is byte-identical. The standalone Nix build passed 183 tests
+with one upstream ignored test, and reports 0.5.0. Eight public/private-layer
+checks and the actual boot-link fixture pass. Mounts and boot-link semantics
+are unchanged. This verifies the package update, not the pending 0.5 image
+activation or any new acceptance/status promotion.
 
 ## Context
 SystemScape 0.4.0 can watch other machines in its telemetry view. A hosts file

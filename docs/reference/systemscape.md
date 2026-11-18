@@ -160,16 +160,17 @@ The host prefetch produced
 was byte-identical to that commit, and the standalone Nix build passed all 49
 tests (including its process/timeout tests). The binary reported 0.4.0.
 
-### Pin moved to 0.5.0 — 2026-11-18, not yet built
+### Host package verified at 0.5.0 — 2026-11-18
 
 Version 0.5.0 is pinned to `7faffcd29a13f5d0d217434a6e7fafe8407492a1`, and
 the vendored lock is byte-identical to that commit (only the crate's own
 version line differs from 0.4.0; no dependency changed). The hash
-`sha256-t+7REjvDMzmAzQhJJB6VxDn/ni0BRHR0e2Ti7V8bA/Q=` was computed inside the
-container, which has no Nix, by a NAR serialiser checked against the 0.4.0
-pin above; it has not been confirmed by a host prefetch. Not yet verified: the
-standalone `nix build .#systemscape` (183 tests, some with loopback sockets
-and subprocess timeouts) and a rebuilt image.
+`sha256-t+7REjvDMzmAzQhJJB6VxDn/ni0BRHR0e2Ti7V8bA/Q=` is independently
+confirmed by host `nix-prefetch-url --unpack`. The standalone Nix build passed
+183 tests with one upstream ignored test, including loopback sockets and
+subprocess timeouts; the binary reports 0.5.0. Eight hosts-layer checks, the
+boot-link fixture and three guarded recorder-launcher cases pass. Image
+preparation and activation remain separate deployment evidence.
 
 The System pane now runs `systemscape --record` when the binary's `--help`
 lists the flag, and plain `systemscape` otherwise. With the flag SystemScape

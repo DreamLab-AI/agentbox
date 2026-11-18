@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 350772de92685339dfff117e66088d8adeb44bec
+verified_commit: f976283812cc913b3ac8dcd15f8789979b54a030
 verified_paths: [services/dream-engine/src/review.rs, services/dream-engine/src/archive.rs, services/dream-engine/src/ledger_io.rs, services/dream-engine/src/gitcmd.rs, services/dream-engine/src/records.rs, services/dream-engine/src/lib.rs, services/dream-engine/src/engine.rs, services/dream-engine/src/main.rs, services/dream-engine/src/config.rs, services/dream-engine/src/estate.rs, services/dream-engine/src/digest.rs, services/dream-engine/src/governance.rs, config/tmux-autostart.sh, schema/agentbox.toml.schema.json, setup/agentbox.default.toml]
 owner: jjohare
 review_trigger: a forge identity that separates agent merges from human merges (a dedicated agent account or signed human approvals), which would reopen merge events as review evidence; a review tool that authenticates its reviewer; any change that prunes, relocates or stops archiving the artefact directory; a dream-core release that changes the ledger row or the witness
@@ -20,6 +20,14 @@ acceptance_boundary: "cargo test in services/dream-engine at 542031581 passes 25
 ---
 
 # ADR-2190: Dream ledger human cells come only from recorded reviews, and night artefacts are a durable, archived record
+
+## Scoped source check — 2026-11-18 (SystemScape 0.5)
+
+Only the System pane's guarded `--record` argument changed among governed
+paths since the prior stamp. The dream-engine fallback, review attribution,
+ledger locking and durable archive paths are unchanged. Bash syntax and three
+recorder-launcher cases pass. No night-run/private-archive acceptance is claimed;
+existing staged status and all archive-retention requirements remain.
 
 
 ## Scoped deployment review — 2026-11-16
