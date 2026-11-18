@@ -85,6 +85,9 @@ impl Tmux {
 
     fn command(&self) -> Command {
         let mut c = Command::new("tmux");
+        // Keep the machine protocol UTF-8 under a noninteractive C locale:
+        // otherwise tmux sanitizes tab separators to underscores.
+        c.arg("-u");
         if let Some(s) = &self.socket {
             c.arg("-L").arg(s);
         }
@@ -281,5 +284,18 @@ impl Tmux {
 
     pub fn kill_server(&self) {
         let _ = self.run(&["kill-server"]);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Tmux;
+
+    #[test]
+    fn protocol_commands_force_utf8_even_without_a_utf8_locale() {
+        let tmux = Tmux::new(Some("fixture".into()));
+        let command = tmux.command();
+        let args: Vec<_> = command.get_args().map(|a| a.to_string_lossy().into_owned()).collect();
+        assert_eq!(args, ["-u", "-L", "fixture"]);
     }
 }
