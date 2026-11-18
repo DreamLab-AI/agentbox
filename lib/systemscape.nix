@@ -6,13 +6,13 @@
 
 pkgs.rustPlatform.buildRustPackage rec {
   pname = "systemscape";
-  version = "0.3.0";
+  version = "0.4.0";
 
   src = pkgs.fetchFromGitHub {
     owner = "DreamLab-AI";
     repo = "systemscape";
-    rev = "a123d8b0f09c681576c6e556b182537e9ea577ed";
-    hash = "sha256-Dr1qiXF3ntAm/MI0RDptUiKZzGZ4pH392VmSyDIa3Bk=";
+    rev = "fbd780511de2c3d264d53b8cb097f983b8ec156c";
+    hash = "sha256-hvAQpf+9SfBfSvHL70wmDyfD3YxTgvKxSVwwUCTapko=";
   };
 
   # Exact upstream lock, copied locally to avoid fetching source during evaluation.
