@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: de01d60a408b9eb057a3b6257aabd9f764671c94
+verified_commit: ceab43d415f6efd28c0bbf39def9179e07f7fb2c
 verified_paths: [agentbox.toml, schema/agentbox.toml.schema.json, scripts/agentbox-config-validate.js, config/entrypoint-unified.sh, config/hooks/skill-route.cjs, config/hooks/lib/skill-route.cjs, skills/skill-router/scripts/route.mjs, config/egress-policy.json, tests/config/skill-route.test.js]
 owner: jjohare
 review_trigger: the first project whose content must not reach the judge, or any proposal to widen this beyond skill routing
@@ -210,3 +210,14 @@ No published port, credential, identity, role or adapter authority changes.
 Package tests (49), hosts-layer checks (8), actual boot-block fixture and
 persistent-volume checks passed. Production mount acceptance remains separate;
 this scoped review does not re-audit unrelated history or promote status axes.
+
+## Messaging rollout source review — 2026-11-18
+
+Reviewed at `ceab43d415f6efd28c0bbf39def9179e07f7fb2c`. Existing size caps now
+mark cuts; long DMs use bounded numbered parts; peek retains the newest tail;
+large session sends use a private named tmux buffer, with UTF-8 forced for
+machine-readable replies under a C locale. Ownership and transport authority
+are unchanged. Egress-register edits only refresh line citations, not consent
+or destinations. Consumer-test locality follows the explicitly selected vendor.
+Focused message tests and the sessions, System One and plugin regressions were
+run; deployment acceptance remains separate. No status axis is promoted.

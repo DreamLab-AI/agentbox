@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: [ADR-2002, ADR-2063, ADR-2079]
 superseded_by: []
-verified_commit: de01d60a408b9eb057a3b6257aabd9f764671c94
+verified_commit: ceab43d415f6efd28c0bbf39def9179e07f7fb2c
 verified_paths: [services/agentbox-sessions, config/session-plane, lib/agentbox-sessions.nix, flake.nix, flake.lock, agentbox.toml, config/entrypoint-unified.sh, config/role-accounts.json, config/custody/session-plane-acl.json, config/tab0-bridge, config/nostr-gateway/gateway.cjs, config/nip98-proxy, config/tmux-autostart.sh, config/hooks/session-state.cjs, config/registered-hooks.txt, scripts/session-provision.mjs, scripts/session-control.cjs, scripts/activation/session-plane-acceptance.mjs, management-api/lib/system-manifest.js, schema/agentbox.toml.schema.json, services/agentbox-manifest/src/stacks.rs, services/agentbox-manifest/src/stacks_env.rs, tests/cli/session-launch-contract.test.mjs, tests/cli/session-control.test.cjs, tests/config/session-plane-notify.test.sh]
 owner: jjohare
 review_trigger: Antigravity signed in and OpenRouter answering the canned round trip (closes §11 acceptance → implementation complete); any AoE consumer found to have been missed
@@ -398,3 +398,14 @@ No published port, credential, identity, role or adapter authority changes.
 Package tests (49), hosts-layer checks (8), actual boot-block fixture and
 persistent-volume checks passed. Production mount acceptance remains separate;
 this scoped review does not re-audit unrelated history or promote status axes.
+
+## Messaging rollout source review — 2026-11-18
+
+Reviewed at `ceab43d415f6efd28c0bbf39def9179e07f7fb2c`. Existing size caps now
+mark cuts; long DMs use bounded numbered parts; peek retains the newest tail;
+large session sends use a private named tmux buffer, with UTF-8 forced for
+machine-readable replies under a C locale. Ownership and transport authority
+are unchanged. Egress-register edits only refresh line citations, not consent
+or destinations. Consumer-test locality follows the explicitly selected vendor.
+Focused message tests and the sessions, System One and plugin regressions were
+run; deployment acceptance remains separate. No status axis is promoted.

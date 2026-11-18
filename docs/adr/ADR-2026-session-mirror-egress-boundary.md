@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: 23717873089478ce4b18c6c09bddf4e0adb064f9
+verified_commit: ceab43d415f6efd28c0bbf39def9179e07f7fb2c
 verified_paths: [config/egress-policy.json, config/hooks/lib/egress-policy.cjs, config/hooks/nostr-live-mirror.cjs, tests/sovereign/egress-boundary.test.js]
 owner: jjohare
 review_trigger: any change to config/hooks/nostr-live-mirror.cjs or the mobile_bridge digest, or the recipient/relay configuration
@@ -219,3 +219,14 @@ Re-verified 2026-10-31 at `97f298db5`: the only delta on this record's governed 
 Re-verified 2026-10-31 at `2f15c531b02b8f8393d68d29ce3491712bdd862c` (W7 and W8 integration, `adr-sprint/w78`). Governed-path delta since `97f298db5`: `config/egress-policy.json`: the `skill-router` row's `notes` only, now saying the bypass stops the skill router and not factrail or jev-checkpoints (ADR-2090). Read from the diff and checked against the merged tree's gates (cargo, jest, validator); nothing it changes is a key, table or code path this record decides, so the decision and status axes are unchanged. Re-run: `git diff 97f298db5..2f15c531b -- config/egress-policy.json`.
 
 Re-verified 2026-11-11 at `237178730` (ADR-2192, ADR-2193, ADR-2194 at `04638a618`; ADR-2195 at this commit). Governed-path delta since `c7c2f76b9`: `config/egress-policy.json` re-anchors three `skill-route.cjs` line citations that the router edit moved; no route, host, class or policy field changes. The changes add a routing scope setting, a launcher for PID 1, one Rust skill tool and a gated-off CAD feature. They add no published port, mount, volume, secret, identity, model route, vault path, registry entry or Nostr kind, and alter no existing gate, so what this record decides is not touched. Run on this commit in the container: the configuration jest suites (294 passed), `skill-lint`, `skill-count-check`, the manifest validator, the egress register check, the secret inventory, the crate licensing check, the role-isolation and runtime-contract shell tests, `python-runtime-path` and `cad-launcher`. The flake was NOT evaluated (no Nix in the container) and no image has been built from it. The decision and status axes are unchanged. Re-run: `git diff c7c2f76b9..237178730 -- <verified_paths>`.
+
+## Messaging rollout source review — 2026-11-18
+
+Reviewed at `ceab43d415f6efd28c0bbf39def9179e07f7fb2c`. Existing size caps now
+mark cuts; long DMs use bounded numbered parts; peek retains the newest tail;
+large session sends use a private named tmux buffer, with UTF-8 forced for
+machine-readable replies under a C locale. Ownership and transport authority
+are unchanged. Egress-register edits only refresh line citations, not consent
+or destinations. Consumer-test locality follows the explicitly selected vendor.
+Focused message tests and the sessions, System One and plugin regressions were
+run; deployment acceptance remains separate. No status axis is promoted.

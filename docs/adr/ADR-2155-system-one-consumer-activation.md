@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 97f298db552a61b8edd6147c68a3191d434db6fa
+verified_commit: ceab43d415f6efd28c0bbf39def9179e07f7fb2c
 verified_paths: [services/agentbox-manifest/src/system_one.rs, config/hooks/lib/jev-option.cjs, tests/system-one/consumer-activation.test.mjs]
 owner: operator
 review_trigger: a passing acceptance run per docs/reference/system-one-activation.md on the booted image, memory recall included once its six frozen fixture IDs resolve (activation → live); changes to consumer locality or acceptance thresholds
@@ -62,3 +62,14 @@ Re-verified 2026-10-30 at `29a4b4939`: AMENDED 2026-10-30 (operator): the local-
 Re-verified 2026-10-30 at d0e9ca786: system_one.rs gains the skill_list_at_least export (verify-gated, warned when out of range). The consumer activation set and its staged status are unchanged.
 
 Re-verified 2026-10-31 at `97f298db5`: the only delta on this record's governed paths since the previous verification is the sprint-W7 additive work (ADR-2139 Decision 5 `state_budget_tokens`; ADR-2090 `bypass_projects`): new optional keys that default to today's behaviour, in services/agentbox-manifest/src/system_one.rs. `system_one.rs` gains the optional per-backend `state_budget_tokens` (ADR-2139 Decision 5), emitted in shell and plugin-config only when the active backend declares one; the consumer opt-ins and activation behaviour are unchanged. Re-verified by `git diff d0e9ca786..97f298db5 -- <governed paths>`; status axes unchanged.
+
+## Messaging rollout source review — 2026-11-18
+
+Reviewed at `ceab43d415f6efd28c0bbf39def9179e07f7fb2c`. Existing size caps now
+mark cuts; long DMs use bounded numbered parts; peek retains the newest tail;
+large session sends use a private named tmux buffer, with UTF-8 forced for
+machine-readable replies under a C locale. Ownership and transport authority
+are unchanged. Egress-register edits only refresh line citations, not consent
+or destinations. Consumer-test locality follows the explicitly selected vendor.
+Focused message tests and the sessions, System One and plugin regressions were
+run; deployment acceptance remains separate. No status axis is promoted.

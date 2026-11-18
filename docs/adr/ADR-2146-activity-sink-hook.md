@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: de01d60a408b9eb057a3b6257aabd9f764671c94
+verified_commit: ceab43d415f6efd28c0bbf39def9179e07f7fb2c
 verified_paths: [config/hooks/activity-sink.cjs, config/entrypoint-unified.sh, services/agentbox-manifest/src/stacks.rs, services/agentbox-manifest/src/stacks_env.rs, tests/config/activity-sink.test.js, config/egress-policy.json]
 owner: jjohare
 review_trigger: a second consumer of the sink, a change to the wire body, a new event or tool class, moving the token under role isolation (ADR-2122), or any change to the ADR-2026 redactor
@@ -176,3 +176,14 @@ No published port, credential, identity, role or adapter authority changes.
 Package tests (49), hosts-layer checks (8), actual boot-block fixture and
 persistent-volume checks passed. Production mount acceptance remains separate;
 this scoped review does not re-audit unrelated history or promote status axes.
+
+## Messaging rollout source review — 2026-11-18
+
+Reviewed at `ceab43d415f6efd28c0bbf39def9179e07f7fb2c`. Existing size caps now
+mark cuts; long DMs use bounded numbered parts; peek retains the newest tail;
+large session sends use a private named tmux buffer, with UTF-8 forced for
+machine-readable replies under a C locale. Ownership and transport authority
+are unchanged. Egress-register edits only refresh line citations, not consent
+or destinations. Consumer-test locality follows the explicitly selected vendor.
+Focused message tests and the sessions, System One and plugin regressions were
+run; deployment acceptance remains separate. No status axis is promoted.
