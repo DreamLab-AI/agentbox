@@ -41,5 +41,9 @@ test('pre-supervisor projection reaches a child without changing public vendor l
     cwd:root, encoding:'utf8', env:{...process.env, AGENTBOX_CONFIG:`${root}agentbox.toml`, PATH:`${root}services/agentbox-manifest/target/debug:${process.env.PATH}`}
   });
   assert.equal(child.status, 0, child.stderr);
-  assert.deepEqual(JSON.parse(child.stdout.trim()), { memory:'1', private:'http://systemone:8097/v1/systemone', local:'0', website:'1', vault:'1' });
+  // Locality follows the explicitly selected vendor, not a historical cloud
+  // default or an inference from the URL. Laya is the current local default.
+  const backend = manifest.system_one.backends[manifest.system_one.backend];
+  assert.equal(typeof backend.local, 'boolean');
+  assert.deepEqual(JSON.parse(child.stdout.trim()), { memory:'1', private:'http://systemone:8097/v1/systemone', local:backend.local ? '1' : '0', website:'1', vault:'1' });
 });
