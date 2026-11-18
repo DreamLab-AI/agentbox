@@ -348,7 +348,15 @@ tmux new-window -t "${SESSION}:5" -n "System" -c "$WORKSPACE_DIR"
 # network) over two hours. It pauses drawing while this window is off screen,
 # and holds its camera at 2 Hz while bottom has focus. Restart after an unexpected
 # exit so a transient sensor/terminal problem does not leave a dead dashboard.
-tmux send-keys -t "${SESSION}:5" "while true; systemscape; printf '\\nSystemScape exited (%s); restarting in 2s — Ctrl-C for shell\\n' \"\$status\"; sleep 2; end" C-m
+# --record (SystemScape 0.5.0) keeps 14 days of 150 s slots in
+# ~/.local/state/systemscape/telemetry.jsonl, which the Activity window reads
+# for heat. A binary without the flag would reject it and spin the loop, so
+# the flag is passed only when --help lists it.
+SYSTEMSCAPE_FLAGS=""
+if systemscape --help 2>/dev/null | grep -q -- '--record'; then
+  SYSTEMSCAPE_FLAGS=" --record"
+fi
+tmux send-keys -t "${SESSION}:5" "while true; systemscape${SYSTEMSCAPE_FLAGS}; printf '\\nSystemScape exited (%s); restarting in 2s — Ctrl-C for shell\\n' \"\$status\"; sleep 2; end" C-m
 # Retain bottom's strengths (process tree, per-core load, disk/network rates)
 # in a narrower companion pane. Focus either pane and press Ctrl-Space z to zoom.
 tmux split-window -h -p 38 -t "${SESSION}:5" -c "$WORKSPACE_DIR"

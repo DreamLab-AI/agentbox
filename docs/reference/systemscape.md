@@ -97,7 +97,7 @@ SystemScape 0.4 can show other machines in the System pane. Each runs
 client. The list lives in the gitignored
 [`config/systemscape/local/hosts.toml`](../../config/systemscape/README.md),
 mounted read-only and linked to SystemScape's default path at boot
-(ADR-2203). The pane command stays `systemscape`; Tab or `1`–`9` picks the
+(ADR-2203). The pane command needs no `--hosts`; Tab or `1`–`9` picks the
 machine shown, and the strip on the top line marks each one live,
 connecting, stale or failed with the reason.
 
@@ -154,11 +154,33 @@ not a new claim about real-history coverage or every interactive control.
 
 ### Nix package verification — 2026-11-18
 
-Version 0.4.0 is pinned to `fbd780511de2c3d264d53b8cb097f983b8ec156c`.
+Version 0.4.0 was pinned to `fbd780511de2c3d264d53b8cb097f983b8ec156c`.
 The host prefetch produced
 `sha256-hvAQpf+9SfBfSvHL70wmDyfD3YxTgvKxSVwwUCTapko=`, the vendored lock
-is byte-identical to that commit, and the standalone Nix build passed all 49
-tests (including its process/timeout tests). The binary reports 0.4.0.
+was byte-identical to that commit, and the standalone Nix build passed all 49
+tests (including its process/timeout tests). The binary reported 0.4.0.
+
+### Pin moved to 0.5.0 — 2026-11-18, not yet built
+
+Version 0.5.0 is pinned to `7faffcd29a13f5d0d217434a6e7fafe8407492a1`, and
+the vendored lock is byte-identical to that commit (only the crate's own
+version line differs from 0.4.0; no dependency changed). The hash
+`sha256-t+7REjvDMzmAzQhJJB6VxDn/ni0BRHR0e2Ti7V8bA/Q=` was computed inside the
+container, which has no Nix, by a NAR serialiser checked against the 0.4.0
+pin above; it has not been confirmed by a host prefetch. Not yet verified: the
+standalone `nix build .#systemscape` (183 tests, some with loopback sockets
+and subprocess timeouts) and a rebuilt image.
+
+The System pane now runs `systemscape --record` when the binary's `--help`
+lists the flag, and plain `systemscape` otherwise. With the flag SystemScape
+writes one file, `~/.local/state/systemscape/telemetry.jsonl` (owner-only,
+14 days of 150-second slots of power, CPU load, GPU temperature and
+utilisation, and memory; no record text), on the persistent local-home
+volume. A recorder that cannot take its lock or finds the directory writable
+by others shows the reason in the view and writes nothing; the view still
+runs. From 0.5.0 the telemetry view also reads local agent histories, bounded
+as the Activity view's reads are, to mark commits, errors and agent calls on
+its time axis; `--no-marks` turns that off.
 
 The first image activation also adds the read-only hosts mount. Ordinary fast
 activation deliberately refuses a changed mount set: use a separately reviewed
