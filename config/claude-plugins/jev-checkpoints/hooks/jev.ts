@@ -39,16 +39,32 @@ export type JevOutcome =
   | { ok: false; reason: string; ms: number }
 
 /**
- * A score answer as a number in [0, 1]: `score / (levels − 1)`, from `legend`
- * (or `probabilities`) for the level count; the expected level from
- * `probabilities` when `score` is absent. Null for any other shape.
+ * A score answer as a number in [0, 1]: `score / (levels − 1)`. The level count
+ * comes from the first non-empty of `legend`, `probabilities` and the positional
+ * `distribution`, and otherwise from `levelsHint`, the number of criteria the
+ * caller sent. The expected level is read from the band distribution when
+ * `score` is absent. Null for any other shape.
+ *
+ * The live System One facade sends `{score, distribution: [], confidence}` with
+ * no legend or probabilities (system-one-facade service.rs, 2026-11-18), so a
+ * reader that needed the scale echoed back rejected every score as bad-shape and
+ * the plan and done checkpoints never fired. The caller always knows the scale
+ * it asked for, so that is the fallback.
  */
-export function readScore(answer: unknown): number | null {
+export function readScore(answer: unknown, levelsHint?: number): number | null {
   if (!answer || typeof answer !== 'object') return null
   const a = answer as Record<string, unknown>
-  const probs = a['probabilities'] && typeof a['probabilities'] === 'object' ? (a['probabilities'] as Record<string, unknown>) : null
-  const legend = a['legend'] && typeof a['legend'] === 'object' ? (a['legend'] as Record<string, unknown>) : null
-  const levels = Object.keys(legend ?? probs ?? {}).length
+  const keyed = (k: string): Record<string, unknown> | null => {
+    const v = a[k]
+    return v && typeof v === 'object' && !Array.isArray(v) && Object.keys(v).length > 0 ? (v as Record<string, unknown>) : null
+  }
+  const legend = keyed('legend')
+  let probs = keyed('probabilities')
+  if (!probs && Array.isArray(a['distribution']) && a['distribution'].length > 0) {
+    probs = Object.fromEntries((a['distribution'] as unknown[]).map((v, i) => [String(i), v]))
+  }
+  const hint = Number.isInteger(levelsHint) && (levelsHint as number) >= 2 ? (levelsHint as number) : 0
+  const levels = Object.keys(legend ?? probs ?? {}).length || hint
   if (levels < 2) return null
   let raw: number | null = typeof a['score'] === 'number' && Number.isFinite(a['score']) ? (a['score'] as number) : null
   if (raw === null && probs) {

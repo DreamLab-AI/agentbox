@@ -47,6 +47,9 @@ struct EngineStub {
     /// When set, `/predict` refuses a call carrying more questions, as the
     /// real engines do.
     max_questions: Option<usize>,
+    /// Answer score questions without a band distribution, as the live openjev
+    /// engine does (observed through the façade on :8094, 2026-11-18).
+    score_without_distribution: bool,
 }
 
 /// Hashed bag-of-words encoder: deterministic, and similar texts are similar.
@@ -219,11 +222,13 @@ async fn engine_predict(
                     .unwrap_or(3);
                 let mut distribution = vec![0.0f64; labels];
                 distribution[labels - 1] = 1.0;
-                answers.insert(
-                    name,
+                let answer = if stub.score_without_distribution {
+                    json!({"type": "score", "score": (labels - 1) as f64, "confidence": 0.7})
+                } else {
                     json!({"type": "score", "score": (labels - 1) as f64,
-                           "distribution": distribution, "confidence": 0.7}),
-                );
+                           "distribution": distribution, "confidence": 0.7})
+                };
+                answers.insert(name, answer);
             }
             _ => {
                 let instructions = question["instructions"].as_str().unwrap_or("");
@@ -366,6 +371,7 @@ fn stub() -> EngineStub {
         hide_scale: false,
         fail: None,
         max_questions: None,
+        score_without_distribution: false,
     }
 }
 
@@ -1162,4 +1168,42 @@ async fn http_answers_carry_the_requested_type_for_strict_consumers() {
     }
     assert!(body["usage"]["input_tokens"].is_number());
     assert!(body["sso"].is_object());
+}
+
+#[tokio::test]
+async fn a_score_answer_echoes_its_scale_with_or_without_an_engine_distribution() {
+    // jev-checkpoints read the level count from `legend` or `probabilities`; the façade sent
+    // both empty, so every live plan and done score was rejected as bad-shape (2026-11-18).
+    for without in [false, true] {
+        let mut engine = stub();
+        engine.score_without_distribution = without;
+        let h = harness(engine, |_| {}).await;
+        let (status, body) = h
+            .post(
+                json!({
+                    "state": {"user_request": "rewrite the auth schema across twelve files"},
+                    "questions": {"plan": {"type": "score",
+                        "instructions": "Does user_request need a multi-file plan?",
+                        "criteria": ["no, a small change", "yes, a multi-file change"]}}
+                }),
+                None,
+            )
+            .await;
+        assert_eq!(status, 200, "{body}");
+        let plan = &body["answers"]["plan"];
+        assert_eq!(plan["score"], 1.0, "{plan}");
+        assert_eq!(
+            plan["legend"],
+            json!({"0": "no, a small change", "1": "yes, a multi-file change"}),
+            "the scale is echoed back whatever the engine sent: {plan}"
+        );
+        if without {
+            assert!(
+                plan.get("probabilities").is_none(),
+                "no distribution, no probabilities: {plan}"
+            );
+        } else {
+            assert_eq!(plan["probabilities"], json!({"0": 0.0, "1": 1.0}), "{plan}");
+        }
+    }
 }

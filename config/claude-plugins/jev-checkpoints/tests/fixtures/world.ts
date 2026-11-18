@@ -76,6 +76,21 @@ export const score = (name: string, value: number, inputTokens = 1000) => ({
   },
 })
 
+/**
+ * A two-band score exactly as the live System One facade sends it (captured from :8094,
+ * 2026-11-18): band-unit `score`, an empty `distribution`, no `legend`, no `probabilities`.
+ * The `score` fixture above echoes the scale back, which the facade never does, so tests
+ * built only on it passed while every live plan and done score was rejected as bad-shape.
+ */
+export const liveScore = (name: string, value: number, inputTokens = 108) => ({
+  status: 200,
+  body: {
+    model: 'laya-typed-decisions',
+    answers: { [name]: { score: value, distribution: [], confidence: 0.83, type: 'score' } },
+    usage: { input_tokens: inputTokens, output_tokens: 0 },
+  },
+})
+
 /** A Jev answer holding the done score and the claim-specific Noul together (AB-08-S1-01). */
 export const doneAndClaim = (doneValue: number, claimUnverified: number, inputTokens = 1000) => ({
   status: 200,

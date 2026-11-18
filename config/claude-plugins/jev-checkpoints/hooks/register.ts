@@ -21,6 +21,7 @@ import type { EngineInterface, On, Register } from 'claude-code'
 
 import { fingerprint, watchesTool } from './fingerprint'
 import { askJev, doneInjects, egress, isTypeSafeApi, noulQuestion, readChoice, readNoul, readScore, scoreQuestion } from './jev'
+import type { ScoreQuestion } from './jev'
 import type { JevOutcome, JevRequest } from './jev'
 import { readOptions } from './options'
 import type { Options } from './options'
@@ -362,7 +363,7 @@ async function promptLines($: Engine, ctx: Ctx, id: string, text: string): Promi
   if (opts.planCheck && planSkip(text, opts.minChars) === null && mayInject(rec, 'plan')) {
     const out = await ask($, ctx, id, rec, 'plan', { state: { user_request: clamp(text) }, model: opts.model, questions: PLAN_QUESTIONS })
     if (out?.ok) {
-      const score = readScore(out.answers['plan'])
+      const score = readScore(out.answers['plan'], (PLAN_QUESTIONS['plan'] as ScoreQuestion).criteria.length)
       if (score === null) {
         rec.stats.plan.lastError = 'bad-shape'
         log($, 'plan skipped (bad-shape)')
@@ -388,7 +389,7 @@ async function doneCheck($: Engine, ctx: Ctx, answer: string): Promise<void> {
     questions: ctx.opts.claimCheck ? { ...DONE_QUESTIONS, ...CLAIM_QUESTIONS } : DONE_QUESTIONS,
   })
   if (!out?.ok) return
-  const score = readScore(out.answers['done'])
+  const score = readScore(out.answers['done'], (DONE_QUESTIONS['done'] as ScoreQuestion).criteria.length)
   if (score === null) {
     rec.stats.done.lastError = 'bad-shape'
     log($, 'done skipped (bad-shape)')

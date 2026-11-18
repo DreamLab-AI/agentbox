@@ -2,7 +2,7 @@ import { describe, expect, mock, test, tier } from 'claude-code/testing'
 import type { On } from 'claude-code'
 
 import { LINES } from '../hooks/text'
-import { choice, doneAndClaim, HOME, KEY, prompt, ROOT, run, score, SESSION, START, turn, world } from './fixtures/world'
+import { choice, doneAndClaim, HOME, KEY, liveScore, prompt, ROOT, run, score, SESSION, START, turn, world } from './fixtures/world'
 import type { World } from './fixtures/world'
 
 tier('user')
@@ -55,6 +55,16 @@ describe('plan checkpoint', () => {
     expect(req.url).toBe('https://api.typesafe.ai/v1/systemone')
     expect(req.init?.headers?.['Authorization']).toBe('Bearer test-key')
     expect(req.body).toMatchObject({ model: 'jev-latest', state: { user_request: PLAN_PROMPT }, questions: { plan: { type: 'score' } } })
+  })
+
+  test('the live facade shape (no legend, empty distribution) still attaches the plan line', async ($, on) => {
+    const { w, contexts } = setup(on)
+    w.reply = [liveScore('plan', 0.9747)]
+    await $.session.start(START)
+    await $.prompt.submit(prompt(PLAN_PROMPT))
+
+    expect(w.requests).toHaveLength(1)
+    expect(contexts[0]).toEqual([LINES.plan])
   })
 
   test('below the threshold nothing is attached; slash commands and short prompts are never sent', async ($, on) => {
@@ -255,6 +265,20 @@ describe('email fence', () => {
 })
 
 describe('done checkpoint', () => {
+  test('the live facade shape (no legend, empty distribution) still raises the done line', async ($, on) => {
+    const { w, contexts } = setup(on)
+    tools(on, () => ({ ok: true, text: 'edited' }))
+    w.reply = [liveScore('done', 0.96)]
+    await $.session.start(START)
+    await $.turn.start({ text: 'fix the parser', turnId: 't1' })
+    await $.tool.call({ tool: 'Edit', file_path: `${ROOT}/src/parser.rs`, old_string: 'a', new_string: 'b' } as never)
+    await $.turn.complete(turn('Fixed — the parser handles nested blocks now.'))
+    await $.prompt.submit(prompt('thanks'))
+
+    expect(w.requests).toHaveLength(1)
+    expect(contexts).toEqual([[LINES.done]])
+  })
+
   test('a completion claim without a verifying run puts the done line on the next prompt, once', async ($, on) => {
     const { w, contexts } = setup(on)
     tools(on, () => ({ ok: true, text: 'SECRET-TOOL-OUTPUT token=abc123' }))

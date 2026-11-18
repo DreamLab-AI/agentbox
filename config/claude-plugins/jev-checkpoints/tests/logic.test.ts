@@ -185,6 +185,20 @@ describe('jev wire', () => {
     expect(readScore({ score: 'high', legend: { '0': 'no', '1': 'yes' } })).toBeNull()
   })
 
+  test('readScore reads the live facade shape: no legend, empty distribution, scale from the caller', () => {
+    // Verbatim answer from the System One facade on :8094, 2026-11-18 (plan question, two criteria).
+    const live = { score: 0.9747, distribution: [], confidence: 0.8299, type: 'score' }
+    expect(readScore(live)).toBeNull()
+    near(readScore(live, 2), 0.9747)
+    // Three criteria: the facade reports band units, measured 1.8003 on a three-band question.
+    near(readScore({ score: 1.8003, distribution: [], confidence: 0.5, type: 'score' }, 3), 0.90015)
+    // Empty keyed maps do not hide the hint or the positional distribution.
+    near(readScore({ score: 1, legend: {}, probabilities: {} }, 2), 1)
+    near(readScore({ distribution: [0.25, 0.75] }), 0.75)
+    near(readScore({ score: 1.84, distribution: [0.04, 0.08, 0.88] }), 0.92)
+    expect(readScore({ score: 0.5 }, 1)).toBeNull()
+  })
+
   test('readChoice accepts only an offered option', () => {
     expect(readChoice({ choice: 'haiku', confidence: 0.9 }, ['haiku', 'opus'])).toEqual({ choice: 'haiku', confidence: 0.9 })
     expect(readChoice({ choice: 'haiku', probabilities: { haiku: 0.7 } }, ['haiku'])).toEqual({ choice: 'haiku', confidence: 0.7 })

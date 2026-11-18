@@ -719,17 +719,34 @@ impl Facade {
                             .map(|d| WindowResult::new(*relevance, d.clone()))
                     })
                     .collect();
+                let distribution = if bands.is_empty() {
+                    Vec::new()
+                } else {
+                    aggregate_score_distribution(&bands)?
+                };
+                // Echo the scale back (wire.rs: "Backends send both"). A consumer reading
+                // `legend` or `probabilities` for the level count otherwise gets nothing and
+                // rejects every score; jev-checkpoints did exactly that until 2026-11-18.
+                let legend: IndexMap<String, String> = match &item.question {
+                    EngineQuestion::Score { criteria, .. } => criteria
+                        .iter()
+                        .enumerate()
+                        .map(|(i, label)| (i.to_string(), label.clone()))
+                        .collect(),
+                    _ => IndexMap::new(),
+                };
+                let probabilities: IndexMap<String, f64> = distribution
+                    .iter()
+                    .enumerate()
+                    .map(|(i, p)| (i.to_string(), *p))
+                    .collect();
                 Ok((
                     Answer::Score {
                         score: aggregate_score(&scores)?,
-                        distribution: if bands.is_empty() {
-                            Vec::new()
-                        } else {
-                            aggregate_score_distribution(&bands)?
-                        },
+                        distribution,
                         confidence: aggregate_score(&confidences)?,
-                        legend: IndexMap::new(),
-                        probabilities: IndexMap::new(),
+                        legend,
+                        probabilities,
                     },
                     None,
                 ))
