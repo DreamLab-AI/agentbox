@@ -3033,6 +3033,28 @@ if [ "$_FLOOR_ON" != "1" ] && [ -f "$_MANAGED_CLAUDE_MD" ] \
 fi
 unset _INSTR_LAYERS
 
+# ── ADR-2203: SystemScape hosts file from the agentbox repo ──
+# config/systemscape/local/hosts.toml (gitignored; the operator's machines) is
+# mounted read-only under /etc/agentbox/systemscape. Link it to SystemScape's
+# default path so the System pane and any shell watch those machines with no
+# flag: the pinned binary rejects flags it does not know, so the pane command
+# never names the file. No file, no link; a link this block made is removed
+# when the file goes, and a hosts file the operator wrote by hand is kept.
+_SS_HOSTS="/etc/agentbox/systemscape/local/hosts.toml"
+_SS_LINK="/home/devuser/.config/systemscape/hosts.toml"
+if [ -f "$_SS_HOSTS" ]; then
+  if [ -e "$_SS_LINK" ] && [ ! -L "$_SS_LINK" ]; then
+    echo "  [systemscape] keeping hand-written $_SS_LINK (not linking $_SS_HOSTS)"
+  elif mkdir -p "${_SS_LINK%/*}" && ln -sfn "$_SS_HOSTS" "$_SS_LINK"; then
+    chown 1000:1000 "${_SS_LINK%/*}" 2>/dev/null || true
+    chown -h 1000:1000 "$_SS_LINK" 2>/dev/null || true
+    echo "  [systemscape] hosts file linked: $_SS_LINK"
+  fi
+elif [ -L "$_SS_LINK" ] && [ "$(readlink "$_SS_LINK")" = "$_SS_HOSTS" ]; then
+  rm -f "$_SS_LINK"
+fi
+unset _SS_HOSTS _SS_LINK
+
 # ── ADR-2093/ADR-2121: Jev compaction with fact rails — install/uninstall factrail ──
 # [features.jev_compaction].enabled = true ⇒ in the root session:
 # CLAUDE_CODE_ENABLE_FUNCTION_HOOKS=1 in settings.json `env` (the function-hook

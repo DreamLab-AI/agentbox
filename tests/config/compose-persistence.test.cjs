@@ -35,8 +35,10 @@ assert.ok(!Object.values(model.volumes).some(v => v?.name === 'agentbox-aoe-prof
 assert.equal(model.volumes['agentbox-claude-home'].external, true);
 const instructions = model.services.agentbox.volumes.find(v => v.target === '/etc/agentbox/instructions');
 assert.equal(instructions?.read_only, true);
+const systemscape = model.services.agentbox.volumes.find(v => v.target === '/etc/agentbox/systemscape');
+assert.equal(systemscape?.read_only, true);
 assert.equal(model.services.agentbox.pids_limit, model.services.agentbox.deploy.resources.limits.pids);
-console.log(`PASS: ${Object.keys(expected).length} persistent volume identities, external Claude home, read-only instructions and PID parity`);
+console.log(`PASS: ${Object.keys(expected).length} persistent volume identities, external Claude home, read-only instructions and SystemScape hosts, and PID parity`);
 
 // Nested tool/credential mounts must not be the only durable home state.
 for (const target of ['/home/devuser/.codex', '/home/devuser/.claude', '/home/devuser/.local']) {

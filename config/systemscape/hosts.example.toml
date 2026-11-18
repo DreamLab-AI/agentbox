@@ -1,0 +1,19 @@
+# SystemScape hosts file (ADR-2203). Copy to local/hosts.toml and edit;
+# local/ is gitignored, this file is public: placeholders only.
+#
+# Each host runs `systemscape --probe` over the container's OpenSSH client.
+# The file holds no secret: keys, agents, jump hosts and host-key checking
+# come from ~/.ssh. SSH never prompts (BatchMode).
+
+local = true                 # show this container as well
+local_name = "agentbox"      # its name in the host strip
+
+[[host]]
+name = "workstation"                       # 1-16 characters
+ssh = "user@workstation.example"           # or an alias from ~/.ssh/config
+# port = 22
+# identity_file = "~/.ssh/id_ed25519"
+# ssh_options = ["ProxyJump=bastion.example"]
+probe = "/home/user/.local/bin/systemscape" # absolute path on that machine
+interval = 2                               # seconds between readings
+gpu_interval = 10                          # seconds between nvidia-smi queries

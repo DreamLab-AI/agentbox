@@ -59,7 +59,7 @@ detect changes to files it already lists — it is structurally blind to **addit
 is exactly how a new crate landed unlicensed under ADR-2030 while the record still read as
 verified and its `review_trigger` ("any new crate under `services/`") sat unactioned.
 
-_161 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
+_162 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
 
 | ID | Title | Domain | Date | Decision | Impl | Activation | Supersedes | Superseded by | Owner | Repo |
 |----|-------|--------|------|----------|------|------------|------------|---------------|-------|------|
@@ -224,3 +224,4 @@ _161 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
 | [ADR-2200](ADR-2200-keep-embedded-browser-engines-out-of-the-default-image.md) | Keep embedded browser engines out of the default image | BASELINE-container | 2026-11-12 | accepted | complete | live | — | — | jjohare | agentbox |
 | [ADR-2201](ADR-2201-memory-evidence-is-readable-inside-the-boundary-and-a-commitment-across-it.md) | Memory evidence is readable inside the trust boundary and a commitment across it | LEARNING-memory | 2026-11-13 | accepted | partial | live | — | — | jjohare | agentbox |
 | [ADR-2202](ADR-2202-paper-orchestra-one-arxiv-skill-beside-the-paper-skills.md) | PaperOrchestra is one arXiv-only skill that sits beside the existing paper skills | GOVERNANCE-capabilities | 2026-11-14 | accepted | complete | live | — | — | jjohare | agentbox |
+| [ADR-2203](ADR-2203-systemscape-hosts-file-is-a-mounted-repo-layer-with-a-private-local-file.md) | The SystemScape hosts file is a mounted repo layer with a private local file | — | 2026-11-18 | proposed | partial | staged | — | — | operator | agentbox |

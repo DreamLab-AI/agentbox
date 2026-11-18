@@ -130,6 +130,7 @@ services:
     volumes:
       - ./agentbox.toml:/etc/agentbox.toml:ro
       - ./config/instructions:/etc/agentbox/instructions:ro
+      - ./config/systemscape:/etc/agentbox/systemscape:ro
       - ./workspace:/home/devuser/workspace
       - ./projects:/projects
       - ruvector-data:/var/lib/ruvector

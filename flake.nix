@@ -4072,6 +4072,9 @@ stderr_logfile_maxbytes=5MB
           # ADR-2118: instruction-tier layers (tracked + gitignored local/),
           # projected every boot; mounted, never baked, so local/ stays private.
           "./config/instructions:/etc/agentbox/instructions:ro"
+          # ADR-2203: SystemScape hosts (tracked example + gitignored local/),
+          # linked to its default path at boot; mounted, never baked.
+          "./config/systemscape:/etc/agentbox/systemscape:ro"
           "./workspace:/home/devuser/workspace"
           "./projects:/projects"
           "ruvector-data:/var/lib/ruvector"

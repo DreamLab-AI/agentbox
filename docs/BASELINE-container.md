@@ -1,10 +1,11 @@
 ---
 title: Agentbox Container Baseline
 doc_id: AB-BASELINE
-version: 0.5.17
+version: 0.5.18
 status: draft-for-ratification
 verified_commit: 
 changelog:
+  - "0.5.18 (2026-11-18): ADR-2203 (proposed, partial, staged). New read-only mount ./config/systemscape:/etc/agentbox/systemscape (tracked example + gitignored local/hosts.toml); the entrypoint links local/hosts.toml to ~/.config/systemscape/hosts.toml when present. New invariant below. Inert until the SystemScape pin moves to 0.4.0; no new port, adapter, gate or supervised program."
   - "0.5.17 (2026-11-11): ADR-2193 (accepted, complete, staged for rebuild). PID 1 starts through `supervisordLauncher` (flake.nix), which runs the supervisor module with pythonRuntimeEnv's interpreter. nixpkgs' `supervisord` wrapper prepended the bare interpreter to PATH and every supervised process inherited it, so `python3` in agent shells had no site-packages. New invariant: in a supervised process the first python3 on PATH is pythonRuntimeEnv. The entrypoint exec line is unchanged."
   - "0.5.16 (2026-11-10): ADR-2191 (accepted, partial, staged). [toolchains].bend (rebuild class, on) bakes the pinned Bend 2 release from lib/bend.nix: the checker/compiler with only its ELF interpreter rewritten, a BendTT kernel built at image-build time with the exact Lean release Bend names (Lean is not in the image), and a launcher that pins the kernel, turns the version check off, caches hub packages under $WORKSPACE/.bend/lib and refuses bend update."
   - "0.5.15 (2026-11-05): ADR-2177 (accepted, partial, staged). [skills.spatial_and_3d] supersplat (rebuild class, on) builds the pinned SuperSplat editor and splat-transform CLI; [program:supersplat] serves $WORKSPACE/splats/share read-only on 0.0.0.0:8795 (docker network only, sanctioned listener), and the browser sidecar treats http://agentbox:8795 as secure."
@@ -321,6 +322,7 @@ gate. See [the VEX guide](developer/vex.md).
 - The MCP hub binds loopback only (`services/agentbox-mcp/src/hub/config.rs` `is_loopback_bind`, refused otherwise) and is never published; `[resources.mcp_hub].servers` never lists a server with per-session state (claude-flow, code-interpreter, aci-shell, codebase-memory, agentic-qe) (ADR-2034).
 - No project settings file invokes a CLI (`ruflo`, `claude-flow`, `aqe`, `agentic-qe`, `npx …`) on a per-tool-call hook; the boot `agentbox-hook reconcile` rewrites any that appear (ADR-2034).
 - The global and workspace instruction tiers (`~/.claude/CLAUDE.md`, `~/workspace/AGENTS.md`, `~/workspace/CLAUDE.md`) are generated every boot from `config/instructions/` — a tracked public layer plus a gitignored `local/` estate layer, mounted read-only and never baked into the image — and live edits do not survive. Tracked layers carry no estate specifics (`tests/config/instructions-layers.test.sh`), and the global tier is written only when `~/.claude` is the container-owned volume, never into a host's own directory (ADR-2118, `services/agentbox-manifest/src/instructions.rs`).
+- The SystemScape hosts file comes from `config/systemscape/` — a tracked public example plus a gitignored `local/hosts.toml`, mounted read-only and never baked — and is linked to `~/.config/systemscape/hosts.toml` at boot only when present; the System pane never names it on its command line, and tracked files carry no estate specifics (ADR-2203, `tests/config/systemscape-hosts-layer.test.sh`).
 - `~/.claude` is container-owned; the only state shared with the host is `.credentials.json`, converged both ways by `[program:claude-cred-sync]` with a per-token merge that keeps the later `expiresAt` (ADR-2118, `services/agentbox-manifest/src/cred_sync.rs`).
 - `[vault].root` is the only default corpus path; no consumer hard-codes one, and an absent `[vault]` disables consumers loudly rather than falling back to a literal (ADR-2028, `project/docs/VAULT-corpus-format.md` Invariant 3, gated by `scripts/ci/check-no-logseq-paths.sh`).
 

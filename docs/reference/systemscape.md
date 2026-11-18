@@ -90,6 +90,22 @@ telemetry ridges and the sparkline view. Its
 [capture guide](https://github.com/DreamLab-AI/systemscape/blob/main/docs/SCREENSHOTS.md)
 explains how to regenerate them from synthetic fixtures.
 
+## Other machines (SystemScape 0.4)
+
+SystemScape 0.4 can show other machines in the System pane. Each runs
+`systemscape --probe`, which the viewer reads over the container's OpenSSH
+client. The list lives in the gitignored
+[`config/systemscape/local/hosts.toml`](../../config/systemscape/README.md),
+mounted read-only and linked to SystemScape's default path at boot
+(ADR-2203). The pane command stays `systemscape`; Tab or `1`–`9` picks the
+machine shown, and the strip on the top line marks each one live,
+connecting, stale or failed with the reason.
+
+Install the same SystemScape version on each remote machine and confirm
+`ssh -o BatchMode=yes user@host true` works from a container shell before
+adding it. A missing file leaves the pane exactly as before. The pinned
+0.3.0 ignores the file; it takes effect once the pin moves to 0.4.0.
+
 ## Rebuild
 
 SystemScape 0.3 is a rebuild-class package update. On the build host:
