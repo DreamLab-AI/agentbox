@@ -1,7 +1,7 @@
 {
   "$comment": "Custody X-1 step 1, W2 (bypass 3). Every env var NAME the boot path and the role-secret consumers read, in exactly one class. Names only, never values. Checked by scripts/ci/env-secret-inventory.js --check; read by tests/security/env-secret-inventory.node-test.js. The entrypoint's _AB_ROLE_ENV_VARS list must equal the ROLE set (NAME:role).",
   "schema": "agentbox/custody-env-classes/v1",
-  "updated": "2026-10-13",
+  "updated": "2026-11-20",
   "flag": "[security].role_isolation (boot-class, default false)",
   "sources": [
     "config/entrypoint-unified.sh",
@@ -393,6 +393,8 @@
         "BLENDER_MCP_BIND",
         "BLENDER_MCP_PORT",
         "BRIDGE_TOKEN_FILE",
+        "BROWSER_DISPLAY_SIZE",
+        "BROWSER_EXCHANGE_DIR",
         "BUS_DEC",
         "BUS_HEX",
         "CARGO_CONFIG",
@@ -703,6 +705,7 @@
         "_AS_TOKEN_ENV",
         "_AS_TOKEN_FILE",
         "_AS_URL",
+        "_BROWSER_HEALTH_CODE",
         "_DECL_HOOK",
         "_FLOOR_ON",
         "_INSTR_MANAGED",
