@@ -78,9 +78,10 @@ test('child keeps its existing connector flags and the persistent Chrome', () =>
 // ---------------------------------------------------------------------------
 const http = require('node:http');
 
-test('D5: nothing leaves the estate: usage statistics and update checks off', () => {
+test('D5: usage statistics, update checks and CrUX URL exports are off', () => {
   const { args, options } = server.childSpawnConfig({ cdpPort: 9222, exchangeDir: null, env: {} });
   assert.ok(args.includes('--no-usage-statistics'));
+  assert.ok(args.includes('--no-performance-crux'));
   assert.equal(options.env.CHROME_DEVTOOLS_MCP_NO_USAGE_STATISTICS, '1');
   assert.equal(options.env.CHROME_DEVTOOLS_MCP_NO_UPDATE_CHECKS, '1');
 });

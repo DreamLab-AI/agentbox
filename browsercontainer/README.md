@@ -225,6 +225,11 @@ agentbox.sh browsercontainer diagnose http://example.com 20000
 
 ## MCP integration
 
+Connector usage statistics, update checks and performance-trace URL exports to
+the external CrUX API are disabled (`--no-usage-statistics`, the two opt-out
+environment variables and `--no-performance-crux`). This does not block browsing
+or imply that every browser request stays on the local network.
+
 Agents on the `visionclaw_network` connect via SSE:
 
 ```

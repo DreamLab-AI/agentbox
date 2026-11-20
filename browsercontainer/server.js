@@ -79,7 +79,7 @@ function createExchangeResolver(logFn = log) {
  * cwd and TMPDIR are the exchange: a relative filePath lands there, and the
  * connector's os.tmpdir() root accepts any path under it at the same absolute
  * path agentbox mounts. Usage statistics and update checks are off (flag and
- * env), so nothing leaves the estate.
+ * env), and CrUX URL exports are off. User-requested browsing is unaffected.
  */
 function childSpawnConfig({ cdpPort, exchangeDir, env = process.env }) {
   const childEnv = {
@@ -100,6 +100,7 @@ function childSpawnConfig({ cdpPort, exchangeDir, env = process.env }) {
       '--experimental-vision',
       '--experimental-memory',
       '--no-usage-statistics',
+      '--no-performance-crux',
     ],
     options,
   };
