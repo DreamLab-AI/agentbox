@@ -3166,7 +3166,7 @@ stderr_logfile=/var/log/agentbox-sessions.error.log
 command=${pkgs.nodejs_22}/bin/node /opt/agentbox/nip98-proxy/proxy.mjs
 directory=/opt/agentbox/nip98-proxy
 user=devuser
-environment=HOME="/home/devuser",NIP98_PROXY_PORT="${toString interactionPlaneProxyPort}",NIP98_PROXY_MGMT_UPSTREAM="http://127.0.0.1:%(ENV_MANAGEMENT_API_PORT)s",MANAGEMENT_API_URL="http://127.0.0.1:%(ENV_MANAGEMENT_API_PORT)s"
+environment=HOME="/home/devuser",NIP98_PROXY_REQUIRE_CONFIG="1",NIP98_PROXY_PORT="${toString interactionPlaneProxyPort}",NIP98_PROXY_MGMT_UPSTREAM="http://127.0.0.1:%(ENV_MANAGEMENT_API_PORT)s",MANAGEMENT_API_URL="http://127.0.0.1:%(ENV_MANAGEMENT_API_PORT)s"
 autostart=true
 autorestart=true
 startsecs=3

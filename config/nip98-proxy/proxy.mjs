@@ -6,7 +6,7 @@
 import http from 'node:http';
 import net from 'node:net';
 import crypto from 'node:crypto';
-import { existsSync, readFileSync, statSync } from 'node:fs';
+import { accessSync, constants as fsConstants, existsSync, readFileSync, statSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve as pathResolve } from 'node:path';
@@ -180,6 +180,7 @@ if (allowedPubkeyEntries.some((s) => !/^[0-9a-f]{64}$/.test(s))) {
 const ALLOWED_PUBKEYS = new Set(allowedPubkeyEntries);
 
 function pubkeyAllowed(pubkey) {
+  if (CONFIG_PENDING) return false; // fail closed until the boot projection lands
   if (ALLOWED_PUBKEYS.size === 0) return true;
   return ALLOWED_PUBKEYS.has(String(pubkey).toLowerCase());
 }
@@ -249,11 +250,25 @@ function normalizeRoute(r, i, source) {
 const CONFIG_FILE = process.env.NIP98_PROXY_CONFIG_FILE
   || '/home/devuser/workspace/.agentbox/nip98-proxy-config.json';
 
+// W3-05 / ADR-2210: under the supervisor the config file is projected by the
+// entrypoint in Stage B, AFTER supervisord has already autostarted this process,
+// and a failed projection leaves no file. An absent file must therefore not read
+// as "no allowlist, any valid signer" there. NIP98_PROXY_REQUIRE_CONFIG=1 makes
+// absence mean PENDING: every NIP-98 / session identity is refused until the file
+// exists, at which point the process exits 0 and the supervisor restarts it with
+// the real config. Unset (standalone / selftest) keeps the ADR-069 behaviour.
+const REQUIRE_CONFIG = process.env.NIP98_PROXY_REQUIRE_CONFIG === '1';
+let CONFIG_PENDING = false;
+let CONFIG_PENDING_CODE = '';
+
 const FILE_CONFIG = (() => {
   let raw;
   try {
     raw = readFileSync(CONFIG_FILE, 'utf-8');
-  } catch {
+  } catch (err) {
+    // ENOENT (not projected yet) and EACCES (projected, but this uid cannot read
+    // it, e.g. the ADR-2122 ab-ingress role) are both "no usable config".
+    if (REQUIRE_CONFIG) { CONFIG_PENDING = true; CONFIG_PENDING_CODE = (err && err.code) || 'unknown'; }
     return { routes: [], allowedPubkeys: [] }; // absent file = no extra config
   }
   try {
@@ -1064,9 +1079,24 @@ server.listen(PORT, BIND, () => {
       }
       : 'disabled',
     nip07Sessions: `enabled (ttl ${SESSION_TTL_S}s${PINNED_SESSION_SECRET ? ', pinned secret' : ', per-boot secret'})`,
-    allowedPubkeys: ALLOWED_PUBKEYS.size || 'any-valid-signature',
+    allowedPubkeys: CONFIG_PENDING ? 'PENDING (config file absent, fail-closed)' : (ALLOWED_PUBKEYS.size || 'any-valid-signature'),
   });
 });
+
+if (CONFIG_PENDING) {
+  log('error', 'nip98 config file absent and NIP98_PROXY_REQUIRE_CONFIG=1: refusing every identity until it is readable (fail-closed)', { file: CONFIG_FILE, code: CONFIG_PENDING_CODE });
+  const pollMs = Math.max(100, Number(process.env.NIP98_PROXY_REQUIRE_CONFIG_POLL_MS) || 2000);
+  setInterval(() => {
+    // Probe READABILITY, not existence: an unreadable file would otherwise make
+    // the proxy exit every poll, inside startsecs, and push supervisord to FATAL.
+    let readable = false;
+    try { accessSync(CONFIG_FILE, fsConstants.R_OK); readable = true; } catch { /* still pending */ }
+    if (readable) {
+      log('info', 'nip98 config file appeared; exiting for a supervised restart', { file: CONFIG_FILE });
+      process.exit(0);
+    }
+  }, pollMs);
+}
 
 function shutdown(signal) {
   log('info', 'shutting down', { signal });

@@ -1,0 +1,39 @@
+---
+id: ADR-2210
+title: The NIP-98 door refuses every identity until its boot config file exists
+date: 2026-11-20
+decision_status: proposed
+implementation_status: partial
+activation_status: inactive
+supersedes: []
+superseded_by: []
+verified_commit:
+verified_paths: []
+owner: jjohare
+review_trigger: first host rebuild that bakes this change, or any change to where the nip98-config projection runs
+repo: agentbox
+---
+
+# ADR-2210 — The NIP-98 door refuses every identity until its boot config file exists
+
+## Context
+- The allowlist (`[interaction_plane.proxy].allowed_pubkeys`) and named routes reach `proxy.mjs` only through a file projected by `entrypoint-unified.sh` in Stage B, which runs under supervisord.
+- `[program:nip98-proxy]` is `autostart=true` and starts in parallel with the bootstrap program, and the proxy reads the file once. On a clean workspace it can start before the file exists. A failed projection (`|| true`) also leaves no file.
+- An absent file read as "no allowlist", and an empty allowlist means "any validly signed key" (ADR-045 D2), so the LAN door on `:9096` forwarded `/mgmt/` to the management API for any signer. The management API gates only specific routes by identity (`management-api/lib/authz.js`: approvals, mandate, sessions-boundary); that every other `/mgmt` route accepts any verified key is not established. This was an authorisation collapse, not an authentication bypass. Characterised by `tests/config/nip98-boot-failclosed.test.mjs` case 2 (200, upstream hit, before the change).
+
+## Decision
+- The supervisor sets `NIP98_PROXY_REQUIRE_CONFIG=1`. With it, an absent config file means *pending*: every NIP-98 or session identity is refused (401, `pubkey_not_allowed`), and the proxy exits 0 when the file appears so the supervisor restarts it with the real config. Break-glass is unchanged.
+- `ab_nip98_project` makes "projected, nothing to restrict" an explicit file (`{"routes":[],"allowedPubkeys":[]}`), so the operator's deliberate any-signer mode survives. The proxy's readability probe, not existence, ends the pending state, so an unreadable file (EACCES) stays closed without a restart loop. A projector failure leaves a last-good file untouched, or no file (closed). The boot step stays rc 0.
+- Without the variable (standalone, selftest) the ADR-069 behaviour is unchanged.
+
+## Consequences
+- A failed projection now costs the door (401 for everyone, loud log line), not its authorisation.
+- A one-time proxy restart on first boot of a clean workspace. The brief window before it is closed, not open.
+- The Rust projector still removes the file for an absent section; the shell wrapper rewrites it as explicit empty.
+
+## Verification
+Status is `proposed` with no `verified_commit` until the host rebuild verifies it; the paths are `config/nip98-proxy/proxy.mjs`, `config/lib/nip98-config.sh` and the two `tests/config/nip98-*` files.
+
+Unit level only: `node tests/config/nip98-boot-failclosed.test.mjs` (8/8) and `bash tests/config/nip98-config-projection.test.sh` (7/7). The image is unbuilt; the supervisor restart-on-exit-0 path and the Stage B timing are confirmed only after a host rebuild.
+
+Residuals: under `[security].role_isolation` the proxy runs as `ab-ingress` (uid 962, `config/role-accounts.json`) while the file is `1000:1000 0600`. Before this change that read as absent (any signer); now it is closed until the file is readable. A key removed from `allowed_pubkeys` still takes effect one boot late, because the proxy reads the previous boot's file and nothing restarts it after re-projection.

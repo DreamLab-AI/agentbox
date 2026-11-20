@@ -147,6 +147,10 @@ jobs:
         env:
           AGENTBOX_MANIFEST_BIN: services/agentbox-manifest/target/release/agentbox-manifest
 
+      - name: NIP-98 door fails closed when its boot config is missing (W3-05, ADR-2210)
+        run: |
+          bash tests/config/nip98-config-projection.test.sh
+          node tests/config/nip98-boot-failclosed.test.mjs
       - name: /run/secrets delivery builds the right owner/mode tree (ADR-2122)
         # The real plan against a scratch root; chown is a recording stub (no root in CI).
         run: bash tests/config/role-secrets-delivery.test.sh

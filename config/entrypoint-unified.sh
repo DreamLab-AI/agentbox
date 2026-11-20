@@ -2336,7 +2336,13 @@ fi
 # closed on malformed content. Reconciled every boot; absent section ⇒ file
 # removed (proxy then runs on baked env alone).
 _NIP98_CFG="/home/devuser/workspace/.agentbox/nip98-proxy-config.json"
-if [ -f "$AGENTBOX_CONFIG" ] && command -v agentbox-manifest >/dev/null 2>&1; then
+# W3-05 / ADR-2210: the proxy runs with NIP98_PROXY_REQUIRE_CONFIG=1, so a failed
+# or skipped projection leaves the door closed (no file), never open.
+if [ -r /opt/agentbox/config/lib/nip98-config.sh ]; then
+  # shellcheck source=lib/nip98-config.sh
+  . /opt/agentbox/config/lib/nip98-config.sh
+  ab_nip98_project "${AGENTBOX_CONFIG:-}" "$_NIP98_CFG" || true
+elif [ -f "$AGENTBOX_CONFIG" ] && command -v agentbox-manifest >/dev/null 2>&1; then
   agentbox-manifest nip98-config --manifest "$AGENTBOX_CONFIG" --out "$_NIP98_CFG" 2>&1 \
     | sed 's/^/  /' || true
   chown 1000:1000 "$_NIP98_CFG" 2>/dev/null || true
