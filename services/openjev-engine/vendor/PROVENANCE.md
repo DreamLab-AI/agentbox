@@ -32,7 +32,7 @@ age. Two independent mitigations are applied:
 1. **The helper is vendored here at a pinned revision** with its digest
    recorded, so it is reviewable in `git log -p` like any other source file and
    cannot change without a commit in this repository.
-   `tests/test_vendor.py` fails if the bytes drift from the digest above.
+   `tests/test_primitives.py::VendorPin` fails if the bytes drift from the digest above.
 2. **The weights are fetched with `revision=` pinned to the same commit SHA**
    (`openjev_engine/config.py:PINNED_REVISION`), never `main`. An unpinned
    model spec is refused at load time unless `OPENJEV_ALLOW_UNPINNED=1` is set

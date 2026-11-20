@@ -21,7 +21,7 @@ from typing import List, Optional, Tuple
 PINNED_REVISION = "4395b29714015162db6112de91c35688e6e42717"
 
 #: sha256 of `vendor/modeling_openjev.py` at :data:`PINNED_REVISION`.
-#: `tests/test_vendor.py` and the engine's startup check both verify it.
+#: `tests/test_primitives.py::VendorPin` and the engine's startup check both verify it.
 VENDORED_MODELING_SHA256 = "071670d0879963ee69600ed31f0f3d5a37bee314461709477e8ac0e25f33fd97"
 
 #: The recommended v2 4B checkpoint. The 35B-A3B MoE sibling in the same repo is
