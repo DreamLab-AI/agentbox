@@ -3,7 +3,7 @@
 # Nix derivation for `prose-sanitiser` — the deterministic AI-provenance
 # sanitiser behind the `prose-sanitiser` and `open-design` skills.
 #
-# This replaces the skill's Python CLI layer with twelve baked binaries, so a
+# This replaces the skill's Python CLI layer with thirteen baked binaries (twelve CLIs plus the server), so a
 # skill consumer needs no Python runtime for the deterministic path:
 #
 #   inspect-text / clean-text        invisible-Unicode and homoglyph surgery
@@ -14,6 +14,8 @@
 #   slop-scan                        prose slop scanner
 #   slop-detect                      design slop scanner (was open-design's
 #                                    scripts/slop-detect.py)
+#   sanitise                         umbrella pass: every applicable layer over a
+#                                    file or tree, one confidence scale
 #   prose-sanitiser-server           the HTTP service
 #
 # WHAT DELIBERATELY STAYS IN PYTHON: four torch harnesses under
@@ -33,7 +35,7 @@
 #   uk       UK-English spelling enforcement
 #   slop     AI writing-tell rule tables and scanners
 #   media    image and container provenance surgery, plus io/proc helpers
-#   cli      the eleven CLI binaries (package name `prose-sanitiser`)
+#   cli      the twelve CLI binaries (package name `prose-sanitiser`)
 #   server   the HTTP service and its binary
 #
 # The path-deps between them are all inside the fetched tree, so the whole
@@ -57,7 +59,7 @@ let
 
   # The workspace lives in its own repository (extracted from services/ with
   # full history on 2026-09-03) and is published to crates.io as six crates.
-  # Agentbox consumes the tagged source so the twelve binaries are built and
+  # Agentbox consumes the tagged source so the thirteen binaries are built and
   # tested here under the same toolchain as everything else. The workspace
   # root IS the build root, so `buildRustPackage` builds every member.
   #
