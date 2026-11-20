@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 18315de55b9be6f8fdaed6e9f33b6ad26da1cf4f
+verified_commit: f6a87328266381a2f2f1bf6ddf7050ebd72eda49
 verified_paths: [config/nip98-proxy/proxy.mjs, docs/INGRESS-identity.md]
 owner: jjohare
 review_trigger: A governance upstream stops re-verifying the operator signature, or a new default proxy route is proposed
@@ -192,3 +192,7 @@ Nothing this record decides is changed; its status axes are unchanged. Re-run: `
 ## Re-verification — 2026-11-01 (`4f3bd5325`)
 
 Governed-path delta since `3d717c40f`: `docs/INGRESS-identity.md`: version 0.2.9, one changelog line, and the Invariant 12 credential sentences (what the scrub removes, and the post-deploy password rotation) (ADR-2164 amendment 4). This record's decision does not concern these changes. Decision unchanged; `verified_commit` bumped. Re-run: `git diff 3d717c40f..4f3bd5325 -- docs/INGRESS-identity.md`.
+
+## Re-verification — 2026-11-20 at `f6a87328266381a2f2f1bf6ddf7050ebd72eda49`
+
+Governed delta: `config/nip98-proxy/proxy.mjs` only (W3-05, ADR-2210); `docs/INGRESS-identity.md` is unchanged since the previous stamp. The hunks add a `NIP98_PROXY_REQUIRE_CONFIG=1` mode in which an absent or unreadable config file makes `pubkeyAllowed` refuse every identity (`proxy.mjs:182-183`, `:260-272`, poll at `:1086-1099`). None of them touches `normalizeRoute`, `bearer_env` fail-closed handling, named-route NIP-98/bearer exchange or the unknown-route 404, so the bearer-gating claims hold. The allowlist (`pubkeyAllowed`, called at `:482` and `:605`) gates NIP-98 verification and session minting, not the break-glass bearer; that is unchanged. `proxy.mjs` is +1 line after `:180`, +15 after `:264` and +30 after `:1085`, so line citations in earlier notes are as of their own commits. Commands run: `git diff 18315de55..f6a873282 -- config/nip98-proxy/proxy.mjs docs/INGRESS-identity.md`. Re-run the diff to reproduce.

@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 18315de55b9be6f8fdaed6e9f33b6ad26da1cf4f
+verified_commit: f6a87328266381a2f2f1bf6ddf7050ebd72eda49
 verified_paths: [management-api/lib/agent-identity.js, config/nip98-proxy/proxy.mjs]
 owner: jjohare
 review_trigger: A durable identity appears in bech32/npub form in storage or a URL, or the did:nostr:local fallback fires in production
@@ -137,3 +137,7 @@ Re-verified by `git diff b680a7aee..a48ea407a -- <verified_paths>`; no re-implem
 
 Tripped by custody X-1 step 1, W2 (`custody/w2-env-scrub`: `0965a9c8c`, `042115499`, `275e12356`; bypass 3, ROLE secrets out of PID 1's environment). `management-api/lib/agent-identity.js` now re-exports the ROLE-secret loader and reads the `AGENTBOX_AGENT_PRIVKEY_HEX` override through it (`<NAME>_FILE` first; the bare variable only with the flag off). Derivation, the x-only hex identity and the DID string are unchanged. `config/nip98-proxy/proxy.mjs` changes only how its two secrets are read; pubkeys stay 64-hex x-only. The decision holds.
 Re-verified by `git diff a48ea407a..275e12356 -- <verified_paths>`. No re-implementation was needed. The image is unverified until the owner's rebuild.
+
+## Re-verification — 2026-11-20 at `f6a87328266381a2f2f1bf6ddf7050ebd72eda49`
+
+Governed delta: `config/nip98-proxy/proxy.mjs` only (W3-05, ADR-2210); `management-api/lib/agent-identity.js` is unchanged. The hunks add a `NIP98_PROXY_REQUIRE_CONFIG=1` mode in which an absent or unreadable config file makes `pubkeyAllowed` refuse every identity (`proxy.mjs:182-183`, `:260-272`, poll at `:1086-1099`). No hunk touches the `^[0-9a-f]{64}$` checks, so hex-only canonical identity is intact; the new refusal can only deny more, never accept a non-hex identity. `proxy.mjs` is +1 line after `:180`, +15 after `:264` and +30 after `:1085`: the `:250` and `:396` in this record's Verification are as of their own commits, and the `:120` allowlist validation sits above the first hunk and keeps its number. Commands run: `git diff 18315de55..f6a873282 -- management-api/lib/agent-identity.js config/nip98-proxy/proxy.mjs`. Re-run the diff to reproduce.

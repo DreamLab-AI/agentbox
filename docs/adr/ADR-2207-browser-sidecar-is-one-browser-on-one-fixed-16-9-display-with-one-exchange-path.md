@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 37db0ec52d80555a0a473a080676d0fae78dbd94
+verified_commit: f6a87328266381a2f2f1bf6ddf7050ebd72eda49
 verified_paths: [browsercontainer/*, tests/browsercontainer/*, docker-compose.browsercontainer.yml, .github/workflows/browsercontainer.yml]
 owner: operator
 review_trigger: the owner's sidecar rebuild (activation), a change of window manager, display size rules or exchange path, or chrome-devtools-mcp moving past 1.13
@@ -134,3 +134,9 @@ At `9263a3976`, from the worktree (includes `dockerfile-copy-sources.test.cjs`, 
 - `node --test tests/browsercontainer/*.test.cjs`: 55 passed. This covers display-config, server, cdp-proxy, pins, diagnose and podkey-ctl, plus the compose-profile-volume and exchange-compose scripts.
 - Every new test was observed failing before its change. The Host allow-list and Origin refusal were also checked by disabling them (pass-through proxy, Origin check off), which turned their tests red.
 - `skills/lint-skills.sh` is clean, `scripts/ci/check-ports-loopback.sh` exits 0, and ShellCheck 0.11.0 at warning severity reports nothing on the touched shell files.
+
+## Re-verification — 2026-11-20 at `f6a87328266381a2f2f1bf6ddf7050ebd72eda49`
+
+Governed delta: `browsercontainer/policies/podkey-only.json`, `browsercontainer/Dockerfile`, `launch-chromium.sh` and `podkey-ctl.js` comments and message text, `browsercontainer/README.md`, `tests/browsercontainer/podkey-ctl.test.cjs`, and the new `tests/browsercontainer/policy-contract.test.cjs` (ADR-2212). Decisions 1 to 7 (display, exchange path, CDP proxy, recording, bridge, pins, diagnostic) are untouched. Run: `node --test tests/browsercontainer/*.test.cjs` → 63 pass, 0 fail; `launch-args.test.sh` 14 passed, 1 skipped; `fetch-podkey.test.sh` 16 passed, 1 skipped; `record.test.sh` 9 passed. The 55 in the Verification section is the count at `9263a3976`.
+
+**Amendment (owner decision, 2026-11-20).** The context above says Podkey cannot load because Chromium's unpacked loader rejects the wildcard block, that "policy relaxation is an owner decision, not silently applied here", and (Consequences) that "Podkey is still unavailable". On 2026-11-20 the owner chose to replace the wildcard block with the ADR-2212 policy. `browsercontainer/policies/podkey-only.json` is now one `ExtensionSettings` policy: Podkey's id `cakgjkgiodcdhecnnfhmcfphjkknfjkd` is `allowed`, the Chrome Web Store update URL is `blocked` (so a returning Proton Pass is refused too), the `*` entry keeps only `install_sources: []` and a message with no `installation_mode`, and `BlockExternalExtensions` is `true`; the `ExtensionInstallBlocklist` and `Allowlist` pair is gone. The owner accepted the cost: unpacked loading is no longer disabled, so another unpacked extension can be loaded by anyone who already has DevTools access (CDP on 9222/9223 is already full browser control). The README and `podkey-ctl.js` text were updated to match. The statements above that Podkey cannot load describe the state before this decision. Podkey loading is **not yet observed**: no image has been rebuilt with the new policy and Chrome has not been seen loading Podkey, so the Activation list above (rebuild, then `podkey unlock`) still stands, and this note promotes no status axis. See ADR-2212 for the decision and its rejected alternatives. Commands run: `git diff 37db0ec52..f6a873282 -- browsercontainer/* tests/browsercontainer/* docker-compose.browsercontainer.yml .github/workflows/browsercontainer.yml`. Re-run the diff to reproduce.

@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 2ebc3859c77fce7996eb584d78a2b89c286d72c2
+verified_commit: f6a87328266381a2f2f1bf6ddf7050ebd72eda49
 verified_paths: [config/instructions/floor.md, config/hooks/decline-recorder.cjs, services/agentbox-manifest/src/instructions.rs, config/registered-hooks.txt, tests/config/decline-recorder.test.mjs, tests/config/instructions-layers.test.sh, services/agentbox-manifest/src/stacks.rs, services/agentbox-manifest/src/stacks_env.rs, flake.nix]
 owner: jjohare
 review_trigger: a Stop/SubagentStop hook that can halt a task (upgrade the exit clause to "halts the task"); a Claude Code release that changes managed CLAUDE.md, omitClaudeMd or last_assistant_message semantics; a second operator (the single-operator premise behind "the operator reads them")
@@ -275,3 +275,7 @@ No published port, credential, identity, role or adapter authority changes.
 Package tests (49), hosts-layer checks (8), actual boot-block fixture and
 persistent-volume checks passed. Production mount acceptance remains separate;
 this scoped review does not re-audit unrelated history or promote status axes.
+
+## Re-verification — 2026-11-20 at `f6a87328266381a2f2f1bf6ddf7050ebd72eda49`
+
+Governed delta: `flake.nix` changed in one line, `:3169`: the `[program:nip98-proxy]` supervisor `environment=` gains `NIP98_PROXY_REQUIRE_CONFIG="1"` (W3-05, ADR-2210). One line replaces one line, so no `flake.nix` citation moves, and nothing else in the file changed. This record makes no claim about the proxy's supervisor environment or its config projection. The Decision is unchanged and no claim of this record is falsified by the JOURNAL-LOCK (ADR-2211), W3-05 (ADR-2210) or Podkey-policy (ADR-2212) merges. Commands run: `git diff 2ebc3859c..f6a873282 -- config/instructions/floor.md config/hooks/decline-recorder.cjs services/agentbox-manifest/src/instructions.rs config/registered-hooks.txt tests/config/decline-recorder.test.mjs tests/config/instructions-layers.test.sh services/agentbox-manifest/src/stacks.rs services/agentbox-manifest/src/stacks_env.rs flake.nix`. Re-run the diff to reproduce.

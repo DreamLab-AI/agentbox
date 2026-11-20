@@ -59,7 +59,7 @@ detect changes to files it already lists — it is structurally blind to **addit
 is exactly how a new crate landed unlicensed under ADR-2030 while the record still read as
 verified and its `review_trigger` ("any new crate under `services/`") sat unactioned.
 
-_164 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
+_167 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
 
 | ID | Title | Domain | Date | Decision | Impl | Activation | Supersedes | Superseded by | Owner | Repo |
 |----|-------|--------|------|----------|------|------------|------------|---------------|-------|------|
@@ -227,3 +227,6 @@ _164 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
 | [ADR-2203](ADR-2203-systemscape-hosts-file-is-a-mounted-repo-layer-with-a-private-local-file.md) | The SystemScape hosts file is a mounted repo layer with a private local file | — | 2026-11-18 | proposed | partial | staged | — | — | operator | agentbox |
 | [ADR-2207](ADR-2207-browser-sidecar-is-one-browser-on-one-fixed-16-9-display-with-one-exchange-path.md) | The browser sidecar is one browser on one fixed 16:9 display, with one exchange path | BASELINE-container | 2026-11-20 | accepted | complete | live | — | — | operator | agentbox |
 | [ADR-2208](ADR-2208-offline-defense-tools-reuse-the-metaharness-gate.md) | Offline defense evidence replay reuses the MetaHarness gate without a new gateway | BASELINE-container | 2026-11-20 | accepted | complete | live | — | — | operator | agentbox |
+| [ADR-2210](ADR-2210-the-nip98-door-refuses-every-identity-until-its-boot-config-exists.md) | The NIP-98 door refuses every identity until its boot config file exists | — | 2026-11-20 | proposed | partial | inactive | — | — | jjohare | agentbox |
+| [ADR-2211](ADR-2211-events-journal-appends-run-under-a-cross-process-lock.md) | Events journal appends run under a cross-process lock | GOVERNANCE-capabilities | 2026-11-20 | accepted | complete | inactive | — | — | jjohare | agentbox |
+| [ADR-2212](ADR-2212-podkey-policy-blocks-the-store-not-the-default.md) | The sidecar policy blocks the Web Store, not the default, so unpacked Podkey can load | — | 2026-11-20 | accepted | partial | inactive | — | — | operator | agentbox |

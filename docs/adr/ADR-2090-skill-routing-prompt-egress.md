@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: 2ebc3859c77fce7996eb584d78a2b89c286d72c2
+verified_commit: f6a87328266381a2f2f1bf6ddf7050ebd72eda49
 verified_paths: [agentbox.toml, schema/agentbox.toml.schema.json, scripts/agentbox-config-validate.js, config/entrypoint-unified.sh, config/hooks/skill-route.cjs, config/hooks/lib/skill-route.cjs, skills/skill-router/scripts/route.mjs, config/egress-policy.json, tests/config/skill-route.test.js]
 owner: jjohare
 review_trigger: the first project whose content must not reach the judge, or any proposal to widen this beyond skill routing
@@ -238,3 +238,7 @@ run; deployment acceptance remains separate. No status axis is promoted.
 ## Re-verification — 2026-11-20 at `9263a39761c0c69e651e77ec1c91be33f015a1b5`
 
 Governed delta: `config/entrypoint-unified.sh` changed in one block: the browser-gpu registration probe (~:2248) now accepts HTTP 200 or 503 from `http://browsercontainer:8931/health` instead of `curl -f` (ADR-2207 D5), a net +2 lines, so every line after ~:2248 sits two lines lower. Nothing else in the file moved. The skill-routing egress block is untouched. The Decision is unchanged and no claim of this record is falsified by the ADR-2207 sidecar refresh. Commands run: `git diff ceab43d41..9263a3976 -- agentbox.toml schema/agentbox.toml.schema.json scripts/agentbox-config-validate.js config/entrypoint-unified.sh config/hooks/skill-route.cjs config/hooks/lib/skill-route.cjs skills/skill-router/scripts/route.mjs config/egress-policy.json tests/config/skill-route.test.js`; `bash -n config/entrypoint-unified.sh` → clean. Re-run the diff to reproduce.
+
+## Re-verification — 2026-11-20 at `f6a87328266381a2f2f1bf6ddf7050ebd72eda49`
+
+Governed delta: `config/entrypoint-unified.sh` changed in one hunk, `:2336-2348` (W3-05, ADR-2210): the `[interaction_plane.proxy]` projection now sources `config/lib/nip98-config.sh` and calls `ab_nip98_project` when that file is readable, and otherwise falls back to the previous `agentbox-manifest nip98-config` call. The hunk is a net +6 lines, so every entrypoint line after about `:2348` sits six lower than at the previous stamp; line citations in earlier notes are as of their own commits. This record makes no claim about the proxy's supervisor environment or its config projection. `bash -n config/entrypoint-unified.sh` → clean. The Decision is unchanged and no claim of this record is falsified by the JOURNAL-LOCK (ADR-2211), W3-05 (ADR-2210) or Podkey-policy (ADR-2212) merges. Commands run: `git diff 2ebc3859c..f6a873282 -- agentbox.toml schema/agentbox.toml.schema.json scripts/agentbox-config-validate.js config/entrypoint-unified.sh config/hooks/skill-route.cjs config/hooks/lib/skill-route.cjs skills/skill-router/scripts/route.mjs config/egress-policy.json tests/config/skill-route.test.js`. Re-run the diff to reproduce.

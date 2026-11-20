@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 2ebc3859c77fce7996eb584d78a2b89c286d72c2
+verified_commit: f6a87328266381a2f2f1bf6ddf7050ebd72eda49
 verified_paths: [flake.nix, lib/sbomnix.nix, lib/sbomnix-python.nix, lib/agentbox-vex.nix, lib/vex-evidence.nix, services/agentbox-vex, scripts/security-scan.sh, scripts/runtime-delivery.cjs, agentbox.sh, tests/security, tests/config/runtime-delivery.test.cjs, .github/workflows/build-multi-arch.yml, .github/workflows/image-scan.yml, .github/workflows/release.yml, .github/workflows/security-vex.yml, .github/workflows/flake-check.yml]
 owner: jjohare
 review_trigger: image inventory, VEX predicates, scanner matching or release artefact selection changes; a host preparation bundle that carries raw and VEX-filtered Grype reports, or a release with matching-commit scan artefacts (activation → live)
@@ -293,3 +293,7 @@ this scoped review does not re-audit unrelated history or promote status axes.
 ## Re-verification — 2026-11-20 at `9263a39761c0c69e651e77ec1c91be33f015a1b5`
 
 Governed delta: `agentbox.sh` changed only in the `browsercontainer` verbs (new `diagnose`, `health` reads 200/503, usage text and the WebGPU/display/exchange wording; ADR-2207 D5, D7); lines before ~1497 are unchanged and later ones shift by +4 after the `health` block (~:1497-1512), +9 after the `diagnose` verb (~:1542) and +10 from the usage text (~:1576) to the end of the file. The VEX and SBOM verbs are untouched. The Decision is unchanged and no claim of this record is falsified by the ADR-2207 sidecar refresh. Commands run: `git diff de01d60a4..9263a3976 -- flake.nix lib/sbomnix.nix lib/sbomnix-python.nix lib/agentbox-vex.nix lib/vex-evidence.nix services/agentbox-vex scripts/security-scan.sh scripts/runtime-delivery.cjs agentbox.sh tests/security tests/config/runtime-delivery.test.cjs .github/workflows/build-multi-arch.yml .github/workflows/image-scan.yml .github/workflows/release.yml .github/workflows/security-vex.yml .github/workflows/flake-check.yml`; `bash -n agentbox.sh` → clean. Re-run the diff to reproduce.
+
+## Re-verification — 2026-11-20 at `f6a87328266381a2f2f1bf6ddf7050ebd72eda49`
+
+Governed delta: `flake.nix` changed in one line, `:3169`: the `[program:nip98-proxy]` supervisor `environment=` gains `NIP98_PROXY_REQUIRE_CONFIG="1"` (W3-05, ADR-2210). One line replaces one line, so no `flake.nix` citation moves, and nothing else in the file changed. This record makes no claim about the proxy's supervisor environment or its config projection. The Decision is unchanged and no claim of this record is falsified by the JOURNAL-LOCK (ADR-2211), W3-05 (ADR-2210) or Podkey-policy (ADR-2212) merges. Commands run: `git diff 2ebc3859c..f6a873282 -- flake.nix lib/sbomnix.nix lib/sbomnix-python.nix lib/agentbox-vex.nix lib/vex-evidence.nix services/agentbox-vex scripts/security-scan.sh scripts/runtime-delivery.cjs agentbox.sh tests/security tests/config/runtime-delivery.test.cjs .github/workflows/build-multi-arch.yml .github/workflows/image-scan.yml .github/workflows/release.yml .github/workflows/security-vex.yml .github/workflows/flake-check.yml`. Re-run the diff to reproduce.

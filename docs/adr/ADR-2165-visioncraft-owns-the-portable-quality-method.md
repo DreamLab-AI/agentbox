@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 2ebc3859c77fce7996eb584d78a2b89c286d72c2
+verified_commit: f6a87328266381a2f2f1bf6ddf7050ebd72eda49
 verified_paths: [services/agentbox-manifest/src/deepsec_gate.rs, services/agentbox-manifest/src/visioncraft_source.rs, services/agentbox-manifest/src/jsonio.rs, services/agentbox-manifest/src/mcp.rs, services/agentbox-manifest/src/mcp_hub.rs, services/agentbox-manifest/tests/deepsec_gate.rs, services/agentbox-manifest/tests/aqe.rs, tests/config/visioncraft-deepsec.test.mjs, tests/config/visioncraft-aqe.test.mjs, tests/system-one/visioncraft-picker.test.mjs, config/visioncraft-source.json, lib/lockfiles/visioncraft-0.3.0.Cargo.lock, lib/visioncraft.nix, lib/agentbox-manifest.nix, flake.nix, skills/visioncraft, skills/registered-skills.txt, skills/codex-registered-skills.txt, scripts/reconcile-skills.sh, services/agentbox-manifest/src/main.rs, tests/config/visioncraft-cutover.test.mjs]
 owner: jjohare
 review_trigger: a VisionCraft release, a Deepsec protocol change, or discovery of a second active quality implementation
@@ -205,3 +205,7 @@ No published port, credential, identity, role or adapter authority changes.
 Package tests (49), hosts-layer checks (8), actual boot-block fixture and
 persistent-volume checks passed. Production mount acceptance remains separate;
 this scoped review does not re-audit unrelated history or promote status axes.
+
+## Re-verification — 2026-11-20 at `f6a87328266381a2f2f1bf6ddf7050ebd72eda49`
+
+Governed delta: `flake.nix` changed in one line, `:3169`: the `[program:nip98-proxy]` supervisor `environment=` gains `NIP98_PROXY_REQUIRE_CONFIG="1"` (W3-05, ADR-2210). One line replaces one line, so no `flake.nix` citation moves, and nothing else in the file changed. This record makes no claim about the proxy's supervisor environment or its config projection. The Decision is unchanged and no claim of this record is falsified by the JOURNAL-LOCK (ADR-2211), W3-05 (ADR-2210) or Podkey-policy (ADR-2212) merges. Commands run: `git diff 2ebc3859c..f6a873282 -- services/agentbox-manifest/src/deepsec_gate.rs services/agentbox-manifest/src/visioncraft_source.rs services/agentbox-manifest/src/jsonio.rs services/agentbox-manifest/src/mcp.rs services/agentbox-manifest/src/mcp_hub.rs services/agentbox-manifest/tests/deepsec_gate.rs services/agentbox-manifest/tests/aqe.rs tests/config/visioncraft-deepsec.test.mjs tests/config/visioncraft-aqe.test.mjs tests/system-one/visioncraft-picker.test.mjs config/visioncraft-source.json lib/lockfiles/visioncraft-0.3.0.Cargo.lock lib/visioncraft.nix lib/agentbox-manifest.nix flake.nix skills/visioncraft skills/registered-skills.txt skills/codex-registered-skills.txt scripts/reconcile-skills.sh services/agentbox-manifest/src/main.rs tests/config/visioncraft-cutover.test.mjs`. Re-run the diff to reproduce.

@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 2ebc3859c77fce7996eb584d78a2b89c286d72c2
+verified_commit: f6a87328266381a2f2f1bf6ddf7050ebd72eda49
 verified_paths: [flake.nix, docker-compose.yml, docker-compose.override.yml, scripts/migrate-codex-home.sh, tests/config/compose-persistence.test.cjs]
 owner: jjohare
 review_trigger: changes to Codex home mounts, session retention, or the migration procedure
@@ -201,3 +201,7 @@ this scoped review does not re-audit unrelated history or promote status axes.
 ## Re-verification — 2026-11-20 at `9263a39761c0c69e651e77ec1c91be33f015a1b5`
 
 Governed delta: `docker-compose.override.yml` mounts the exchange volume at `/home/devuser/exchange` as well as the kept `/home/devuser/gui-tools` alias, and pins the volume name (`GUI_TOOLS_EXCHANGE_VOLUME`, default `agentbox_gui-tools-exchange`) (ADR-2207 D2). The `codex-home` volume and the absence of a `.codex` tmpfs are untouched. `RUVECTOR_PG_PASSWORD=dummy node tests/config/compose-persistence.test.cjs` (empty `.env`) → PASS, which includes the new exchange-mount assertion. Claim still true. The Decision is unchanged and no claim of this record is falsified by the ADR-2207 sidecar refresh. Commands run: `git diff de01d60a4..9263a3976 -- flake.nix docker-compose.yml docker-compose.override.yml scripts/migrate-codex-home.sh tests/config/compose-persistence.test.cjs`. Re-run the diff to reproduce.
+
+## Re-verification — 2026-11-20 at `f6a87328266381a2f2f1bf6ddf7050ebd72eda49`
+
+Governed delta: `flake.nix` changed in one line, `:3169`: the `[program:nip98-proxy]` supervisor `environment=` gains `NIP98_PROXY_REQUIRE_CONFIG="1"` (W3-05, ADR-2210). One line replaces one line, so no `flake.nix` citation moves, and nothing else in the file changed. This record makes no claim about the proxy's supervisor environment or its config projection. The Decision is unchanged and no claim of this record is falsified by the JOURNAL-LOCK (ADR-2211), W3-05 (ADR-2210) or Podkey-policy (ADR-2212) merges. Commands run: `git diff 2ebc3859c..f6a873282 -- flake.nix docker-compose.yml docker-compose.override.yml scripts/migrate-codex-home.sh tests/config/compose-persistence.test.cjs`. Re-run the diff to reproduce.

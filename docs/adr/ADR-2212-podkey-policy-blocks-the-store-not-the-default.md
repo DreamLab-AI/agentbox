@@ -2,17 +2,17 @@
 id: ADR-2212
 title: The sidecar policy blocks the Web Store, not the default, so unpacked Podkey can load
 date: 2026-11-20
-decision_status: proposed
+decision_status: accepted
 implementation_status: partial
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit:
+verified_commit: f6a87328266381a2f2f1bf6ddf7050ebd72eda49
 verified_paths: []
 owner: operator
 review_trigger: Podkey publishes a CRX or a manifest key; Chrome changes IsLoadingUnpackedAllowed; the policy file or Podkey install path changes
 repo: agentbox
-evidence_class:
+evidence_class: source+test
 acceptance_boundary: Source and tests only. No image has been rebuilt; Chrome has not been observed loading Podkey under this policy.
 ---
 
@@ -35,3 +35,11 @@ One `ExtensionSettings` policy, with no default block: Podkey's id `allowed`; th
 
 ## Verification
 Not yet verified. Host proof: rebuild the sidecar, then `docker logs browsercontainer | grep podkey-ctl` shows `loaded Podkey cakg…; service worker running` with no "disabled by the administrator" line before it; `chrome://policy` shows no errors; a Web Store install is refused. Source evidence: `unpacked_installer.cc` and `extension_management.cc` at tag 159.0.8154.13.
+
+## Owner approval — 2026-11-20
+
+The owner approved this decision on 2026-11-20, relayed to the ADR sprint by the lead session. That is the decision ADR-2207 reserved to the owner ("policy relaxation is an owner decision, not silently applied here") and the one the first Consequences bullet above says merging needs; ADR-2207 carries a matching amendment. The owner accepted the residual gap named above: another unpacked extension can be loaded by anyone who already has CDP or `chrome://extensions` access.
+
+## Source verification — 2026-11-20 at `f6a87328266381a2f2f1bf6ddf7050ebd72eda49`
+
+`decision_status` moves from `proposed` to `accepted` on that approval. The lint required only a non-empty `verified_commit` for an accepted record; `evidence_class` is optional and was set to `source+test` to match the acceptance boundary. `implementation_status: partial` and `activation_status: inactive` are unchanged and the acceptance boundary above still holds: no image has been rebuilt with this policy and Chrome has not been observed loading Podkey, so the host proof in the Verification section is still outstanding. Source read: `browsercontainer/policies/podkey-only.json` is one `ExtensionSettings` object with Podkey's id `allowed`, the Web Store update URL `blocked`, a `*` entry with `install_sources: []` and no `installation_mode`, and `BlockExternalExtensions: true`, with no `ExtensionInstallBlocklist` or `Allowlist`. Run: `node --test tests/browsercontainer/policy-contract.test.cjs` → 4 pass; `node --test tests/browsercontainer/*.test.cjs` → 63 pass, 0 fail. `verified_paths` is left empty as the author wrote it.
