@@ -2,8 +2,8 @@
 //
 // Properties under test:
 //   - the extension id is derived from the in-image path exactly as Chrome derives
-//     an unpacked extension's id (no manifest `key`), and the managed policy's
-//     allowlist names that same id;
+//     an unpacked extension's id (no manifest `key`), and the managed policy
+//     names that same id;
 //   - Podkey is loaded exactly once per Chrome process: a reload in the same process
 //     clears chrome.storage.session, i.e. it would silently lock an unlocked key;
 //   - status output carries only state / public key / did, never anything else the
@@ -30,10 +30,9 @@ test('extension id follows Chrome\'s unpacked-path derivation', () => {
   assert.equal(ctl.PODKEY_ID, 'cakgjkgiodcdhecnnfhmcfphjkknfjkd');
 });
 
-test('managed policy allowlists exactly the Podkey id and blocks everything else', () => {
+test('managed policy names the Podkey id (full contract: policy-contract.test.cjs, ADR-2212)', () => {
   const policy = JSON.parse(fs.readFileSync(path.join(REPO, 'browsercontainer/policies/podkey-only.json'), 'utf8'));
-  assert.deepEqual(policy.ExtensionInstallBlocklist, ['*']);
-  assert.deepEqual(policy.ExtensionInstallAllowlist, [ctl.PODKEY_ID]);
+  assert.equal(policy.ExtensionSettings[ctl.PODKEY_ID].installation_mode, 'allowed');
 });
 
 test('load decision: once per Chrome process, never in flag mode', () => {

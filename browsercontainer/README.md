@@ -282,7 +282,7 @@ mints K_browser (below).
 | Verify | the zip's sha256 must equal the pin (refused otherwise, exit 3). Inside the image build, `fetch-podkey.sh install` re-verifies, refuses `..`/absolute entries, and checks `manifest.json` name/version and `build.json` commit against the pin |
 | Install path | `/opt/browsercontainer/extensions/podkey` (inside the image) |
 | Extension id | `cakgjkgiodcdhecnnfhmcfphjkknfjkd`. The artefact's manifest has no `key`, so Chrome derives the id from the absolute path: the first 16 bytes of SHA-256(path), each hex nibble mapped `0-f` to `a-p`. The path is fixed in the image, so the id is stable across rebuilds and hosts. `node /opt/browsercontainer/podkey-ctl.js id` prints it |
-| Policy | `/etc/opt/chrome/policies/managed/podkey-only.json` (and `/etc/chromium/…`): `ExtensionInstallBlocklist ["*"]`, `ExtensionInstallAllowlist [<id>]` |
+| Policy | `/etc/opt/chrome/policies/managed/podkey-only.json` (and `/etc/chromium/…`), one `ExtensionSettings` policy (ADR-2212): Podkey's id `allowed`; every Chrome Web Store extension `blocked` (by update URL `https://clients2.google.com/service/update2/crx`); `install_sources []`; `BlockExternalExtensions`. There is deliberately **no** `*` default block (see below) |
 
 **Moving the pin forward** (the only way it changes; rule-estate-pins-move-forward):
 pick a green `ci.yml` run on podkey `main`, then edit `podkey.pin` with its `head_sha`,
@@ -303,6 +303,18 @@ Branded Chrome 137+ ignores `--load-extension`. On Chrome beta 151,
 `--disable-extensions-except` still applies and disables even the CDP-loaded
 Podkey. Both were observed in this sidecar on 2026-10-03, which is why branded
 Chrome gets neither flag and the managed policy enforces "Podkey only" instead.
+
+**Why the policy has no `*` block (ADR-2212).** Chromium's unpacked loader
+(`UnpackedInstaller::IsLoadingUnpackedAllowed`) refuses every unpacked load while the
+default installation mode is blocked, and an allowlist only rescues *packed*
+extensions. `ExtensionInstallBlocklist ["*"]` and
+`ExtensionSettings {"*": {"installation_mode": "blocked"}}` are the same gate, and
+`--load-extension` passes through it too, so no flag change helps. The first
+`Extensions.loadUnpacked` therefore failed with "Loading of unpacked extensions is
+disabled by the administrator" at every Chrome start. The policy now blocks the
+Web Store by update URL and closes the other install routes instead. Residual gap:
+anyone with CDP or `chrome://extensions` access can still load another *unpacked*
+extension (CDP is already full control of the browser).
 The loader loads **once per Chrome process**: re-loading an unpacked extension
 clears `chrome.storage.session`, which would silently lock an unlocked key.
 

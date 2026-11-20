@@ -1,4 +1,15 @@
 {
-  "ExtensionInstallBlocklist": ["*"],
-  "ExtensionInstallAllowlist": ["cakgjkgiodcdhecnnfhmcfphjkknfjkd"]
+  "ExtensionSettings": {
+    "*": {
+      "install_sources": [],
+      "blocked_install_message": "Only Podkey runs in this browser (ADR-2212)."
+    },
+    "update_url:https://clients2.google.com/service/update2/crx": {
+      "installation_mode": "blocked"
+    },
+    "cakgjkgiodcdhecnnfhmcfphjkknfjkd": {
+      "installation_mode": "allowed"
+    }
+  },
+  "BlockExternalExtensions": true
 }

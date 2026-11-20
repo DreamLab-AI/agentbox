@@ -96,8 +96,9 @@ COPY vendor/podkey-extension.zip /tmp/podkey-extension.zip
 RUN bash /opt/browsercontainer/scripts/fetch-podkey.sh install --pin /opt/browsercontainer/podkey.pin \
         --zip /tmp/podkey-extension.zip --dest /opt/browsercontainer/extensions/podkey \
     && rm -f /tmp/podkey-extension.zip
-# Managed policy: block every extension except Podkey (id derived from the path
-# above; podkey-ctl.js `id`). Branded Chrome reads /etc/opt/chrome, Chromium /etc/chromium.
+# Managed policy (ADR-2212): Podkey allowed by id (derived from the path above;
+# podkey-ctl.js `id`), Web Store and external installs blocked. No "*" default
+# block: Chrome refuses every unpacked load while one exists. Branded Chrome reads /etc/opt/chrome, Chromium /etc/chromium.
 COPY policies/podkey-only.json /etc/opt/chrome/policies/managed/podkey-only.json
 RUN install -D -m 0644 /etc/opt/chrome/policies/managed/podkey-only.json /etc/chromium/policies/managed/podkey-only.json
 

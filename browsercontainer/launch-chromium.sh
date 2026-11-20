@@ -22,7 +22,9 @@
 #                  extension, so neither flag is passed; podkey-loader calls
 #                  Extensions.loadUnpacked (needs
 #                  --enable-unsafe-extension-debugging); the managed policy
-#                  policies/podkey-only.json allowlists only Podkey      mode=cdp
+#                  policies/podkey-only.json blocks Web Store extensions
+#                  and external installs, and must not carry a "*" default block,
+#                  which makes Chrome refuse every unpacked load (ADR-2212)  mode=cdp
 #   no extension dir  Chrome starts without Podkey (fail-open)            mode=none
 # The profile ($CHROME_PROFILE_DIR) is the named volume browsercontainer-profile,
 # so Podkey's chrome.storage.local (encrypted vault, pubkey, grants) survives

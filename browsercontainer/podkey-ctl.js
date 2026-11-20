@@ -10,6 +10,12 @@
  * and launch-chromium.sh uses them there. launch-chromium.sh records which path it
  * took in $RUN_DIR/podkey-mode (cdp | flag | none).
  *
+ * The managed policy (policies/podkey-only.json, ADR-2212) must not contain a "*"
+ * default block: Chromium's unpacked loader refuses every unpacked load then
+ * ("Loading of unpacked extensions is disabled by the administrator"), allowlist or
+ * not. It allows this id, blocks Web Store extensions by update URL and closes the
+ * other install routes. tests/browsercontainer/policy-contract.test.cjs pins it.
+ *
  * Load exactly once per Chrome process. Re-loading an unpacked extension in the
  * same process clears chrome.storage.session, which is where Podkey keeps the
  * unlocked private key, so a second load would silently lock it. The browser's
@@ -167,7 +173,7 @@ async function loadOnce(browserKey) {
   const browser = await cdpSession(browserKey);
   try {
     const { id } = await browser.send('Extensions.loadUnpacked', { path: EXT_DIR });
-    if (id !== EXT_ID) log(`WARN: Chrome assigned id ${id}, expected ${EXT_ID} (policy allowlist names ${PODKEY_ID})`);
+    if (id !== EXT_ID) log(`WARN: Chrome assigned id ${id}, expected ${EXT_ID} (policy names ${PODKEY_ID})`);
     writeState(STATE_FILE, browserKey);
     const running = await waitForWorker(browser);
     log(running ? `loaded Podkey ${id}; service worker running` : `loaded Podkey ${id}; WARN: service worker not seen within 10s`);
@@ -302,7 +308,8 @@ async function main(argv) {
     case 'unlock': return cmdUnlock();
     case 'id': process.stdout.write(`${EXT_ID}\n`); return 0;
     default:
-      process.stderr.write('usage: podkey-ctl.js load [--watch] | status | pubkey | unlock | id\n');
+      process.stderr.write('usage: podkey-ctl.js load [--watch] | status | pubkey | unlock | id\n'
+        + '  load   loads Podkey over CDP once per Chrome process; the managed policy allows its id (ADR-2212)\n');
       return 2;
   }
 }
