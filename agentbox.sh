@@ -54,7 +54,7 @@ Local lifecycle commands:
   ${GREEN}health${NC}           Show service health [--json: raw JSON output]
   ${GREEN}migrate-workspace${NC} One-shot rsync from legacy multi-agent-docker_workspace into agentbox-workspace, then patch override
   ${GREEN}migrate-claude-home${NC} Seed the container-owned agentbox-claude-home volume from the host ~/.claude (ADR-2118)
-  ${GREEN}browsercontainer${NC} Manage GPU browser container [up|down|logs|health|status|rebuild|shell|gpu]
+  ${GREEN}browsercontainer${NC} Manage GPU browser container [up|down|logs|health|status|rebuild|shell|gpu|diagnose]
   ${GREEN}gui-tools${NC}        Manage GPU Blender + QGIS sidecar [up|down|logs|health|status|rebuild|shell|gpu]
   ${GREEN}isaac-sim${NC}        Manage headless Isaac Sim physics sidecar [up|down|logs|health|status|preflight|smoke|rebuild]
   ${GREEN}openmed${NC}          Manage optional clinical-PHI redaction sidecar [up|down|logs|health|status|rebuild|shell]
@@ -1542,6 +1542,11 @@ cmd_browsercontainer() {
             echo -e "${CYAN}Vulkan status:${NC}"
             docker exec browsercontainer vulkaninfo --summary 2>/dev/null || echo -e "${RED}vulkaninfo not available${NC}"
             ;;
+        diagnose)
+            # ADR-2207 D7: display == configured size, WebGPU adapter + compute round
+            # trip, window.nostr (info). Optional: <url> [waitMs] adds the page diagnosis.
+            docker exec --user 1000 browsercontainer node /opt/browsercontainer/cdp-diagnose.js "$@"
+            ;;
         cdp)
             echo -e "${CYAN}CDP connectivity:${NC}"
             local cdp_response
@@ -1571,18 +1576,19 @@ Usage: $0 browsercontainer <command>
   ${GREEN}shell${NC}     Open bash in the container
   ${GREEN}podkey${NC}    Podkey in the sidecar: status | pubkey | unlock | id
   ${GREEN}gpu${NC}       Check GPU and Vulkan status inside container
+  ${GREEN}diagnose${NC}  Display size, WebGPU adapter + compute round trip [url [waitMs]]
   ${GREEN}cdp${NC}       Check CDP connectivity and list browser tabs
 
-Chrome with Vulkan/ANGLE hardware acceleration on GPU 2
-(Quadro RTX 6000, 24GB). WebGL rendering, not WebGPU.
+One Chrome on one fixed 16:9 display (BROWSER_DISPLAY_SIZE, default 1920x1080),
+WebGPU and WebGL hardware-accelerated via Vulkan/ANGLE (ADR-2207).
 Agents connect via MCP SSE at http://browsercontainer:8931/sse.
+Files: /home/devuser/exchange, the same path in agentbox and the sidecar.
 
 Port layout:
   5903  VNC desktop (view Chrome)
-  8931  MCP SSE bridge (chrome-devtools-mcp)
-  9222  CDP proxy (host:9222 → socat:9223 → Chrome:9222)
-
-CDP diagnostic: docker exec browsercontainer node /opt/browsercontainer/cdp-diagnose.js
+  8931  MCP SSE bridge (chrome-devtools-mcp), /display, /record
+  9222  CDP proxy (host:9222 → cdp-proxy.js:9223 → Chrome:9222), also
+        http://browsercontainer:9223 by name on the docker network
 VNC monitoring:  vnc://localhost:5903
 BC_HELP
             ;;
