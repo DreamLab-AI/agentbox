@@ -4,7 +4,7 @@ title: The browser sidecar is one browser on one fixed 16:9 display, with one ex
 date: 2026-11-20
 decision_status: accepted
 implementation_status: complete
-activation_status: staged
+activation_status: live
 supersedes: []
 superseded_by: []
 verified_commit: 37db0ec52d80555a0a473a080676d0fae78dbd94
@@ -14,10 +14,19 @@ review_trigger: the owner's sidecar rebuild (activation), a change of window man
 repo: agentbox
 domain: BASELINE-container
 evidence_class: source+test+deployment+runtime
-acceptance_boundary: Browser rebuilt and running with exact-size display, non-fallback NVIDIA WebGPU compute, real MCP connection and isolated-display FFmpeg recording verified. Agentbox exchange-mount activation is still pending. Podkey loading is blocked by the existing wildcard extension policy; no policy relaxation or signing-key access is claimed.
+acceptance_boundary: Browser rebuilt and running with exact-size display, non-fallback NVIDIA WebGPU compute, real MCP connection and isolated-display FFmpeg recording verified. Agentbox exchange mount is activated with existing data retained, and a real MCP upload and screenshot handoff passes. Podkey loading remains blocked by the existing wildcard extension policy; no policy relaxation or signing-key access is claimed.
 ---
 
 # ADR-2207 — The browser sidecar is one browser on one fixed 16:9 display, with one exchange path
+
+## Completed exchange activation — 2026-11-20
+
+Agentbox source `559c2c39e2f5e8087d890b6ea89d63a75be1940b` was activated at
+12:17:11 UTC after the separately reviewed alias migration. Existing mounts
+and data were retained. A fresh background fixture uploaded a file created in
+Agentbox and wrote a PNG readable there through `/home/devuser/exchange`.
+Only the owned fixture page was closed. This completes the display/exchange
+rollout, not Podkey signing: the policy block below remains an owner decision.
 
 Scoped re-verification at `37db0ec52`: documentation and CI now match the
 captured live 1.13 argument contract (`pageId`, upload `filePaths[]`). Four
@@ -95,7 +104,9 @@ Measured on the live sidecar (image of 2026-11-05). Xvfb `:2` ran at 1920x1080 w
 - Screenshot paths under the sidecar's `/tmp` stop being accepted, because the connector's temp root is now the exchange. The skills now use `/home/devuser/exchange`.
 - The connector's own `mkdtemp` scratch directories (`chrome-devtools-mcp-*`) now land in the exchange root and survive recreates. Nothing deletes them, so the owner clears them by hand.
 - NVIDIA: host and sidecar run 615.78.08 and WebGPU works with it. R620 is the newer production branch, and moving to it is a host decision outside this record.
-- Not verified here: no image build, no openbox/Xvfb/Chrome/ffmpeg run, and no resolved model of the agentbox override (that is checked host-side).
+- At original source review these runtime checks were pending; the host-side
+  deployment sections above now record the build, display, GPU, recorder,
+  resolved persistent mounts and exchange handoff. Podkey is still unavailable.
 
 **Owner decisions recorded here:**
 

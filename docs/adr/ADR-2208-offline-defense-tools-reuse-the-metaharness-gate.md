@@ -4,7 +4,7 @@ title: Offline defense evidence replay reuses the MetaHarness gate without a new
 date: 2026-11-20
 decision_status: accepted
 implementation_status: complete
-activation_status: staged
+activation_status: live
 supersedes: []
 superseded_by: []
 verified_commit: 664161bdcfee1c4d7a5c820c6ddb0a0b0c085af6
@@ -13,11 +13,21 @@ owner: operator
 review_trigger: ARTEX or its harness dependency changes, a proposal to intercept live traffic or start the aidefence gateway, or a change to the single memory-store boundary
 repo: agentbox
 domain: BASELINE-container
-evidence_class: source+test
-acceptance_boundary: Standalone Nix package plus five checks covering the image gate and both packaged fixtures/modes, receipt verification, tamper rejection and no overwrite; no rebuilt Agentbox activation, live quarantine or new gateway is claimed.
+evidence_class: source+test+deployment+runtime
+acceptance_boundary: Standalone Nix package plus five checks covering the image gate and both packaged fixtures/modes, receipt verification, tamper rejection and no overwrite. Rebuilt Agentbox is active; isolated candidate replay and aidefence detector checks pass. No live quarantine, universal ingress screening or new gateway is claimed.
 ---
 
 # ADR-2208 — Offline defense tools reuse the MetaHarness gate
+
+## Activation witness — 2026-11-20
+
+Agentbox source `559c2c39e2f5e8087d890b6ea89d63a75be1940b`, image ID
+`sha256:b51f2286bda3610de732c8e21edf4186c06583e39d2b3d1211cdba5d7dba2f72`,
+was activated at 12:17:11 UTC. The network-isolated candidate passed ARTEX
+replay/receipt verification, benign and synthetic-injection aidefence checks,
+and Ruflo learning/retention-default assertions without production volumes.
+The active container exposes the CLI; RuVector MCP memory health passes.
+This is packaging and bounded detector evidence, not live traffic protection.
 
 ## Context
 
