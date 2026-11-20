@@ -2,19 +2,35 @@
 id: ADR-2210
 title: The NIP-98 door refuses every identity until its boot config file exists
 date: 2026-11-20
-decision_status: proposed
-implementation_status: partial
-activation_status: inactive
+decision_status: accepted
+implementation_status: complete
+activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit:
-verified_paths: []
+verified_commit: ba1265164ea309bd5443cfa37b3e4e8ede2ae9ab
+verified_paths: [flake.nix, config/nip98-proxy/proxy.mjs, config/lib/nip98-config.sh, config/entrypoint-unified.sh, services/agentbox-manifest/src/proxy.rs, tests/config/nip98-boot-failclosed.test.mjs, tests/config/nip98-config-projection.test.sh]
 owner: jjohare
 review_trigger: first host rebuild that bakes this change, or any change to where the nip98-config projection runs
 repo: agentbox
+evidence_class: source+test+deployment+runtime
+acceptance_boundary: Operator-requested host rollout is active. Eight baked proxy cases, native projector type rejection and an isolated real-supervisor missing-config/restart/allowed-key fixture pass. The live ingress rejects an unlisted valid signer. Existing-config freshness and role-isolation readability remain explicit limitations; neither is claimed solved.
 ---
 
 # ADR-2210 — The NIP-98 door refuses every identity until its boot config file exists
+
+## Host verification and activation — 2026-11-20 evening
+
+The operator requested checking and actioning this rebuild. Source
+`ba1265164ea309bd5443cfa37b3e4e8ede2ae9ab` was activated at 22:01:48 UTC.
+The actual baked proxy passed all eight fail-closed cases; its runtime path
+matches the tested copy byte for byte. The native projector refused mistyped
+allowlist/routes values without writing output. In a network-isolated fixture
+with no production mounts, real supervisord first served a 401 while config
+was absent, then restarted the proxy on config appearance and served the
+allowlisted test signer. A fresh unlisted valid signer was rejected by the
+live session endpoint with `pubkey_not_allowed` (three allowed keys, seven
+named routes). Role isolation remains off; the stale-config and readability
+limitations below remain. Earlier proposed/unbuilt statements are historical.
 
 ## Context
 - The allowlist (`[interaction_plane.proxy].allowed_pubkeys`) and named routes reach `proxy.mjs` only through a file projected by `entrypoint-unified.sh` in Stage B, which runs under supervisord.

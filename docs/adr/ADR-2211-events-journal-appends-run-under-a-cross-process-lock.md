@@ -4,21 +4,33 @@ title: Events journal appends run under a cross-process lock
 date: 2026-11-20
 decision_status: accepted
 implementation_status: complete
-activation_status: inactive
+activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: f6a87328266381a2f2f1bf6ddf7050ebd72eda49
-verified_paths: []
+verified_commit: ba1265164ea309bd5443cfa37b3e4e8ede2ae9ab
+verified_paths: [management-api/lib/journal-lock.js, management-api/adapters/events/local-jsonl.js, management-api/lib/journal-append.js, management-api/routes/exec-record.js, tests/contract/events-journal-lock.test.js]
 owner: jjohare
 review_trigger: Node gains a maintained flock binding in the dependency set, or a second implementation language writes the events journal
 repo: agentbox
 domain: GOVERNANCE-capabilities
 lineage: ADR-039 (hash-chained events log), ADR-2071 (journal the nightly dream cycle), ADR-2087 amendment (journal boundaries)
-evidence_class: source+test
-acceptance_boundary: Source and the jest suite tests/contract/events-journal-lock.test.js (4 pass) only. No image carries this code; the lock has not run on a deployed management API.
+evidence_class: source+test+deployment+runtime
+acceptance_boundary: Updated management API image is deployed. Seven journal/events/adapter suites pass with 121 tests and one existing todo; an isolated actual-image fixture verifies a linear 120-record chain from six concurrent processes. The ownership check is baked in the live API. No production journal repair, full-history certification or elimination of the documented takeover/check-write races is claimed.
 ---
 
 # ADR-2211 — Events journal appends run under a cross-process lock
+
+## Host activation witness — 2026-11-20 evening
+
+Source `ba1265164ea309bd5443cfa37b3e4e8ede2ae9ab` was activated at
+22:01:48 UTC. Seven related Jest suites passed (121 tests, one existing todo),
+including the five lock tests and displaced-holder assertion. Six independent
+writers using the actual candidate adapter produced 120 records with one
+verified hash chain, inside an isolated tmpfs with no production volumes.
+The deployed adapter contains `lock.assertHeld()` and the management API is
+healthy. No production log was rewritten. The residual race windows and
+non-persistence-on-timeout semantics in this record remain unchanged. Earlier
+source-only/unbuilt paragraphs are historical; governed paths are now armed.
 
 ## Context
 - `LocalJsonlEventsAdapter` is the only appender of the hash-chained events journal (`$WORKSPACE/events/*.jsonl`). It cached the chain head per instance and took no lock.

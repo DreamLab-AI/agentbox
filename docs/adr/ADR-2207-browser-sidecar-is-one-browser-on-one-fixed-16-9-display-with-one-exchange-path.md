@@ -14,7 +14,7 @@ review_trigger: the owner's sidecar rebuild (activation), a change of window man
 repo: agentbox
 domain: BASELINE-container
 evidence_class: source+test+deployment+runtime
-acceptance_boundary: Browser rebuilt and running with exact-size display, non-fallback NVIDIA WebGPU compute, real MCP connection and isolated-display FFmpeg recording verified. Agentbox exchange mount is activated with existing data retained, and a real MCP upload and screenshot handoff passes. Podkey loading remains blocked by the existing wildcard extension policy; no policy relaxation or signing-key access is claimed.
+acceptance_boundary: Browser rebuilt and running with exact-size display, non-fallback NVIDIA WebGPU compute, real MCP connection and retained isolated-display FFmpeg recording evidence. Agentbox exchange mount is activated with existing data retained; real MCP upload and foreground fixture screenshot handoff pass. The owner-approved ADR-2212 policy now loads Podkey with its original identity and a locked vault. No signing-key access or Web Store install-refusal attempt is claimed.
 ---
 
 # ADR-2207 — The browser sidecar is one browser on one fixed 16:9 display, with one exchange path
