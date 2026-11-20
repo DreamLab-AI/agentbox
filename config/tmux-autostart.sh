@@ -352,6 +352,21 @@ tmux new-window -t "${SESSION}:5" -n "System" -c "$WORKSPACE_DIR"
 # ~/.local/state/systemscape/telemetry.jsonl, which the Activity window reads
 # for heat. A binary without the flag would reject it and spin the loop, so
 # the flag is passed only when --help lists it.
+# Stage B projects the hosts link after supervisord starts this launcher.
+# Wait only when a mounted private hosts file actually exists. Do not wait
+# for all bootstrap work or replace a hand-written default-path file.
+_systemscape_wait_for_hosts() {
+  local mounted="${1:-/etc/agentbox/systemscape/local/hosts.toml}"
+  local projected="${2:-/home/devuser/.config/systemscape/hosts.toml}"
+  local limit="${3:-60}" attempt
+  [ -f "$mounted" ] || return 0
+  for ((attempt=0; attempt<limit; attempt++)); do
+    [ -e "$projected" ] && return 0
+    sleep 0.5
+  done
+  echo "[tmux-autostart] WARN: SystemScape hosts projection not ready after 30s; starting local-only (restart the System pane after projection)" >&2
+}
+_systemscape_wait_for_hosts
 SYSTEMSCAPE_FLAGS=""
 if systemscape --help 2>/dev/null | grep -q -- '--record'; then
   SYSTEMSCAPE_FLAGS=" --record"
