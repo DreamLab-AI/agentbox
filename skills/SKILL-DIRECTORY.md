@@ -566,7 +566,8 @@ Q3: Do you know which tool you need?
     +-- Any browser automation (navigation, forms, screenshots, WebGPU, visual testing)
     |   --> browsercontainer sidecar (chrome-devtools-mcp 40+ tools, Chrome Beta 149+)
     |       SSE: http://browsercontainer:8931/sse | VNC: port 5903
-    |       GPU: NVIDIA RTX 6000 (Vulkan/ANGLE) for WebGPU/WebGL
+    |       GPU: operator-selected NVIDIA (Vulkan/ANGLE) for WebGPU/WebGL
+    |       Files: /home/devuser/exchange, same path in agentbox and the sidecar
     |       No local browser is installed — all automation routes through the sidecar.
     |
     +-- Desktop Chrome with login state, GIF recording (official beta)

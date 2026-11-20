@@ -204,11 +204,13 @@ function sendJson(res, status, obj, headers = {}) {
 // ---------------------------------------------------------------------------
 
 class Session {
-  constructor(id, res, resolveExchange, cdpPort = CDP_PORT) {
+  constructor(id, res, resolveExchange, cdpPort = CDP_PORT, { spawnFn = spawn, onDead = () => {} } = {}) {
     this.id = id;
     this.res = res;
     this.resolveExchange = resolveExchange;
     this.cdpPort = cdpPort;
+    this.spawnFn = spawnFn;
+    this.onDead = onDead;
     this.child = null;
     this.buffer = '';
     this.alive = true;
@@ -220,7 +222,7 @@ class Session {
       cdpPort: this.cdpPort,
       exchangeDir: this.resolveExchange(exchangeDirFromEnv()),
     });
-    this.child = spawn(command, args, options);
+    this.child = this.spawnFn(command, args, options);
 
     this.child.stdout.on('data', (chunk) => {
       this.buffer += chunk.toString();
@@ -231,19 +233,28 @@ class Session {
       log(`[${this.id.slice(0, 8)}] stderr: ${chunk.toString().trim()}`);
     });
 
+    // A dead child ends the SSE stream, so the client sees the session close and
+    // reconnects instead of POSTing into a 503 forever.
     this.child.on('exit', (code) => {
       log(`[${this.id.slice(0, 8)}] subprocess exited (code=${code})`);
-      this.alive = false;
+      this._die();
     });
 
     this.child.on('error', (err) => {
       log(`[${this.id.slice(0, 8)}] subprocess error: ${err.message}`);
-      this.alive = false;
+      this._die();
     });
 
     // Send SSE endpoint event
     this._sseWrite(`event: endpoint\ndata: /messages?sessionId=${this.id}\n\n`);
     log(`Session ${this.id.slice(0, 8)} started`);
+  }
+
+  _die() {
+    if (!this.alive) return;
+    this.alive = false;
+    if (this.res && !this.res.writableEnded) this.res.end();
+    this.onDead(this.id);
   }
 
   handleMessage(body) {
@@ -275,7 +286,7 @@ class Session {
       const child = this.child;
       setTimeout(() => {
         try { child.kill('SIGKILL'); } catch {}
-      }, 3000);
+      }, 3000).unref();
       this.child = null;
     }
     log(`Session ${this.id.slice(0, 8)} destroyed`);
@@ -301,6 +312,7 @@ function createBridgeServer({
   record,
   sessions = new Map(),
   resolveExchange = createExchangeResolver(),
+  spawnFn = spawn,
 } = {}) {
   const connectorVersion = versions['chrome-devtools-mcp'] || null;
 
@@ -377,7 +389,13 @@ function createBridgeServer({
         'Connection': 'keep-alive',
       });
 
-      const session = new Session(sessionId, res, resolveExchange, cdpPort);
+      const session = new Session(sessionId, res, resolveExchange, cdpPort, {
+        spawnFn,
+        onDead: (id) => {
+          const s = sessions.get(id);
+          if (s) { s.destroy(); sessions.delete(id); }
+        },
+      });
       sessions.set(sessionId, session);
       session.start();
 

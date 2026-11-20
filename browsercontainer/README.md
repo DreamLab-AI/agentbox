@@ -9,10 +9,8 @@ assess its own image digest separately. [Evidence scope](../docs/developer/vex.m
 
 Mermaid is no longer rendered here: Agentbox renders it in-process with Pele
 (ADR-2154, superseding ADR-2152), and this sidecar carries neither
-`@mermaid-js/mermaid-cli` nor a `/render-mermaid` endpoint. The `gui-tools-exchange`
-volume stays for other hand-offs. The removal takes effect at your next rebuild of
-this sidecar; an already-running older image still serves `/render-mermaid` until then,
-and nothing in Agentbox calls it.
+`@mermaid-js/mermaid-cli` nor a `/render-mermaid` endpoint; nothing in Agentbox
+calls one. The `gui-tools-exchange` volume stays for other hand-offs.
 
 PDF visual comparison is also routed here rather than to a local `diff-pdf`
 GUI in Agentbox. Poppler rasterises selected pages in Agentbox; the existing
@@ -30,7 +28,7 @@ Agentbox's browser-use instructions are owned by `config/instructions/workspace.
 │                                                              │
 │  Xvfb :2 (BROWSER_DISPLAY_SIZE, 16:9) ── openbox (maximise)  │
 │     │                                                        │
-│     ├── Chrome Beta 149+  Vulkan/ANGLE, CDP 127.0.0.1:9222   │
+│     ├── Chrome Beta 149+  Vulkan/ANGLE, CDP 0.0.0.0:9222     │
 │     ├── x11vnc :5903      view only the one display          │
 │     └── record.sh         ffmpeg x11grab → exchange          │
 │                                                              │
@@ -47,7 +45,7 @@ Agentbox's browser-use instructions are owned by `config/instructions/workspace.
 |------|---------|----------|---------|
 | 5903 | x11vnc | VNC | View Chrome desktop (debugging) |
 | 8931 | server.js | HTTP/SSE | MCP bridge — agents connect here |
-| 9222 | Chrome | HTTP/WS | CDP (internal, localhost only) |
+| 9222 | Chrome | HTTP/WS | CDP; binds 0.0.0.0 inside the container (`--remote-debugging-address`), not published; Chrome itself refuses non-IP Host names |
 | 9223 | cdp-proxy.js | HTTP/WS | CDP proxy (exposed as host:9222) |
 
 **CDP proxy mapping**: host `:9222` → container cdp-proxy.js `:9223` → Chrome `:9222`.

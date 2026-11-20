@@ -77,7 +77,7 @@ COPY --chown=devuser:devuser podkey-ctl.js /opt/browsercontainer/podkey-ctl.js
 # ADR-2207 D1: one display definition, Xvfb wrapper, view-state reset, window manager config
 COPY --chown=devuser:devuser display-env.sh /opt/browsercontainer/display-env.sh
 COPY --chown=devuser:devuser display.js /opt/browsercontainer/display.js
-COPY --chown=devuser:devuser start-xvfb.sh /opt/browsercontainer/start-xvfb.sh /opt/browsercontainer/record.sh
+COPY --chown=devuser:devuser start-xvfb.sh /opt/browsercontainer/start-xvfb.sh
 COPY --chown=devuser:devuser reset-view-state.js /opt/browsercontainer/reset-view-state.js
 COPY --chown=devuser:devuser openbox-rc.xml /opt/browsercontainer/openbox-rc.xml
 # ADR-2207 D3: DevTools proxy on 9223 (replaces the socat byte pipe; socat stays installed)

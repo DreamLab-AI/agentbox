@@ -252,3 +252,25 @@ test('image ships every local module and script the runtime loads', () => {
     assert.ok(copied.has(f), `Dockerfile copies ${f} to /opt/browsercontainer/`);
   }
 });
+
+test('SSE stream closes when the MCP child exits, and the session is dropped', async (t) => {
+  const { spawn } = require('node:child_process');
+  const sessions = new Map();
+  const port = await startBridge(t, {
+    sessions,
+    resolveExchange: () => null,
+    spawnFn: () => spawn(process.execPath, ['-e', 'setTimeout(() => process.exit(3), 300)'], { stdio: ['pipe', 'pipe', 'pipe'] }),
+  });
+  const result = await new Promise((resolve, reject) => {
+    const req = http.get({ host: '127.0.0.1', port, path: '/sse' }, (res) => {
+      let d = '';
+      res.on('data', (c) => { d += c; });
+      res.on('end', () => resolve({ ended: true, d }));
+    });
+    req.on('error', reject);
+    setTimeout(() => { req.destroy(); resolve({ ended: false }); }, 3000);
+  });
+  assert.equal(result.ended, true, 'the SSE response ends after the child exits');
+  assert.match(result.d, /event: endpoint/);
+  assert.equal(sessions.size, 0, 'dead session removed');
+});

@@ -1,10 +1,11 @@
 ---
 title: Agentbox Container Baseline
 doc_id: AB-BASELINE
-version: 0.5.18
+version: 0.5.19
 status: draft-for-ratification
 verified_commit: 
 changelog:
+  - "0.5.19 (2026-11-20): ADR-2207 (accepted, complete, inactive until the sidecar rebuild). browsercontainer is one Chrome on one fixed 16:9 display (BROWSER_DISPLAY_SIZE, openbox); the gui-tools-exchange volume (pinned name agentbox_gui-tools-exchange) is also mounted in agentbox at /home/devuser/exchange, the sidecar's path, with /home/devuser/gui-tools kept; DevTools answers by name on 9223 behind a Host allow-list; the bridge gains /display and /record (POSTs refuse any Origin) and /health returns 503 when Chrome is down; the boot-time browser-gpu registration accepts 200 or 503. No new published port or supervised agentbox program."
   - "0.5.18 (2026-11-18): ADR-2203 (proposed, partial, staged). New read-only mount ./config/systemscape:/etc/agentbox/systemscape (tracked example + gitignored local/hosts.toml); the entrypoint links local/hosts.toml to ~/.config/systemscape/hosts.toml when present. New invariant below. Inert until the SystemScape pin moves to 0.4.0; no new port, adapter, gate or supervised program."
   - "0.5.17 (2026-11-11): ADR-2193 (accepted, complete, staged for rebuild). PID 1 starts through `supervisordLauncher` (flake.nix), which runs the supervisor module with pythonRuntimeEnv's interpreter. nixpkgs' `supervisord` wrapper prepended the bare interpreter to PATH and every supervised process inherited it, so `python3` in agent shells had no site-packages. New invariant: in a supervised process the first python3 on PATH is pythonRuntimeEnv. The entrypoint exec line is unchanged."
   - "0.5.16 (2026-11-10): ADR-2191 (accepted, partial, staged). [toolchains].bend (rebuild class, on) bakes the pinned Bend 2 release from lib/bend.nix: the checker/compiler with only its ELF interpreter rewritten, a BendTT kernel built at image-build time with the exact Lean release Bend names (Lean is not in the image), and a launcher that pins the kernel, turns the version check off, caches hub packages under $WORKSPACE/.bend/lib and refuses bend update."
@@ -177,7 +178,7 @@ Applied only when `gpu.backend == "local-cuda"` (`flake.nix:170`); on `backend=n
 
 Not supervised inside the box — external compose services on `visionclaw_network`, managed via `./agentbox.sh <name>`:
 
-- **browsercontainer** — GPU Chrome, chrome-devtools-mcp at `:8931/sse` (`system-manifest.js:154`, apply-class `live`). It no longer renders Mermaid: Agentbox renders in-process with Pele (ADR-2154, superseding ADR-2152). `[program:podkey-loader]` loads the pinned Podkey extension over CDP once per Chrome process. Its vault, holding K_browser, persists on the `browsercontainer-profile` volume; the owner mints and unlocks it (`./agentbox.sh browsercontainer podkey status|pubkey|unlock`, `browsercontainer/README.md`).
+- **browsercontainer** — GPU Chrome, chrome-devtools-mcp at `:8931/sse` (`system-manifest.js:154`, apply-class `live`). It no longer renders Mermaid: Agentbox renders in-process with Pele (ADR-2154, superseding ADR-2152). `[program:podkey-loader]` loads the pinned Podkey extension over CDP once per Chrome process. Its vault, holding K_browser, persists on the `browsercontainer-profile` volume; the owner mints and unlocks it (`./agentbox.sh browsercontainer podkey status|pubkey|unlock`, `browsercontainer/README.md`). One Chrome on one fixed 16:9 display; files pass through `/home/devuser/exchange`, mounted at that path in agentbox too; DevTools by name at `browsercontainer:9223` (Host allow-list); `/health` is 503 when Chrome is down (ADR-2207).
 - **gui-tools-service** — FHS GPU sidecar for BlenderMCP `:9876` and QGIS `:9877` under `vglrun` (`:157`).
 - **isaac-sim** — opt-in headless Isaac Sim physics sidecar (ADR-2149): no published port, control API on `isaac-sim:9890` (container network), GPU pinned by `ISAAC_SIM_GPU_UUID`, results on the gui-tools exchange volume under `isaac/`, apply-class `live`. Health is four levels; only smoke jobs that succeeded raise the last three. Staged until its first pinned-image smoke run. See [Isaac Sim operations](developer/isaac-sim.md).
 - **voice-console** — ADR-044 Caddy origin `:8444`, Unmute voice loop + approvals; external build context (`:160`).

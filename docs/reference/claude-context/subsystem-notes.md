@@ -19,7 +19,7 @@ Owner-scoped kinds use the 64-char hex pubkey as scope (not bech32 npub). This g
 
 ## Browser Container (GPU-accelerated Chrome + chrome-devtools-mcp)
 
-The `browsercontainer/` directory contains a standalone Docker service for headless Chrome automation. It is NOT a Nix-managed service — it runs as a separate compose file on the `visionclaw_network`.
+The `browsercontainer/` directory contains a standalone Docker service for GPU Chrome automation (headed Chrome on Xvfb `:2`, viewable over VNC). It is NOT a Nix-managed service — it runs as a separate compose file on the `visionclaw_network`.
 
 ### Docker layout
 
@@ -55,7 +55,7 @@ cdp-proxy.js on 9223 rewrites Host for Chrome and the `ws://` URLs back to the c
 - **Rendering**: Both WebGPU and WebGL are hardware-accelerated via Vulkan/ANGLE on the operator-selected NVIDIA GPU. `--enable-unsafe-webgpu` allows WebGPU on HTTP origins.
 - **TREAT_AS_SECURE**: Env var lists HTTP origins Chrome treats as secure contexts (for SharedArrayBuffer). Expanded to `--unsafely-treat-insecure-origin-as-secure=` flags per origin.
 - **SharedArrayBuffer**: Requires `isSecureContext` (TREAT_AS_SECURE) + COOP/COEP headers from the target server.
-- **Network**: `visionclaw_network` (external). Agents reach MCP at `http://browsercontainer:8931/sse`.
+- **Network**: `visionclaw_network` (external). Agents reach MCP at `http://browsercontainer:8931/sse` and DevTools at `http://browsercontainer:9223`.
 - **GPU**: operator-selected (`NVIDIA_VISIBLE_DEVICES`). Optional — healthcheck warns but doesn't fail without it.
 
 ## Code-as-Harness URN Allocation
