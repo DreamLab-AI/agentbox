@@ -7,11 +7,12 @@ implementation_status: complete
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: 845384de4a7134e6949c3c960d76d745091cf7c8
+verified_commit: b6ba3c13d65b53823b42fd98b05d2ab5c69b5dd9
 verified_paths: [browsercontainer/*, tests/browsercontainer/*, docker-compose.browsercontainer.yml, .github/workflows/browsercontainer.yml]
 owner: operator
 review_trigger: the owner's sidecar rebuild (activation), a change of window manager, display size rules or exchange path, or chrome-devtools-mcp moving past 1.13
 repo: agentbox
+domain: BASELINE-container
 evidence_class: test
 acceptance_boundary: Fixture and unit tests under tests/browsercontainer (stub Chrome, Xvfb and ffmpeg; fake DevTools upstream; Compose's resolved model of docker-compose.browsercontainer.yml). No image was built, and openbox, Xvfb, Chrome and ffmpeg were not run. The agentbox override's resolved model is asserted only host-side (tests/config/compose-persistence.test.cjs). Activation is the owner's rebuild and diagnostic.
 ---
@@ -45,6 +46,7 @@ Measured on the live sidecar (image of 2026-11-05). Xvfb `:2` ran at 1920x1080 w
    - New endpoints: `GET /display`, `POST /display/fullscreen`, `GET /record`, `POST /record/start`, `POST /record/stop`.
    - The three POSTs refuse any request carrying `Origin` and emit no CORS headers. This port is on the host's loopback with `Access-Control-Allow-Origin: *`, so a web page on the host must not drive them.
    - `/sse` and `/messages` keep that CORS and so remain reachable from a web page on the host. Tightening them is a separate, follow-up decision.
+   - When the MCP child exits, the bridge ends that session's SSE stream and drops the session, so the client reconnects instead of POSTing into 503s.
 6. **Pins.** chrome-devtools-mcp is pinned to 1.13.0 (every bridge flag checked against its CLI) and ws to 8.23.0 (npm-generated lock).
    - The dead `PUPPETEER_EXECUTABLE_PATH` is removed.
    - The `/tmp/chrome-profile` alias of ADR-2177 is retired, because this rebuild replaces the image that used it.
@@ -71,6 +73,13 @@ Measured on the live sidecar (image of 2026-11-05). Xvfb `:2` ran at 1920x1080 w
 - NVIDIA: host and sidecar run 615.78.08 and WebGPU works with it. R620 is the newer production branch, and moving to it is a host decision outside this record.
 - Not verified here: no image build, no openbox/Xvfb/Chrome/ffmpeg run, and no resolved model of the agentbox override (that is checked host-side).
 
+**Owner decisions recorded here:**
+
+- **Accepted (owner, 2026-11-20, "all local network"):** x11vnc keeps `-nopw` and stays published on `${AGENTBOX_SIDECAR_BIND}`, which may be a LAN address. The sidecar is reachable only on the local network.
+- **Open, not changed by this record:**
+  - The `TREAT_AS_SECURE` default contains the literal `http://the model host:3001` (and `:3000`), which is not a valid origin. It appears in `launch-chromium.sh`, the compose file, `cdp-diagnose.js`'s old default (now removed), the README, `.env.example` and `services/agentbox-mcp/src/hub/config.rs`. Changing the list recreates the sidecar and locks Podkey's vault (ADR-2177), so the owner decides.
+  - Passwordless sudo for devuser in the image, and unpinned build inputs (`archlinux:base`, yay from AUR, `google-chrome-beta`).
+
 **Activation (owner, host shell):**
 
 1. `./agentbox.sh browsercontainer rebuild`.
@@ -82,11 +91,11 @@ Set `activation_status: live` once the diagnostic passes on the rebuilt sidecar.
 
 ## Verification
 
-At `845384de4`, from the worktree:
+At `b6ba3c13d`, from the worktree:
 
 - `bash tests/browsercontainer/launch-args.test.sh`: 14 passed, 1 skipped (real Podkey artefact not cached).
 - `bash tests/browsercontainer/fetch-podkey.test.sh`: 16 passed, 1 skipped.
 - `bash tests/browsercontainer/record.test.sh`: 9 passed.
-- `node --test tests/browsercontainer/*.test.cjs`: 51 passed. This covers display-config, server, cdp-proxy, pins, diagnose and podkey-ctl, plus the compose-profile-volume and exchange-compose scripts.
+- `node --test tests/browsercontainer/*.test.cjs`: 55 passed. This covers display-config, server, cdp-proxy, pins, diagnose and podkey-ctl, plus the compose-profile-volume and exchange-compose scripts.
 - Every new test was observed failing before its change. The Host allow-list and Origin refusal were also checked by disabling them (pass-through proxy, Origin check off), which turned their tests red.
 - `skills/lint-skills.sh` is clean, `scripts/ci/check-ports-loopback.sh` exits 0, and ShellCheck 0.11.0 at warning severity reports nothing on the touched shell files.

@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: de01d60a408b9eb057a3b6257aabd9f764671c94
+verified_commit: b6ba3c13d65b53823b42fd98b05d2ab5c69b5dd9
 verified_paths: [lib/supersplat.nix, lib/splat-transform.package-lock.json, flake.nix, agentbox.toml, scripts/ci/check-ports-loopback.mjs, docker-compose.browsercontainer.yml, skills/supersplat/SKILL.md]
 owner: jjohare
 review_trigger: SuperSplat or splat-transform pin bump; any change to the supersplat listener's bind, root or authentication; the browser sidecar's TREAT_AS_SECURE list; a proposal to serve datasets or anything outside $WORKSPACE/splats/share
@@ -24,8 +24,18 @@ relates: [ADR-2175, ADR-2062, ADR-2040]
 The `/tmp/chrome-profile` compatibility mount recorded under Activation
 (2026-11-05) is retired by ADR-2207: its sidecar rebuild replaces the retained
 image that still started Chrome with that path. `/home/devuser/chrome-profile`
-on the `browsercontainer-profile` volume stays the only profile mount. The
-decision and status axes of this record are unchanged.
+on the `browsercontainer-profile` volume stays the only profile mount.
+
+Re-verified at `b6ba3c13d`. The governed-path delta since `de01d60a4` is
+`docker-compose.browsercontainer.yml` only:
+- the alias mount is removed;
+- `BROWSER_DISPLAY_SIZE` and `BROWSER_EXCHANGE_DIR` are added;
+- the exchange volume name is pinned;
+- the CDP comment now names cdp-proxy.js.
+
+`TREAT_AS_SECURE`, which still carries `http://agentbox:8795`, and the published
+ports are unchanged, and `scripts/ci/check-ports-loopback.sh` exits 0. What this
+record decides is not touched. The decision and status axes are unchanged.
 
 ## Scoped deployment review — 2026-11-16
 
