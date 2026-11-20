@@ -71,7 +71,11 @@ an agentbox component that links one (none does today) declares AGPL-3.0.
 request (a step in `.github/workflows/invariants.yml`): a `services/` package
 directory whose manifest declares a grant with no adjacent text, no README, or
 a licence expression this gate does not recognise fails CI. Adding a crate with
-a new licence expression is therefore a deliberate change to the gate.
+a new licence expression is therefore a deliberate change to the gate. The same
+script also scans every `Cargo.toml` in the repository (not only `services/`) and
+fails when a `sidestr-*` dependency, `[patch]` or `[replace]` entry has a `path`
+or `git` source, which is the crates.io-only rule of ADR-2106 D3 and ADR-2112 D3
+(`tests/config/crate-licensing-sidestr-source.test.sh`).
 
 ## AGPL-3.0 obligations for operators
 

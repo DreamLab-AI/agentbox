@@ -22,10 +22,18 @@
 #   4. Any other licence expression is unrecognised and fails, so a new grant is
 #      a deliberate change to this gate rather than an unchecked string.
 #
+#   5. Dependency source rule (ADR-2106 D3, ADR-2112 D3, W3-04): no Cargo.toml
+#      anywhere in the repository may declare a sidestr-* dependency with a
+#      `path` or `git` source. The sidestr crates are AGPL-3.0-only and live in
+#      sidestr-rs; agentbox consumes released versions from crates.io only. This
+#      rule scans every Cargo.toml (not just services/) outside node_modules,
+#      target, result* and .git. `[patch]` and `[replace]` entries count too.
+#
 # Exit: 0 = every package directory matches its declaration, 1 = otherwise.
+# CHECK_CRATE_LICENSING_ROOT overrides the repository root (used by the test).
 set -eu
 
-ROOT="$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)"
+ROOT="${CHECK_CRATE_LICENSING_ROOT:-$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)}"
 FAILURES=0
 CHECKED=0
 
@@ -112,6 +120,27 @@ for manifest in "$ROOT"/services/*/Cargo.toml; do
   esac
 done
 
+# Rule 5: sidestr-* dependencies come from the registry only.
+SIDESTR_SCANNED=0
+for manifest in $(find "$ROOT" \( -name node_modules -o -name target -o -name .git -o -name 'result*' \) -prune \
+    -o -name Cargo.toml -type f -print | sort); do
+  SIDESTR_SCANNED=$((SIDESTR_SCANNED + 1))
+  bad="$(awk '
+    function flag(line) { print FNR ": " line }
+    /^[ \t]*#/ { next }
+    /^\[/ {
+      in_tbl = ($0 ~ /^\[[^]]*sidestr[-_][A-Za-z0-9_-]*\]/) ? 1 : 0
+      next
+    }
+    in_tbl && /^[ \t]*(path|git)[ \t]*=/ { flag($0); next }
+    /^[ \t]*"?sidestr[-_][A-Za-z0-9_-]*"?[ \t]*=/ && /(path|git)[ \t]*=/ { flag($0) }
+  ' "$manifest")"
+  if [ -n "$bad" ]; then
+    rel_m="${manifest#"$ROOT"/}"
+    fail "$rel_m: sidestr-* dependency with a path or git source (ADR-2112 D3: crates.io only): $(printf '%s' "$bad" | tr '\n' ';')"
+  fi
+done
+
 if [ "$CHECKED" -eq 0 ]; then
   echo "FAIL (check-crate-licensing): no package manifests found under services/" >&2
   exit 1
@@ -123,4 +152,4 @@ if [ "$FAILURES" -ne 0 ]; then
   exit 1
 fi
 
-echo "OK (check-crate-licensing): $CHECKED services/ package directories carry the texts they declare."
+echo "OK (check-crate-licensing): $CHECKED services/ package directories carry the texts they declare; $SIDESTR_SCANNED Cargo.toml files have no path/git sidestr-* dependency."
