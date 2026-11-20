@@ -37,7 +37,7 @@
     },
     "nix2container": {
       "inputs": {
-        "nixpkgs": "nixpkgs_2"
+        "nixpkgs": "nixpkgs"
       },
       "locked": {
         "lastModified": 1792225367,
@@ -53,7 +53,7 @@
         "type": "github"
       }
     },
-    "nixpkgs_2": {
+    "nixpkgs": {
       "locked": {
         "lastModified": 1767028467,
         "narHash": "sha256-7G+2aXClSMaTY1ogpX14CAxjRsvyVzpE0GRwL71WO7g=",
@@ -68,7 +68,7 @@
         "type": "github"
       }
     },
-    "nixpkgs_3": {
+    "nixpkgs_2": {
       "locked": {
         "lastModified": 1792502884,
         "narHash": "sha256-IoNisKcGbUjdd45qCqywGMCYmZ5EnkxezvLII0FWwNA=",
@@ -84,7 +84,7 @@
         "type": "github"
       }
     },
-    "nixpkgs_4": {
+    "nixpkgs_3": {
       "locked": {
         "lastModified": 1744536153,
         "narHash": "sha256-awS2zRgF4uTwrOKwwiJcByDzDOdo3Q1rPZbiHQg/N38=",
@@ -105,7 +105,7 @@
         "codexPlugin": "codexPlugin",
         "flake-utils": "flake-utils",
         "nix2container": "nix2container",
-        "nixpkgs": "nixpkgs_3",
+        "nixpkgs": "nixpkgs_2",
         "rufloConsole": "rufloConsole",
         "rust-overlay": "rust-overlay",
         "skills": "skills",
@@ -115,23 +115,23 @@
     "rufloConsole": {
       "flake": false,
       "locked": {
-        "lastModified": 1792984213,
-        "narHash": "sha256-2ghX+kxVQS30EtVtvvtJ2k6M6cYBCcw8/ZrsZcb6WQQ=",
+        "lastModified": 1794603151,
+        "narHash": "sha256-4dvmtVxRDY9qgC4JzkMq+bf8rr9Sl40rmZuqLKCl3g8=",
         "owner": "ruvnet",
         "repo": "ruflo",
-        "rev": "631c1557b5f325163c4f9f029a397bb30a61c730",
+        "rev": "3a1479883b55b7f786ef0bf3141478e4dfb9444f",
         "type": "github"
       },
       "original": {
         "owner": "ruvnet",
         "repo": "ruflo",
-        "rev": "631c1557b5f325163c4f9f029a397bb30a61c730",
+        "rev": "3a1479883b55b7f786ef0bf3141478e4dfb9444f",
         "type": "github"
       }
     },
     "rust-overlay": {
       "inputs": {
-        "nixpkgs": "nixpkgs_4"
+        "nixpkgs": "nixpkgs_3"
       },
       "locked": {
         "lastModified": 1792739799,

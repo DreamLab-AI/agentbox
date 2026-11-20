@@ -48,13 +48,13 @@
     # cockpit), plus ruflo-mods and ruflo-swarm, which answer `/ruflo mods` and
     # `/ruflo swarm …` on the same command. Pinned to the inspected main head
     # that includes security and ruRE; files-only like `codexPlugin`; gated by
-    # [toolchains].ruflo_console. The matching npm runtime is 3.63.1. No npx
+    # [toolchains].ruflo_console. The matching npm runtime is 3.77.1. No npx
     # fallback is allowed.
     # The ruflo repository is ~100 MB, so only the three plugin directories are
     # baked (scripts/bake-ruflo-console.sh), never the tree. Bump with:
     #   nix flake lock --update-input rufloConsole
     rufloConsole = {
-      url = "github:ruvnet/ruflo/631c1557b5f325163c4f9f029a397bb30a61c730";
+      url = "github:ruvnet/ruflo/3a1479883b55b7f786ef0bf3141478e4dfb9444f";
       flake = false;
     };
   };
@@ -573,10 +573,10 @@
         #    nix-prefetch-url https://registry.npmjs.org/ruvector/-/ruvector-0.3.3.tgz
         ruvectorPkg = mkNpmCli {
           pkgName         = "ruvector";
-          version         = "0.3.18";
-          packageLock = ./config/npm-locks/ruvector-0.3.18.package-lock.json;
-          sha256          = "sha256-Kg/6dKDzWXvii9dzHp3YD3xB02eVAQdVR1Sg0MKV6l4=";
-          nodeModulesHash = "sha256-lxuLAmTdunXLS9Xu4uBdWNnkkX4WtWHVVWob+H3nCns=";
+          version         = "0.3.27";
+          packageLock = ./config/npm-locks/ruvector-0.3.27.package-lock.json;
+          sha256          = "sha256-kgtP6jvG+VdR5cM2gm+WE5P7Szy2tx+HjXPluUo1xac=";
+          nodeModulesHash = "sha256-cT4eANQ8RuE9moATuzMuqJwZtP6Hl0wPlx/H8S83bNA=";
           bin             = "ruvector";
         };
 
@@ -620,10 +620,10 @@
         #    (hook-handler.cjs, which registered-hooks.txt prunes, is unchanged).
         rufloPkg = mkNpmCli {
           pkgName         = "ruflo";
-          version         = "3.63.1";
-          packageLock = ./config/npm-locks/ruflo-3.63.1.package-lock.json;
-          sha256          = "sha256-oYKDx7fAusyJh6V//lNXINmYbJw5SzG/mKXfsZxC878=";
-          nodeModulesHash = "sha256-RU/T1Qs3/pnEvZIEfGKmILfPytBOKe4B2M5d6vSIR9E=";
+          version         = "3.77.1";
+          packageLock = ./config/npm-locks/ruflo-3.77.1.package-lock.json;
+          sha256          = "sha256-piXqMi8BVKWflF/4s8z340TG0uW8E3mpzoz4egijciQ=";
+          nodeModulesHash = "sha256-jnfGXmtuiP8B+gfHs7Ed2GEhxvQc+N2gMtqaPqGI7x4=";
           bin             = "ruflo";
           extraBins = {
             "claude-flow"     = "node_modules/@claude-flow/cli/bin/cli.js";
@@ -651,7 +651,7 @@
         #        bookkeeping store under ~/.cache/ruflo/memory instead of
         #        <cwd>/.swarm. Each is an env default: an operator export wins.
         #    claude-flow-mcp is passed through unchanged (ADR-2082 proxy child).
-        rufloGovernedPkg = pkgs.runCommand "ruflo-governed-3.63.1" { } ''
+        rufloGovernedPkg = pkgs.runCommand "ruflo-governed-3.77.1" { } ''
           mkdir -p $out/bin
           for b in ruflo claude-flow; do
             cat > $out/bin/$b <<WRAP
@@ -684,10 +684,10 @@
         #    nix-prefetch-url https://registry.npmjs.org/metaharness/-/metaharness-0.4.17.tgz
         metaharnessPkg = mkNpmCli {
           pkgName         = "metaharness";
-          version         = "0.4.22";
-          packageLock = ./config/npm-locks/metaharness-0.4.22.package-lock.json;
-          sha256          = "sha256-pgTcwnWKhPt9QUgbA1ofFXz7dpyemdzDnMy1losRp/Q=";
-          nodeModulesHash = "sha256-CT8ChXOixP3DcezZivSRSUUPZr/pvvS5JGbmob5QfI8=";
+          version         = "0.4.23";
+          packageLock = ./config/npm-locks/metaharness-0.4.23.package-lock.json;
+          sha256          = "sha256-bfj5hHlK6ybbljhaHY/GOcjE6gGZ8DBYozv8CGvujjk=";
+          nodeModulesHash = "sha256-5rR6i4AgwCECLqxgFK2TdWTTvvltHXfzU6+I7iPZNBE=";
           bin             = "metaharness";
           extraBins = {
             # own-package bin — path is package-root-relative (dependency bins
@@ -698,10 +698,10 @@
         #    nix-prefetch-url https://registry.npmjs.org/%40metaharness/darwin/-/darwin-0.10.3.tgz
         metaharnessDarwinPkg = mkNpmCli {
           pkgName         = "@metaharness/darwin";
-          version         = "0.13.1";
-          packageLock = ./config/npm-locks/metaharness-darwin-0.13.1.package-lock.json;
-          sha256          = "sha256-+EwzuptmMjOwYKM11wr3ZLi80Z940DAf9dnotzJRakM=";
-          nodeModulesHash = "sha256-xdsXUB385CESQrGdgh0wHAWxTFdhhe+up51iiHF0/wQ=";
+          version         = "0.14.0";
+          packageLock = ./config/npm-locks/metaharness-darwin-0.14.0.package-lock.json;
+          sha256          = "sha256-Oli+mavFSfbnIuWwGa43RDWKrpoiuz7nPB5lRZjNp18=";
+          nodeModulesHash = "sha256-90UEARqJXtXciDiAnkwpoatozqw+385E9UF8w9JTXYM=";
           bin             = "metaharness-darwin";
         };
 
@@ -725,10 +725,10 @@
           # opt-in qe-browser engine) moved from a dependency to an optional
           # peer (^26.8.21), so the closure no longer carries vibium 0.1.8;
           # qe-browser remains outside this adoption; no init/template dump.
-          version         = "3.15.19";
-          packageLock = ./config/npm-locks/agentic-qe-3.15.19.package-lock.json;
-          sha256          = "sha256-vg3jkXH2UoGLmwg/y18v7lNi7Dnx10800AKoOxsApfg=";
-          nodeModulesHash = "sha256-wYoycUp3dfDQBuV+ZAqD5ps2RNyR0/qEIQpJqUoT1YM=";
+          version         = "3.15.20";
+          packageLock = ./config/npm-locks/agentic-qe-3.15.20.package-lock.json;
+          sha256          = "sha256-4W3iL8Ji5HaqGS1Tk4oIPOTtcXsDzWTH8oc0IAqQe+o=";
+          nodeModulesHash = "sha256-Msb5o1CWOZPuKW9uJ9XzsBZh0uErqo99VW5M2H77B+Y=";
           bin             = "aqe";
         };
 
@@ -802,10 +802,10 @@
           pkgName         = "wrangler";
           # 4.151.3 (2026-10-20T12:05Z): newest release beyond the 72-hour
           # cool-off on the 23 October estate-wide upgrade.
-          version         = "4.159.0";
-          packageLock = ./config/npm-locks/wrangler-4.159.0.package-lock.json;
-          sha256          = "sha256-iTBflFo5BxGGJEaNG3NclnzBKrCamMAocro6lnW8DzI=";
-          nodeModulesHash = "sha256-7IXwNPnm8KJyMBvhGVcMFHa+2tRencC4DRxFuzZZtDM=";
+          version         = "4.163.0";
+          packageLock = ./config/npm-locks/wrangler-4.163.0.package-lock.json;
+          sha256          = "sha256-z1PD3DrEmeGiSuhBvKDTm2aLkHypSt1R8tWVkoU+q7I=";
+          nodeModulesHash = "sha256-MYC+Quh1nrj7LHarGN4N0/9aPN0KBBje8ASoo71J6s0=";
           bin             = "wrangler";
           # wrangler's devDependencies reference private @cloudflare/*
           # packages not on the public npm registry — strip them so npm
@@ -829,10 +829,10 @@
         #    drive the baked `claude` binary instead of resolving its own copy.
         deepsecPkg = mkNpmCli {
           pkgName         = "deepsec";
-          version         = "2.3.12";
-          packageLock = ./config/npm-locks/deepsec-2.3.12.package-lock.json;
-          sha256          = "sha256-ZGS2E5C4+8xORFqMb6LWIc2V5PLpoy8NRM3rTcQiZ7o=";
-          nodeModulesHash = "sha256-TgyCyUatFtHLyo6ITY++UVrrscDfQM4kiZaH5haUvzI=";
+          version         = "2.3.13";
+          packageLock = ./config/npm-locks/deepsec-2.3.13.package-lock.json;
+          sha256          = "sha256-lJL4dAl+9COVG0XnrUukQzFb8DZrN0QsHxDcOcm5J8E=";
+          nodeModulesHash = "sha256-Oc0OPpspH+rWL2G0b9fCYM6wV52noisfKv5Fvf1gAH0=";
           bin             = "deepsec";
           extraEnv        = { CLAUDE_CODE_EXECUTABLE = "claude"; };
           # deepsec's published tarball keeps its own monorepo build-only
@@ -2045,7 +2045,7 @@
         # [toolchains].ruflo_console: bake ruflo-console + ruflo-mods + ruflo-swarm
         # from the pinned rufloConsole input into the `agentbox` marketplace.
         rufloConsoleOn = toolchainCfg.ruflo_console or false;
-        rufloConsolePlugins = pkgs.runCommand "ruflo-console-plugins-3.63.1" {
+        rufloConsolePlugins = pkgs.runCommand "ruflo-console-plugins-3.77.1" {
           nativeBuildInputs = [ pkgs.jq ];
         } ''
           bash ${./scripts/bake-ruflo-console.sh} ${rufloConsole} $out \

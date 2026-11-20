@@ -1,7 +1,7 @@
 # lib/codex-binary.nix
 #
 # Nix derivation for OpenAI's Rust-native Codex CLI.
-# Release: https://github.com/openai/codex/releases/tag/rust-v0.167.2
+# Release: https://github.com/openai/codex/releases/tag/rust-v0.171.0
 #
 # Uses the official pre-built musl package archives rather than
 # buildRustPackage from source — faster, deterministic, and complete.  The
@@ -19,7 +19,7 @@
 { lib, pkgs }:
 
 let
-  codexVersion = "0.167.2";
+  codexVersion = "0.171.0";
   baseUrl = "https://github.com/openai/codex/releases/download/rust-v${codexVersion}";
 
   # Map agentbox's system string to OpenAI's canonical package archive.
@@ -28,11 +28,11 @@ let
   assets = {
     "x86_64-linux" = {
       name   = "codex-package-x86_64-unknown-linux-musl.tar.gz";
-      sha256 = "3d77be1748d35a4bb0e7f8752cde3b11890c63338e8c599f01eafa4a59e17b3d";
+      sha256 = "8391d67757496bfd14893eca6cbf0c96994bf2627566ff1f018f70600c9ef6b3";
     };
     "aarch64-linux" = {
       name   = "codex-package-aarch64-unknown-linux-musl.tar.gz";
-      sha256 = "56b08c1214e062a5b61684bacb5033c4372a01062a47c87c49a32be83af70695";
+      sha256 = "d8c43bee6cf11b01eb18b95f4d7961092bc40228180808859e70dabb7784c1c9";
     };
   };
 

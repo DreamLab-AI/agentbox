@@ -104,6 +104,10 @@
         "exception": "Q8 (queen 2026-10-03, pending owner): provider and devuser credentials stay in devuser's environment this step",
         "reason": "Provider credential (email gateway MCP). Agents and their tools are its users; devuser-class by design (design §1 role inventory)."
       },
+      "AGENTBOX_HOST_WS_TOKEN": {
+        "exception": "Q8: management-api and its existing outbound credentials remain devuser-class; this classification does not claim role isolation",
+        "reason": "Host-issued session bearer used only by management-api's agent-event WebSocket subscriber in the Authorization upgrade header. It is a secret, not a public URL or the agentbox management key. Existing custody is recorded without minting, copying or broadening the credential."
+      },
       "ANTHROPIC_API_KEY": {
         "exception": "Q8 (queen 2026-10-03, pending owner): provider and devuser credentials stay in devuser's environment this step",
         "reason": "Provider credential (Anthropic). Agents and their tools are its users; devuser-class by design (design §1 role inventory)."
@@ -298,6 +302,7 @@
         "AGENTBOX_GATEWAY_REPLY_TO",
         "AGENTBOX_HOOK_SHIM",
         "AGENTBOX_HOST_WS_URL",
+        "AGENTBOX_SIDECAR_BIND",
         "AGENTBOX_IDENTITY_ACL",
         "AGENTBOX_IDENTITY_KEY_DIR",
         "AGENTBOX_IDENTITY_RECEIPT_DIR",
@@ -931,6 +936,8 @@
         "_SO_SERVICE_EXPORTS",
         "_SSO_MODEL",
         "_SSO_PLUGIN_CONFIG",
+        "_SS_HOSTS",
+        "_SS_LINK",
         "_TRAJ_HOOK",
         "_TRUST_HOOK",
         "_URL_GO",

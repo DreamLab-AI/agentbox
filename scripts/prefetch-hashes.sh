@@ -592,7 +592,9 @@ if [ "$cli_only" -eq 1 ]; then
   # Falls back to the full build loop only if fakeHashes remain after that pass
   # (covers cargoHash and any other FOD that needs the full graph).
   prefetch_npm_cli_nodemods_fast
-  remaining=$(grep -c '= lib\.fakeHash' "${REPO_ROOT}/flake.nix" 2>/dev/null || echo 0)
+  # grep -c already prints 0 on no matches (exit 1); echoing another zero
+  # makes the numeric comparison receive two lines after a successful rehash.
+  remaining=$(grep -c '= lib\.fakeHash' "${REPO_ROOT}/flake.nix" 2>/dev/null || true)
   if [ "$remaining" -gt 0 ]; then
     echo "  $remaining fakeHash(es) remain — running full build loop for non-npm-cli hashes"
     prefetch_via_build_loop
