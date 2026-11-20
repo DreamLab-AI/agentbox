@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: b6ba3c13d65b53823b42fd98b05d2ab5c69b5dd9
+verified_commit: 9263a39761c0c69e651e77ec1c91be33f015a1b5
 verified_paths: [browsercontainer/*, tests/browsercontainer/*, docker-compose.browsercontainer.yml, .github/workflows/browsercontainer.yml]
 owner: operator
 review_trigger: the owner's sidecar rebuild (activation), a change of window manager, display size rules or exchange path, or chrome-devtools-mcp moving past 1.13
@@ -91,7 +91,7 @@ Set `activation_status: live` once the diagnostic passes on the rebuilt sidecar.
 
 ## Verification
 
-At `b6ba3c13d`, from the worktree:
+At `9263a3976`, from the worktree (includes `dockerfile-copy-sources.test.cjs`, which checks every COPY source against the build context):
 
 - `bash tests/browsercontainer/launch-args.test.sh`: 14 passed, 1 skipped (real Podkey artefact not cached).
 - `bash tests/browsercontainer/fetch-podkey.test.sh`: 16 passed, 1 skipped.
