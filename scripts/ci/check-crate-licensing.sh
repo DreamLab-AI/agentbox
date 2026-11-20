@@ -120,26 +120,22 @@ for manifest in "$ROOT"/services/*/Cargo.toml; do
   esac
 done
 
-# Rule 5: sidestr-* dependencies come from the registry only.
-SIDESTR_SCANNED=0
-for manifest in $(find "$ROOT" \( -name node_modules -o -name target -o -name .git -o -name 'result*' \) -prune \
-    -o -name Cargo.toml -type f -print | sort); do
-  SIDESTR_SCANNED=$((SIDESTR_SCANNED + 1))
-  bad="$(awk '
-    function flag(line) { print FNR ": " line }
-    /^[ \t]*#/ { next }
-    /^\[/ {
-      in_tbl = ($0 ~ /^\[[^]]*sidestr[-_][A-Za-z0-9_-]*\]/) ? 1 : 0
-      next
-    }
-    in_tbl && /^[ \t]*(path|git)[ \t]*=/ { flag($0); next }
-    /^[ \t]*"?sidestr[-_][A-Za-z0-9_-]*"?[ \t]*=/ && /(path|git)[ \t]*=/ { flag($0) }
-  ' "$manifest")"
-  if [ -n "$bad" ]; then
-    rel_m="${manifest#"$ROOT"/}"
-    fail "$rel_m: sidestr-* dependency with a path or git source (ADR-2112 D3: crates.io only): $(printf '%s' "$bad" | tr '\n' ';')"
+# Rule 5: sidestr-* dependencies come from the registry only. The matching is
+# done by a real TOML parser (check-sidestr-sources.py, Python 3.11+ tomllib).
+if ! command -v python3 >/dev/null 2>&1; then
+  fail "rule 5 needs python3 (>= 3.11, tomllib) and it is not on PATH"
+  SIDESTR_SCANNED=0
+else
+  SIDESTR_OUT="$(python3 -I "$(dirname -- "$0")/check-sidestr-sources.py" "$ROOT" 2>&1 || true)"
+  SIDESTR_SCANNED="$(printf '%s\n' "$SIDESTR_OUT" | sed -n 's/^N: //p' | tail -n 1)"
+  [ -n "$SIDESTR_SCANNED" ] || { fail "rule 5: check-sidestr-sources.py produced no result: $SIDESTR_OUT"; SIDESTR_SCANNED=0; }
+  printf '%s\n' "$SIDESTR_OUT" | sed -n 's/^V: //p' | while IFS= read -r v; do
+    echo "FAIL (check-crate-licensing): sidestr-* dependency with a path or git source (ADR-2112 D3: crates.io only): $v" >&2
+  done
+  if printf '%s\n' "$SIDESTR_OUT" | grep -q '^V: '; then
+    FAILURES=$((FAILURES + $(printf '%s\n' "$SIDESTR_OUT" | grep -c '^V: ')))
   fi
-done
+fi
 
 if [ "$CHECKED" -eq 0 ]; then
   echo "FAIL (check-crate-licensing): no package manifests found under services/" >&2
@@ -152,4 +148,4 @@ if [ "$FAILURES" -ne 0 ]; then
   exit 1
 fi
 
-echo "OK (check-crate-licensing): $CHECKED services/ package directories carry the texts they declare; $SIDESTR_SCANNED Cargo.toml files have no path/git sidestr-* dependency."
+echo "OK (check-crate-licensing): $CHECKED services/ package directories carry the texts they declare; $SIDESTR_SCANNED Cargo.toml / .cargo/config.toml files have no path/git sidestr-* dependency."

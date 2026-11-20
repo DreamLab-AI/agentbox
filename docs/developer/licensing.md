@@ -72,9 +72,21 @@ request (a step in `.github/workflows/invariants.yml`): a `services/` package
 directory whose manifest declares a grant with no adjacent text, no README, or
 a licence expression this gate does not recognise fails CI. Adding a crate with
 a new licence expression is therefore a deliberate change to the gate. The same
-script also scans every `Cargo.toml` in the repository (not only `services/`) and
-fails when a `sidestr-*` dependency, `[patch]` or `[replace]` entry has a `path`
-or `git` source, which is the crates.io-only rule of ADR-2106 D3 and ADR-2112 D3
+script also parses every `Cargo.toml` and every `.cargo/config.toml` in the
+repository (not only `services/`) with Python's `tomllib`
+(`scripts/ci/check-sidestr-sources.py`, Python 3.11+) and fails when a dependency
+whose real package name starts with `sidestr-` or `sidestr_` has a `path` or
+`git` source. The package name is the `package` field when present, otherwise the
+key, so a renamed dependency, a dotted or quoted key and the table form are all
+caught. Every dependency table is read: `dependencies`, `dev-dependencies`,
+`build-dependencies`, `target.*.*`, `workspace.dependencies`, `patch.*` and
+`replace` (whose keys are `name:version` ids), plus the `paths` array of a
+`.cargo/config.toml`. A `{ workspace = true }` entry is judged at the workspace
+definition, and a registry version passes. A file that does not parse fails. It
+skips `.git`, `node_modules` and a `target` directory holding cargo's
+`CACHEDIR.TAG` or `.rustc_info.json`; any other `target`, and any `result*`
+directory, is scanned (nix `result` links are symlinks and are not followed). This
+is the crates.io-only rule of ADR-2106 D3 and ADR-2112 D3
 (`tests/config/crate-licensing-sidestr-source.test.sh`).
 
 ## AGPL-3.0 obligations for operators
