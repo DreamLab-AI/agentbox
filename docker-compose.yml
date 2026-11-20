@@ -2,11 +2,12 @@
 # Run: nix build .#compose
 
 services:
-  # R-025: optional `claude-zai` sidecar. management-api/utils/process-manager.js
-  # dials http://claude-zai-service:9600 when the Z.AI/GLM provider is selected.
-  # No service is emitted here by default — the sidecar is operator-provided and
-  # joins visionclaw_network as `claude-zai-service`. process-manager guards the
-  # URL so its absence is a no-op when Z.AI is not in use (handled separately).
+  # R-025: optional `claude-zai` sidecar (image source: claude-zai/). No service is
+  # emitted here and nothing in management-api dials http://claude-zai-service:9600
+  # (checked 2026-11-20; management-api/utils/process-manager.js has no Z.AI code).
+  # Z.AI/GLM is reached through the in-container `claude-zai` CLI
+  # (mcp/consultants/zai/server.js, config/hooks/ontology-monitor.cjs). An operator
+  # who runs the sidecar joins visionclaw_network as `claude-zai-service`.
   ruvector-postgres:
     image: ruvnet/ruvector-postgres:2.0.5@sha256:7fb09d439d82fccbe6e0035d09f91c9dce456bb2d70cb2e8d6afb12a6afa2051
     container_name: ruvector-postgres

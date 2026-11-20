@@ -4161,11 +4161,12 @@ stderr_logfile_maxbytes=5MB
 # Run: nix build .#compose
 
 services:
-  # R-025: optional `claude-zai` sidecar. management-api/utils/process-manager.js
-  # dials http://claude-zai-service:9600 when the Z.AI/GLM provider is selected.
-  # No service is emitted here by default — the sidecar is operator-provided and
-  # joins visionclaw_network as `claude-zai-service`. process-manager guards the
-  # URL so its absence is a no-op when Z.AI is not in use (handled separately).
+  # R-025: optional `claude-zai` sidecar (image source: claude-zai/). No service is
+  # emitted here and nothing in management-api dials http://claude-zai-service:9600
+  # (checked 2026-11-20; management-api/utils/process-manager.js has no Z.AI code).
+  # Z.AI/GLM is reached through the in-container `claude-zai` CLI
+  # (mcp/consultants/zai/server.js, config/hooks/ontology-monitor.cjs). An operator
+  # who runs the sidecar joins visionclaw_network as `claude-zai-service`.
 ${ollamaServiceBlock}${ruvectorPostgresServiceBlock}
   agentbox:
     image: ''${AGENTBOX_IMAGE_REF:-agentbox:runtime-${system}}
