@@ -68,6 +68,22 @@ for name in "${plugins[@]}"; do
   fi
 
   if [ "$name" = ruflo-mods ]; then
+    # 3.77.1 adds these default-on features. Keep adoption scoped: Agentbox
+    # owns compaction and its sole memory store; SONA is explicitly off.
+    # Learning stays disabled even if a stale userConfig requests it.
+    patch_literal "$out/$name/hooks/options.ts" \
+      "    learningLoop: bool(o.learningLoop, true)," \
+      "    learningLoop: false, // Agentbox: SONA and local learned-memory injection are disabled."
+    for option in compactSnapshot costLedger; do
+      patch_literal "$out/$name/hooks/options.ts" \
+        "    $option: bool(o.$option, true)," \
+        "    $option: bool(o.$option, false),"
+    done
+    jq '.userConfig.learningLoop.default = false |
+        .userConfig.learningLoop.description += " Disabled in Agentbox: SONA/local learned-memory injection is not a second memory store." |
+        .userConfig.compactSnapshot.default = false |
+        .userConfig.costLedger.default = false' "$baked" > "$baked.tmp"
+    mv "$baked.tmp" "$baked"
     patch_literal "$out/$name/hooks/options.ts" \
       "  readonly routeContext: boolean" \
       $'  readonly routeTasks: boolean\n  readonly routeContext: boolean'

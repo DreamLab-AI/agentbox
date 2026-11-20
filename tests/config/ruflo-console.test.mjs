@@ -28,7 +28,7 @@ const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'ruflo-console-'))
 const write = (file, text) => { fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, text) }
 
 // The upstream lines the routeTasks patch anchors on (ruflo 3.77.1 release).
-const MODS_OPTIONS_TS = 'export type ModOptions = {\n  readonly routeContext: boolean\n}\nexport function readOptions(o) {\n  return {\n    routeContext: bool(o.routeContext, true),\n  }\n}\n'
+const MODS_OPTIONS_TS = 'export type ModOptions = {\n  readonly routeContext: boolean\n}\nexport function readOptions(o) {\n  return {\n    learningLoop: bool(o.learningLoop, true),\n    compactSnapshot: bool(o.compactSnapshot, true),\n    costLedger: bool(o.costLedger, true),\n    routeContext: bool(o.routeContext, true),\n  }\n}\n'
 const MODS_ROUTE_TS = "  on('prompt.submit', async ($, e, next) => {\n    if (!state.owned.has('route')) return next(advisory ? { ...e, context } : e)\n  })\n"
 
 /** A miniature ruflo checkout: the three mods, an unrelated plugin, node_modules and repo files. */
@@ -36,7 +36,7 @@ function fixtureRuflo(versions = PINNED_VERSIONS) {
   const src = tmp()
   for (const name of PLUGINS) {
     const dir = path.join(src, 'plugins', name)
-    const userConfig = name === 'ruflo-mods' ? { modTrust: { type: 'string', default: 'observe' } } : { cli: { type: 'string', default: 'npx-offline' } }
+    const userConfig = name === 'ruflo-mods' ? { modTrust: { type: 'string', default: 'observe' },learningLoop:{type:'boolean',default:true,description:'learning'},compactSnapshot:{type:'boolean',default:true},costLedger:{type:'boolean',default:true} } : { cli: { type: 'string', default: 'npx-offline' } }
     write(path.join(dir, '.claude-plugin/plugin.json'), JSON.stringify({ name, version: versions[name], userConfig }))
     write(path.join(dir, 'hooks/hooks.json'), JSON.stringify({ modules: ['./register.ts'] }))
     write(path.join(dir, 'hooks/register.ts'), 'export default () => {}\n')
@@ -93,6 +93,17 @@ test('the bake keeps only the three plugin directories and no node_modules', () 
   assert.deepEqual(files.filter(f => f.includes('node_modules')), [])
   for (const f of files) assert.ok(PLUGINS.some(n => f.startsWith(path.join(out, n) + '/')), `outside the plugin dirs: ${f}`)
 })
+
+test('the bake disables new local learning and defaults new retention features off', () => {
+  const {out,status,stderr}=runBake(fixtureRuflo());
+  assert.equal(status,0,stderr);
+  const dir=path.join(out,'ruflo-mods');
+  const options=fs.readFileSync(path.join(dir,'hooks/options.ts'),'utf8');
+  assert.match(options,/learningLoop: false,/);
+  for(const name of ['compactSnapshot','costLedger'])assert(options.includes(`${name}: bool(o.${name}, false),`));
+  const manifest=JSON.parse(fs.readFileSync(path.join(dir,'.claude-plugin/plugin.json'),'utf8'));
+  for(const name of ['learningLoop','compactSnapshot','costLedger'])assert.equal(manifest.userConfig[name].default,false);
+});
 
 test('the bake defaults userConfig.cli to ruflo where a plugin declares it', () => {
   const { out } = runBake(fixtureRuflo())
