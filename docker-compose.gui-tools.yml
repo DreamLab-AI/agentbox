@@ -67,4 +67,7 @@ networks:
     name: visionclaw_network
 
 volumes:
+  # ADR-2207 D2: pinned to the live name (the same in every compose file), so
+  # agentbox and every sidecar share one exchange whatever the project name.
   gui-tools-exchange:
+    name: ${GUI_TOOLS_EXCHANGE_VOLUME:-agentbox_gui-tools-exchange}

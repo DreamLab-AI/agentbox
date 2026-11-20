@@ -78,8 +78,8 @@ networks:
 
 volumes:
   concat-projects:
-  # Declared plainly, exactly as docker-compose.browsercontainer.yml does: both
-  # files run under `--project-name agentbox`, so this resolves to the same
-  # `agentbox_gui-tools-exchange` volume. Marking it external instead would make
-  # this sidecar refuse to start unless browsercontainer had been up first.
+  # Pinned to the live name, exactly as docker-compose.browsercontainer.yml does
+  # (ADR-2207 D2). Not external: that would make this sidecar refuse to start
+  # unless browsercontainer had been up first.
   gui-tools-exchange:
+    name: ${GUI_TOOLS_EXCHANGE_VOLUME:-agentbox_gui-tools-exchange}

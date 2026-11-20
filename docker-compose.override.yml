@@ -123,8 +123,11 @@ services:
       # in place. Run `agentbox.sh migrate-workspace` to rsync into an
       # agentbox-owned named volume and detach the external MAD reference.
       - mad-workspace:/home/devuser/workspace
-      # Shared exchange with gui-tools sidecar (Blender/QGIS MCP).
-      # Sidecar mounts the same volume at /home/devuser/exchange.
+      # Shared exchange with browsercontainer, gui-tools, concat (ADR-2207 D2).
+      # /home/devuser/exchange is the canonical path: the same absolute path as in
+      # every sidecar, so a file path is valid on both sides with no translation.
+      # /home/devuser/gui-tools is the same volume, kept as the long-standing alias.
+      - gui-tools-exchange:/home/devuser/exchange
       - gui-tools-exchange:/home/devuser/gui-tools
       # Dell R610 "research" LUKS store (/srv/store, XFS 3.64T) over 10G NFS.
       # The host mounts its own storage server at /mnt/dell (see the host's /etc/fstab).
@@ -185,4 +188,6 @@ volumes:
   agentbox-claude-home:
     external: true
     name: agentbox-claude-home
+  # ADR-2207 D2: the same pinned name in every compose file that declares it.
   gui-tools-exchange:
+    name: ${GUI_TOOLS_EXCHANGE_VOLUME:-agentbox_gui-tools-exchange}

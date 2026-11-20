@@ -24,6 +24,9 @@ services:
       - NVIDIA_DRIVER_CAPABILITIES=compute,utility,graphics
       - SIDECAR_TRANSPORT=sse
       - SIDECAR_PORT=8931
+      # ADR-2207 D2: the exchange volume's mount; the MCP child runs there (cwd and
+      # TMPDIR), so files land at the same absolute path agentbox sees.
+      - BROWSER_EXCHANGE_DIR=/home/devuser/exchange
       - XDG_RUNTIME_DIR=/tmp/xdg-runtime
       - HOME=/home/devuser
       # Treat dev/LAN origins as secure contexts. Required for:
@@ -75,7 +78,10 @@ networks:
     name: visionclaw_network
 
 volumes:
+  # ADR-2207 D2: pinned to the live name (the same in every compose file), so
+  # agentbox and every sidecar share one exchange whatever the project name.
   gui-tools-exchange:
+    name: ${GUI_TOOLS_EXCHANGE_VOLUME:-agentbox_gui-tools-exchange}
   # Stable name, independent of the compose project. Holds the sidecar's identity
   # (K_browser, sealed in Podkey's vault): never `down -v` this file.
   browsercontainer-profile:

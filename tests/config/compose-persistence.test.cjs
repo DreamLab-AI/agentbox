@@ -38,6 +38,14 @@ assert.equal(instructions?.read_only, true);
 const systemscape = model.services.agentbox.volumes.find(v => v.target === '/etc/agentbox/systemscape');
 assert.equal(systemscape?.read_only, true);
 assert.equal(model.services.agentbox.pids_limit, model.services.agentbox.deploy.resources.limits.pids);
+// ADR-2207 D2: the exchange volume at the canonical path and the skills' alias,
+// pinned to the live name the sidecars share.
+for (const target of ['/home/devuser/exchange', '/home/devuser/gui-tools']) {
+  const m = model.services.agentbox.volumes.find(v => v.target === target);
+  assert.equal(m?.type, 'volume', target);
+  assert.equal(m.source, 'gui-tools-exchange', target);
+}
+assert.equal(model.volumes['gui-tools-exchange']?.name, process.env.GUI_TOOLS_EXCHANGE_VOLUME || 'agentbox_gui-tools-exchange');
 console.log(`PASS: ${Object.keys(expected).length} persistent volume identities, external Claude home, read-only instructions and SystemScape hosts, and PID parity`);
 
 // Nested tool/credential mounts must not be the only durable home state.

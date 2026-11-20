@@ -25,6 +25,65 @@ const PORT = parseInt(process.env.SIDECAR_PORT || '8931', 10);
 const CDP_PORT = parseInt(process.env.CDP_PORT || '9222', 10);
 
 // ---------------------------------------------------------------------------
+// MCP child: arguments, environment, working directory
+// ---------------------------------------------------------------------------
+
+const DEFAULT_EXCHANGE_DIR = '/home/devuser/exchange';
+
+/** The exchange volume's mount in this container (ADR-2207 D2). */
+function exchangeDirFromEnv(env = process.env) {
+  return env.BROWSER_EXCHANGE_DIR || DEFAULT_EXCHANGE_DIR;
+}
+
+/**
+ * Returns a function mapping the configured exchange dir to itself when it is a
+ * writable directory (creating its mcp/ subdirectory), or to null otherwise. The
+ * first failure is logged once per resolver, so a missing volume does not log on
+ * every session. Never creates the exchange itself, never deletes anything in it.
+ */
+function createExchangeResolver(logFn = log) {
+  let warned = false;
+  return (dir) => {
+    try {
+      if (!dir || !fs.statSync(dir).isDirectory()) throw new Error('not a directory');
+      fs.accessSync(dir, fs.constants.W_OK);
+      fs.mkdirSync(path.join(dir, 'mcp'), { recursive: true });
+      return dir;
+    } catch (err) {
+      if (!warned) {
+        warned = true;
+        logFn(`WARN: exchange ${dir} unusable (${err.code || err.message}); MCP child keeps default cwd and TMPDIR`);
+      }
+      return null;
+    }
+  };
+}
+
+/**
+ * How one chrome-devtools-mcp child is spawned. With an exchange dir, the child's
+ * cwd and TMPDIR are the exchange: a relative filePath lands there, and the
+ * connector's os.tmpdir() root accepts any path under it at the same absolute
+ * path agentbox mounts.
+ */
+function childSpawnConfig({ cdpPort, exchangeDir, env = process.env }) {
+  const childEnv = { ...env, DISPLAY: env.DISPLAY || ':2' };
+  if (exchangeDir) childEnv.TMPDIR = exchangeDir;
+  const options = { stdio: ['pipe', 'pipe', 'pipe'], env: childEnv };
+  if (exchangeDir) options.cwd = exchangeDir;
+  return {
+    command: 'chrome-devtools-mcp',
+    args: [
+      `--browser-url=http://127.0.0.1:${cdpPort}`,
+      '--headless=false',
+      '--category-experimental-webmcp',
+      '--experimental-vision',
+      '--experimental-memory',
+    ],
+    options,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Wait for Chrome CDP to be reachable before accepting sessions
 // ---------------------------------------------------------------------------
 
@@ -50,9 +109,10 @@ function waitForChrome(maxWait = 30000) {
 // ---------------------------------------------------------------------------
 
 class Session {
-  constructor(id, res) {
+  constructor(id, res, resolveExchange) {
     this.id = id;
     this.res = res;
+    this.resolveExchange = resolveExchange;
     this.child = null;
     this.buffer = '';
     this.alive = true;
@@ -60,19 +120,11 @@ class Session {
 
   start() {
     // Spawn chrome-devtools-mcp in stdio mode, connecting to our persistent Chrome
-    this.child = spawn('chrome-devtools-mcp', [
-      `--browser-url=http://127.0.0.1:${CDP_PORT}`,
-      '--headless=false',
-      '--category-experimental-webmcp',
-      '--experimental-vision',
-      '--experimental-memory',
-    ], {
-      stdio: ['pipe', 'pipe', 'pipe'],
-      env: {
-        ...process.env,
-        DISPLAY: process.env.DISPLAY || ':2',
-      },
+    const { command, args, options } = childSpawnConfig({
+      cdpPort: CDP_PORT,
+      exchangeDir: this.resolveExchange(exchangeDirFromEnv()),
     });
+    this.child = spawn(command, args, options);
 
     this.child.stdout.on('data', (chunk) => {
       this.buffer += chunk.toString();
@@ -142,6 +194,7 @@ async function main() {
   log('Chrome CDP available');
 
   const sessions = new Map();
+  const resolveExchange = createExchangeResolver();
 
   const server = http.createServer((req, res) => {
     const url = new URL(req.url, `http://localhost:${PORT}`);
@@ -194,7 +247,7 @@ async function main() {
         'Connection': 'keep-alive',
       });
 
-      const session = new Session(sessionId, res);
+      const session = new Session(sessionId, res, resolveExchange);
       sessions.set(sessionId, session);
       session.start();
 
@@ -251,6 +304,13 @@ async function main() {
     process.exit(0);
   });
 }
+
+module.exports = {
+  DEFAULT_EXCHANGE_DIR,
+  exchangeDirFromEnv,
+  createExchangeResolver,
+  childSpawnConfig,
+};
 
 if (require.main === module) {
   main().catch(err => {
