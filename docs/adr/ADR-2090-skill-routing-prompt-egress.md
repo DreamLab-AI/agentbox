@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: ceab43d415f6efd28c0bbf39def9179e07f7fb2c
+verified_commit: 9263a39761c0c69e651e77ec1c91be33f015a1b5
 verified_paths: [agentbox.toml, schema/agentbox.toml.schema.json, scripts/agentbox-config-validate.js, config/entrypoint-unified.sh, config/hooks/skill-route.cjs, config/hooks/lib/skill-route.cjs, skills/skill-router/scripts/route.mjs, config/egress-policy.json, tests/config/skill-route.test.js]
 owner: jjohare
 review_trigger: the first project whose content must not reach the judge, or any proposal to widen this beyond skill routing
@@ -221,3 +221,7 @@ are unchanged. Egress-register edits only refresh line citations, not consent
 or destinations. Consumer-test locality follows the explicitly selected vendor.
 Focused message tests and the sessions, System One and plugin regressions were
 run; deployment acceptance remains separate. No status axis is promoted.
+
+## Re-verification — 2026-11-20 at `9263a39761c0c69e651e77ec1c91be33f015a1b5`
+
+Governed delta: `config/entrypoint-unified.sh` changed in one block: the browser-gpu registration probe (~:2248) now accepts HTTP 200 or 503 from `http://browsercontainer:8931/health` instead of `curl -f` (ADR-2207 D5), a net +2 lines, so every line after ~:2248 sits two lines lower. Nothing else in the file moved. The skill-routing egress block is untouched. The Decision is unchanged and no claim of this record is falsified by the ADR-2207 sidecar refresh. Commands run: `git diff ceab43d41..9263a3976 -- agentbox.toml schema/agentbox.toml.schema.json scripts/agentbox-config-validate.js config/entrypoint-unified.sh config/hooks/skill-route.cjs config/hooks/lib/skill-route.cjs skills/skill-router/scripts/route.mjs config/egress-policy.json tests/config/skill-route.test.js`; `bash -n config/entrypoint-unified.sh` → clean. Re-run the diff to reproduce.

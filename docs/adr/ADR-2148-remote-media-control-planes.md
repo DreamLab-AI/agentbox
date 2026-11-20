@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: de01d60a408b9eb057a3b6257aabd9f764671c94
+verified_commit: 9263a39761c0c69e651e77ec1c91be33f015a1b5
 verified_paths: [flake.nix, comfyui-sidecar/Dockerfile, docker-compose.comfyui.yml, docker-compose.gui-tools.yml, gui-tools-sidecar, skills/blender/tools, skills/comfyui/mcp-server, skills/comfyui/scripts, skills/comfyui/models/stopmotion-candidates.json]
 owner: jjohare
 review_trigger: media control-plane protocol, sidecar dependencies, workflow state handling or model provisioning changes
@@ -224,3 +224,7 @@ No published port, credential, identity, role or adapter authority changes.
 Package tests (49), hosts-layer checks (8), actual boot-block fixture and
 persistent-volume checks passed. Production mount acceptance remains separate;
 this scoped review does not re-audit unrelated history or promote status axes.
+
+## Re-verification — 2026-11-20 at `9263a39761c0c69e651e77ec1c91be33f015a1b5`
+
+Governed delta: `docker-compose.gui-tools.yml` only pins the `gui-tools-exchange` volume name (ADR-2207 D2). The control planes, their publishes and the gui-tools sidecar's own mount at `/home/devuser/exchange` are unchanged. `scripts/ci/check-ports-loopback.sh` → PASS. Claim still true. The Decision is unchanged and no claim of this record is falsified by the ADR-2207 sidecar refresh. Commands run: `git diff de01d60a4..9263a3976 -- flake.nix comfyui-sidecar/Dockerfile docker-compose.comfyui.yml docker-compose.gui-tools.yml gui-tools-sidecar skills/blender/tools skills/comfyui/mcp-server skills/comfyui/scripts skills/comfyui/models/stopmotion-candidates.json`. Re-run the diff to reproduce.

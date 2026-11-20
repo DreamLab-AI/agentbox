@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: b6ba3c13d65b53823b42fd98b05d2ab5c69b5dd9
+verified_commit: 9263a39761c0c69e651e77ec1c91be33f015a1b5
 verified_paths: [lib/supersplat.nix, lib/splat-transform.package-lock.json, flake.nix, agentbox.toml, scripts/ci/check-ports-loopback.mjs, docker-compose.browsercontainer.yml, skills/supersplat/SKILL.md]
 owner: jjohare
 review_trigger: SuperSplat or splat-transform pin bump; any change to the supersplat listener's bind, root or authentication; the browser sidecar's TREAT_AS_SECURE list; a proposal to serve datasets or anything outside $WORKSPACE/splats/share
@@ -26,7 +26,7 @@ The `/tmp/chrome-profile` compatibility mount recorded under Activation
 image that still started Chrome with that path. `/home/devuser/chrome-profile`
 on the `browsercontainer-profile` volume stays the only profile mount.
 
-Re-verified at `b6ba3c13d`. The governed-path delta since `de01d60a4` is
+Re-verified at `b6ba3c13d`, re-stamped at `9263a3976` (the later commits touch no governed path, checked with `git diff b6ba3c13d..9263a3976 -- <verified_paths>`, empty). The governed-path delta since `de01d60a4` is
 `docker-compose.browsercontainer.yml` only:
 - the alias mount is removed;
 - `BROWSER_DISPLAY_SIZE` and `BROWSER_EXCHANGE_DIR` are added;

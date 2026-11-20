@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: de01d60a408b9eb057a3b6257aabd9f764671c94
+verified_commit: 9263a39761c0c69e651e77ec1c91be33f015a1b5
 verified_paths: [config/hooks/lib/skill-route.cjs, config/hooks/skill-route.cjs, skills/skill-router/scripts/route.mjs, config/entrypoint-unified.sh, tests/config/skill-route.test.js, skills/visioncraft/SKILL.md, skills/registered-skills.txt, skills/codex-registered-skills.txt, tests/system-one/visioncraft-picker.test.mjs]
 owner: jjohare
 review_trigger: the first project that needs a per-project routing bypass (ADR-2090), a Jev model change, or a measured runtime-path accuracy below 85% on the 40-item set
@@ -340,3 +340,7 @@ No published port, credential, identity, role or adapter authority changes.
 Package tests (49), hosts-layer checks (8), actual boot-block fixture and
 persistent-volume checks passed. Production mount acceptance remains separate;
 this scoped review does not re-audit unrelated history or promote status axes.
+
+## Re-verification — 2026-11-20 at `9263a39761c0c69e651e77ec1c91be33f015a1b5`
+
+Governed delta: `config/entrypoint-unified.sh` changed in one block: the browser-gpu registration probe (~:2248) now accepts HTTP 200 or 503 from `http://browsercontainer:8931/health` instead of `curl -f` (ADR-2207 D5), a net +2 lines, so every line after ~:2248 sits two lines lower. Nothing else in the file moved. The router registration is untouched. The Decision is unchanged and no claim of this record is falsified by the ADR-2207 sidecar refresh. Commands run: `git diff de01d60a4..9263a3976 -- config/hooks/lib/skill-route.cjs config/hooks/skill-route.cjs skills/skill-router/scripts/route.mjs config/entrypoint-unified.sh tests/config/skill-route.test.js skills/visioncraft/SKILL.md skills/registered-skills.txt skills/codex-registered-skills.txt tests/system-one/visioncraft-picker.test.mjs`; `bash -n config/entrypoint-unified.sh` → clean. Re-run the diff to reproduce.

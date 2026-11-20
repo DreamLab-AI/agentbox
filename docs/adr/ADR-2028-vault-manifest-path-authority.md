@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: de01d60a408b9eb057a3b6257aabd9f764671c94
+verified_commit: 9263a39761c0c69e651e77ec1c91be33f015a1b5
 verified_paths: [agentbox.toml, setup/agentbox.default.toml, schema/agentbox.toml.schema.json, config/entrypoint-unified.sh, mcp/servers/lib/ontology-local.js, mcp/servers/lib/ontology-index-build.js, scripts/ontology-condense-scheduler.mjs, scripts/ontology-condense-refresh.sh, skills/podcast-knowledge-ingest/SKILL.md, skills/ontology-core/SKILL.md, skills/ontology-enrich/SKILL.md, skills/ontology-augment/SKILL.md, skills/web-summary/SKILL.md]
 owner: jjohare
 review_trigger: any new skill, MCP server, or supervised program that reads or writes authored markdown
@@ -456,3 +456,7 @@ credential, identity, role or adapter authority changes. Package tests (49),
 hosts-layer checks (8), actual boot-block fixture and persistent-volume checks
 passed. Production mount acceptance remains a separate deployment check;
 this source stamp does not promote this record's status axes.
+
+## Re-verification — 2026-11-20 at `9263a39761c0c69e651e77ec1c91be33f015a1b5`
+
+Governed delta: `config/entrypoint-unified.sh` changed in one block: the browser-gpu registration probe (~:2248) now accepts HTTP 200 or 503 from `http://browsercontainer:8931/health` instead of `curl -f` (ADR-2207 D5), a net +2 lines, so every line after ~:2248 sits two lines lower. Nothing else in the file moved. The `[vault]` projection is untouched; the cited `:504` is before the change and still correct. The Decision is unchanged and no claim of this record is falsified by the ADR-2207 sidecar refresh. Commands run: `git diff de01d60a4..9263a3976 -- agentbox.toml setup/agentbox.default.toml schema/agentbox.toml.schema.json config/entrypoint-unified.sh mcp/servers/lib/ontology-local.js mcp/servers/lib/ontology-index-build.js scripts/ontology-condense-scheduler.mjs scripts/ontology-condense-refresh.sh skills/podcast-knowledge-ingest/SKILL.md skills/ontology-core/SKILL.md skills/ontology-enrich/SKILL.md skills/ontology-augment/SKILL.md skills/web-summary/SKILL.md`; `bash -n config/entrypoint-unified.sh` → clean. Re-run the diff to reproduce.

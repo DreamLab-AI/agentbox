@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: [ADR-2002, ADR-2063, ADR-2079]
 superseded_by: []
-verified_commit: f976283812cc913b3ac8dcd15f8789979b54a030
+verified_commit: 9263a39761c0c69e651e77ec1c91be33f015a1b5
 verified_paths: [services/agentbox-sessions, config/session-plane, lib/agentbox-sessions.nix, flake.nix, flake.lock, agentbox.toml, config/entrypoint-unified.sh, config/role-accounts.json, config/custody/session-plane-acl.json, config/tab0-bridge, config/nostr-gateway/gateway.cjs, config/nip98-proxy, config/tmux-autostart.sh, config/hooks/session-state.cjs, config/registered-hooks.txt, scripts/session-provision.mjs, scripts/session-control.cjs, scripts/activation/session-plane-acceptance.mjs, management-api/lib/system-manifest.js, schema/agentbox.toml.schema.json, services/agentbox-manifest/src/stacks.rs, services/agentbox-manifest/src/stacks_env.rs, tests/cli/session-launch-contract.test.mjs, tests/cli/session-control.test.cjs, tests/config/session-plane-notify.test.sh]
 owner: jjohare
 review_trigger: Antigravity signed in and OpenRouter answering the canned round trip (closes §11 acceptance → implementation complete); any AoE consumer found to have been missed
@@ -417,3 +417,7 @@ are unchanged. Egress-register edits only refresh line citations, not consent
 or destinations. Consumer-test locality follows the explicitly selected vendor.
 Focused message tests and the sessions, System One and plugin regressions were
 run; deployment acceptance remains separate. No status axis is promoted.
+
+## Re-verification — 2026-11-20 at `9263a39761c0c69e651e77ec1c91be33f015a1b5`
+
+Governed delta: `config/entrypoint-unified.sh` changed in one block: the browser-gpu registration probe (~:2248) now accepts HTTP 200 or 503 from `http://browsercontainer:8931/health` instead of `curl -f` (ADR-2207 D5), a net +2 lines, so every line after ~:2248 sits two lines lower. Nothing else in the file moved. The session-plane code is untouched. The stale-`aoe` residue list in the 2026-10-13 note cited `agentbox.sh:2767,2841`; `grep -nw aoe agentbox.sh` and `grep -n '/aoe/' agentbox.sh` find nothing on either origin/main or this branch, so the cited lines no longer carry it; the citation is historical. `config/entrypoint-unified.sh:1516` is before the change. The Decision is unchanged and no claim of this record is falsified by the ADR-2207 sidecar refresh. Commands run: `git diff f97628381..9263a3976 -- services/agentbox-sessions config/session-plane lib/agentbox-sessions.nix flake.nix flake.lock agentbox.toml config/entrypoint-unified.sh config/role-accounts.json config/custody/session-plane-acl.json config/tab0-bridge config/nostr-gateway/gateway.cjs config/nip98-proxy config/tmux-autostart.sh config/hooks/session-state.cjs config/registered-hooks.txt scripts/session-provision.mjs scripts/session-control.cjs scripts/activation/session-plane-acceptance.mjs management-api/lib/system-manifest.js schema/agentbox.toml.schema.json services/agentbox-manifest/src/stacks.rs services/agentbox-manifest/src/stacks_env.rs tests/cli/session-launch-contract.test.mjs tests/cli/session-control.test.cjs tests/config/session-plane-notify.test.sh`; `bash -n config/entrypoint-unified.sh` → clean. Re-run the diff to reproduce.

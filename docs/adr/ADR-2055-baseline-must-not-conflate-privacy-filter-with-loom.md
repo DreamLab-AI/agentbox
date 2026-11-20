@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: de01d60a408b9eb057a3b6257aabd9f764671c94
+verified_commit: 9263a39761c0c69e651e77ec1c91be33f015a1b5
 verified_paths: [docs/BASELINE-container.md]
 owner: jjohare
 review_trigger: a change to [privacy_filter].port, to the [program:opf-router] supervisor block, or to the BASELINE-container supervised-program table
@@ -126,3 +126,7 @@ No published port, credential, identity, role or adapter authority changes.
 Package tests (49), hosts-layer checks (8), actual boot-block fixture and
 persistent-volume checks passed. Production mount acceptance remains separate;
 this scoped review does not re-audit unrelated history or promote status axes.
+
+## Re-verification — 2026-11-20 at `9263a39761c0c69e651e77ec1c91be33f015a1b5`
+
+Governed delta: `docs/BASELINE-container.md` bumps to 0.5.19 with one changelog entry and a longer browsercontainer row (ADR-2207). The `opf-router` row is unchanged, now at `docs/BASELINE-container.md:131` (was :130; the added changelog line shifts it). Claim still true. The Decision is unchanged and no claim of this record is falsified by the ADR-2207 sidecar refresh. Commands run: `git diff de01d60a4..9263a3976 -- docs/BASELINE-container.md`. Re-run the diff to reproduce.

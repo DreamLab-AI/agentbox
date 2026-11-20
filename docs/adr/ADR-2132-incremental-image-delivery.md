@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: de01d60a408b9eb057a3b6257aabd9f764671c94
+verified_commit: 9263a39761c0c69e651e77ec1c91be33f015a1b5
 verified_paths: [agentbox.sh, scripts/runtime-delivery.*, scripts/refresh-compose.sh, config/build-registry.json, lib/image-layers.nix, flake.nix, tests/config/runtime-delivery*, .github/workflows/invariants.yml, docs/developer/incremental-builds.md]
 owner: jjohare
 review_trigger: layer grouping, delivery transport, candidate validation or cache retention changes
@@ -312,3 +312,7 @@ No published port, credential, identity, role or adapter authority changes.
 Package tests (49), hosts-layer checks (8), actual boot-block fixture and
 persistent-volume checks passed. Production mount acceptance remains separate;
 this scoped review does not re-audit unrelated history or promote status axes.
+
+## Re-verification — 2026-11-20 at `9263a39761c0c69e651e77ec1c91be33f015a1b5`
+
+Governed delta: `agentbox.sh` changed only in the `browsercontainer` verbs (new `diagnose`, `health` reads 200/503, usage text and the WebGPU/display/exchange wording; ADR-2207 D5, D7); lines before ~1497 are unchanged and later ones shift by +4 after the `health` block (~:1497-1512), +9 after the `diagnose` verb (~:1542) and +10 from the usage text (~:1576) to the end of the file. `prepare`, `activate` and `rebuild` and `scripts/runtime-delivery.*` are untouched. The `agentbox.sh:1075-1076,2577-2578` in the 2026-10-07 note describe that commit, not this one; find the verbs by name. The Decision is unchanged and no claim of this record is falsified by the ADR-2207 sidecar refresh. Commands run: `git diff de01d60a4..9263a3976 -- agentbox.sh scripts/runtime-delivery.* scripts/refresh-compose.sh config/build-registry.json lib/image-layers.nix flake.nix tests/config/runtime-delivery* .github/workflows/invariants.yml docs/developer/incremental-builds.md`; `bash -n agentbox.sh` → clean. Re-run the diff to reproduce.

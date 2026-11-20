@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: de01d60a408b9eb057a3b6257aabd9f764671c94
+verified_commit: 9263a39761c0c69e651e77ec1c91be33f015a1b5
 verified_paths: [agentbox.toml, flake.nix, management-api/lib/system-manifest.js, schema/agentbox.toml.schema.json, services/agentbox-manifest/src/tui_read.rs, services/agentbox-manifest/src/tui_fields.rs, skills/browser/references/latex-diagram-workflows.md]
 owner: jjohare
 review_trigger: Re-enable local QGIS or CAD printing; change PDF comparison workflow or nixpkgs pin
@@ -108,3 +108,7 @@ No published port, credential, identity, role or adapter authority changes.
 Package tests (49), hosts-layer checks (8), actual boot-block fixture and
 persistent-volume checks passed. Production mount acceptance remains separate;
 this scoped review does not re-audit unrelated history or promote status axes.
+
+## Re-verification — 2026-11-20 at `9263a39761c0c69e651e77ec1c91be33f015a1b5`
+
+Governed delta: `skills/browser/references/latex-diagram-workflows.md` now uses `file:///home/devuser/exchange/...` paths and says the exchange volume is `/home/devuser/exchange` in both Agentbox and the sidecar, with `$HOME/gui-tools` kept as the Agentbox alias (ADR-2207 D2, D8). The claim of this record, that PDF visual review goes Poppler raster → shared exchange volume → browser-gpu with no local diff-pdf or embedded engine, still holds and is now stated with one path. This branch adds no browser engine to the image. The record's "no browser sidecar rebuild is needed" described its own change; ADR-2207's rebuild is a separate, owner-run activation. The Decision is unchanged and no claim of this record is falsified by the ADR-2207 sidecar refresh. Commands run: `git diff de01d60a4..9263a3976 -- agentbox.toml flake.nix management-api/lib/system-manifest.js schema/agentbox.toml.schema.json services/agentbox-manifest/src/tui_read.rs services/agentbox-manifest/src/tui_fields.rs skills/browser/references/latex-diagram-workflows.md`. Re-run the diff to reproduce.

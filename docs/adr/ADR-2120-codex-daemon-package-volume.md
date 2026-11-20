@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: de01d60a408b9eb057a3b6257aabd9f764671c94
+verified_commit: 9263a39761c0c69e651e77ec1c91be33f015a1b5
 verified_paths: [agentbox.sh, config/entrypoint-unified.sh, flake.nix, docker-compose.yml, scripts/refresh-compose.sh, tests/config/compose-persistence.test.cjs, tests/config/refresh-compose.test.cjs]
 owner: jjohare
 review_trigger: commit verification and rebuild; or change Codex daemon packaging
@@ -373,3 +373,7 @@ No published port, credential, identity, role or adapter authority changes.
 Package tests (49), hosts-layer checks (8), actual boot-block fixture and
 persistent-volume checks passed. Production mount acceptance remains separate;
 this scoped review does not re-audit unrelated history or promote status axes.
+
+## Re-verification — 2026-11-20 at `9263a39761c0c69e651e77ec1c91be33f015a1b5`
+
+Governed delta: `config/entrypoint-unified.sh` changed in one block: the browser-gpu registration probe (~:2248) now accepts HTTP 200 or 503 from `http://browsercontainer:8931/health` instead of `curl -f` (ADR-2207 D5), a net +2 lines, so every line after ~:2248 sits two lines lower. Nothing else in the file moved; `agentbox.sh` changed only in the `browsercontainer` verbs (new `diagnose`, `health` reads 200/503, usage text and the WebGPU/display/exchange wording; ADR-2207 D5, D7); lines before ~1497 are unchanged and later ones shift by +4 after the `health` block (~:1497-1512), +9 after the `diagnose` verb (~:1542) and +10 from the usage text (~:1576) to the end of the file. The codex-packages volume is untouched. Cited `agentbox.sh:757`, `:758`, `:1079-1080` and `config/entrypoint-unified.sh:542`, `:545-546` lie before the changed blocks and keep their numbers. `RUVECTOR_PG_PASSWORD=dummy node tests/config/compose-persistence.test.cjs` (empty `.env`) → PASS. Claim still true. The Decision is unchanged and no claim of this record is falsified by the ADR-2207 sidecar refresh. Commands run: `git diff de01d60a4..9263a3976 -- agentbox.sh config/entrypoint-unified.sh flake.nix docker-compose.yml scripts/refresh-compose.sh tests/config/compose-persistence.test.cjs tests/config/refresh-compose.test.cjs`; `bash -n agentbox.sh` → clean. Re-run the diff to reproduce.

@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: de01d60a408b9eb057a3b6257aabd9f764671c94
+verified_commit: 9263a39761c0c69e651e77ec1c91be33f015a1b5
 verified_paths: [skills/ontology-augment, skills/podcast-knowledge-ingest, agents/ontology-curator.md, mcp/mcp.json, agentbox.toml, AGENTS.md]
 owner: jjohare
 review_trigger: a request to register any MCP server that reads or writes visionGraph, the ADR-140 /mcp plane reaching the deployed Loom, or the first `vault` subcommand an agent cannot express
@@ -241,3 +241,7 @@ No published port, credential, identity, role or adapter authority changes.
 Package tests (49), hosts-layer checks (8), actual boot-block fixture and
 persistent-volume checks passed. Production mount acceptance remains separate;
 this scoped review does not re-audit unrelated history or promote status axes.
+
+## Re-verification — 2026-11-20 at `9263a39761c0c69e651e77ec1c91be33f015a1b5`
+
+Governed delta: `AGENTS.md` gains one sentence on the browser sidecar (one fixed 16:9 display, exchange path, DevTools by name; ADR-2207). It adds no corpus MCP registration or writer and does not touch the `ontomark`/`vault` guidance. Claim still true. The Decision is unchanged and no claim of this record is falsified by the ADR-2207 sidecar refresh. Commands run: `git diff de01d60a4..9263a3976 -- skills/ontology-augment skills/podcast-knowledge-ingest agents/ontology-curator.md mcp/mcp.json agentbox.toml AGENTS.md`. Re-run the diff to reproduce.

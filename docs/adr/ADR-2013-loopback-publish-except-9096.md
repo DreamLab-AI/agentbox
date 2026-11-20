@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: de01d60a408b9eb057a3b6257aabd9f764671c94
+verified_commit: 9263a39761c0c69e651e77ec1c91be33f015a1b5
 verified_paths: [scripts/ci/check-ports-loopback.sh, scripts/ci/check-ports-loopback.mjs, tests/security/ports-gate.test.mjs, .github/workflows/invariants.yml, flake.nix, docker-compose*.yml]
 owner: jjohare
 review_trigger: Any new entry on the SANCTIONED list, or a new compose overlay file
@@ -555,3 +555,7 @@ credential, identity, role or adapter authority changes. Package tests (49),
 hosts-layer checks (8), actual boot-block fixture and persistent-volume checks
 passed. Production mount acceptance remains a separate deployment check;
 this source stamp does not promote this record's status axes.
+
+## Re-verification — 2026-11-20 at `9263a39761c0c69e651e77ec1c91be33f015a1b5`
+
+Governed delta: the compose overlays only (`docker-compose.browsercontainer.yml`: `BROWSER_DISPLAY_SIZE` and `BROWSER_EXCHANGE_DIR` env, pinned exchange volume name, the `/tmp/chrome-profile` alias mount removed, CDP comment; `docker-compose.gui-tools.yml`, `docker-compose.concat.yml`: pinned exchange volume name; `docker-compose.override.yml`: exchange mounted at `/home/devuser/exchange`). No published port is added or re-bound. Run: `bash scripts/ci/check-ports-loopback.sh` → PASS (15 compose files, 14 ports blocks, all loopback or sanctioned). Citation correction: the browsercontainer ports now sit at `docker-compose.browsercontainer.yml:52-60` (5903 at :54, 8931 at :56, 9222→9223 at :60), not :48-53; the amendment's line citations for the other overlays are unchanged by this branch. The Decision is unchanged and no claim of this record is falsified by the ADR-2207 sidecar refresh. Commands run: `git diff de01d60a4..9263a3976 -- scripts/ci/check-ports-loopback.sh scripts/ci/check-ports-loopback.mjs tests/security/ports-gate.test.mjs .github/workflows/invariants.yml flake.nix docker-compose*.yml`. Re-run the diff to reproduce.

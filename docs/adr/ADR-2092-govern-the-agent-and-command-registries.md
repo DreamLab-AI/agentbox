@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: de01d60a408b9eb057a3b6257aabd9f764671c94
+verified_commit: 9263a39761c0c69e651e77ec1c91be33f015a1b5
 verified_paths: [agents/registered-agents.txt, scripts/reconcile-agents.sh, scripts/reconcile-commands.sh, scripts/project-skill-roots.mjs, config/registered-commands.txt, config/entrypoint-unified.sh, flake.nix, tests/config/agent-reconcile.test.sh, scripts/reconcile-skills.sh, skills/registered-skills.txt, skills/codex-registered-skills.txt, tests/config/visioncraft-cutover.test.mjs]
 owner: jjohare
 review_trigger: a new subagent worth always-loading, or evidence the router surfaces baked-but-unregistered skills too slowly; a reconcile audit on the running image showing ~/.claude/agents matches agents/registered-agents.txt (activation → live)
@@ -486,3 +486,7 @@ No published port, credential, identity, role or adapter authority changes.
 Package tests (49), hosts-layer checks (8), actual boot-block fixture and
 persistent-volume checks passed. Production mount acceptance remains separate;
 this scoped review does not re-audit unrelated history or promote status axes.
+
+## Re-verification — 2026-11-20 at `9263a39761c0c69e651e77ec1c91be33f015a1b5`
+
+Governed delta: `config/entrypoint-unified.sh` changed in one block: the browser-gpu registration probe (~:2248) now accepts HTTP 200 or 503 from `http://browsercontainer:8931/health` instead of `curl -f` (ADR-2207 D5), a net +2 lines, so every line after ~:2248 sits two lines lower. Nothing else in the file moved. The agent and command reconcilers are untouched. Citation correction: they sit at `config/entrypoint-unified.sh:3874` (`AGENT_ROOT_TARGETS`) and `:3891` (`REGISTERED_COMMANDS_MANIFEST`) at this commit (two lower than on origin/main); the `:2585-2593` and `:2603-2609` in the note above held only at that note's commit. The Decision is unchanged and no claim of this record is falsified by the ADR-2207 sidecar refresh. Commands run: `git diff de01d60a4..9263a3976 -- agents/registered-agents.txt scripts/reconcile-agents.sh scripts/reconcile-commands.sh scripts/project-skill-roots.mjs config/registered-commands.txt config/entrypoint-unified.sh flake.nix tests/config/agent-reconcile.test.sh scripts/reconcile-skills.sh skills/registered-skills.txt skills/codex-registered-skills.txt tests/config/visioncraft-cutover.test.mjs`; `bash -n config/entrypoint-unified.sh` → clean. Re-run the diff to reproduce.

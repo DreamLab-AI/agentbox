@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: de01d60a408b9eb057a3b6257aabd9f764671c94
+verified_commit: 9263a39761c0c69e651e77ec1c91be33f015a1b5
 verified_paths: [config/entrypoint-unified.sh, services/agentbox-manifest/src/tui_write.rs, mcp/consultants/antigravity/server.js, skills/mcp.json]
 owner: jjohare
 review_trigger: any change to a consultant's default model, a Gemini model retirement, the 2027-01-01 Gemini tariff step, or a wizard that starts exposing the consultant model field; activation — a receipt on the running image for the absent, empty and explicit override cases and a TUI save (explicit case observed live 2026-10-30)
@@ -322,3 +322,7 @@ credential, identity, role or adapter authority changes. Package tests (49),
 hosts-layer checks (8), actual boot-block fixture and persistent-volume checks
 passed. Production mount acceptance remains a separate deployment check;
 this source stamp does not promote this record's status axes.
+
+## Re-verification — 2026-11-20 at `9263a39761c0c69e651e77ec1c91be33f015a1b5`
+
+Governed delta: `config/entrypoint-unified.sh` changed in one block: the browser-gpu registration probe (~:2248) now accepts HTTP 200 or 503 from `http://browsercontainer:8931/health` instead of `curl -f` (ADR-2207 D5), a net +2 lines, so every line after ~:2248 sits two lines lower. Nothing else in the file moved. The consultant projection is untouched. Citation correction: the `AGENTBOX_ANTIGRAVITY_MODEL` guard is at `config/entrypoint-unified.sh:3381` at this commit (two lower than on origin/main, `:3379`); the `:2411-2412` and `:3057-3061` in the notes above were true only at their own commits. Grep for `AGENTBOX_ANTIGRAVITY_MODEL`. The Decision is unchanged and no claim of this record is falsified by the ADR-2207 sidecar refresh. Commands run: `git diff de01d60a4..9263a3976 -- config/entrypoint-unified.sh services/agentbox-manifest/src/tui_write.rs mcp/consultants/antigravity/server.js skills/mcp.json`; `bash -n config/entrypoint-unified.sh` → clean. Re-run the diff to reproduce.

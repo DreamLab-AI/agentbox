@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: de01d60a408b9eb057a3b6257aabd9f764671c94
+verified_commit: 9263a39761c0c69e651e77ec1c91be33f015a1b5
 verified_paths: [config/hooks/trajectory-recorder.cjs, config/hooks/routing-label-recorder.cjs, config/entrypoint-unified.sh, management-api/lib/pg-config.js, management-api/lib/routing-label-store.js, management-api/lib/trajectory-store.js, mcp/consultants/shared/consultant-base.js, management-api/lib/task-action-tokens.js, management-api/middleware/auth.js, management-api/lib/agent-event-auth.js, management-api/routes/agent-events.js, management-api/utils/process-manager.js, management-api/adapters/index.js, management-api/adapters/lifecycle.js, management-api/adapters/events/external.js, management-api/server.js, scripts/ruvector-sidecar-update.sh]
 owner: jjohare
 review_trigger: any new reader of the RuVector Postgres password or any new place a connection is assembled, any new route a task needs to call, any change to the Management API auth gate or auth modes, or a hook that gains a way to sign NIP-98
@@ -188,3 +188,7 @@ No published port, credential, identity, role or adapter authority changes.
 Package tests (49), hosts-layer checks (8), actual boot-block fixture and
 persistent-volume checks passed. Production mount acceptance remains separate;
 this scoped review does not re-audit unrelated history or promote status axes.
+
+## Re-verification — 2026-11-20 at `9263a39761c0c69e651e77ec1c91be33f015a1b5`
+
+Governed delta: `config/entrypoint-unified.sh` changed in one block: the browser-gpu registration probe (~:2248) now accepts HTTP 200 or 503 from `http://browsercontainer:8931/health` instead of `curl -f` (ADR-2207 D5), a net +2 lines, so every line after ~:2248 sits two lines lower. Nothing else in the file moved. The credential-scrub block (`PGSCRUB_MARKER`) and the task-token handling are untouched. The Decision is unchanged and no claim of this record is falsified by the ADR-2207 sidecar refresh. Commands run: `git diff de01d60a4..9263a3976 -- config/hooks/trajectory-recorder.cjs config/hooks/routing-label-recorder.cjs config/entrypoint-unified.sh management-api/lib/pg-config.js management-api/lib/routing-label-store.js management-api/lib/trajectory-store.js mcp/consultants/shared/consultant-base.js management-api/lib/task-action-tokens.js management-api/middleware/auth.js management-api/lib/agent-event-auth.js management-api/routes/agent-events.js management-api/utils/process-manager.js management-api/adapters/index.js management-api/adapters/lifecycle.js management-api/adapters/events/external.js management-api/server.js scripts/ruvector-sidecar-update.sh`; `bash -n config/entrypoint-unified.sh` → clean. Re-run the diff to reproduce.

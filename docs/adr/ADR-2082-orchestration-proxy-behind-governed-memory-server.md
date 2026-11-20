@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: de01d60a408b9eb057a3b6257aabd9f764671c94
+verified_commit: 9263a39761c0c69e651e77ec1c91be33f015a1b5
 verified_paths: [mcp/servers/lib/orchestration-proxy.js, mcp/servers/ruvector-mcp.cjs, mcp/servers/lib/ruvector-gates.js, config/entrypoint-unified.sh]
 owner: jjohare
 review_trigger: next image rebuild (activation), a Ruflo release that changes plugin/runtime resolution or renames the swarm/agent/task/coordination tools, or any proposal to forward a memory_* tool
@@ -337,3 +337,7 @@ No published port, credential, identity, role or adapter authority changes.
 Package tests (49), hosts-layer checks (8), actual boot-block fixture and
 persistent-volume checks passed. Production mount acceptance remains separate;
 this scoped review does not re-audit unrelated history or promote status axes.
+
+## Re-verification — 2026-11-20 at `9263a39761c0c69e651e77ec1c91be33f015a1b5`
+
+Governed delta: `config/entrypoint-unified.sh` changed in one block: the browser-gpu registration probe (~:2248) now accepts HTTP 200 or 503 from `http://browsercontainer:8931/health` instead of `curl -f` (ADR-2207 D5), a net +2 lines, so every line after ~:2248 sits two lines lower. Nothing else in the file moved. The orchestration forwarding and its `memory_*` denial are untouched; cited lines `:979-980`, `:1054` and `:1458-1459` are before the change and keep their numbers. The Decision is unchanged and no claim of this record is falsified by the ADR-2207 sidecar refresh. Commands run: `git diff de01d60a4..9263a3976 -- mcp/servers/lib/orchestration-proxy.js mcp/servers/ruvector-mcp.cjs mcp/servers/lib/ruvector-gates.js config/entrypoint-unified.sh`; `bash -n config/entrypoint-unified.sh` → clean. Re-run the diff to reproduce.

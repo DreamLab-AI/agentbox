@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: c9f8ba2676af10d55096d026301817688c3bc64c
+verified_commit: 9263a39761c0c69e651e77ec1c91be33f015a1b5
 verified_paths: [skills/lint-skills.mjs, skills/gen-routing-table.mjs, skills/SKILL-DIRECTORY.md, skills/system-one/scripts/route-eval.mjs]
 owner: jjohare
 review_trigger: the next time a skill is demoted, merged, or added to a cluster that already shows measured overlap
@@ -218,3 +218,7 @@ Re-verified 2026-11-11 at `924f4282a` (ADR-2196). Governed-path delta since `a1d
 Re-verified 2026-11-11 at `0ed05167b` (ADR-2196, removal of the dead `skills.browser.playwright` switch). Governed-path delta since `924f4282a`: `skills/SKILL-DIRECTORY.md` notes `openai-codex`'s removal. No published port, mount, secret, identity, route, vault path or registry entry changes, so what this record decides is not touched. Run on this commit: the manifest validator, manifest catalogue, configuration jest (301), agentbox-manifest cargo tests (235), skill lint (124). The flake edits are two whole-line deletions, not evaluated. The decision and status axes are unchanged.
 
 Re-verified 2026-11-11 at `2c4b365b4` (ADR-2196, second pass). Governed-path delta since `0ed05167b`: `skills/SKILL-DIRECTORY.md` drops `lichtfeld-studio` and goes to 123. No published port, mount, secret, identity, route, vault path or registry entry changes, so what this record decides is not touched. Run on this commit: skill lint (123), skill-count, routing-table, manifest validator and catalogue, configuration jest (301), corpus and parity tests (the baked-versus-repo comparison fails in-container until the rebuild), system-one-eval. arnis's source hash was reproduced independently with scripts/nar-hash.py, which also reproduces the pinned StatCraft hash. The Nix is not evaluated or built. The decision and status axes are unchanged.
+
+## Re-verification — 2026-11-20 at `9263a39761c0c69e651e77ec1c91be33f015a1b5`
+
+Governed delta: `skills/SKILL-DIRECTORY.md` changes two lines in the browser sidecar diagram (GPU line now "operator-selected NVIDIA", plus a "Files: /home/devuser/exchange" line; ADR-2207). No skill is added, removed or re-statused, and the status contract and discovery measurement are untouched. `node skills/lint-skills.mjs` → exit 0. Claim still true. The Decision is unchanged and no claim of this record is falsified by the ADR-2207 sidecar refresh. Commands run: `git diff c9f8ba267..9263a3976 -- skills/lint-skills.mjs skills/gen-routing-table.mjs skills/SKILL-DIRECTORY.md skills/system-one/scripts/route-eval.mjs`. Re-run the diff to reproduce.

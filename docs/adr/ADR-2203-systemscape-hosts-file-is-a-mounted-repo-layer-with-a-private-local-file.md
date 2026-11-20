@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: f976283812cc913b3ac8dcd15f8789979b54a030
+verified_commit: 9263a39761c0c69e651e77ec1c91be33f015a1b5
 verified_paths: [config/systemscape/README.md, config/systemscape/hosts.example.toml, config/entrypoint-unified.sh, flake.nix, docker-compose.yml, lib/systemscape.nix, lib/systemscape-Cargo.lock, tests/config/systemscape-hosts-layer.test.sh, tests/config/systemscape-hosts-boot.test.cjs]
 owner: operator
 review_trigger: the SystemScape pin moves to 0.4.0 or later, or a second consumer of config/systemscape/ appears
@@ -83,3 +83,7 @@ reports 0.4.0. The actual boot block also passed temporary-filesystem tests for
 absence, linking, repeat execution, link removal, regular-file preservation
 and preservation of an unrelated dangling symlink. Image/production activation
 evidence is deliberately not claimed by this source-only verification.
+
+## Re-verification — 2026-11-20 at `9263a39761c0c69e651e77ec1c91be33f015a1b5`
+
+Governed delta: `config/entrypoint-unified.sh` changed in one block: the browser-gpu registration probe (~:2248) now accepts HTTP 200 or 503 from `http://browsercontainer:8931/health` instead of `curl -f` (ADR-2207 D5), a net +2 lines, so every line after ~:2248 sits two lines lower. Nothing else in the file moved. The SystemScape hosts link is untouched. The Decision is unchanged and no claim of this record is falsified by the ADR-2207 sidecar refresh. Commands run: `git diff f97628381..9263a3976 -- config/systemscape/README.md config/systemscape/hosts.example.toml config/entrypoint-unified.sh flake.nix docker-compose.yml lib/systemscape.nix lib/systemscape-Cargo.lock tests/config/systemscape-hosts-layer.test.sh tests/config/systemscape-hosts-boot.test.cjs`; `bash -n config/entrypoint-unified.sh` → clean. Re-run the diff to reproduce.
