@@ -19,6 +19,14 @@ relates: [ADR-2175, ADR-2062, ADR-2040]
 # ADR-2177: The SuperSplat editor is served in-container and driven in the browser sidecar; splat-transform is on PATH
 
 
+## Note — 2026-11-20 (ADR-2207)
+
+The `/tmp/chrome-profile` compatibility mount recorded under Activation
+(2026-11-05) is retired by ADR-2207: its sidecar rebuild replaces the retained
+image that still started Chrome with that path. `/home/devuser/chrome-profile`
+on the `browsercontainer-profile` volume stays the only profile mount. The
+decision and status axes of this record are unchanged.
+
 ## Scoped deployment review — 2026-11-16
 
 Reviewed at `350772de92685339dfff117e66088d8adeb44bec`; governed changes since the prior stamp: `agentbox.toml`. The reviewed rollout is limited to the journal/review integration, its Codex cron PATH and the operator-approved zero-budget audit hold. The guard refuses even a zero estimate; no model is called by its tests. Review/transport tests (83), journal tests (43) and cron checks (21) pass. Existing decision/status axes and unrelated acceptance limits remain. In particular, the Codex audit stays off until turn/spend confinement is implemented; this is not its activation receipt.
