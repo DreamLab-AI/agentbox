@@ -4,19 +4,32 @@ title: The sidecar policy blocks the Web Store, not the default, so unpacked Pod
 date: 2026-11-20
 decision_status: accepted
 implementation_status: partial
-activation_status: inactive
+activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: f6a87328266381a2f2f1bf6ddf7050ebd72eda49
-verified_paths: []
+verified_commit: 7bdf588fd60ab6b933242b5312246c1e32a8c506
+verified_paths: [browsercontainer/policies/podkey-only.json, browsercontainer/Dockerfile, browsercontainer/podkey-ctl.js, tests/browsercontainer/policy-contract.test.cjs]
 owner: operator
 review_trigger: Podkey publishes a CRX or a manifest key; Chrome changes IsLoadingUnpackedAllowed; the policy file or Podkey install path changes
 repo: agentbox
-evidence_class: source+test
-acceptance_boundary: Source and tests only. No image has been rebuilt; Chrome has not been observed loading Podkey under this policy.
+evidence_class: source+test+deployment+runtime
+acceptance_boundary: Rebuilt image is running with preserved profile/exchange volumes. Podkey service worker loads under the approved policy with its original ID/public key; vault remains locked. Chrome reports both managed policies OK. A real Web Store install-refusal attempt has not been performed, so implementation remains partial against the full host acceptance list.
 ---
 
 # ADR-2212 — The sidecar policy blocks the Web Store, not the default, so unpacked Podkey can load
+
+## Host activation witness — 2026-11-20 evening
+
+Image `sha256:ab589661b895ffce4688213890af75ea0b1e106a365c8ee897daa874f3590c83`
+is running. `podkey-ctl` reports the expected ID, pinned version 0.0.11 and
+locked vault with the existing public key. The loader logs a running service
+worker, without the old administrator-block error. A fresh `chrome://policy`
+fixture reports `ExtensionSettings` and `BlockExternalExtensions` status `OK`,
+with the exact approved values. Display/WebGPU and foreground fixture MCP
+upload/screenshot checks pass. No private key or passphrase was accessed.
+The Web Store installation-refusal acceptance check is not claimed; no real
+extension installation was attempted. The original acceptance list below is
+historical and this witness defines what was actually verified.
 
 ## Context
 - The sidecar policy `browsercontainer/policies/podkey-only.json` set `ExtensionInstallBlocklist ["*"]` plus an allowlist for Podkey's id.

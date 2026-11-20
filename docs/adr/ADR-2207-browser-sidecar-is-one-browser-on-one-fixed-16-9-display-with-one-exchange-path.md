@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: f6a87328266381a2f2f1bf6ddf7050ebd72eda49
+verified_commit: 7bdf588fd60ab6b933242b5312246c1e32a8c506
 verified_paths: [browsercontainer/*, tests/browsercontainer/*, docker-compose.browsercontainer.yml, .github/workflows/browsercontainer.yml]
 owner: operator
 review_trigger: the owner's sidecar rebuild (activation), a change of window manager, display size rules or exchange path, or chrome-devtools-mcp moving past 1.13
@@ -18,6 +18,17 @@ acceptance_boundary: Browser rebuilt and running with exact-size display, non-fa
 ---
 
 # ADR-2207 — The browser sidecar is one browser on one fixed 16:9 display, with one exchange path
+
+## Evening browser re-verification — 2026-11-20
+
+The ADR-2212 policy image is deployed with the same profile/exchange volumes.
+Chrome reports both managed policies as `OK`; Podkey loads with its original
+ID and public key and the vault locked. Display and non-fallback WebGPU compute
+checks pass. Foreground fixture upload/screenshot handoff passes; background
+capture stalled, so `7bdf588fd` documents foregrounding only an owned fixture,
+the brief VNC impact, and the prohibition on capturing unrelated operator tabs.
+Five documentation-contract tests pass. No claim of a live Web Store install
+attempt is made; that acceptance check remains outstanding in ADR-2212.
 
 ## Completed exchange activation — 2026-11-20
 
