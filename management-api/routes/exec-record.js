@@ -6,12 +6,12 @@
  *   engine, a separate Rust process). Operator-gated (not on the auth-skip
  *   allowlist in server.js).
  *
- * Why a route and not a second writer: the live events adapter
- * (adapters/events/local-jsonl.js) caches the audit-chain head in process
- * memory and appends unlocked, so any second process writing the events log
- * forks `prev_hash` and makes GET /v1/system/audit-chain report tampering.
- * This route reuses the SAME journal singleton as POST /v1/tasks
- * (lib/action-plane.js), so the management API stays the only writer.
+ * Why a route and not a second writer: the events adapter
+ * (adapters/events/local-jsonl.js) now serialises read-tail/hash/append across
+ * processes with lib/journal-lock.js, so a second writer no longer forks
+ * `prev_hash`; the route is kept because the journal's session and policy
+ * state lives in the management API. This route reuses the SAME journal
+ * singleton as POST /v1/tasks (lib/action-plane.js).
  *
  * Journalling, not policing: the route records what a harness says it did.
  * It never approves or denies the side effect (ADR-2071 Phase 2 does that).

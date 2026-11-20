@@ -32,6 +32,7 @@ const CONTRACT_VERSIONS = require('../contract-versions');
 const uris = require('../../lib/uris');
 const auditChain = require('../../lib/audit-chain');
 const journalAppend = require('../../lib/journal-append');
+const journalLock = require('../../lib/journal-lock');
 
 const REQUIRED_FIELDS = ['kind'];
 
@@ -48,6 +49,7 @@ class LocalJsonlEventsAdapter extends BaseAdapter {
     this._appendFn = opts.appendFn || null;
     this._subscribers = new Map(); // id -> { filter, handler }
     this._chain = null; // lazy { prevHash, seq } — resumed from disk tail
+    this._lastWrite = null; // { file, sig } after our last append; a mismatch means another writer moved the tail
   }
 
   /**
@@ -63,20 +65,7 @@ class LocalJsonlEventsAdapter extends BaseAdapter {
     if (!event || !event.kind) {
       throw new ValidationError('event.kind is required');
     }
-    if (!this._chain) this._initChain();
-    const record = {
-      ts: new Date().toISOString(),
-      session_id: event.session_id || null,
-      execution_id: event.execution_id || null,
-      kind: event.kind,
-      payload: event.payload || {},
-      seq: this._chain.seq,
-    };
-    record.prev_hash = this._chain.prevHash;
-    record.hash = auditChain.hashRecord(this._chain.prevHash, record);
-    if (this._append(record)) {
-      this._chain = { prevHash: record.hash, seq: record.seq + 1 };
-    }
+    const record = this._commit(event);
     // Notify in-process subscribers
     for (const { filter, handler } of this._subscribers.values()) {
       if (!filter || !filter.kind || filter.kind === record.kind) {
@@ -129,23 +118,67 @@ class LocalJsonlEventsAdapter extends BaseAdapter {
   }
 
   /**
+   * Build the next chained record and persist it. Without an injected
+   * appendFn the whole read-tail / hash / append span runs under the
+   * cross-process journal lock, and the tail is re-read from disk whenever
+   * another writer has touched the file since this instance last wrote it
+   * (JOURNAL-LOCK). A failed append (or lock) leaves the chain where it was;
+   * the event is still returned for in-process subscribers.
    * @private
-   * @returns {boolean} true when the record was persisted (chain may advance)
    */
-  _append(record) {
-    const line = JSON.stringify(record) + '\n';
+  _commit(event) {
     if (this._appendFn) {
-      this._appendFn(this._filePath(), line);
-      return true;
+      if (!this._chain) this._initChain();
+      const record = this._build(event);
+      this._appendFn(this._filePath(), JSON.stringify(record) + '\n');
+      this._chain = { prevHash: record.hash, seq: record.seq + 1 };
+      return record;
     }
+    let record = null;
     try {
-      fs.mkdirSync(this._dir, { recursive: true });
-      journalAppend.appendLine(this._filePath(), line);
-      return true;
+      journalLock.withLock(this._dir, () => {
+        const file = this._filePath();
+        const sig = this._signature(file);
+        if (!this._chain || !this._lastWrite || this._lastWrite.file !== file || this._lastWrite.sig !== sig) {
+          this._initChain(); // another process (or a rotation) moved the tail
+        }
+        record = this._build(event);
+        journalAppend.appendLine(file, JSON.stringify(record) + '\n');
+        this._chain = { prevHash: record.hash, seq: record.seq + 1 };
+        this._lastWrite = { file, sig: this._signature(file) };
+      });
     } catch (err) {
       // Non-fatal: event is still dispatched to in-process subscribers
       process.stderr.write(`[events/local-jsonl] write failed: ${err.message}\n`);
-      return false;
+      this._lastWrite = null;
+      if (!record) record = this._build(event);
+    }
+    return record;
+  }
+
+  /** @private */
+  _build(event) {
+    if (!this._chain) this._initChain();
+    const record = {
+      ts: new Date().toISOString(),
+      session_id: event.session_id || null,
+      execution_id: event.execution_id || null,
+      kind: event.kind,
+      payload: event.payload || {},
+      seq: this._chain.seq,
+    };
+    record.prev_hash = this._chain.prevHash;
+    record.hash = auditChain.hashRecord(this._chain.prevHash, record);
+    return record;
+  }
+
+  /** Cheap change detector for a journal file: inode and size ('absent' if none). @private */
+  _signature(file) {
+    try {
+      const st = fs.statSync(file);
+      return `${st.ino}:${st.size}`;
+    } catch (_) {
+      return 'absent';
     }
   }
 }

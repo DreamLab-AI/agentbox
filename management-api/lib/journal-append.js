@@ -5,9 +5,9 @@
  *
  * A record is one complete line written with ONE `write(2)` call on a
  * descriptor opened `O_APPEND`. POSIX makes each such call land at the end of
- * the file as a unit, so two writers cannot interleave inside a line, and the
- * management API process (the only chain-safe writer, see routes/exec-record.js)
- * is single-threaded, so its appends are already serialised.
+ * the file as a unit, so two writers cannot interleave inside a line. Keeping the CHAIN linear
+ * (read tail, hash, append) is a separate duty: the caller holds
+ * lib/journal-lock.js around it.
  *
  * Two failure modes the plain `fs.appendFileSync` left open (2026-10-12
  * incident, boundaries entries for lines 35 and 64):
