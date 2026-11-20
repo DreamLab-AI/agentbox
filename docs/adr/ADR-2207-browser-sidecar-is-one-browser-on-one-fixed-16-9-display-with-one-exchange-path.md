@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 9c1728cc0b195c9eeb297cb787891d97dd198ceb
+verified_commit: 37db0ec52d80555a0a473a080676d0fae78dbd94
 verified_paths: [browsercontainer/*, tests/browsercontainer/*, docker-compose.browsercontainer.yml, .github/workflows/browsercontainer.yml]
 owner: operator
 review_trigger: the owner's sidecar rebuild (activation), a change of window manager, display size rules or exchange path, or chrome-devtools-mcp moving past 1.13
@@ -18,6 +18,12 @@ acceptance_boundary: Browser rebuilt and running with exact-size display, non-fa
 ---
 
 # ADR-2207 — The browser sidecar is one browser on one fixed 16:9 display, with one exchange path
+
+Scoped re-verification at `37db0ec52`: documentation and CI now match the
+captured live 1.13 argument contract (`pageId`, upload `filePaths[]`). Four
+contract tests pass. A fresh background fixture uploaded an Agentbox-created
+file and saved a PNG readable in Agentbox through the shared exchange mount;
+only that fixture page was closed, and no operator page was captured.
 
 ## Scoped source and partial activation — 2026-11-20
 

@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 2ebc3859c77fce7996eb584d78a2b89c286d72c2
+verified_commit: 37db0ec52d80555a0a473a080676d0fae78dbd94
 verified_paths: [agentbox.toml, flake.nix, management-api/lib/system-manifest.js, schema/agentbox.toml.schema.json, services/agentbox-manifest/src/tui_read.rs, services/agentbox-manifest/src/tui_fields.rs, skills/browser/references/latex-diagram-workflows.md]
 owner: jjohare
 review_trigger: Re-enable local QGIS or CAD printing; change PDF comparison workflow or nixpkgs pin
@@ -19,6 +19,10 @@ acceptance_boundary: Source gates, schema/setup round-trip tests and browser ras
 ---
 
 # ADR-2200 — Keep embedded browser engines out of the default image
+
+Scoped re-verification at `37db0ec52`: browser PDF examples now pass the explicit
+page ID required by the live connector. The sidecar-first routing and package
+gates are unchanged; the captured argument-contract tests pass.
 
 
 ## Scoped source verification — 2026-11-20
