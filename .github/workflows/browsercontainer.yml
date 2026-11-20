@@ -95,3 +95,6 @@ jobs:
 
       - name: diagnostic verdict (D7)
         run: node --test tests/browsercontainer/diagnose.test.cjs
+
+      - name: Dockerfile COPY sources exist in the build context
+        run: node --test tests/browsercontainer/dockerfile-copy-sources.test.cjs
