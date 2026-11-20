@@ -136,6 +136,7 @@ def ensure_local(spec: ModelSpec, model_dir: str, token: Optional[str]) -> str:
         allow_patterns=patterns,
         local_dir=os.path.join(model_dir, spec.name),
         token=token,
+        revision=spec.revision,
     )
     return os.path.join(root, spec.subfolder) if spec.subfolder else root
 

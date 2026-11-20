@@ -31,19 +31,23 @@ class ModelSpec:
     `repo` is a Hugging Face repo id or an absolute local path; `subfolder`
     selects one checkpoint out of a repo that bundles several (the English
     `convaiinnovations/laya` repo bundles `typed-decisions` and `multilingual`).
+    `revision` is an optional Hub commit SHA (or tag) passed to the download, so
+    two identical starts fetch identical weights; unset follows the default branch.
     """
 
     name: str
     repo: str
     subfolder: Optional[str] = None
+    revision: Optional[str] = None
 
     @property
     def source(self) -> str:
-        return f"{self.repo}:{self.subfolder}" if self.subfolder else self.repo
+        base = f"{self.repo}:{self.subfolder}" if self.subfolder else self.repo
+        return f"{base}@{self.revision}" if self.revision else base
 
 
 def parse_models(raw: str) -> List[ModelSpec]:
-    """Parse `LAYA_MODELS`: `name=repo[:subfolder]` pairs, comma separated.
+    """Parse `LAYA_MODELS`: `name=repo[:subfolder][@revision]` pairs, comma separated.
 
     A bare `repo[:subfolder]` is allowed and names itself after the subfolder
     (or the repo's last path segment).
@@ -56,11 +60,22 @@ def parse_models(raw: str) -> List[ModelSpec]:
         name, _, source = chunk.partition("=")
         if not source:
             source, name = name, ""
-        repo, subfolder = _split_source(source.strip())
+        source, revision = _split_revision(source.strip())
+        repo, subfolder = _split_source(source)
         if not name:
             name = subfolder or repo.rstrip("/").split("/")[-1]
-        specs.append(ModelSpec(name=name.strip(), repo=repo, subfolder=subfolder))
+        specs.append(ModelSpec(name=name.strip(), repo=repo, subfolder=subfolder, revision=revision))
     return specs
+
+
+def _split_revision(source: str) -> Tuple[str, Optional[str]]:
+    """Split a trailing `@revision` off a Hub source; local paths never carry one."""
+    if source.startswith("/") or source.startswith("./"):
+        return source, None
+    base, sep, rev = source.rpartition("@")
+    if not sep:
+        return source, None
+    return base, rev.strip() or None
 
 
 def _split_source(source: str) -> Tuple[str, Optional[str]]:

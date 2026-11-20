@@ -29,6 +29,8 @@ services:
       # ── engine (Python) ────────────────────────────────────────────────────
       # English deployment. Both checkpoints live in one HF repo, so the two
       # entries share a single ~843 MB download each into the models volume.
+      # The default follows the repo's default branch; to pin, append `@<full commit
+      # SHA>` to each entry, as OPENJEV_MODELS does below.
       - LAYA_MODELS=${LAYA_MODELS:-laya-typed-decisions=convaiinnovations/laya:typed-decisions,laya=convaiinnovations/laya}
       - LAYA_DEFAULT_MODEL=${LAYA_DEFAULT_MODEL:-laya-typed-decisions}
       - LAYA_DEVICE=${LAYA_DEVICE:-cuda}
@@ -37,6 +39,9 @@ services:
       - LAYA_MODEL_DIR=/models
       - HF_HOME=/models/.hf
       - HF_TOKEN=${HF_TOKEN:-}
+      # Set to 1 once the weights are on the models volume: the engine then never
+      # reaches the Hub, so a moved upstream branch cannot change a restart (CD-F4).
+      - HF_HUB_OFFLINE=${LAYA_HF_HUB_OFFLINE:-0}
       # Raising the budget departs from the training distribution, so it is a
       # MEASURED operator choice (ADR-2094 addendum §4) — empty means "use the
       # checkpoint's own max_len/head_max_len", which is the honest default.

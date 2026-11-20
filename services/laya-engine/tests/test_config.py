@@ -15,6 +15,28 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
+
+def _stub_missing_heavy_deps():
+    """The package `__init__` imports the runtime, which needs torch, numpy and `laya`.
+
+    None of the tests here exercise them, so a bare interpreter gets inert stand-ins;
+    where the real modules are installed they are left alone.
+    """
+    import types
+
+    for name in ("torch", "numpy", "laya", "laya.agent", "laya.common"):
+        try:
+            __import__(name)
+        except ImportError:
+            mod = types.ModuleType(name)
+            for attr in ("QTYPES", "confidence_from_probs", "render_options", "Agent", "build_sequence",
+                         "collate_items", "serialize_state", "temp_bucket"):
+                setattr(mod, attr, None)
+            sys.modules[name] = mod
+
+
+_stub_missing_heavy_deps()
+
 from laya_engine.config import ModelSpec, Settings, parse_models  # noqa: E402
 
 
@@ -74,3 +96,32 @@ def test_explicit_overrides_are_taken(monkeypatch):
     monkeypatch.setenv("LAYA_HEAD_MAX_LEN", "512")
     s = Settings.from_env()
     assert (s.max_len_override, s.head_max_len_override) == (2048, 512)
+
+
+def test_a_revision_suffix_pins_the_checkpoint():
+    sha = "fd4f9dbcf4fde222fd43174bdd4c3b08b789e4e1"
+    specs = parse_models(f"a=convaiinnovations/laya:typed-decisions@{sha},b=convaiinnovations/laya")
+    assert specs[0].revision == sha
+    assert specs[0].repo == "convaiinnovations/laya" and specs[0].subfolder == "typed-decisions"
+    assert specs[0].source == f"convaiinnovations/laya:typed-decisions@{sha}"
+    assert specs[1].revision is None  # unpinned stays expressible; the default is the operator's choice
+
+
+def test_a_local_path_ignores_the_revision_syntax():
+    (spec,) = parse_models("x=/models/laya::typed-decisions")
+    assert spec.revision is None and spec.subfolder == "typed-decisions"
+
+
+def test_ensure_local_passes_the_revision_to_the_hub(monkeypatch, tmp_path):
+    import types
+
+    from laya_engine import runtime
+
+    seen = {}
+    hub = types.ModuleType("huggingface_hub")
+    hub.snapshot_download = lambda repo, **kw: seen.update(repo=repo, **kw) or kw["local_dir"]
+    monkeypatch.setitem(sys.modules, "huggingface_hub", hub)
+    runtime.ensure_local(ModelSpec("m", "convaiinnovations/laya", "typed-decisions", "abc123"), str(tmp_path), None)
+    assert seen["revision"] == "abc123"
+    runtime.ensure_local(ModelSpec("m", "convaiinnovations/laya"), str(tmp_path), None)
+    assert seen["revision"] is None
