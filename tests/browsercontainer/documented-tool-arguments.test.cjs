@@ -26,3 +26,10 @@ for(const file of ['browsercontainer/README.md','skills/browser/SKILL.md','skill
   assert(count>0);
  });
 }
+test('headful screenshot quick starts foreground only an owned fixture',()=>{
+ for(const file of ['browsercontainer/README.md','skills/browser/SKILL.md']){
+  const source=fs.readFileSync(file,'utf8');
+  assert.match(source,/select_page\(\{ pageId, bringToFront: true \}\)[^\n]*owned[^\n]*\n\s*take_screenshot\(/);
+ }
+ assert.match(fs.readFileSync('skills/browser/SKILL.md','utf8'),/Never\s+capture an unrelated operator tab/);
+});

@@ -86,6 +86,7 @@ relative `filePath` lands there. No `docker cp`.
 ```javascript
 const pageId = 3 // example only: use the intended ID from new_page or list_pages
 // screenshot: readable in agentbox at the same path as soon as the call returns
+select_page({ pageId, bringToFront: true }) // only an owned fixture; coordinate VNC use
 take_screenshot({ pageId, filePath: "/home/devuser/exchange/mcp/page.png", fullPage: true })
 // upload: write the file in agentbox first, then
 upload_file({ pageId, uid: "<file input uid from this page>", filePaths: ["/home/devuser/exchange/in/form.pdf"] })

@@ -78,6 +78,11 @@ Returns an accessibility tree -- structured, deterministic, no vision model need
 
 ### `take_screenshot`
 Capture viewport, full page (`fullPage: true`) or one element (`uid`); `filePath` saves instead of attaching.
+On the headful GPU sidecar, a background-page capture can stall. Bring only your
+owned test page to the front with `select_page({ pageId, bringToFront: true })`
+before capturing, then close that page to return to the operator's tab. This
+briefly changes the VNC display; coordinate if the owner is using it. Never
+capture an unrelated operator tab to work around a timeout.
 
 ### `navigate_page`
 Go to a URL (`type: "url"`), or back/forward/reload. `new_page` / `select_page` / `list_pages` manage tabs.
@@ -97,6 +102,7 @@ Read browser console output.
 new_page({ url: "https://example.com", background: true })
 const pageId = 3 // example only: replace with the new page's returned ID
 take_snapshot({ pageId })
+select_page({ pageId, bringToFront: true }) // owned fixture only; briefly changes VNC
 take_screenshot({ pageId, filePath: "/home/devuser/exchange/mcp/page.png", fullPage: true })
 upload_file({ pageId, uid: "<file input uid from this page>", filePaths: ["/home/devuser/exchange/in/report.pdf"] })
 ```
