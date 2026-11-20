@@ -70,6 +70,7 @@ COPY --chown=devuser:devuser package.json /opt/browsercontainer/package.json
 COPY --chown=devuser:devuser package-lock.json /opt/browsercontainer/package-lock.json
 RUN cd /opt/browsercontainer && npm ci --omit=dev && chown -R devuser:devuser node_modules
 COPY --chown=devuser:devuser server.js /opt/browsercontainer/server.js
+COPY --chown=devuser:devuser cdp.js /opt/browsercontainer/cdp.js
 COPY --chown=devuser:devuser launch-chromium.sh /opt/browsercontainer/launch-chromium.sh
 COPY --chown=devuser:devuser cdp-diagnose.js /opt/browsercontainer/cdp-diagnose.js
 COPY --chown=devuser:devuser podkey-ctl.js /opt/browsercontainer/podkey-ctl.js

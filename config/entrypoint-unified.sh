@@ -2246,7 +2246,9 @@ fi
 # Only add if the sidecar is on the network and .mcp.json exists to patch.
 _BROWSER_MCP_URL="http://browsercontainer:8931/sse"
 if [ -f "$_MCP_JSON" ] && ! grep -q "browser-gpu" "$_MCP_JSON" 2>/dev/null; then
-  if curl -fsS --max-time 3 "http://browsercontainer:8931/health" >/dev/null 2>&1; then
+  # Reachable = the bridge answers: 200, or 503 while Chrome restarts (ADR-2207 D5).
+  _BROWSER_HEALTH_CODE="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 3 "http://browsercontainer:8931/health" 2>/dev/null || true)"
+  if [ "$_BROWSER_HEALTH_CODE" = "200" ] || [ "$_BROWSER_HEALTH_CODE" = "503" ]; then
     # Patch the browser-gpu SSE server into the existing .mcp.json.
     agentbox-manifest mcp-set-server --file "$_MCP_JSON" --name browser-gpu <<JSON 2>/dev/null && echo "  [mcp] Added browser-gpu → $_BROWSER_MCP_URL" || true
 {"type": "sse", "url": "$_BROWSER_MCP_URL"}

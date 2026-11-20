@@ -1497,12 +1497,16 @@ cmd_browsercontainer() {
             docker compose "${SIDECAR_COMPOSE_ARGS[@]}" logs -f --tail 100
             ;;
         health)
-            local response
-            response=$(curl -sf http://localhost:8931/health 2>/dev/null) || {
-                echo -e "${RED}browsercontainer not responding at http://localhost:8931/health${NC}"
-                exit 1
-            }
-            echo -e "${GREEN}browsercontainer healthy:${NC} ${response}"
+            # ADR-2207 D5: 200 = healthy, 503 = bridge up but Chrome unreachable.
+            local response code
+            response=$(curl -s -w '\n%{http_code}' --max-time 5 http://localhost:8931/health 2>/dev/null) || response=$'\n000'
+            code="${response##*$'\n'}"
+            response="${response%$'\n'*}"
+            case "$code" in
+                200) echo -e "${GREEN}browsercontainer healthy:${NC} ${response}" ;;
+                503) echo -e "${YELLOW}browsercontainer up, Chrome unreachable:${NC} ${response}"; exit 1 ;;
+                *)   echo -e "${RED}browsercontainer not responding at http://localhost:8931/health${NC}"; exit 1 ;;
+            esac
             ;;
         status)
             docker compose "${SIDECAR_COMPOSE_ARGS[@]}" ps
