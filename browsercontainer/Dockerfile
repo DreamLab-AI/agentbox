@@ -11,6 +11,7 @@ RUN pacman -Syu --noconfirm && pacman -S --noconfirm --needed \
         xorg-server-xvfb \
         x11vnc \
         openbox \
+        ffmpeg \
         supervisor \
         vulkan-tools \
         vulkan-icd-loader \
@@ -75,11 +76,13 @@ COPY --chown=devuser:devuser podkey-ctl.js /opt/browsercontainer/podkey-ctl.js
 # ADR-2207 D1: one display definition, Xvfb wrapper, view-state reset, window manager config
 COPY --chown=devuser:devuser display-env.sh /opt/browsercontainer/display-env.sh
 COPY --chown=devuser:devuser display.js /opt/browsercontainer/display.js
-COPY --chown=devuser:devuser start-xvfb.sh /opt/browsercontainer/start-xvfb.sh
+COPY --chown=devuser:devuser start-xvfb.sh /opt/browsercontainer/start-xvfb.sh /opt/browsercontainer/record.sh
 COPY --chown=devuser:devuser reset-view-state.js /opt/browsercontainer/reset-view-state.js
 COPY --chown=devuser:devuser openbox-rc.xml /opt/browsercontainer/openbox-rc.xml
 # ADR-2207 D3: DevTools proxy on 9223 (replaces the socat byte pipe; socat stays installed)
 COPY --chown=devuser:devuser cdp-proxy.js /opt/browsercontainer/cdp-proxy.js
+# ADR-2207 D4: display recording into <exchange>/recordings
+COPY --chown=devuser:devuser record.sh /opt/browsercontainer/record.sh
 
 # Podkey (W9, owner rule 2026-10-03): the published `podkey-extension` CI artefact
 # of JavaScriptSolidServer/podkey, named exactly by podkey.pin. The zip is fetched
@@ -99,7 +102,7 @@ RUN install -D -m 0644 /etc/opt/chrome/policies/managed/podkey-only.json /etc/ch
 
 COPY supervisord.conf /etc/supervisord.conf
 COPY --chown=devuser:devuser healthcheck.sh /opt/browsercontainer/healthcheck.sh
-RUN chmod +x /opt/browsercontainer/healthcheck.sh /opt/browsercontainer/launch-chromium.sh /opt/browsercontainer/start-xvfb.sh
+RUN chmod +x /opt/browsercontainer/healthcheck.sh /opt/browsercontainer/launch-chromium.sh /opt/browsercontainer/start-xvfb.sh /opt/browsercontainer/record.sh
 
 # 5903: VNC  |  8931: MCP SSE  |  9222: Chrome CDP (internal)  |  9223: CDP proxy, cdp-proxy.js (external)
 EXPOSE 5903 8931 9222 9223
