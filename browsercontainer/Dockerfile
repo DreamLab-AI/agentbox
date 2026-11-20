@@ -64,7 +64,7 @@ RUN mkdir -p /opt/browsercontainer /tmp/xdg-runtime /tmp/chromium-crashes /tmp/b
     && chown -R devuser:devuser /opt/browsercontainer /tmp/xdg-runtime /tmp/chromium-crashes /tmp/browsercontainer /home/devuser/chrome-profile /home/devuser/exchange
 
 # Pin the connector; the runtime uses Chrome Beta from AUR.
-RUN npm install -g chrome-devtools-mcp@1.12.0 && rm -rf /root/.npm
+RUN npm install -g chrome-devtools-mcp@1.13.0 && rm -rf /root/.npm
 
 COPY --chown=devuser:devuser package.json /opt/browsercontainer/package.json
 COPY --chown=devuser:devuser package-lock.json /opt/browsercontainer/package-lock.json
@@ -100,6 +100,12 @@ RUN bash /opt/browsercontainer/scripts/fetch-podkey.sh install --pin /opt/browse
 # above; podkey-ctl.js `id`). Branded Chrome reads /etc/opt/chrome, Chromium /etc/chromium.
 COPY policies/podkey-only.json /etc/opt/chrome/policies/managed/podkey-only.json
 RUN install -D -m 0644 /etc/opt/chrome/policies/managed/podkey-only.json /etc/chromium/policies/managed/podkey-only.json
+
+# ADR-2207 D6: record what this build resolved (served in /health). Fail-open: a
+# failing probe records "unknown" and never fails the build.
+COPY --chown=devuser:devuser scripts/write-versions.sh /opt/browsercontainer/scripts/write-versions.sh
+RUN bash /opt/browsercontainer/scripts/write-versions.sh /opt/browsercontainer/versions.json \
+    && chown devuser:devuser /opt/browsercontainer/versions.json
 
 COPY supervisord.conf /etc/supervisord.conf
 COPY --chown=devuser:devuser healthcheck.sh /opt/browsercontainer/healthcheck.sh
