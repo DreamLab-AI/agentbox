@@ -21,6 +21,11 @@ echo 'T-TEST GROUPS=grp(1 2) /VARIABLES=score.' | statcraft-run run data.csv -
 Output is one JSON document: `{"dataset": {"cases", "variables"}, "results": [{"command",
 "line", "result"}]}`. Exit status is non-zero on any load, parse or execution error.
 
+
+## Precision (fixed 20 Nov 2026)
+
+StatCraft up to v0.4.2 computed on the print format, not the stored value: numeric CSV columns get a two-decimal format, so 0.123456 was analysed as 0.12. The agentbox build carries a patch (`lib/statcraft/patches/`, upstream draft PR kobaltgit/StatCraft#5) that makes procedures read stored values; with it, results match numpy to about 1e-15. On an older binary, round inputs to two decimals before comparing, or treat its results as approximate.
+
 ## Discover what exists
 
 - `statcraft-run commands` — the 55 engine commands with their parameter schemas.

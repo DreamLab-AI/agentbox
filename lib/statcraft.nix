@@ -14,11 +14,13 @@
 # The build trims upstream's workspace to the engine crates (core, io, algo,
 # syntax) plus the runner (lib/statcraft/workspace.Cargo.toml), so no GUI crate
 # (egui, wgpu) is vendored or compiled. Upstream gitignores Cargo.lock; the
-# vendored lockfile is the one the runner was built and verified with: 86
-# crates.io packages, no git sources, no native libraries.
+# vendored lockfile is the one the runner was built and verified with: 81
+# crates.io packages, no git sources, no native libraries (v0.4.2, 20 Nov 2026).
 #
 # To bump: move `rev`, refresh `hash` (NAR sha256 of the commit tarball:
-# nix-prefetch-url --unpack, then `nix hash convert --to sri`), rebuild the
+# nix-prefetch-url --unpack, then `nix hash convert --to sri`; without nix, the
+# NAR serialisation of the unpacked tarball hashed in Python reproduces it), check
+# `patches` still apply (drop any the release contains), rebuild the
 # trimmed workspace with `cargo build --locked -p statcraft_run`, and copy its
 # Cargo.lock to lib/lockfiles/statcraft-<first 8 of rev>.Cargo.lock.
 #
@@ -27,14 +29,14 @@
 { lib, pkgs }:
 
 let
-  version = "0.3.0";
-  rev = "1d6902f76fe11fc873dc3b5b363115b70a93f756";
+  version = "0.4.2";
+  rev = "eca1f82f0b6b80cdf4dab466874f555f4e330b6f";   # tag v0.4.2
 
   src = pkgs.fetchFromGitHub {
     owner = "kobaltgit";
     repo  = "StatCraft";
     inherit rev;
-    hash  = "sha256-DJ2oX8kr4Q8e0kHoCahs2irv1+x90HULnOqLIYqnnqw=";
+    hash  = "sha256-2hzig/w9Tq2lY5wRakZY79e1VPEMpdINVod8oASyCeQ=";
   };
 
 in
@@ -43,6 +45,12 @@ pkgs.rustPlatform.buildRustPackage {
   inherit version src;
 
   cargoLock.lockFile = ./lockfiles/statcraft-${builtins.substring 0 8 rev}.Cargo.lock;
+
+  # Procedures computed on the print format, not the stored value: numeric CSV columns get a
+  # two-decimal format, so 0.123456 was analysed as 0.12. Fixed upstream in a draft PR
+  # (kobaltgit/StatCraft, branch fix/numeric-cells-full-precision); drop this patch when the
+  # pinned release contains it. Found 20 Nov 2026 against a numpy reference.
+  patches = [ ./statcraft/patches/0001-compute-on-stored-values-not-print-format.patch ];
 
   # Trim the workspace to the engine crates and add the runner. Runs before
   # cargoSetupHook compares ./Cargo.lock with the vendored one.
