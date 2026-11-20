@@ -1089,8 +1089,14 @@ if (CONFIG_PENDING) {
   setInterval(() => {
     // Probe READABILITY, not existence: an unreadable file would otherwise make
     // the proxy exit every poll, inside startsecs, and push supervisord to FATAL.
+    // It must also PARSE: restarting on a half-written or non-file path would
+    // exit 1 on the next start and count against supervisord's startretries.
     let readable = false;
-    try { accessSync(CONFIG_FILE, fsConstants.R_OK); readable = true; } catch { /* still pending */ }
+    try {
+      accessSync(CONFIG_FILE, fsConstants.R_OK);
+      JSON.parse(readFileSync(CONFIG_FILE, 'utf-8'));
+      readable = true;
+    } catch { /* still pending */ }
     if (readable) {
       log('info', 'nip98 config file appeared; exiting for a supervised restart', { file: CONFIG_FILE });
       process.exit(0);

@@ -93,4 +93,30 @@ describe('events journal :: cross-process lock', () => {
     expect(r.ok).toBe(true);
     expect(r.checked).toBe(2);
   });
+  test('a holder whose lock was taken over while it stalled does not append', async () => {
+    const a = new LocalJsonlEventsAdapter({ eventsDir: dir });
+    await a.dispatch({ kind: 'k1' });
+    const lockPath = path.join(dir, '.journal.lock');
+    // Stand in for the stall: between building the record and appending it,
+    // another process has taken the lock over (a different token).
+    const build = a._build.bind(a);
+    const spy = jest.spyOn(a, '_build').mockImplementationOnce((event) => {
+      const rec = build(event);
+      fs.writeFileSync(lockPath, JSON.stringify({ pid: 2147483646, token: 'someone-else', ts: Date.now() }));
+      return rec;
+    });
+    const stderr = jest.spyOn(process.stderr, 'write').mockImplementation(() => true);
+    await a.dispatch({ kind: 'must-not-land' });
+    const wrote = stderr.mock.calls.map((c) => String(c[0])).join('');
+    spy.mockRestore();
+    stderr.mockRestore();
+    expect(wrote).toMatch(/lost .*journal\.lock/);
+    expect(fs.readFileSync(today(), 'utf8').trim().split('\n')).toHaveLength(1);
+    // The other holder's lock is not ours to remove; it is dead, so the next
+    // writer takes it over and the chain continues from the real tail.
+    await a.dispatch({ kind: 'k2' });
+    const r = auditChain.verifyFiles([today()]);
+    expect(r.ok).toBe(true);
+    expect(r.checked).toBe(2);
+  });
 });

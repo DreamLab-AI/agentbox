@@ -136,10 +136,12 @@ function release(lockPath, token) {
 
 /**
  * Run `fn` while holding the journal lock for `dir`. `fn` must be synchronous.
+ * It receives `{ assertHeld }`; call that immediately before writing, so a holder
+ * that stalled and was taken over throws instead of appending from an old head.
  *
  * @template T
  * @param {string} dir - the events directory (created if missing)
- * @param {() => T} fn
+ * @param {(lock: {assertHeld: () => void}) => T} fn
  * @param {{timeoutMs?: number}} [opts]
  * @returns {T}
  * @throws {Error} when the lock is not obtained in time, or whatever `fn` throws
@@ -148,8 +150,17 @@ function withLock(dir, fn, opts = {}) {
   fs.mkdirSync(dir, { recursive: true });
   const lockPath = path.join(dir, LOCK_NAME);
   const token = acquire(lockPath, opts.timeoutMs || DEFAULT_TIMEOUT_MS);
+  // A holder stalled past MAX_HOLD_MS (SIGSTOP, a paused VM) can be taken over
+  // while it is still alive. `assertHeld` lets it notice before it writes.
+  const assertHeld = () => {
+    let meta = null;
+    try { meta = JSON.parse(readRaw(lockPath) || ''); } catch (_) { /* gone or torn */ }
+    if (!meta || meta.token !== token) {
+      throw new Error(`journal-lock: lost ${lockPath} while holding it (taken over after a stall)`);
+    }
+  };
   try {
-    return fn();
+    return fn({ assertHeld });
   } finally {
     release(lockPath, token);
   }

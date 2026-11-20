@@ -136,14 +136,16 @@ class LocalJsonlEventsAdapter extends BaseAdapter {
     }
     let record = null;
     try {
-      journalLock.withLock(this._dir, () => {
+      journalLock.withLock(this._dir, (lock) => {
         const file = this._filePath();
         const sig = this._signature(file);
         if (!this._chain || !this._lastWrite || this._lastWrite.file !== file || this._lastWrite.sig !== sig) {
           this._initChain(); // another process (or a rotation) moved the tail
         }
-        record = this._build(event);
-        journalAppend.appendLine(file, JSON.stringify(record) + '\n');
+        const built = this._build(event);
+        lock.assertHeld(); // a stalled holder that was taken over must not append
+        journalAppend.appendLine(file, JSON.stringify(built) + '\n');
+        record = built;
         this._chain = { prevHash: record.hash, seq: record.seq + 1 };
         this._lastWrite = { file, sig: this._signature(file) };
       });
