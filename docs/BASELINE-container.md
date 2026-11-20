@@ -1,10 +1,11 @@
 ---
 title: Agentbox Container Baseline
 doc_id: AB-BASELINE
-version: 0.5.19
+version: 0.5.20
 status: draft-for-ratification
 verified_commit: 
 changelog:
+  - "0.5.20 (2026-11-20): ADR-2208 adds pinned offline artex-defense to the existing MetaHarness rebuild gate. Ruflo already includes aidefence; no second gateway, interception hook, listener or state adapter is enabled. Local learned-memory injection remains disabled and new retention features default off."
   - "0.5.19 (2026-11-20): ADR-2207 (accepted, complete, inactive until the sidecar rebuild). browsercontainer is one Chrome on one fixed 16:9 display (BROWSER_DISPLAY_SIZE, openbox); the gui-tools-exchange volume (pinned name agentbox_gui-tools-exchange) is also mounted in agentbox at /home/devuser/exchange, the sidecar's path, with /home/devuser/gui-tools kept; DevTools answers by name on 9223 behind a Host allow-list; the bridge gains /display and /record (POSTs refuse any Origin) and /health returns 503 when Chrome is down; the boot-time browser-gpu registration accepts 200 or 503. No new published port or supervised agentbox program."
   - "0.5.18 (2026-11-18): ADR-2203 (proposed, partial, staged). New read-only mount ./config/systemscape:/etc/agentbox/systemscape (tracked example + gitignored local/hosts.toml); the entrypoint links local/hosts.toml to ~/.config/systemscape/hosts.toml when present. New invariant below. Inert until the SystemScape pin moves to 0.4.0; no new port, adapter, gate or supervised program."
   - "0.5.17 (2026-11-11): ADR-2193 (accepted, complete, staged for rebuild). PID 1 starts through `supervisordLauncher` (flake.nix), which runs the supervisor module with pythonRuntimeEnv's interpreter. nixpkgs' `supervisord` wrapper prepended the bare interpreter to PATH and every supervised process inherited it, so `python3` in agent shells had no site-packages. New invariant: in a supervised process the first python3 on PATH is pythonRuntimeEnv. The entrypoint exec line is unchanged."
@@ -186,6 +187,11 @@ Not supervised inside the box — external compose services on `visionclaw_netwo
 - **xr-runtime** — Godot 4 XR consumer, downstream of the box (referenced by role; not a supervised program here).
 
 ### Manifest gates + system-manifest catalogue
+
+`[toolchains].metaharness` also includes the pinned offline `artex-defense`
+evidence-replay CLI (ADR-2208). It writes operator-requested receipts, never
+applies a real quarantine, and starts no gateway or interception service.
+Ruflo's included aidefence library does not by itself screen every ingress.
 
 `GET /v1/system` (ADR-039) serves the live view. `management-api/lib/system-manifest.js` holds a hand-authored `CATALOGUE` of 79 entries — 13 surfaces + 66 modules (ADR-2039; recounted 2026-09-30); the *catalogue* is documentation-as-data but the *state* of each entry is introspected from the parsed `agentbox.toml` at request time (`stateOf`, `:232`), so state can never drift from the manifest even if the catalogue does. Each entry carries a `gate` (dotted toml path, section gates resolve via `.enabled`), a `service` (supervisor program / sidecar), and an honest `apply_class`. The five adapter slots are emitted as `core` layer with their resolved `impl` + `contract_version` (`:267`).
 
