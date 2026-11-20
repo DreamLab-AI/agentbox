@@ -21,9 +21,16 @@ if ! curl -fsS --max-time 5 http://127.0.0.1:9222/json/version >/dev/null 2>&1; 
     FAIL=1
 fi
 
-# Check socat CDP proxy is listening on port 9223
+# Check the CDP proxy (cdp-proxy.js, ADR-2207 D3) is listening on port 9223
 if ! ss -tlnp 2>/dev/null | grep -q ':9223 '; then
-    echo "FAIL: socat CDP proxy not listening on port 9223"
+    echo "FAIL: CDP proxy (cdp-proxy.js) not listening on port 9223"
+    FAIL=1
+fi
+
+# DevTools by name: Chrome itself refuses this Host; the proxy must answer JSON
+if ! curl -fsS --max-time 5 -H 'Host: browsercontainer:9223' http://127.0.0.1:9223/json/version 2>/dev/null \
+        | grep -q '"webSocketDebuggerUrl"'; then
+    echo "FAIL: CDP proxy does not answer by name (Host: browsercontainer:9223)"
     FAIL=1
 fi
 

@@ -54,8 +54,9 @@ services:
       - "${AGENTBOX_SIDECAR_BIND:-127.0.0.1}:5903:5903"
       # MCP SSE: chrome-devtools-mcp bridge (agents connect here)
       - "${AGENTBOX_SIDECAR_BIND:-127.0.0.1}:8931:8931"
-      # CDP proxy: host:9222 → socat:9223 → Chrome:9222
-      # socat rebinds so CDP /json/list returns connectable ws:// URLs
+      # CDP proxy: host:9222 → cdp-proxy.js:9223 → Chrome:9222 (ADR-2207 D3).
+      # Accepts only IP/localhost/CDP_PROXY_ALLOWED_HOSTS Host headers (Chrome's
+      # DNS-rebinding defence, kept) and rewrites ws:// URLs to the caller's host.
       - "${AGENTBOX_SIDECAR_BIND:-127.0.0.1}:9222:9223"
     networks:
       - visionclaw
