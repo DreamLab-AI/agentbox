@@ -30,12 +30,18 @@ and `browser-automation` skills point here rather than restating it.
 
 ```
 MCP SSE:  http://browsercontainer:8931/sse   (chrome-devtools-mcp)
-CDP:      browsercontainer:9223              (raw Chrome DevTools Protocol, socat proxy, in-network)
+CDP:      http://browsercontainer:9223       (DevTools by name, in-network; cdp-proxy.js)
 VNC:      localhost:5903                     (visual debugging, Display :2)
+Files:    /home/devuser/exchange             (same path in agentbox and the sidecar)
 ```
 
-9222 is the host-mapped port (socat rebinds Chrome's localhost-only :9222 to :9223
-in-network); use it only from the host, never from inside agentbox.
+9222 is the host-mapped port (host `127.0.0.1:9222` → proxy `:9223` → Chrome);
+use it only from the host, never from inside agentbox. The proxy accepts only IP,
+`localhost` and `browsercontainer` as Host (Chrome's DNS-rebinding defence), and
+returns `ws://` URLs for the host you called it by (ADR-2207).
+
+Display: one Chrome window on one fixed 16:9 screen, 1920x1080 by default
+(`BROWSER_DISPLAY_SIZE`), always maximised and at 100 % zoom on start.
 
 Auto-registered at boot as `browser-gpu` in `.mcp.json`. Manual registration:
 
@@ -87,14 +93,38 @@ Read browser console output.
 ```javascript
 navigate_page({ type: "url", url: "https://example.com" })
 take_snapshot()
-take_screenshot({ filePath: "page.png", fullPage: true })
+take_screenshot({ filePath: "/home/devuser/exchange/mcp/page.png", fullPage: true })
+upload_file({ uid: "<file input uid>", filePath: "/home/devuser/exchange/in/report.pdf" })
 ```
+
+## Passing files
+
+`/home/devuser/exchange` is one volume at the same absolute path on both sides:
+write a file there in agentbox and pass that path to `upload_file`; a screenshot
+saved there is readable in agentbox at once. The MCP child runs with that directory
+as its cwd and temp dir, so a relative `filePath` lands there too. No `docker cp`.
+`/home/devuser/gui-tools` in agentbox is the same volume under its older name.
+
+## Recording and fullscreen
+
+```bash
+curl -s -X POST http://browsercontainer:8931/record/start -d '{"name":"demo"}'
+curl -s -X POST http://browsercontainer:8931/record/stop    # file is finalised on return
+curl -s http://browsercontainer:8931/record                  # status and last path
+curl -s -X POST http://browsercontainer:8931/display/fullscreen -d '{"on":true}'
+curl -s http://browsercontainer:8931/display                 # size, window bounds and state
+```
+
+Recordings land in `/home/devuser/exchange/recordings/<name>-<UTC>.mkv` (one at a
+time, at most 1 h). The POST endpoints refuse requests that carry an `Origin`
+header, so call them from a shell, not from a web page.
 
 ## Sidecar Management
 
 ```bash
 agentbox.sh browsercontainer up        # start
-agentbox.sh browsercontainer health    # check all 5 services
+agentbox.sh browsercontainer health    # 200 healthy, 503 bridge up but Chrome down
+agentbox.sh browsercontainer diagnose  # display size, WebGPU adapter + compute round trip
 agentbox.sh browsercontainer cdp       # list CDP tabs
 agentbox.sh browsercontainer shell     # shell into container
 agentbox.sh browsercontainer rebuild   # full rebuild

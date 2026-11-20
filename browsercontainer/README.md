@@ -1,4 +1,4 @@
-# browsercontainer — headless Chrome with CDP + MCP bridge
+# browsercontainer — GPU Chrome with CDP + MCP bridge
 
 Hardware-accelerated Chrome instance for browser automation, testing, and AI agent interaction via chrome-devtools-mcp.
 
@@ -28,23 +28,16 @@ Agentbox's browser-use instructions are owned by `config/instructions/workspace.
 ┌──────────────────────────────────────────────────────────────┐
 │  browsercontainer (Docker, visionclaw_network)               │
 │                                                              │
-│  ┌──────────┐  ┌─────────────────────────────────┐           │
-│  │  Xvfb    │  │  Chrome Beta 149+               │           │
-│  │  :2      │──│  Vulkan/ANGLE hardware accel     │           │
-│  │  1920x   │  │  CDP on 127.0.0.1:9222          │           │
-│  │  1080    │  │  --unsafely-treat-insecure-...   │           │
-│  └──────────┘  └───────────┬─────────────────────┘           │
-│       │                    │                                  │
-│  ┌────┴─────┐  ┌───────────┴─────────────────────┐           │
-│  │ x11vnc   │  │  socat CDP proxy                │           │
-│  │ :5903    │  │  0.0.0.0:9223 → 127.0.0.1:9222  │           │
-│  └──────────┘  └─────────────────────────────────┘           │
+│  Xvfb :2 (BROWSER_DISPLAY_SIZE, 16:9) ── openbox (maximise)  │
+│     │                                                        │
+│     ├── Chrome Beta 149+  Vulkan/ANGLE, CDP 127.0.0.1:9222   │
+│     ├── x11vnc :5903      view only the one display          │
+│     └── record.sh         ffmpeg x11grab → exchange          │
 │                                                              │
-│  ┌───────────────────────────────────────────────┐           │
-│  │  MCP SSE bridge (server.js)                   │           │
-│  │  spawns chrome-devtools-mcp per session        │           │
-│  │  0.0.0.0:8931                                  │           │
-│  └───────────────────────────────────────────────┘           │
+│  cdp-proxy.js 0.0.0.0:9223 → 127.0.0.1:9222 (Host allow-list)│
+│  server.js    0.0.0.0:8931 MCP SSE, /health /display /record │
+│               spawns chrome-devtools-mcp per session,        │
+│               cwd + TMPDIR = /home/devuser/exchange          │
 └──────────────────────────────────────────────────────────────┘
 ```
 
@@ -55,13 +48,91 @@ Agentbox's browser-use instructions are owned by `config/instructions/workspace.
 | 5903 | x11vnc | VNC | View Chrome desktop (debugging) |
 | 8931 | server.js | HTTP/SSE | MCP bridge — agents connect here |
 | 9222 | Chrome | HTTP/WS | CDP (internal, localhost only) |
-| 9223 | socat | TCP | CDP proxy (exposed as host:9222) |
+| 9223 | cdp-proxy.js | HTTP/WS | CDP proxy (exposed as host:9222) |
 
-**CDP proxy mapping**: host `:9222` → container socat `:9223` → Chrome `:9222`.
+**CDP proxy mapping**: host `:9222` → container cdp-proxy.js `:9223` → Chrome `:9222`.
 
 **Host publish address (`AGENTBOX_SIDECAR_BIND`)**: these ports have no authentication, so the sidecar compose files (`docker-compose.browsercontainer.yml`, `docker-compose.gui-tools.yml`, `docker-compose.xr-runtime.yml`) publish them on `${AGENTBOX_SIDECAR_BIND:-127.0.0.1}`. The default is loopback. To let a second machine reach them, export one LAN address (for example `AGENTBOX_SIDECAR_BIND=192.168.2.10`) before `docker compose up`; that moves every sidecar port together. `0.0.0.0` publishes on every interface and should only be used on a trusted network. `scripts/ci/check-ports-loopback.sh` accepts this variable only in those three files and only with the loopback default. The in-container listeners stay on `0.0.0.0` because the agentbox proxy reaches them across the docker network.
-socat rebinds the listening address so that `/json/list` returns `ws://` URLs
-that external clients can connect to directly.
+
+## Display (ADR-2207)
+
+One Chrome window on one display, locked 16:9. `BROWSER_DISPLAY_SIZE` (compose,
+default `1920x1080`) is the only definition: `display-env.sh` (and `display.js`)
+accept `WxH` with `W*9 == H*16` and W between 1280 and 3840, and refuse anything
+else before Xvfb or Chrome starts. Xvfb, Chrome's window flags
+(`--window-position=0,0 --window-size=W,H --start-maximized
+--force-device-scale-factor=1`) and the recorder all read it. openbox maximises
+and undecorates every normal window, keeps one desktop and has no key or mouse
+bindings, so nothing over VNC can move or resize the browser. Without a window
+manager Chrome clamps itself one pixel under the screen (1919x1079, measured) and
+cannot go fullscreen. Every start removes saved zoom levels and window placement
+from the profile's `Default/Preferences` (nothing else), so the browser always
+opens at 100 % in the full window. x11vnc stays on 5903 with no client-driven
+resizing. Changing the size means recreating the sidecar.
+
+`GET /display` reports the configured size and the window's bounds and state;
+`POST /display/fullscreen {"on":true}` gives the page the whole screen for a
+recording (`{"on":false}` returns to maximised). The tab strip stays visible in
+normal use.
+
+## Passing files (ADR-2207)
+
+The `gui-tools-exchange` volume (pinned name `agentbox_gui-tools-exchange`) is
+mounted at **`/home/devuser/exchange` in agentbox and in this sidecar**, the same
+absolute path on both sides, so a path never needs translating. Agentbox also keeps
+it at `/home/devuser/gui-tools`, the name older skills use. The MCP child runs with
+that directory as its cwd and `TMPDIR`; chrome-devtools-mcp accepts paths under its
+temp directory, so any path in the exchange is a valid upload or output path, and a
+relative `filePath` lands there. No `docker cp`.
+
+```javascript
+// screenshot: readable in agentbox at the same path as soon as the call returns
+take_screenshot({ filePath: "/home/devuser/exchange/mcp/page.png", fullPage: true })
+// upload: write the file in agentbox first, then
+upload_file({ uid: "<file input uid>", filePath: "/home/devuser/exchange/in/form.pdf" })
+```
+
+`mcp/` and `recordings/` are created on first use; nothing in the volume is ever
+deleted by the sidecar. If the exchange is missing or read-only the bridge logs one
+warning and the connector falls back to its own temp directory (then only
+`docker cp` reaches those files).
+
+## DevTools by name (ADR-2207)
+
+Chrome's DevTools endpoint refuses any `Host` that is not an IP or `localhost`
+("Host header is specified and is not an IP address or localhost"); that check is
+its DNS-rebinding defence. `cdp-proxy.js` on 9223 forwards with
+`Host: 127.0.0.1:9222`, rewrites `webSocketDebuggerUrl` and `devtoolsFrontendUrl`
+in `/json*` responses to the host you used, and pipes WebSocket upgrades through.
+It keeps the defence instead of removing it: only IP literals, `localhost` and
+`CDP_PROXY_ALLOWED_HOSTS` (default `browsercontainer`) are accepted, anything else
+gets 403 before Chrome is contacted. So:
+
+```bash
+curl -s http://browsercontainer:9223/json/version   # from agentbox, by name
+curl -s http://localhost:9222/json/list             # from the host
+```
+
+(Until this rebuild the proxy was a socat byte pipe, which did not rewrite `Host`,
+so the by-name form failed and consumers had to resolve the container IP first.)
+
+## Recording (ADR-2207)
+
+```bash
+curl -s -X POST http://browsercontainer:8931/record/start -d '{"name":"demo"}'
+curl -s http://browsercontainer:8931/record
+curl -s -X POST http://browsercontainer:8931/record/stop    # returns once the file is finalised
+```
+
+`record.sh` (also usable inside the sidecar) records `:2` at the display size, 30 fps,
+`libx264 -preset ultrafast -crf 20 -pix_fmt yuv420p` (override with
+`RECORD_ENCODER_ARGS`), to `/home/devuser/exchange/recordings/<name>-<UTC>.mkv`.
+One recording at a time, at most `RECORD_MAX_SECONDS` (default 3600) each; names are
+reduced to `[A-Za-z0-9._-]`. The three POST endpoints (`/display/fullscreen`,
+`/record/start`, `/record/stop`) refuse any request carrying an `Origin` header and
+send no CORS headers: this port is published on the host's loopback, and a web page
+must not be able to drive them. Agents and curl send no `Origin`. `/sse` and
+`/messages` keep `Access-Control-Allow-Origin: *` for now (see ADR-2207).
 
 ## Usage
 
@@ -75,8 +146,8 @@ agentbox.sh browsercontainer health
 # View CDP tabs
 agentbox.sh browsercontainer cdp
 
-# Run diagnostic against a target URL
-docker exec browsercontainer node /opt/browsercontainer/cdp-diagnose.js http://the model host:3001
+# Display size + WebGPU check (exit 1 on failure)
+agentbox.sh browsercontainer diagnose
 
 # VNC into the desktop
 open vnc://localhost:5903
@@ -105,8 +176,8 @@ A changed list takes effect when this sidecar is recreated, which locks Podkey
 until the owner unlocks it again; until then, forward the port to `localhost`
 inside the sidecar (`socat TCP-LISTEN:8795,bind=127.0.0.1,fork TCP:agentbox:8795`).
 
-The `launch-chromium.sh` script expands these into individual
-`--unsafely-treat-insecure-origin-as-secure=<origin>` flags. Combined with
+The `launch-chromium.sh` script passes them as one comma-separated
+`--unsafely-treat-insecure-origin-as-secure=<origins>` flag, combined with
 `--test-type` to suppress the warning banner.
 
 For `SharedArrayBuffer` to work, the target page must also serve:
@@ -118,29 +189,37 @@ VisionClaw's nginx.dev.conf adds these headers.
 ## Rendering
 
 Both **WebGPU** and **WebGL** are hardware-accelerated via Vulkan/ANGLE on the
-NVIDIA RTX 6000. Chrome is launched with `--enable-features=WebGPU` and
-`--enable-unsafe-webgpu` so that WebGPU works on both HTTPS and HTTP origins.
-VisionClaw currently uses WebGL (Three.js / React Three Fiber).
+operator-selected NVIDIA GPU (measured 2026-11-20: Chrome 151 beta, adapter
+nvidia/ampere, not a fallback adapter, compute round trip working). Chrome is
+launched with `--enable-features=WebGPU` and `--enable-unsafe-webgpu` so that
+WebGPU works on both HTTPS and HTTP origins.
 GPU passthrough is not strictly required — Chrome falls back to software
 rendering without it. The healthcheck treats missing GPU as a warning, not a failure.
 
-## CDP diagnostics
+## Health and diagnostics
 
-The built-in `cdp-diagnose.js` script navigates Chrome to a target URL,
-waits for it to load, then reports:
+`GET /health` answers 200 with `status: ok`, the configured `display`,
+`connectorVersion`, `chromeVersion` and `versions` (what the build resolved:
+Chrome beta, Chromium, chrome-devtools-mcp, node, ffmpeg, openbox, from
+`/opt/browsercontainer/versions.json`). It answers **503** with `status: degraded`
+when Chrome is unreachable (it used to answer 200). `healthcheck.sh` also probes
+DevTools by name (`Host: browsercontainer:9223`).
 
-- Page state (readyState, isSecureContext, crossOriginIsolated, SAB availability)
-- WebSocket connections
-- Console messages and errors
-- Runtime.evaluate latency (detects main thread freezes)
-- Screenshot saved to `/tmp/visionclaw-diagnose.png`
+`cdp-diagnose.js` (`agentbox.sh browsercontainer diagnose`) checks, in a fresh
+background tab on the bridge's loopback URL that it closes again (no open tab is
+navigated):
+
+- the browser window's bounds equal the configured display at 0,0;
+- WebGPU: an adapter that is not a fallback adapter, and a compute shader that
+  doubles 1024 floats with an exact read-back;
+- `window.nostr` presence, for information only (the sidecar must come up without Podkey).
+
+It exits non-zero only on a display or WebGPU failure. Given a URL, it then runs the
+page diagnosis (state, SharedArrayBuffer, console, errors, main-thread latency,
+screenshot to the exchange):
 
 ```bash
-# Default target (the model host:3001), 15s wait
-docker exec browsercontainer node /opt/browsercontainer/cdp-diagnose.js
-
-# Custom target and wait time
-docker exec browsercontainer node /opt/browsercontainer/cdp-diagnose.js http://example.com 20000
+agentbox.sh browsercontainer diagnose http://example.com 20000
 ```
 
 ## MCP integration
@@ -227,7 +306,7 @@ site grants. The plaintext private key exists only in `chrome.storage.session`
 (memory) while unlocked. Never run `docker compose -f docker-compose.browsercontainer.yml down -v`.
 That deletes the volume and, with it, the sealed K_browser.
 
-Chrome no longer uses `/tmp/chrome-profile`; compose mounts the same volume there only for retained images that still start Chrome with it (ADR-2177, 2026-11-05). Extensions installed by hand into the old in-layer profile (Proton Pass
+Chrome no longer uses `/tmp/chrome-profile`. The compatibility mount of the profile volume at that path, kept for the retained pre-Podkey image (ADR-2177, 2026-11-05), is retired by ADR-2207: its rebuild replaces that image. Extensions installed by hand into the old in-layer profile (Proton Pass
 was added from the Chrome Web Store via VNC on 2026-09-28 13:03 UTC; it was never
 part of this build) are not carried over, and the policy blocks re-installing them.
 

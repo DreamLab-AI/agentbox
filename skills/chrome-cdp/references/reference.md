@@ -100,7 +100,9 @@ scripts/cdp-sidecar.sh eval <target> "JSON.stringify(
     .map(r => ({ name: r.name.split('/').pop(), ms: Math.round(r.duration) }))
 )"
 
-# 6. Full diagnostic (runs inside sidecar)
+# 6. Sidecar diagnostic: display size, WebGPU adapter + compute round trip
+#    (exit 1 on failure); a URL adds the page diagnosis of that app
+agentbox.sh browsercontainer diagnose                       # host
 docker exec browsercontainer node /opt/browsercontainer/cdp-diagnose.js http://<app-host>:3001
 ```
 
@@ -149,7 +151,7 @@ open vnc://localhost:5903   # no password
 │  │ cdp.mjs  │      │  RTX 6000 GPU       │   │
 │  │ skills/  │      │                     │   │
 │  └──────────┘      │  :8931 MCP SSE      │   │
-│                     │  :9223 CDP          │   │
+│                     │  :9223 CDP by name  │   │
 │                     │  :5903 VNC          │   │
 │                     └─────────────────────┘   │
 └──────────────────────────────────────────────┘

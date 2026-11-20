@@ -24,16 +24,18 @@ The `browsercontainer/` directory contains a standalone Docker service for headl
 ### Docker layout
 
 ```
-agentbox.sh browsercontainer up/down/rebuild/health/cdp/gpu/shell/logs
+agentbox.sh browsercontainer up/down/rebuild/health/diagnose/cdp/gpu/shell/logs/podkey
 docker-compose.browsercontainer.yml  ← compose definition
 browsercontainer/
-  Dockerfile           ← Arch Linux, Chrome Beta 149+, socat, x11vnc
-  launch-chromium.sh   ← Chrome flags (Vulkan/ANGLE, TREAT_AS_SECURE)
-  supervisord.conf     ← 5 services: xvfb, x11vnc, chromium, cdp-proxy, mcp-server
-  server.js            ← MCP SSE bridge → chrome-devtools-mcp stdio
-  healthcheck.sh       ← checks all 5 services
-  cdp-diagnose.js      ← CDP diagnostic (navigate, evaluate, screenshot)
-  package.json         ← node deps for server.js
+  Dockerfile           ← Arch Linux, Chrome Beta 149+, openbox, ffmpeg, x11vnc
+  display-env.sh       ← BROWSER_DISPLAY_SIZE: the one 16:9 display (also display.js)
+  launch-chromium.sh   ← Chrome flags (Vulkan/ANGLE, TREAT_AS_SECURE, window = display)
+  supervisord.conf     ← xvfb, openbox, x11vnc, chromium, podkey-loader, cdp-proxy, mcp-server
+  server.js            ← MCP SSE bridge → chrome-devtools-mcp stdio; /health /display /record
+  cdp-proxy.js         ← DevTools by name on 9223, Host allow-list
+  record.sh            ← display recording into the exchange
+  healthcheck.sh       ← services + by-name DevTools probe
+  cdp-diagnose.js      ← display size + WebGPU compute check; optional page diagnosis
 ```
 
 ### Port mapping
@@ -41,18 +43,20 @@ browsercontainer/
 | Host port | Container port | Service |
 |-----------|----------------|---------|
 | 5903 | 5903 | VNC desktop (x11vnc) |
-| 8931 | 8931 | MCP SSE bridge (chrome-devtools-mcp) |
-| 9222 | 9223 (socat) → 9222 (Chrome) | CDP proxy |
+| 8931 | 8931 | MCP SSE bridge (chrome-devtools-mcp), /display, /record |
+| 9222 | 9223 (cdp-proxy.js) → 9222 (Chrome) | CDP proxy |
 
-The socat proxy on 9223 rebinds Chrome's localhost-only CDP so `/json/list` returns connectable `ws://` URLs from outside the container.
+cdp-proxy.js on 9223 rewrites Host for Chrome and the `ws://` URLs back to the caller's host, so `http://browsercontainer:9223` works by name; it accepts only IP, `localhost` and `CDP_PROXY_ALLOWED_HOSTS` (default `browsercontainer`) as Host, keeping Chrome's DNS-rebinding defence (ADR-2207).
 
 ### Key details
 
-- **Rendering**: Both WebGPU and WebGL are hardware-accelerated via Vulkan/ANGLE on RTX 6000. `--enable-unsafe-webgpu` allows WebGPU on HTTP origins; VisionClaw currently uses WebGL (Three.js).
+- **Display**: one Chrome window on one fixed 16:9 display, `BROWSER_DISPLAY_SIZE` (default 1920x1080); openbox maximises it and has no bindings; zoom and window placement are reset on each start (ADR-2207).
+- **Files**: `/home/devuser/exchange` is the `agentbox_gui-tools-exchange` volume at the same path in agentbox and the sidecar (`/home/devuser/gui-tools` is the agentbox alias); the MCP child runs there, so screenshots and uploads need no `docker cp`.
+- **Rendering**: Both WebGPU and WebGL are hardware-accelerated via Vulkan/ANGLE on the operator-selected NVIDIA GPU. `--enable-unsafe-webgpu` allows WebGPU on HTTP origins.
 - **TREAT_AS_SECURE**: Env var lists HTTP origins Chrome treats as secure contexts (for SharedArrayBuffer). Expanded to `--unsafely-treat-insecure-origin-as-secure=` flags per origin.
 - **SharedArrayBuffer**: Requires `isSecureContext` (TREAT_AS_SECURE) + COOP/COEP headers from the target server.
 - **Network**: `visionclaw_network` (external). Agents reach MCP at `http://browsercontainer:8931/sse`.
-- **GPU**: Quadro RTX 6000 via UUID. Optional — healthcheck warns but doesn't fail without it.
+- **GPU**: operator-selected (`NVIDIA_VISIBLE_DEVICES`). Optional — healthcheck warns but doesn't fail without it.
 
 ## Code-as-Harness URN Allocation
 

@@ -3,8 +3,9 @@
 # W9 (custody-isolation 2026-10-03): the browser sidecar ships the pinned Podkey
 # CI artefact and keeps its Chrome profile on a named volume. These tests guard
 # the pin (sha256, upstream repo, content), the launch flags per browser, the
-# load-once rule and the profile volume. The image itself is built on the host
-# (`agentbox.sh browsercontainer rebuild`), never here.
+# load-once rule and the profile volume. ADR-2207 adds the display, exchange,
+# DevTools proxy, recording, bridge, pins and diagnostic tests. The image itself
+# is built on the host (`agentbox.sh browsercontainer rebuild`), never here.
 
 name: Browsercontainer
 
@@ -14,6 +15,10 @@ on:
     paths:
       - 'browsercontainer/**'
       - 'docker-compose.browsercontainer.yml'
+      - 'docker-compose.override.yml'
+      - 'docker-compose.gui-tools.yml'
+      - 'docker-compose.concat.yml'
+      - 'docker-compose.isaac-sim.yml'
       - 'tests/browsercontainer/**'
       - '.github/workflows/browsercontainer.yml'
   push:
@@ -22,6 +27,10 @@ on:
     paths:
       - 'browsercontainer/**'
       - 'docker-compose.browsercontainer.yml'
+      - 'docker-compose.override.yml'
+      - 'docker-compose.gui-tools.yml'
+      - 'docker-compose.concat.yml'
+      - 'docker-compose.isaac-sim.yml'
       - 'tests/browsercontainer/**'
       - '.github/workflows/browsercontainer.yml'
 
@@ -34,7 +43,7 @@ permissions:
 
 jobs:
   podkey:
-    name: Podkey pin, launch args, profile volume
+    name: Podkey pin, launch args, profile volume, ADR-2207 sidecar
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -64,3 +73,25 @@ jobs:
 
       - name: compose profile volume
         run: node tests/browsercontainer/compose-profile-volume.test.cjs
+
+      # ADR-2207
+      - name: display, window manager, view-state reset (D1)
+        run: node --test tests/browsercontainer/display-config.test.cjs
+
+      - name: one exchange path (D2)
+        run: node tests/browsercontainer/exchange-compose.test.cjs
+
+      - name: bridge spawn, health, display/record endpoints, Origin refusal (D2/D5)
+        run: node --test tests/browsercontainer/server.test.cjs
+
+      - name: DevTools proxy, Host allow-list (D3)
+        run: node --test tests/browsercontainer/cdp-proxy.test.cjs
+
+      - name: record.sh (D4)
+        run: bash tests/browsercontainer/record.test.sh
+
+      - name: pins and versions.json (D6)
+        run: node --test tests/browsercontainer/pins.test.cjs
+
+      - name: diagnostic verdict (D7)
+        run: node --test tests/browsercontainer/diagnose.test.cjs
