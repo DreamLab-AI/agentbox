@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: 0d3d3b2a234af040ef4aa2ca2301d8be7c404ff8
+verified_commit: 845384de4a7134e6949c3c960d76d745091cf7c8
 verified_paths: [browsercontainer/*, tests/browsercontainer/*, docker-compose.browsercontainer.yml, .github/workflows/browsercontainer.yml]
 owner: operator
 review_trigger: the owner's sidecar rebuild (activation), a change of window manager, display size rules or exchange path, or chrome-devtools-mcp moving past 1.13
@@ -82,11 +82,11 @@ Set `activation_status: live` once the diagnostic passes on the rebuilt sidecar.
 
 ## Verification
 
-At `0d3d3b2a2`, from the worktree:
+At `845384de4`, from the worktree:
 
 - `bash tests/browsercontainer/launch-args.test.sh`: 14 passed, 1 skipped (real Podkey artefact not cached).
 - `bash tests/browsercontainer/fetch-podkey.test.sh`: 16 passed, 1 skipped.
 - `bash tests/browsercontainer/record.test.sh`: 9 passed.
-- `node --test tests/browsercontainer/*.test.cjs`: 50 passed. This covers display-config, server, cdp-proxy, pins, diagnose and podkey-ctl, plus the compose-profile-volume and exchange-compose scripts.
+- `node --test tests/browsercontainer/*.test.cjs`: 51 passed. This covers display-config, server, cdp-proxy, pins, diagnose and podkey-ctl, plus the compose-profile-volume and exchange-compose scripts.
 - Every new test was observed failing before its change. The Host allow-list and Origin refusal were also checked by disabling them (pass-through proxy, Origin check off), which turned their tests red.
 - `skills/lint-skills.sh` is clean, `scripts/ci/check-ports-loopback.sh` exits 0, and ShellCheck 0.11.0 at warning severity reports nothing on the touched shell files.
