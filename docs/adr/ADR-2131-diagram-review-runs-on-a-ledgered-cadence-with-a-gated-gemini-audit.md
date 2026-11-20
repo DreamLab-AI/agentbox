@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 350772de92685339dfff117e66088d8adeb44bec
+verified_commit: 2ebc3859c77fce7996eb584d78a2b89c286d72c2
 verified_paths: [mcp/consultants/shared/model-diversity.js, skills/sealmap-review/scripts/review-cadence.cjs, skills/sealmap-review/scripts/external-review.cjs, skills/sealmap-review/scripts/review-context.cjs, skills/sealmap-review/scripts/merge-findings.cjs, skills/sealmap-review/run-cron.sh, skills/sealmap-review/crontab, schema/agentbox.toml.schema.json]
 owner: jjohare
 review_trigger: the first real Codex audit (compare ledger cost with the estimate, and confirm the codex CLI reads the pack on stdin under the cron's environment); a change to Gemini or Z.AI pricing; a GLM model change behind [consultants.zai]; a second corpus joining repos
@@ -17,6 +17,19 @@ lineage: ADR-2130 (external review is a transport outside [model_routing]; seal 
 ---
 
 # ADR-2131 — Diagram review runs on a ledgered cadence with a gated Gemini audit
+
+
+## Scoped source verification — 2026-11-20
+
+Reviewed the governed-path delta through `2ebc3859c77fce7996eb584d78a2b89c286d72c2` against the
+[core-tool and browser source review](../estate-closeout/2026-11-20/core-tools-and-browser-source-review.md).
+The change is limited to pinned tool packaging, the existing MetaHarness gate's
+offline CLI, descriptive schema/catalogue text, bounded System-pane startup,
+and honest classification of existing credentials. It changes no adapter,
+listener, role authority, model policy or retrieval geometry. Existing decision,
+implementation and activation axes and unrelated acceptance limits remain;
+this is not a new whole-record runtime or role-isolation rehearsal.
+
 
 
 ## Scoped deployment review — 2026-11-16

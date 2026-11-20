@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: [ADR-2002, ADR-2063, ADR-2079]
 superseded_by: []
-verified_commit: 9263a39761c0c69e651e77ec1c91be33f015a1b5
+verified_commit: 2ebc3859c77fce7996eb584d78a2b89c286d72c2
 verified_paths: [services/agentbox-sessions, config/session-plane, lib/agentbox-sessions.nix, flake.nix, flake.lock, agentbox.toml, config/entrypoint-unified.sh, config/role-accounts.json, config/custody/session-plane-acl.json, config/tab0-bridge, config/nostr-gateway/gateway.cjs, config/nip98-proxy, config/tmux-autostart.sh, config/hooks/session-state.cjs, config/registered-hooks.txt, scripts/session-provision.mjs, scripts/session-control.cjs, scripts/activation/session-plane-acceptance.mjs, management-api/lib/system-manifest.js, schema/agentbox.toml.schema.json, services/agentbox-manifest/src/stacks.rs, services/agentbox-manifest/src/stacks_env.rs, tests/cli/session-launch-contract.test.mjs, tests/cli/session-control.test.cjs, tests/config/session-plane-notify.test.sh]
 owner: jjohare
 review_trigger: Antigravity signed in and OpenRouter answering the canned round trip (closes §11 acceptance → implementation complete); any AoE consumer found to have been missed
@@ -15,6 +15,19 @@ repo: agentbox
 ---
 
 # ADR-2153 — Replace Agent of Empires with an owned, tmux-backed session plane that reconciles to the manifest
+
+
+## Scoped source verification — 2026-11-20
+
+Reviewed the governed-path delta through `2ebc3859c77fce7996eb584d78a2b89c286d72c2` against the
+[core-tool and browser source review](../estate-closeout/2026-11-20/core-tools-and-browser-source-review.md).
+The change is limited to pinned tool packaging, the existing MetaHarness gate's
+offline CLI, descriptive schema/catalogue text, bounded System-pane startup,
+and honest classification of existing credentials. It changes no adapter,
+listener, role authority, model policy or retrieval geometry. Existing decision,
+implementation and activation axes and unrelated acceptance limits remain;
+this is not a new whole-record runtime or role-isolation rehearsal.
+
 
 ## Scoped source check — 2026-11-18 (SystemScape 0.5)
 

@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 9263a39761c0c69e651e77ec1c91be33f015a1b5
+verified_commit: 2ebc3859c77fce7996eb584d78a2b89c286d72c2
 verified_paths: [lib/factrail.nix, lib/lockfiles/factrail-af23eca6.Cargo.lock, lib/claude-code-binary.nix, config/entrypoint-unified.sh, config/claude-plugins/.claude-plugin/marketplace.json, scripts/factrail-store-migrate.mjs, tests/config/factrail-store-migrate.test.mjs, tests/config/factrail-projection.test.sh, schema/agentbox.toml.schema.json, scripts/bake-ruflo-console.sh, scripts/ruflo-console-project.mjs, tests/config/ruflo-console.test.mjs]
 owner: jjohare
 review_trigger: a factrail rev bump in lib/factrail.nix, the end of the post-rebuild residency soak, a Claude Code function-hook API change, or a decision to train a local judge on recorded Jev decisions
@@ -17,6 +17,19 @@ lineage: ADR-2093 (the decision this implements; amends its implementation, not 
 ---
 
 # ADR-2121 — Implement Jev compaction with factrail — fact rails in Rust, baked at a pinned commit
+
+
+## Scoped source verification — 2026-11-20
+
+Reviewed the governed-path delta through `2ebc3859c77fce7996eb584d78a2b89c286d72c2` against the
+[core-tool and browser source review](../estate-closeout/2026-11-20/core-tools-and-browser-source-review.md).
+The change is limited to pinned tool packaging, the existing MetaHarness gate's
+offline CLI, descriptive schema/catalogue text, bounded System-pane startup,
+and honest classification of existing credentials. It changes no adapter,
+listener, role authority, model policy or retrieval geometry. Existing decision,
+implementation and activation axes and unrelated acceptance limits remain;
+this is not a new whole-record runtime or role-isolation rehearsal.
+
 
 ## Scoped source check — 2026-11-14
 

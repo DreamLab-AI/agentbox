@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: de01d60a408b9eb057a3b6257aabd9f764671c94
+verified_commit: 2ebc3859c77fce7996eb584d78a2b89c286d72c2
 verified_paths: [agentbox.toml, flake.nix, skills/blender/tools/blender-job.js, skills/blender/tools/blender-introspect.js, skills/blender/tools/blender-batch.sh, skills/blender/SKILL.md, skills/uk-solar-planner/SKILL.md, skills/game-dev/tools/engine-check.sh, tests/toolchains/blender-present.sh]
 owner: jjohare
 review_trigger: the image rebuild activates the change, the GPU sidecar (gui-tools-service) or its shared volume changes, a local-Blender consumer is added, or `blender_local` is flipped in the shipped manifest
@@ -15,6 +15,19 @@ repo: agentbox
 ---
 
 # ADR-2142 — Blender runs sidecar-first; the in-container binary is optional
+
+
+## Scoped source verification — 2026-11-20
+
+Reviewed the governed-path delta through `2ebc3859c77fce7996eb584d78a2b89c286d72c2` against the
+[core-tool and browser source review](../estate-closeout/2026-11-20/core-tools-and-browser-source-review.md).
+The change is limited to pinned tool packaging, the existing MetaHarness gate's
+offline CLI, descriptive schema/catalogue text, bounded System-pane startup,
+and honest classification of existing credentials. It changes no adapter,
+listener, role authority, model policy or retrieval geometry. Existing decision,
+implementation and activation axes and unrelated acceptance limits remain;
+this is not a new whole-record runtime or role-isolation rehearsal.
+
 
 
 ## Scoped deployment review — 2026-11-16

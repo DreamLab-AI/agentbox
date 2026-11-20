@@ -7,7 +7,7 @@ implementation_status: none
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: 8c895455ae96bf3c1b07c56dc1c2756b23f22a80
+verified_commit: 2ebc3859c77fce7996eb584d78a2b89c286d72c2
 verified_paths: [mcp/servers/lib/aggregate-effectiveness.js, scripts/ruvector-sona-feeder.mjs, agentbox.toml]
 owner: jjohare
 review_trigger: A SONA binary with configurable embedding_dim (384-capable) ships, or a dimension migration is planned
@@ -17,6 +17,19 @@ lineage: "legacy PRD-020 / ADR-040 (model lifecycle), DDD-018 (I22)."
 ---
 
 # ADR-2019 — Model-lifecycle freeze — 384-dim bge is the active column, SONA and attention-rerank stay off
+
+
+## Scoped source verification — 2026-11-20
+
+Reviewed the governed-path delta through `2ebc3859c77fce7996eb584d78a2b89c286d72c2` against the
+[core-tool and browser source review](../estate-closeout/2026-11-20/core-tools-and-browser-source-review.md).
+The change is limited to pinned tool packaging, the existing MetaHarness gate's
+offline CLI, descriptive schema/catalogue text, bounded System-pane startup,
+and honest classification of existing credentials. It changes no adapter,
+listener, role authority, model policy or retrieval geometry. Existing decision,
+implementation and activation axes and unrelated acceptance limits remain;
+this is not a new whole-record runtime or role-isolation rehearsal.
+
 
 
 ## Scoped deployment review — 2026-11-16

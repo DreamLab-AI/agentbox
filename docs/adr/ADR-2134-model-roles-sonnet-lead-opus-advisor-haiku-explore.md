@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 971fb010e175f0587f0e2bf6e831d172db865f1e
+verified_commit: 2ebc3859c77fce7996eb584d78a2b89c286d72c2
 verified_paths: [services/agentbox-manifest/src/permissions.rs, agents/Explore.md, scripts/bake-ruflo-console.sh]
 owner: jjohare
 review_trigger: a Claude Code release that changes advisor pairing rules, or the ADR-2135 shadow log showing a subagent-model policy that beats this one; root ~/.claude/settings.json observed at `model: sonnet` straight after a boot (activation → live)
@@ -15,6 +15,19 @@ repo: agentbox
 ---
 
 # ADR-2134 — Model roles: Sonnet leads, an Opus advisor is on call, search fans out to Haiku
+
+
+## Scoped source verification — 2026-11-20
+
+Reviewed the governed-path delta through `2ebc3859c77fce7996eb584d78a2b89c286d72c2` against the
+[core-tool and browser source review](../estate-closeout/2026-11-20/core-tools-and-browser-source-review.md).
+The change is limited to pinned tool packaging, the existing MetaHarness gate's
+offline CLI, descriptive schema/catalogue text, bounded System-pane startup,
+and honest classification of existing credentials. It changes no adapter,
+listener, role authority, model policy or retrieval geometry. Existing decision,
+implementation and activation axes and unrelated acceptance limits remain;
+this is not a new whole-record runtime or role-isolation rehearsal.
+
 
 ## Amendment — portable quality method, 2026-11-03
 
