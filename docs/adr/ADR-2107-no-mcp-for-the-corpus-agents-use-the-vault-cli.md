@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 2ebc3859c77fce7996eb584d78a2b89c286d72c2
+verified_commit: 0913d5458837d8c4d1fa4b5b3e52b70e7975cb5a
 verified_paths: [skills/ontology-augment, skills/podcast-knowledge-ingest, agents/ontology-curator.md, mcp/mcp.json, agentbox.toml, AGENTS.md]
 owner: jjohare
 review_trigger: a request to register any MCP server that reads or writes visionGraph, the ADR-140 /mcp plane reaching the deployed Loom, or the first `vault` subcommand an agent cannot express
@@ -258,3 +258,7 @@ this scoped review does not re-audit unrelated history or promote status axes.
 ## Re-verification — 2026-11-20 at `9263a39761c0c69e651e77ec1c91be33f015a1b5`
 
 Governed delta: `AGENTS.md` gains one sentence on the browser sidecar (one fixed 16:9 display, exchange path, DevTools by name; ADR-2207). It adds no corpus MCP registration or writer and does not touch the `ontomark`/`vault` guidance. Claim still true. The Decision is unchanged and no claim of this record is falsified by the ADR-2207 sidecar refresh. Commands run: `git diff de01d60a4..9263a3976 -- skills/ontology-augment skills/podcast-knowledge-ingest agents/ontology-curator.md mcp/mcp.json agentbox.toml AGENTS.md`. Re-run the diff to reproduce.
+
+## Re-verification — 2026-11-20 at `0913d5458837d8c4d1fa4b5b3e52b70e7975cb5a` (closeout branch)
+
+Governed delta: `AGENTS.md`, one table row: the `DreamLab-AI/sidestr-rs` entry gains "status: running, development paused, adoption of its capabilities parked (owner decision 2026-11-16)". It is not about the corpus, and no MCP server for the corpus, corpus writer or `vault`/`ontomark` instruction changed, so the decision and its review trigger are untouched. Run: `git diff 6a73c5a73..0913d5458 -- AGENTS.md` read in full. The decision and status axes are unchanged.

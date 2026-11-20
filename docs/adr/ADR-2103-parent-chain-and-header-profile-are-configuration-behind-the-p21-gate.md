@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: 044f1d689569572417a98f91afcf744fc2ca2385
+verified_commit: 0913d5458837d8c4d1fa4b5b3e52b70e7975cb5a
 verified_paths: [config/sidechain/dreamlab/chain.json, config/sidechain/dreamlab-txbt4/chain.json, config/sidechain/README.md, config/sidechain/run-producer.sh, config/sidechain/upstream-pins, lib/sidestr-upstream.nix, tests/config/sidechain-genesis.test.sh, tests/config/sidechain-producer-gates.test.sh, tests/config/sidechain-producer-baked.test.sh, management-api/lib/sidechain-health.js, scripts/activation/sidechain-demo-witness.sh, scripts/activation/sidechain-witness.cjs, scripts/activation/sidechain-witness-replay/src/main.rs]
 owner: jjohare
 review_trigger: sidestr/spec PR #4 and sidestr/explorer PR #2 merging or being declined; a new alias in the SPEC 3.2 parent table; any proposal to sign a chain document whose parent is a mainnet variant; a change to the Knots BLAKE2b fork's header format or activation; a BLAKE2b testnet4 node reachable from the container; upstream implementing assets between chains (assets-and-pools section 4)
@@ -658,3 +658,7 @@ Commands run: `bash tests/config/sidechain-genesis.test.sh; bash tests/config/si
 Not checked, and notes: decision_status is 'proposed', implementation partial, so most of the Decision (D1 projector check, D3 pin: record, D4 CI receipt) is unbuilt by the record's own account; I checked only what the record says exists. Not verifiable here: that the new spec pin 2fd6114 produced a block before being pinned (upstream-pins rule) and that the Nix patch applies cleanly at 2fd6114 (no nix in this container, no network fetch). The record's dated receipts name 'Pages' mirror and pin 83dd662; those are history, and the README now says the mirror is a plain Git checkout served from the raw endpoint, so any future edit to the 'Pages' wording is cosmetic.
 
 Checked at `218dc12c3` by reading each claim against the code, not by the staleness diff alone. Stamped at `044f1d689`, which adds only the gate fixes in `config/custody/env-classes.json`, the `check-manifest-catalogue` baseline, `services/agentbox-vex`'s README and licence notice, a stale `agentbox.toml` comment, a stale `paths` example in the ontology-augment docs, and the grounding test's stub.
+
+## Re-verification — 2026-11-20 at `0913d5458837d8c4d1fa4b5b3e52b70e7975cb5a` (closeout branch)
+
+Governed delta: `config/sidechain/README.md`, one line: the table-status sentence changes from "ships `enabled = false`" to "ships `enabled = true` (`agentbox.toml:2044`, live since 2026-10-03)". **Correction.** The bullet in this record's 2026-10-02 supervision paragraph, "the table ships `enabled = false`", described the state at that build and is no longer true: `[sidechain.dreamlab-txbt4].enabled = true` in `agentbox.toml:2044` and the three programs are baked. The README is the corrected statement. The decisions (D1-D3), the parent gate and the unsealed-document rules are unaffected, the status axes are unchanged, and this record is stamped with that correction noted rather than rewritten. Run: `git diff 6a73c5a73..0913d5458 -- config/sidechain/README.md` read in full.

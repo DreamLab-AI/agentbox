@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: f6a87328266381a2f2f1bf6ddf7050ebd72eda49
+verified_commit: 0913d5458837d8c4d1fa4b5b3e52b70e7975cb5a
 verified_paths: [config/hooks/lib/skill-route.cjs, config/hooks/skill-route.cjs, skills/skill-router/scripts/route.mjs, config/entrypoint-unified.sh, tests/config/skill-route.test.js, skills/visioncraft/SKILL.md, skills/registered-skills.txt, skills/codex-registered-skills.txt, tests/system-one/visioncraft-picker.test.mjs]
 owner: jjohare
 review_trigger: the first project that needs a per-project routing bypass (ADR-2090), a Jev model change, or a measured runtime-path accuracy below 85% on the 40-item set
@@ -348,3 +348,7 @@ Governed delta: `config/entrypoint-unified.sh` changed in one block: the browser
 ## Re-verification — 2026-11-20 at `f6a87328266381a2f2f1bf6ddf7050ebd72eda49`
 
 Governed delta: `config/entrypoint-unified.sh` changed in one hunk, `:2336-2348` (W3-05, ADR-2210): the `[interaction_plane.proxy]` projection now sources `config/lib/nip98-config.sh` and calls `ab_nip98_project` when that file is readable, and otherwise falls back to the previous `agentbox-manifest nip98-config` call. The hunk is a net +6 lines, so every entrypoint line after about `:2348` sits six lower than at the previous stamp; line citations in earlier notes are as of their own commits. This record makes no claim about the proxy's supervisor environment or its config projection. `bash -n config/entrypoint-unified.sh` → clean. The Decision is unchanged and no claim of this record is falsified by the JOURNAL-LOCK (ADR-2211), W3-05 (ADR-2210) or Podkey-policy (ADR-2212) merges. Commands run: `git diff 9263a3976..f6a873282 -- config/hooks/lib/skill-route.cjs config/hooks/skill-route.cjs skills/skill-router/scripts/route.mjs config/entrypoint-unified.sh tests/config/skill-route.test.js skills/visioncraft/SKILL.md skills/registered-skills.txt skills/codex-registered-skills.txt tests/system-one/visioncraft-picker.test.mjs`. Re-run the diff to reproduce.
+
+## Re-verification — 2026-11-20 at `0913d5458837d8c4d1fa4b5b3e52b70e7975cb5a` (closeout branch)
+
+Governed delta: `config/entrypoint-unified.sh` changed only in a comment block at `:2333-2339` above the nip98 projection (net +2 lines, so lines after `:2338` move by +2). No executable line changed. Citations in this record to lines after these points are as of their own commit and are not renumbered. Commands run on this commit: `git diff 6a73c5a73..0913d5458 -- <the paths above>` read in full; `node scripts/adr-index-gen.js docs/adr --check`. The Decision and status axes are unchanged and no claim of this record is falsified.

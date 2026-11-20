@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: dd78dba4281e78ad2a893f88ba362a3ac9810d78
+verified_commit: 0913d5458837d8c4d1fa4b5b3e52b70e7975cb5a
 verified_paths: [management-api/lib/agent-identity.js, config/nip98-proxy/proxy.mjs]
 owner: jjohare
 review_trigger: A durable identity appears in bech32/npub form in storage or a URL, or the did:nostr:local fallback fires in production
@@ -143,3 +143,7 @@ Re-verified by `git diff a48ea407a..275e12356 -- <verified_paths>`. No re-implem
 Governed delta: `config/nip98-proxy/proxy.mjs` only (W3-05, ADR-2210); `management-api/lib/agent-identity.js` is unchanged. The hunks add a `NIP98_PROXY_REQUIRE_CONFIG=1` mode in which an absent or unreadable config file makes `pubkeyAllowed` refuse every identity (`proxy.mjs:182-183`, `:260-272`, poll at `:1086-1099`). No hunk touches the `^[0-9a-f]{64}$` checks, so hex-only canonical identity is intact; the new refusal can only deny more, never accept a non-hex identity. `proxy.mjs` is +1 line after `:180`, +15 after `:264` and +30 after `:1085`: the `:250` and `:396` in this record's Verification are as of their own commits, and the `:120` allowlist validation sits above the first hunk and keeps its number. Commands run: `git diff 18315de55..f6a873282 -- management-api/lib/agent-identity.js config/nip98-proxy/proxy.mjs`. Re-run the diff to reproduce.
 
 Re-verified 2026-11-20 at dd78dba42: `git diff 57136dbc0..dd78dba42 -- config/nip98-proxy/proxy.mjs`. One hunk, in the pending-config poll (now `proxy.mjs:1086-1105`): the restart probe parses the file as well as checking it is readable, so a half-written file is still pending. No request path, route or identity check changes, so no claim in this record is affected.
+
+## Re-verification — 2026-11-20 at `0913d5458837d8c4d1fa4b5b3e52b70e7975cb5a` (closeout branch)
+
+Governed delta: `config/nip98-proxy/proxy.mjs` (NIP98-STALE-CONFIG): under `NIP98_PROXY_REQUIRE_CONFIG=1` the config poll now also runs when a file was loaded. The proxy keeps the loaded text (`LOADED_CONFIG_RAW`) and exits 0 for a supervised restart when a readable, parsing file differs from it, never before 3.5 s of uptime (`proxy.mjs:1094-1118`, the comparison at `:1112`). The pending behaviour (refuse every identity until a readable file appears), routing, header stripping and re-injection, the verifier and the allow-list parsing are untouched. The fix is partial, as the ADR-2210 note says: the previous boot's file is still served until Stage B rewrites it. Citations in this record to lines after these points are as of their own commit and are not renumbered. Commands run on this commit: `git diff 6a73c5a73..0913d5458 -- <the paths above>` read in full; `node scripts/adr-index-gen.js docs/adr --check`. The Decision and status axes are unchanged and no claim of this record is falsified.

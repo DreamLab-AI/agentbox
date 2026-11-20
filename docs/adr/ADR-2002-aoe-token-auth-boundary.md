@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: inactive
 supersedes: []
 superseded_by: [ADR-2153]
-verified_commit: dd78dba4281e78ad2a893f88ba362a3ac9810d78
+verified_commit: 0913d5458837d8c4d1fa4b5b3e52b70e7975cb5a
 verified_paths: [config/nip98-proxy/proxy.mjs, flake.nix]
 owner: jjohare
 review_trigger: next image rebuild (activation), or any new consumer of :9095, or per-process isolation becoming available
@@ -481,3 +481,7 @@ this source stamp does not promote this record's status axes.
 Governed delta: `flake.nix` (one line, `:3169`: `NIP98_PROXY_REQUIRE_CONFIG="1"` joins the `[program:nip98-proxy]` `environment=`; same line count, no citation moves) and `config/nip98-proxy/proxy.mjs` (W3-05, ADR-2210). The proxy change is about identity-door availability, not the AoE token path: under `NIP98_PROXY_REQUIRE_CONFIG=1` an absent or unreadable `nip98-proxy-config.json` is treated as PENDING and `pubkeyAllowed` returns false for every identity (`proxy.mjs:182-183`, `:260-272`), with a poll that exits 0 once the file is readable (`:1086-1099`). It is +1 line after `:180`, +15 after `:264` and +30 after `:1085`, so `proxy.mjs` citations in earlier notes are as of their own commits. No hunk touches token reading, the upstream route table or the AoE-retirement lines. AoE itself was retired by ADR-2153, so the token claims of this record are historical; the fail-closed request-layer enforcement they describe is unchanged and is now also closed while the proxy's config is pending. Commands run: `git diff 2ebc3859c..f6a873282 -- config/nip98-proxy/proxy.mjs flake.nix`. Re-run the diff to reproduce.
 
 Re-verified 2026-11-20 at dd78dba42: `git diff 57136dbc0..dd78dba42 -- config/nip98-proxy/proxy.mjs`. One hunk, in the pending-config poll (now `proxy.mjs:1086-1105`): the restart probe parses the file as well as checking it is readable, so a half-written file is still pending. No request path, route or identity check changes, so no claim in this record is affected.
+
+## Re-verification — 2026-11-20 at `0913d5458837d8c4d1fa4b5b3e52b70e7975cb5a` (closeout branch)
+
+Governed delta: `config/nip98-proxy/proxy.mjs` (NIP98-STALE-CONFIG): under `NIP98_PROXY_REQUIRE_CONFIG=1` the config poll now also runs when a file was loaded. The proxy keeps the loaded text (`LOADED_CONFIG_RAW`) and exits 0 for a supervised restart when a readable, parsing file differs from it, never before 3.5 s of uptime (`proxy.mjs:1094-1118`, the comparison at `:1112`). The pending behaviour (refuse every identity until a readable file appears), routing, header stripping and re-injection, the verifier and the allow-list parsing are untouched. The fix is partial, as the ADR-2210 note says: the previous boot's file is still served until Stage B rewrites it. `flake.nix` changed only in a comment in the generated compose file's header (R-025, the optional `claude-zai` sidecar, `:4164-4169`): comment text, one line longer, so `flake.nix` lines after `:4165` move by +1. No program, port, mount, environment value or derivation changes. Citations in this record to lines after these points are as of their own commit and are not renumbered. Commands run on this commit: `git diff 6a73c5a73..0913d5458 -- <the paths above>` read in full; `node scripts/adr-index-gen.js docs/adr --check`. The Decision and status axes are unchanged and no claim of this record is falsified.
