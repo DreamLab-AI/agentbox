@@ -59,6 +59,7 @@ launch() {
 has()  { grep -qxF -- "$2" "$WORK/args-$1"; }
 hasp() { grep -q -- "$2" "$WORK/args-$1"; }
 mode() { cat "$WORK/run-$1/podkey-mode" 2>/dev/null; }
+same() { [ "$(sha256sum <"$1")" = "$(sha256sum <"$2")" ]; }
 
 launch "Chromium 150.0.7871.181 Arch Linux" "$EXT" chromium
 if has chromium "--load-extension=$EXT" && has chromium "--disable-extensions-except=$EXT" \
@@ -139,6 +140,123 @@ if [ -f "$REAL" ]; then
   fi
 else
   skip "8 no cached real artefact (browsercontainer/scripts/fetch-podkey.sh fetch)"
+fi
+
+# --- ADR-2207 D1: one display, locked 16:9 ------------------------------------
+# launch_sized <label> <size-or-empty> [profile-dir]
+launch_sized() {
+  local run="$WORK/run-$1" prof="${3:-$WORK/prof-$1}"
+  mkdir -p "$run" "$prof"
+  rm -f "$WORK/args-$1"
+  if [ -n "$2" ]; then
+    BROWSER_DISPLAY_SIZE="$2" STUB_VERSION="Google Chrome 151.0.7922.47 beta" STUB_ARGS="$WORK/args-$1" \
+      CHROME_BIN="$WORK/chrome-stub" PODKEY_EXT_DIR="$EXT" BROWSERCONTAINER_RUN_DIR="$run" \
+      CHROME_PROFILE_DIR="$prof" bash "$LAUNCH" >"$WORK/log-$1" 2>&1
+  else
+    env -u BROWSER_DISPLAY_SIZE STUB_VERSION="Google Chrome 151.0.7922.47 beta" STUB_ARGS="$WORK/args-$1" \
+      CHROME_BIN="$WORK/chrome-stub" PODKEY_EXT_DIR="$EXT" BROWSERCONTAINER_RUN_DIR="$run" \
+      CHROME_PROFILE_DIR="$prof" bash "$LAUNCH" >"$WORK/log-$1" 2>&1
+  fi
+}
+
+launch_sized d1default ""
+if has d1default "--window-position=0,0" && has d1default "--window-size=1920,1080" \
+   && has d1default "--start-maximized" && has d1default "--force-device-scale-factor=1"; then
+  ok "9 default display 1920x1080: position, size, maximised, scale 1"
+else
+  bad "9 default display flags: $(tr '\n' ' ' <"$WORK/args-d1default" 2>/dev/null) log=$(cat "$WORK/log-d1default")"
+fi
+
+launch_sized d1custom "2560x1440"
+if has d1custom "--window-size=2560,1440" && has d1custom "--window-position=0,0" \
+   && ! hasp d1custom "--window-size=1920"; then
+  ok "10 custom BROWSER_DISPLAY_SIZE=2560x1440 drives the window size"
+else
+  bad "10 custom size: $(tr '\n' ' ' <"$WORK/args-d1custom" 2>/dev/null) log=$(cat "$WORK/log-d1custom")"
+fi
+
+bad_sizes=("1920x1200" "1024x576" "4096x2304" "abc" "1920x" "x1080" "01920x01080" "1920X1080" "-1920x-1080" "1920x1080x24" " 1920x1080" "1280x720.5")
+c11=0
+for s in "${bad_sizes[@]}"; do
+  launch_sized d1bad "$s"; rc=$?
+  if [ "$rc" -ne 0 ] && [ ! -e "$WORK/args-d1bad" ] && grep -q 'BROWSER_DISPLAY_SIZE' "$WORK/log-d1bad"; then
+    c11=$((c11 + 1))
+  else
+    bad "11 invalid size '$s' was not refused before Chrome (rc=$rc)"
+  fi
+done
+[ "$c11" -eq "${#bad_sizes[@]}" ] && ok "11 ${#bad_sizes[@]} invalid / non-16:9 sizes refused before Chrome starts"
+
+# 12: saved view state is reset; every other key survives (Podkey lives elsewhere,
+# but nothing else in Preferences is ours to touch).
+P12="$WORK/prof-zoom"; mkdir -p "$P12/Default"
+cat >"$P12/Default/Preferences" <<'EOF'
+{"browser":{"window_placement":{"left":710,"top":265,"right":1210,"bottom":849,"maximized":false},"has_seen_welcome_page":true},
+ "partition":{"per_host_zoom_levels":{"x":{"about:blank":{"zoom_level":1.2239}}},"default_zoom_level":{"x":1.2239},"keep_me":{"a":1}},
+ "extensions":{"settings":{"cakgjkgiodcdhecnnfhmcfphjkknfjkd":{"state":1}}},"profile":{"name":"Person 1"}}
+EOF
+launch_sized d1zoom "" "$P12"
+if node -e '
+  const p = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"));
+  const want = {browser:{has_seen_welcome_page:true},partition:{keep_me:{a:1}},
+    extensions:{settings:{cakgjkgiodcdhecnnfhmcfphjkknfjkd:{state:1}}},profile:{name:"Person 1"}};
+  require("assert").deepStrictEqual(p, want);' "$P12/Default/Preferences" 2>"$WORK/err12" \
+   && [ -s "$WORK/args-d1zoom" ] && [ -z "$(find "$P12/Default" -name '*.tmp*' -o -name '.Preferences*')" ]; then
+  ok "12 zoom levels and window placement removed, every other key kept, no temp file left"
+else
+  bad "12 view-state reset: $(cat "$WORK/err12") $(cat "$P12/Default/Preferences")"
+fi
+
+# 13: not JSON -> untouched, Chrome still starts (fail-open)
+P13="$WORK/prof-badjson"; mkdir -p "$P13/Default"
+printf '{"partition": {"per_host_zoom_levels": ' >"$P13/Default/Preferences"
+cp "$P13/Default/Preferences" "$WORK/pref13.orig"
+launch_sized d1badjson "" "$P13"
+if same "$P13/Default/Preferences" "$WORK/pref13.orig" && [ -s "$WORK/args-d1badjson" ]; then
+  ok "13 invalid Preferences left byte-identical, Chrome still starts"
+else
+  bad "13 invalid Preferences handling"
+fi
+
+# 14: nothing to reset -> file not rewritten (pretty-printed bytes survive);
+# absent file -> nothing created
+P14="$WORK/prof-clean"; mkdir -p "$P14/Default"
+printf '{\n  "profile": {\n    "name": "Person 1"\n  }\n}\n' >"$P14/Default/Preferences"
+cp "$P14/Default/Preferences" "$WORK/pref14.orig"
+launch_sized d1clean "" "$P14"
+P14b="$WORK/prof-fresh"; mkdir -p "$P14b"
+launch_sized d1fresh "" "$P14b"
+if same "$P14/Default/Preferences" "$WORK/pref14.orig" && [ ! -e "$P14b/Default/Preferences" ] \
+   && [ -s "$WORK/args-d1clean" ] && [ -s "$WORK/args-d1fresh" ]; then
+  ok "14 Preferences without view state not rewritten; absent Preferences not created"
+else
+  bad "14 clean/absent Preferences"
+fi
+
+# 15: Xvfb is started through the display helper
+XVFB="$BC/start-xvfb.sh"
+cat >"$WORK/xvfb-stub" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$@" >"$STUB_ARGS"
+EOF
+chmod +x "$WORK/xvfb-stub"
+x_ok=1
+if [ -f "$XVFB" ]; then
+  env -u BROWSER_DISPLAY_SIZE XVFB_BIN="$WORK/xvfb-stub" STUB_ARGS="$WORK/xargs-def" bash "$XVFB" >/dev/null 2>&1
+  BROWSER_DISPLAY_SIZE=3840x2160 XVFB_BIN="$WORK/xvfb-stub" STUB_ARGS="$WORK/xargs-4k" bash "$XVFB" >/dev/null 2>&1
+  BROWSER_DISPLAY_SIZE=1920x1200 XVFB_BIN="$WORK/xvfb-stub" STUB_ARGS="$WORK/xargs-bad" bash "$XVFB" >/dev/null 2>&1; xrc=$?
+  [ "$(sed -n 1p "$WORK/xargs-def" 2>/dev/null)" = ":2" ] || x_ok=0
+  tr '\n' ' ' <"$WORK/xargs-def" 2>/dev/null | grep -q -- "-screen 0 1920x1080x24 " || x_ok=0
+  tr '\n' ' ' <"$WORK/xargs-4k" 2>/dev/null | grep -q -- "-screen 0 3840x2160x24 " || x_ok=0
+  { [ "$xrc" -ne 0 ] && [ ! -e "$WORK/xargs-bad" ]; } || x_ok=0
+  grep -q '^exec ' "$XVFB" || x_ok=0
+else
+  x_ok=0
+fi
+if [ "$x_ok" -eq 1 ]; then
+  ok "15 start-xvfb.sh: :2 at the helper's size, invalid size refused, execs Xvfb"
+else
+  bad "15 start-xvfb.sh"
 fi
 
 echo "launch-args: $PASS passed, $FAIL failed, $SKIP skipped"

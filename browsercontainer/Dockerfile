@@ -1,6 +1,7 @@
 FROM archlinux:base
 
 ENV DISPLAY=:2 \
+    BROWSER_DISPLAY_SIZE=1920x1080 \
     LANG=C.UTF-8 \
     HOME=/home/devuser
 
@@ -9,6 +10,7 @@ RUN pacman -Syu --noconfirm && pacman -S --noconfirm --needed \
         chromium \
         xorg-server-xvfb \
         x11vnc \
+        openbox \
         supervisor \
         vulkan-tools \
         vulkan-icd-loader \
@@ -70,6 +72,12 @@ COPY --chown=devuser:devuser server.js /opt/browsercontainer/server.js
 COPY --chown=devuser:devuser launch-chromium.sh /opt/browsercontainer/launch-chromium.sh
 COPY --chown=devuser:devuser cdp-diagnose.js /opt/browsercontainer/cdp-diagnose.js
 COPY --chown=devuser:devuser podkey-ctl.js /opt/browsercontainer/podkey-ctl.js
+# ADR-2207 D1: one display definition, Xvfb wrapper, view-state reset, window manager config
+COPY --chown=devuser:devuser display-env.sh /opt/browsercontainer/display-env.sh
+COPY --chown=devuser:devuser display.js /opt/browsercontainer/display.js
+COPY --chown=devuser:devuser start-xvfb.sh /opt/browsercontainer/start-xvfb.sh
+COPY --chown=devuser:devuser reset-view-state.js /opt/browsercontainer/reset-view-state.js
+COPY --chown=devuser:devuser openbox-rc.xml /opt/browsercontainer/openbox-rc.xml
 
 # Podkey (W9, owner rule 2026-10-03): the published `podkey-extension` CI artefact
 # of JavaScriptSolidServer/podkey, named exactly by podkey.pin. The zip is fetched
@@ -89,7 +97,7 @@ RUN install -D -m 0644 /etc/opt/chrome/policies/managed/podkey-only.json /etc/ch
 
 COPY supervisord.conf /etc/supervisord.conf
 COPY --chown=devuser:devuser healthcheck.sh /opt/browsercontainer/healthcheck.sh
-RUN chmod +x /opt/browsercontainer/healthcheck.sh /opt/browsercontainer/launch-chromium.sh
+RUN chmod +x /opt/browsercontainer/healthcheck.sh /opt/browsercontainer/launch-chromium.sh /opt/browsercontainer/start-xvfb.sh
 
 # 5903: VNC  |  8931: MCP SSE  |  9222: Chrome CDP (internal)  |  9223: socat CDP proxy (external)
 EXPOSE 5903 8931 9222 9223

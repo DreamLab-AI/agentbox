@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ADR-2207 D1: the sidecar's window manager. One browser on one fixed 16:9
+  display: every normal window is maximised and undecorated, there is one
+  desktop, new windows get focus, and there are deliberately NO key or mouse
+  bindings, so nothing over VNC can move, resize or iconify the browser.
+  Dialogs keep their own size and are centred on the one screen.
+  supervisord passes this file as openbox's config file, so the package's
+  default rc.xml, with its bindings, is never read.
+-->
+<openbox_config xmlns="http://openbox.org/3.4/rc">
+  <resistance>
+    <strength>0</strength>
+    <screen_edge_strength>0</screen_edge_strength>
+  </resistance>
+  <focus>
+    <focusNew>yes</focusNew>
+    <followMouse>no</followMouse>
+    <focusLast>yes</focusLast>
+    <underMouse>no</underMouse>
+    <raiseOnFocus>no</raiseOnFocus>
+  </focus>
+  <placement>
+    <policy>Smart</policy>
+    <center>yes</center>
+    <monitor>Primary</monitor>
+    <primaryMonitor>1</primaryMonitor>
+  </placement>
+  <theme>
+    <titleLayout></titleLayout>
+    <keepBorder>no</keepBorder>
+    <animateIconify>no</animateIconify>
+  </theme>
+  <desktops>
+    <number>1</number>
+    <firstdesk>1</firstdesk>
+    <names>
+      <name>browser</name>
+    </names>
+    <popupTime>0</popupTime>
+  </desktops>
+  <resize>
+    <drawContents>yes</drawContents>
+    <popupShow>Never</popupShow>
+  </resize>
+  <margins>
+    <top>0</top>
+    <bottom>0</bottom>
+    <left>0</left>
+    <right>0</right>
+  </margins>
+  <keyboard>
+  </keyboard>
+  <mouse>
+    <dragThreshold>1</dragThreshold>
+    <doubleClickTime>500</doubleClickTime>
+    <screenEdgeWarpTime>0</screenEdgeWarpTime>
+    <screenEdgeWarpMouse>false</screenEdgeWarpMouse>
+  </mouse>
+  <applications>
+    <application type="normal">
+      <decor>no</decor>
+      <maximized>yes</maximized>
+      <focus>yes</focus>
+      <desktop>1</desktop>
+      <layer>normal</layer>
+      <iconic>no</iconic>
+      <skip_taskbar>no</skip_taskbar>
+    </application>
+    <application type="dialog">
+      <focus>yes</focus>
+      <desktop>1</desktop>
+      <position force="yes">
+        <x>center</x>
+        <y>center</y>
+        <monitor>1</monitor>
+      </position>
+    </application>
+  </applications>
+</openbox_config>

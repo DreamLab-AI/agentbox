@@ -1,7 +1,15 @@
 #!/bin/bash
 # Persistent Chrome with hardware-accelerated WebGPU + WebGL via Vulkan/ANGLE
 # Launched by supervisord; MCP server attaches via CDP on port 9222
-# socat proxy on 9223 exposes CDP to the Docker host
+# cdp-proxy.js on 9223 exposes CDP to the docker network and the host (ADR-2207 D3)
+#
+# Display (ADR-2207 D1): one window on one 16:9 display. display-env.sh is the
+# single definition of the size (BROWSER_DISPLAY_SIZE); an invalid value stops
+# here before Chrome starts. openbox (supervisord) maximises the window and
+# removes decorations; the flags below give the same geometry without it.
+# Saved zoom and window placement are removed from the profile on every start
+# (reset-view-state.js), so the profile volume cannot carry a 125 % zoom or a
+# 500x584 window into the next session.
 # Prefers google-chrome-beta (149+, WebMCP), falls back to chromium
 #
 # Podkey (W9, owner rule 2026-10-03): the pinned Podkey CI artefact is unpacked
@@ -19,6 +27,10 @@
 # The profile ($CHROME_PROFILE_DIR) is the named volume browsercontainer-profile,
 # so Podkey's chrome.storage.local (encrypted vault, pubkey, grants) survives
 # container recreation.
+
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=display-env.sh
+. "$HERE/display-env.sh"
 
 SECURE_ORIGINS="${TREAT_AS_SECURE:-http://the model host:3001,http://the model host:3000,http://host.docker.internal:3001,http://host.docker.internal:3000}"
 
@@ -43,6 +55,7 @@ RUN_DIR="${BROWSERCONTAINER_RUN_DIR:-/tmp/browsercontainer}"
 
 echo "[launch-chromium] Using: $CHROME_BIN" >&2
 echo "[launch-chromium] TREAT_AS_SECURE: $SECURE_ORIGINS" >&2
+echo "[launch-chromium] Display: ${BROWSER_DISPLAY_W}x${BROWSER_DISPLAY_H}" >&2
 
 # Chrome's --unsafely-treat-insecure-origin-as-secure accepts EITHER repeated
 # flag entries OR a single comma-separated value, but the single-value form is
@@ -56,6 +69,10 @@ echo "[launch-chromium] TREAT_AS_SECURE: $SECURE_ORIGINS" >&2
 # "in use". Only this script starts Chrome in this container, so they are stale.
 mkdir -p "$PROFILE_DIR" "$RUN_DIR"
 rm -f "$PROFILE_DIR/SingletonLock" "$PROFILE_DIR/SingletonSocket" "$PROFILE_DIR/SingletonCookie"
+
+# Fail-open: a failed reset is logged and Chrome still starts.
+node "$HERE/reset-view-state.js" "$PROFILE_DIR/Default/Preferences" \
+  || echo "[launch-chromium] WARN: view-state reset failed; starting Chrome anyway" >&2
 
 EXTENSION_ARGS=()
 PODKEY_MODE=none
@@ -100,4 +117,8 @@ exec "$CHROME_BIN" \
     --crash-dumps-dir=/tmp/chromium-crashes \
     --disable-features=CrashReporting \
     --unsafely-treat-insecure-origin-as-secure="$SECURE_ORIGINS" \
+    --window-position=0,0 \
+    --window-size="${BROWSER_DISPLAY_W},${BROWSER_DISPLAY_H}" \
+    --start-maximized \
+    --force-device-scale-factor=1 \
     about:blank
