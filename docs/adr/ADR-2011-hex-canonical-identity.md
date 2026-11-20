@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: f6a87328266381a2f2f1bf6ddf7050ebd72eda49
+verified_commit: dd78dba4281e78ad2a893f88ba362a3ac9810d78
 verified_paths: [management-api/lib/agent-identity.js, config/nip98-proxy/proxy.mjs]
 owner: jjohare
 review_trigger: A durable identity appears in bech32/npub form in storage or a URL, or the did:nostr:local fallback fires in production
@@ -141,3 +141,5 @@ Re-verified by `git diff a48ea407a..275e12356 -- <verified_paths>`. No re-implem
 ## Re-verification — 2026-11-20 at `f6a87328266381a2f2f1bf6ddf7050ebd72eda49`
 
 Governed delta: `config/nip98-proxy/proxy.mjs` only (W3-05, ADR-2210); `management-api/lib/agent-identity.js` is unchanged. The hunks add a `NIP98_PROXY_REQUIRE_CONFIG=1` mode in which an absent or unreadable config file makes `pubkeyAllowed` refuse every identity (`proxy.mjs:182-183`, `:260-272`, poll at `:1086-1099`). No hunk touches the `^[0-9a-f]{64}$` checks, so hex-only canonical identity is intact; the new refusal can only deny more, never accept a non-hex identity. `proxy.mjs` is +1 line after `:180`, +15 after `:264` and +30 after `:1085`: the `:250` and `:396` in this record's Verification are as of their own commits, and the `:120` allowlist validation sits above the first hunk and keeps its number. Commands run: `git diff 18315de55..f6a873282 -- management-api/lib/agent-identity.js config/nip98-proxy/proxy.mjs`. Re-run the diff to reproduce.
+
+Re-verified 2026-11-20 at dd78dba42: `git diff 57136dbc0..dd78dba42 -- config/nip98-proxy/proxy.mjs`. One hunk, in the pending-config poll (now `proxy.mjs:1086-1105`): the restart probe parses the file as well as checking it is readable, so a half-written file is still pending. No request path, route or identity check changes, so no claim in this record is affected.

@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: inactive
 supersedes: []
 superseded_by: [ADR-2153]
-verified_commit: f6a87328266381a2f2f1bf6ddf7050ebd72eda49
+verified_commit: dd78dba4281e78ad2a893f88ba362a3ac9810d78
 verified_paths: [config/nip98-proxy/proxy.mjs, flake.nix]
 owner: jjohare
 review_trigger: next image rebuild (activation), or any new consumer of :9095, or per-process isolation becoming available
@@ -479,3 +479,5 @@ this source stamp does not promote this record's status axes.
 ## Re-verification — 2026-11-20 at `f6a87328266381a2f2f1bf6ddf7050ebd72eda49`
 
 Governed delta: `flake.nix` (one line, `:3169`: `NIP98_PROXY_REQUIRE_CONFIG="1"` joins the `[program:nip98-proxy]` `environment=`; same line count, no citation moves) and `config/nip98-proxy/proxy.mjs` (W3-05, ADR-2210). The proxy change is about identity-door availability, not the AoE token path: under `NIP98_PROXY_REQUIRE_CONFIG=1` an absent or unreadable `nip98-proxy-config.json` is treated as PENDING and `pubkeyAllowed` returns false for every identity (`proxy.mjs:182-183`, `:260-272`), with a poll that exits 0 once the file is readable (`:1086-1099`). It is +1 line after `:180`, +15 after `:264` and +30 after `:1085`, so `proxy.mjs` citations in earlier notes are as of their own commits. No hunk touches token reading, the upstream route table or the AoE-retirement lines. AoE itself was retired by ADR-2153, so the token claims of this record are historical; the fail-closed request-layer enforcement they describe is unchanged and is now also closed while the proxy's config is pending. Commands run: `git diff 2ebc3859c..f6a873282 -- config/nip98-proxy/proxy.mjs flake.nix`. Re-run the diff to reproduce.
+
+Re-verified 2026-11-20 at dd78dba42: `git diff 57136dbc0..dd78dba42 -- config/nip98-proxy/proxy.mjs`. One hunk, in the pending-config poll (now `proxy.mjs:1086-1105`): the restart probe parses the file as well as checking it is readable, so a half-written file is still pending. No request path, route or identity check changes, so no claim in this record is affected.

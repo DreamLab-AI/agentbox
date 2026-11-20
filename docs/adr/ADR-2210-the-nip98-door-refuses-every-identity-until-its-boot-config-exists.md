@@ -37,3 +37,7 @@ Status is `proposed` with no `verified_commit` until the host rebuild verifies i
 Unit level only: `node tests/config/nip98-boot-failclosed.test.mjs` (8/8) and `bash tests/config/nip98-config-projection.test.sh` (7/7). The image is unbuilt; the supervisor restart-on-exit-0 path and the Stage B timing are confirmed only after a host rebuild.
 
 Residuals: under `[security].role_isolation` the proxy runs as `ab-ingress` (uid 962, `config/role-accounts.json`) while the file is `1000:1000 0600`. Before this change that read as absent (any signer); now it is closed until the file is readable. A key removed from `allowed_pubkeys` still takes effect one boot late, because the proxy reads the previous boot's file and nothing restarts it after re-projection.
+
+## Amendment — 2026-11-20 (review)
+
+A review of this change found that `agentbox-manifest nip98-config` read a mistyped `allowed_pubkeys` or `routes` value (a string or a number, not an array) as absent, returned 0, and the boot helper then wrote the explicit empty config, which the door serves as any valid signer. From dd78dba42 a non-array value is an error (`services/agentbox-manifest/src/proxy.rs`, `array_or_absent`), so the helper leaves state untouched and the door stays closed. The projector now writes the file atomically, and the proxy's restart probe parses the file before exiting for a restart (`config/nip98-proxy/proxy.mjs:1090-1104`). Still not covered: a file left by an earlier boot is served until the proxy restarts (open-work NIP98-STALE-CONFIG).
