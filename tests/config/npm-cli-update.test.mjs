@@ -5,6 +5,21 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 
+test('successful rehash counts zero unresolved hashes on one line', () => {
+  const source = fs.readFileSync('scripts/prefetch-hashes.sh', 'utf8');
+  const line = source.split('\n').find(x => x.trimStart().startsWith('remaining=$(grep -c'));
+  assert(line);
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'npm-hash-count-'));
+  try {
+    fs.writeFileSync(path.join(root, 'flake.nix'), 'resolved = "sha256-real";\n');
+    const run = spawnSync('bash', ['-eu', '-c', `${line}\n[ "$remaining" -eq 0 ]\nprintf '%s' "$remaining"`], {
+      encoding: 'utf8', env: {...process.env, REPO_ROOT: root},
+    });
+    assert.equal(run.status, 0, run.stderr);
+    assert.equal(run.stdout, '0');
+  } finally { fs.rmSync(root, {recursive:true, force:true}); }
+});
+
 test('release discovery accepts npm object and singleton-array responses', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'npm-pin-test-'));
   try {

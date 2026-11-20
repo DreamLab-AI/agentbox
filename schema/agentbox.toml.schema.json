@@ -894,7 +894,7 @@
         },
         "metaharness": {
           "type": "boolean",
-          "description": "Bake the MetaHarness and Darwin runtime CLIs (ADR-064)."
+          "description": "Bake MetaHarness, Darwin and the offline ARTEX Defense evidence-replay CLI (ADR-064/ADR-2208); no defence gateway is started."
         },
         "nagual_qe": {
           "description": "Build the nagual-qe Rust test harness from source. Currently disabled upstream because of a compile error.",

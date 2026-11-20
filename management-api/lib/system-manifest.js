@@ -102,7 +102,7 @@ const CATALOGUE = [
     summary: 'Structural code-graph index MCP (callers, architecture, snippets).' },
   { id: 'metaharness-binaries', name: 'MetaHarness runtime CLIs', layer: 'module',
     gate: 'toolchains.metaharness', apply_class: 'rebuild',
-    summary: 'ADR-064: bakes metaharness + metaharness-darwin CLIs at the plugin-pinned versions; makes score/genome/evolve/security-bench offline-functional.' },
+    summary: 'ADR-064/ADR-2208: bakes metaharness, metaharness-darwin and artex-defense CLIs; offline evidence replay adds no gateway, interception hook or persistent adapter.' },
   { id: 'metaharness-plugin', name: 'ruflo-metaharness plugin', layer: 'module',
     gate: null, apply_class: 'boot',
     summary: 'ADR-063: boot-symlinked from the ruflo plugin cache via [[plugins.packages]]; 13 harness-intelligence skills, graceful-degrade without the baked CLIs.' },

@@ -705,6 +705,19 @@
           bin             = "metaharness-darwin";
         };
 
+        # Named owner request 2026-11-20: ARTEX Defense 0.1.0 is ~54 h old
+        # (root-only exception to the routine 72 h hold). Its sole dependency
+        # is the older, exact @metaharness/harness 0.2.1. Offline CLI only:
+        # no supervisor, interception hook, network service or durable adapter.
+        artexDefensePkg = mkNpmCli {
+          pkgName = "@metaharness/artex-defense";
+          version = "0.1.0";
+          packageLock = ./config/npm-locks/metaharness-artex-defense-0.1.0.package-lock.json;
+          sha256 = "sha256-WepHaZIiONVFjPv+icP48PN6fvPKPXD14NNzp24ZjhQ=";
+          nodeModulesHash = "sha256-Xy66BUuWb7FJt4fHXQ7cMfyUJINVibX/KqAjm2dxyy4=";
+          bin = "artex-defense";
+        };
+
         # 4. agentic-qe — gated by toolchains.agentic_qe.
         #    VisionCraft consumes direct aqe mcp tools. Never run aqe init:
         #    template installation and additional persistent memory are not boot work.
@@ -861,7 +874,7 @@
           # rufloGovernedPkg wraps rufloPkg's bins (ADR-2123: `memory` → the
           # governed CLI on the sidecar; everything else with repo-safe defaults).
           lib.optionals ((toolchainCfg.ruflo or false) || (toolchainCfg.claude_flow or false) || rufloConsoleOn) [ rufloGovernedPkg ]
-          ++ lib.optionals (toolchainCfg.metaharness or false)     [ metaharnessPkg metaharnessDarwinPkg ]
+          ++ lib.optionals (toolchainCfg.metaharness or false)     [ metaharnessPkg metaharnessDarwinPkg artexDefensePkg ]
           ++ lib.optionals (toolchainCfg.agentic_qe or false)      [ agenticQePkg ]
           ++ lib.optionals (toolchainCfg.codebase_memory or false)  [ codebaseMemoryPkg ]
           ++ lib.optionals (toolchainCfg.deepsec or false)          [ deepsecPkg ]
@@ -4876,6 +4889,7 @@ ${ragflowNetworkDecl}
           agentbox-sessions = agentboxSessionsPkg;
           web-researcher-mcp = webResearcherMcpPkg;
           systemscape = systemscapePkg; # fast standalone verification before an image rebuild
+          artex-defense = artexDefensePkg; # offline replay/receipt smoke gate (ADR-2208)
           supersplat = supersplatLib.editor; # ADR-2177; also resolves the pinned hashes
           splat-transform = supersplatLib.splatTransform;
           runtime = mkImage { tag = "runtime-${system}"; };
