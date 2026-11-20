@@ -260,11 +260,16 @@ const CONFIG_FILE = process.env.NIP98_PROXY_CONFIG_FILE
 const REQUIRE_CONFIG = process.env.NIP98_PROXY_REQUIRE_CONFIG === '1';
 let CONFIG_PENDING = false;
 let CONFIG_PENDING_CODE = '';
+// NIP98-STALE-CONFIG: the exact text this process loaded ('' when none). Under
+// REQUIRE_CONFIG the watcher at the bottom compares it with the file on disk, so
+// a file left by an earlier boot cannot outlive the Stage B projection.
+let LOADED_CONFIG_RAW = '';
 
 const FILE_CONFIG = (() => {
   let raw;
   try {
     raw = readFileSync(CONFIG_FILE, 'utf-8');
+    LOADED_CONFIG_RAW = raw;
   } catch (err) {
     // ENOENT (not projected yet) and EACCES (projected, but this uid cannot read
     // it, e.g. the ADR-2122 ab-ingress role) are both "no usable config".
@@ -1085,20 +1090,28 @@ server.listen(PORT, BIND, () => {
 
 if (CONFIG_PENDING) {
   log('error', 'nip98 config file absent and NIP98_PROXY_REQUIRE_CONFIG=1: refusing every identity until it is readable (fail-closed)', { file: CONFIG_FILE, code: CONFIG_PENDING_CODE });
+}
+if (REQUIRE_CONFIG) {
   const pollMs = Math.max(100, Number(process.env.NIP98_PROXY_REQUIRE_CONFIG_POLL_MS) || 2000);
+  // Never exit before supervisord's startsecs (3 s) has elapsed, or the restart
+  // counts as a failed start and repeated races push the program to FATAL.
+  const MIN_UPTIME_S = 3.5;
   setInterval(() => {
     // Probe READABILITY, not existence: an unreadable file would otherwise make
     // the proxy exit every poll, inside startsecs, and push supervisord to FATAL.
     // It must also PARSE: restarting on a half-written or non-file path would
     // exit 1 on the next start and count against supervisord's startretries.
-    let readable = false;
+    let current;
     try {
       accessSync(CONFIG_FILE, fsConstants.R_OK);
-      JSON.parse(readFileSync(CONFIG_FILE, 'utf-8'));
-      readable = true;
-    } catch { /* still pending */ }
-    if (readable) {
-      log('info', 'nip98 config file appeared; exiting for a supervised restart', { file: CONFIG_FILE });
+      current = readFileSync(CONFIG_FILE, 'utf-8');
+      JSON.parse(current);
+    } catch { return; } // still pending, or mid-write: keep the state we have
+    // Pending: any readable file is news. Loaded: only a CHANGE is (NIP98-STALE-CONFIG,
+    // a removed key must stop being allowed once the new projection lands).
+    if (CONFIG_PENDING || current !== LOADED_CONFIG_RAW) {
+      if (process.uptime() < MIN_UPTIME_S) return;
+      log('info', CONFIG_PENDING ? 'nip98 config file appeared; exiting for a supervised restart' : 'nip98 config file changed since load; exiting for a supervised restart', { file: CONFIG_FILE });
       process.exit(0);
     }
   }, pollMs);

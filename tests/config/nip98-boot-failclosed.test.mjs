@@ -14,6 +14,10 @@
 //   5. REQUIRE_CONFIG + file appearing after start: the proxy exits 0 so the
 //      supervisor restarts it with the real config (the Stage-B race).
 //   6. REQUIRE_CONFIG + malformed file: exit 1 (unchanged crash-loop).
+//   8. NIP98-STALE-CONFIG: REQUIRE_CONFIG + a file loaded at start that is then
+//      rewritten with different content (the Stage B projection after a stale
+//      file from an earlier boot): the proxy exits 0 for a supervised restart;
+//      an identical rewrite or a half-written file does not restart it.
 import http from 'node:http';
 import net from 'node:net';
 import { spawn } from 'node:child_process';
@@ -134,6 +138,20 @@ try {
     ok((await Promise.race([k.exit, new Promise((r) => setTimeout(() => r('timeout'), 3000))])) === 0,
       'REQUIRE_CONFIG: file becoming readable triggers the supervised restart');
   } else console.log('ok - SKIP unreadable-file case (running as root)');
+
+  // 8. stale file from an earlier boot is replaced by the Stage B projection
+  const stale = join(tmp, 'stale.json');
+  const oldPk = tools.getPublicKey(rnd());
+  writeFileSync(stale, JSON.stringify({ routes: [], allowedPubkeys: [oldPk] }));
+  k = await start({ NIP98_PROXY_REQUIRE_CONFIG: '1', NIP98_PROXY_CONFIG_FILE: stale, NIP98_PROXY_REQUIRE_CONFIG_POLL_MS: '200' });
+  await new Promise((r) => setTimeout(r, 800));
+  writeFileSync(stale, JSON.stringify({ routes: [], allowedPubkeys: [oldPk] })); // identical: no restart
+  writeFileSync(stale, '{"routes":[],"allowed');                                 // half-written: no restart
+  await new Promise((r) => setTimeout(r, 1200));
+  ok(!k.dead && k.proc.exitCode === null, 'REQUIRE_CONFIG + loaded file: identical or half-written rewrite does not restart the proxy');
+  writeFileSync(stale, JSON.stringify({ routes: [], allowedPubkeys: [pk] }));    // removed key / new allowlist
+  const code8 = await Promise.race([k.exit, new Promise((r) => setTimeout(() => r('timeout'), 6000))]);
+  ok(code8 === 0, 'REQUIRE_CONFIG + loaded file: changed content makes the proxy exit 0 for a supervised restart (NIP98-STALE-CONFIG)', `exit=${code8}`);
 } finally {
   for (const k of kids) k.proc.kill('SIGKILL');
   upstream.close(); rmSync(tmp, { recursive: true, force: true });

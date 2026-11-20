@@ -2333,8 +2333,10 @@ fi
 # ── ADR-069: project [interaction_plane.proxy] → nip98-proxy config file ──
 # Boot-class route + allowlist config for the sovereign ingress (supervisord
 # environment= cannot carry JSON). The proxy reads this at startup and fails
-# closed on malformed content. Reconciled every boot; absent section ⇒ file
-# removed (proxy then runs on baked env alone).
+# closed on malformed content. Reconciled every boot; absent section ⇒ an
+# explicit empty config (ab_nip98_project), never an absent file, because an
+# absent file closes the door (W3-05). The proxy restarts itself when the
+# projection changes the file it loaded (NIP98-STALE-CONFIG).
 _NIP98_CFG="/home/devuser/workspace/.agentbox/nip98-proxy-config.json"
 # W3-05 / ADR-2210: the proxy runs with NIP98_PROXY_REQUIRE_CONFIG=1, so a failed
 # or skipped projection leaves the door closed (no file), never open.
