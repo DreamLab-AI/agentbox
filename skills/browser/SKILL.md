@@ -69,6 +69,9 @@ claude mcp add browser-gpu --transport sse http://browsercontainer:8931/sse
 ## Key Tools
 
 Tool names below are the `browser-gpu` server's (`mcp__browser-gpu__<name>`).
+Connector 1.13 requires `pageId` on page-scoped calls. Use the intended page's
+ID from `new_page` or `list_pages`; a selected tab is not an implicit target.
+Element `uid`s must come from a snapshot of that same page.
 
 ### `take_snapshot` (preferred for LLM interaction)
 Returns an accessibility tree -- structured, deterministic, no vision model needed. Element `uid`s from it feed `click`, `fill`, `hover`.
@@ -79,7 +82,7 @@ Capture viewport, full page (`fullPage: true`) or one element (`uid`); `filePath
 ### `navigate_page`
 Go to a URL (`type: "url"`), or back/forward/reload. `new_page` / `select_page` / `list_pages` manage tabs.
 
-### `click` / `type_text` / `fill` / `fill_form`
+### `click` / `type_text` / `fill`
 Interact with page elements.
 
 ### `evaluate_script`
@@ -91,10 +94,11 @@ Read browser console output.
 ## Quick Start
 
 ```javascript
-navigate_page({ type: "url", url: "https://example.com" })
-take_snapshot()
-take_screenshot({ filePath: "/home/devuser/exchange/mcp/page.png", fullPage: true })
-upload_file({ uid: "<file input uid>", filePath: "/home/devuser/exchange/in/report.pdf" })
+new_page({ url: "https://example.com", background: true })
+const pageId = 3 // example only: replace with the new page's returned ID
+take_snapshot({ pageId })
+take_screenshot({ pageId, filePath: "/home/devuser/exchange/mcp/page.png", fullPage: true })
+upload_file({ pageId, uid: "<file input uid from this page>", filePaths: ["/home/devuser/exchange/in/report.pdf"] })
 ```
 
 ## Passing files

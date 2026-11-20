@@ -4,6 +4,9 @@ On-demand cookbook for using the `browsercontainer` sidecar to inspect diagrams
 and spot-check LaTeX/PDF output. Canonical connection details live in the
 parent `SKILL.md`.
 
+Every snippet below uses `pageId`, the actual ID of the intended review tab
+returned by `new_page` or `list_pages` (connector 1.13 requires explicit IDs).
+
 ## Mermaid Rendering
 
 Mermaid is rendered by Pele, not by a browser (ADR-2154): use
@@ -13,8 +16,8 @@ in the sidecar and screenshot it. `file:` URLs and `filePath` resolve in the
 sidecar; use `/home/devuser/exchange`, the same path in Agentbox (ADR-2207):
 
 ```javascript
-navigate_page({ type: "url", url: "file:///home/devuser/exchange/map.svg" })
-take_screenshot({ filePath: "/home/devuser/exchange/mcp/wardley_map.png" })
+navigate_page({ pageId, type: "url", url: "file:///home/devuser/exchange/map.svg" })
+take_screenshot({ pageId, filePath: "/home/devuser/exchange/mcp/wardley_map.png" })
 ```
 
 ## PDF Preview During LaTeX Builds
@@ -23,14 +26,14 @@ Use the sidecar to visually verify LaTeX output during iterative builds:
 
 ```javascript
 // Open the compiled PDF
-navigate_page({ type: "url", url: "file:///home/devuser/exchange/book/main.pdf" })
+navigate_page({ pageId, type: "url", url: "file:///home/devuser/exchange/book/main.pdf" })
 
 // Screenshot specific pages for spot-checking
-take_screenshot({ filePath: "/home/devuser/exchange/mcp/page_check.png" })
+take_screenshot({ pageId, filePath: "/home/devuser/exchange/mcp/page_check.png" })
 
 // Chrome's built-in PDF viewer is not PDF.js; use a PDF page URL fragment.
-navigate_page({ type: "url", url: "file:///home/devuser/exchange/book/main.pdf#page=42" })
-take_screenshot({ filePath: "/home/devuser/exchange/mcp/page_42.png" })
+navigate_page({ pageId, type: "url", url: "file:///home/devuser/exchange/book/main.pdf#page=42" })
+take_screenshot({ pageId, filePath: "/home/devuser/exchange/mcp/page_42.png" })
 ```
 
 This is the correct approach for arXiv/book builds — no local PDF viewer required.

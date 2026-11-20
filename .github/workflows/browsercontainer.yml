@@ -98,3 +98,6 @@ jobs:
 
       - name: Dockerfile COPY sources exist in the build context
         run: node --test tests/browsercontainer/dockerfile-copy-sources.test.cjs
+
+      - name: Skill examples match the captured live connector argument schema
+        run: node --test tests/browsercontainer/documented-tool-arguments.test.cjs

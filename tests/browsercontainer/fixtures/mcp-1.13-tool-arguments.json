@@ -1,0 +1,102 @@
+{
+  "source": "Live chrome-devtools-mcp 1.13.0 tools/list, 2026-11-20",
+  "tools": [
+    {
+      "name": "navigate_page",
+      "required": [
+        "pageId"
+      ],
+      "properties": {
+        "pageId": {
+          "type": "number"
+        },
+        "type": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        },
+        "ignoreCache": {
+          "type": "boolean"
+        },
+        "handleBeforeUnload": {
+          "type": "string"
+        },
+        "initScript": {
+          "type": "string"
+        },
+        "timeout": {
+          "type": "integer"
+        }
+      }
+    },
+    {
+      "name": "take_screenshot",
+      "required": [
+        "pageId"
+      ],
+      "properties": {
+        "pageId": {
+          "type": "number"
+        },
+        "format": {
+          "type": "string"
+        },
+        "quality": {
+          "type": "number"
+        },
+        "uid": {
+          "type": "string"
+        },
+        "fullPage": {
+          "type": "boolean"
+        },
+        "filePath": {
+          "type": "string"
+        }
+      }
+    },
+    {
+      "name": "take_snapshot",
+      "required": [
+        "pageId"
+      ],
+      "properties": {
+        "pageId": {
+          "type": "number"
+        },
+        "verbose": {
+          "type": "boolean"
+        },
+        "filePath": {
+          "type": "string"
+        }
+      }
+    },
+    {
+      "name": "upload_file",
+      "required": [
+        "pageId",
+        "uid",
+        "filePaths"
+      ],
+      "properties": {
+        "pageId": {
+          "type": "number"
+        },
+        "uid": {
+          "type": "string"
+        },
+        "filePaths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "includeSnapshot": {
+          "type": "boolean"
+        }
+      }
+    }
+  ]
+}

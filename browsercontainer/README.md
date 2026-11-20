@@ -84,11 +84,15 @@ temp directory, so any path in the exchange is a valid upload or output path, an
 relative `filePath` lands there. No `docker cp`.
 
 ```javascript
+const pageId = 3 // example only: use the intended ID from new_page or list_pages
 // screenshot: readable in agentbox at the same path as soon as the call returns
-take_screenshot({ filePath: "/home/devuser/exchange/mcp/page.png", fullPage: true })
+take_screenshot({ pageId, filePath: "/home/devuser/exchange/mcp/page.png", fullPage: true })
 // upload: write the file in agentbox first, then
-upload_file({ uid: "<file input uid>", filePath: "/home/devuser/exchange/in/form.pdf" })
+upload_file({ pageId, uid: "<file input uid from this page>", filePaths: ["/home/devuser/exchange/in/form.pdf"] })
 ```
+
+Connector 1.13 requires explicit page IDs and the plural `filePaths` array for
+uploads. A snapshot's `uid` belongs to that page; do not reuse it in another tab.
 
 `mcp/` and `recordings/` are created on first use; nothing in the volume is ever
 deleted by the sidecar. Because the connector's temp directory is now the exchange,
