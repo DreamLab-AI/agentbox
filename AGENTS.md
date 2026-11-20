@@ -50,7 +50,7 @@ Narrative, Jev compaction (ADR-2093) and live skill routing (ADR-2091): [runtime
 | [`config/model-router/`](config/model-router/) | ADR-2080 router console; `AGENTBOX_MODEL_ROUTER_*` only |
 | [`services/agentbox-sessions`](services/agentbox-sessions) | ADR-2153 session plane: tmux-backed daemon that reconciles `[[interaction_plane.session_seeds]]`. Supervised with `autostart=true`; sessions are `abs_<slug>`, ownership is the tmux option `@agentbox-sessions` |
 | [`crates/colloquy/`](crates/colloquy/) | cq learning model — has its own `AGENTS.md` |
-| [`DreamLab-AI/sidestr-rs`](https://github.com/DreamLab-AI/sidestr-rs) | sidestr crates, **not in this repo** (ADR-2112); `AGPL-3.0-only`, never a dependency of a permissive crate. The optional supervised faucet bakes the standalone `sidestr-agent` binary from a pinned upstream Git revision (`lib/sidestr-agent.nix`); this repo hosts the chain instance: [`config/sidechain/`](config/sidechain/) |
+| [`DreamLab-AI/sidestr-rs`](https://github.com/DreamLab-AI/sidestr-rs) | sidestr crates, **not in this repo** (ADR-2112); status: running, development paused, adoption of its capabilities parked (owner decision 2026-11-16); `AGPL-3.0-only`, never a dependency of a permissive crate. The optional supervised faucet bakes the standalone `sidestr-agent` binary from a pinned upstream Git revision (`lib/sidestr-agent.nix`); this repo hosts the chain instance: [`config/sidechain/`](config/sidechain/) |
 
 Everything else (tab0-bridge, voice, harness-wrappers, session provisioning, explainer-tools): [runtime-files.md](docs/reference/claude-context/runtime-files.md).
 

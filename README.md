@@ -147,7 +147,7 @@ The dated forge/instruction deployment receipts above describe specific 20 Octob
 | [Loom](https://github.com/DreamLab-AI/loom) | Configured grounding/model service |
 | [Ontomark](https://github.com/DreamLab-AI/ontomark) | Shared Markdown-ontology toolchain |
 | [dream-engine](https://github.com/DreamLab-AI/dream-engine) | Reusable gate/loop libraries; Agentbox owns its product-specific host |
-| [sidestr-rs](https://github.com/DreamLab-AI/sidestr-rs) | Economic protocol libraries; chain-instance configuration stays in [`config/sidechain/`](config/sidechain/) |
+| [sidestr-rs](https://github.com/DreamLab-AI/sidestr-rs) | Economic protocol libraries. Status (owner decision 2026-11-16): running, development paused; adopting its capabilities is parked. Chain-instance configuration stays in [`config/sidechain/`](config/sidechain/) |
 
 ## Documentation, contribution and licence
 
