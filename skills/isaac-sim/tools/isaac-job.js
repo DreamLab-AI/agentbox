@@ -16,7 +16,8 @@
  * <script> and inputs are paths relative to the share (what `stage` prints). A timeout of this client,
  * of `wait` or of a request is never a job failure: re-run `status <id>`; never resubmit to find out.
  * Submitting identical script+inputs+args+seed returns the existing job (idempotent) unless --rerun.
- * Env: ISAAC_URL (http://isaac-sim:9890), ISAAC_LOCAL_SHARE (/home/devuser/gui-tools/isaac).
+ * Env: ISAAC_URL (http://isaac-sim:9890), ISAAC_LOCAL_SHARE (/home/devuser/gui-tools/isaac),
+ *      ISAAC_RUNNER_TOKEN (bearer token; must equal the runner's, sent on every request).
  */
 const fs = require('fs');
 const path = require('path');
@@ -26,11 +27,18 @@ const URL_BASE = process.env.ISAAC_URL || 'http://isaac-sim:9890';
 const SHARE = process.env.ISAAC_LOCAL_SHARE || '/home/devuser/gui-tools/isaac';
 const TERMINAL = new Set(['succeeded', 'failed', 'cancelled', 'lost']);
 
+function requestHeaders() {
+  const headers = { 'content-type': 'application/json' };
+  const token = (process.env.ISAAC_RUNNER_TOKEN || '').trim();
+  if (token) headers.authorization = `Bearer ${token}`;
+  return headers;
+}
+
 async function call(method, route, body) {
   let res;
   try {
     res = await fetch(URL_BASE + route, {
-      method, headers: { 'content-type': 'application/json' },
+      method, headers: requestHeaders(),
       body: body ? JSON.stringify(body) : undefined, signal: AbortSignal.timeout(20000),
     });
   } catch (e) {
@@ -38,6 +46,9 @@ async function call(method, route, body) {
     process.exit(2);
   }
   const json = await res.json().catch(() => ({}));
+  if (res.status === 401 || res.status === 503) {
+    console.error('sidecar refused the request: set ISAAC_RUNNER_TOKEN here to the value the isaac-sim container was started with');
+  }
   return { status: res.status, json };
 }
 

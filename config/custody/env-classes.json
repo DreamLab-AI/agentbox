@@ -168,6 +168,10 @@
         "exception": "Q8 (queen 2026-10-03, pending owner): provider and devuser credentials stay in devuser's environment this step",
         "reason": "Provider credential (JunkieJarvis LLM endpoint). Agents and their tools are its users; devuser-class by design (design §1 role inventory)."
       },
+      "ISAAC_RUNNER_TOKEN": {
+        "exception": "Q8 (queen 2026-10-03, pending owner): provider and devuser credentials stay in devuser's environment this step",
+        "reason": "Bearer token for the Isaac Sim runner control plane (CD-F3); isaac-job.js, run as devuser, sends it. Compose passes it to the isaac-sim sidecar; never committed."
+      },
       "JUPYTER_TOKEN": {
         "exception": "Q8 (queen 2026-10-03, pending owner): provider and devuser credentials stay in devuser's environment this step",
         "reason": "Jupyter login token; the notebook runs as devuser."

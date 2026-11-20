@@ -234,5 +234,80 @@ class RunnerTest(unittest.TestCase):
         self.assertEqual(status, 507)
 
 
+class AuthTest(unittest.TestCase):
+    """Bearer-token gate on the control plane (CD-F3). Fails closed when no token is configured."""
+
+    TOKEN = "unit-test-token-not-a-secret"
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        os.environ.pop("ISAAC_RUNNER_TOKEN", None)
+        self.r = load(self.tmp.name)
+
+    def tearDown(self):
+        os.environ.pop("ISAAC_RUNNER_TOKEN", None)
+        self.tmp.cleanup()
+
+    def test_pure_check(self):
+        self.assertEqual(self.r.authorise("Bearer " + self.TOKEN, self.TOKEN), (True, None))
+        self.assertEqual(self.r.authorise(None, self.TOKEN)[0], False)
+        self.assertEqual(self.r.authorise("Bearer wrong", self.TOKEN)[0], False)
+        self.assertEqual(self.r.authorise("Basic " + self.TOKEN, self.TOKEN)[0], False)
+        self.assertEqual(self.r.authorise("Bearer \u00e9", self.TOKEN)[0], False)  # non-ASCII must not raise
+        # unset or empty token: nothing is accepted, not even an empty bearer
+        for tok in ("", None):
+            self.assertEqual(self.r.authorise("Bearer " + self.TOKEN, tok)[0], False)
+            self.assertEqual(self.r.authorise("Bearer ", tok)[0], False)
+            self.assertEqual(self.r.authorise(None, tok)[0], False)
+
+    def test_token_read_from_environment(self):
+        self.assertEqual(self.r.RUNNER_TOKEN, "")
+        os.environ["ISAAC_RUNNER_TOKEN"] = "  " + self.TOKEN + "  "
+        self.assertEqual(load(self.tmp.name).RUNNER_TOKEN, self.TOKEN)
+
+    def serve(self, token):
+        self.r.RUNNER_TOKEN = token
+        srv = self.r.ThreadingHTTPServer(("127.0.0.1", 0), self.r.Handler)
+        threading.Thread(target=srv.serve_forever, daemon=True).start()
+        self.addCleanup(srv.server_close)
+        self.addCleanup(srv.shutdown)
+        return "http://127.0.0.1:%d" % srv.server_address[1]
+
+    def request(self, base, method, path, auth=None, body=None):
+        import urllib.error
+        import urllib.request
+        headers = {"content-type": "application/json"}
+        if auth is not None:
+            headers["authorization"] = auth
+        req = urllib.request.Request(base + path, method=method, headers=headers,
+                                     data=json.dumps(body).encode() if body is not None else None)
+        try:
+            with urllib.request.urlopen(req, timeout=10) as res:
+                return res.status, json.loads(res.read())
+        except urllib.error.HTTPError as e:
+            return e.code, json.loads(e.read())
+
+    def test_http_gate(self):
+        base = self.serve(self.TOKEN)
+        spec = {"script": "../nope.py"}  # reaches submit() and is refused there with 400, proving auth passed
+        self.assertEqual(self.request(base, "POST", "/v1/jobs", body=spec)[0], 401)
+        self.assertEqual(self.request(base, "POST", "/v1/jobs", "Bearer wrong", spec)[0], 401)
+        self.assertEqual(self.request(base, "GET", "/v1/jobs")[0], 401)
+        self.assertEqual(self.request(base, "GET", "/v1/capabilities")[0], 401)
+        self.assertEqual(self.request(base, "POST", "/v1/jobs", "Bearer " + self.TOKEN, spec)[0], 400)
+        self.assertEqual(self.request(base, "GET", "/v1/jobs", "Bearer " + self.TOKEN)[0], 200)
+        # health reveals nothing and stays open (the container healthcheck sends no header)
+        self.assertEqual(self.request(base, "GET", "/healthz"), (200, {"ok": True}))
+
+    def test_http_fails_closed_when_unset(self):
+        for token in ("", None):
+            base = self.serve(token)
+            for auth in (None, "Bearer ", "Bearer anything"):
+                status, body = self.request(base, "POST", "/v1/jobs", auth, {"script": "x.py"})
+                self.assertEqual(status, 503)
+                self.assertIn("ISAAC_RUNNER_TOKEN", body["error"])
+            self.assertEqual(self.request(base, "GET", "/healthz")[0], 200)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -19,6 +19,8 @@ domain: BASELINE-container
 
 ## External review reconciliation — 2026-11-02
 
+> Note 2026-11-20: the control plane is no longer unauthenticated inside the compose network. `isaac-sim-sidecar/runner/isaac_runner.py` (`authorise`, `Handler.route`) requires `Authorization: Bearer $ISAAC_RUNNER_TOKEN` on every route except `/healthz` and refuses everything (503) while the variable is unset or empty; `skills/isaac-sim/tools/isaac-job.js` (`requestHeaders`) sends it. Tests: `tests/isaac-sim/test_runner.py` (`AuthTest`). Source and tests only; live after the next image rebuild. Port exposure is unchanged, and the "trusted-script" limitation below still stands: a token holder can submit arbitrary job scripts.
+
 The external recommendation to promote this record because a manifest flag is active does not apply to this decision: Decision 1 explicitly keeps this sidecar live-class and outside agentbox.toml. Source presence or a healthy unrelated GPU sidecar cannot satisfy the four-level smoke evidence in Decision 6. At the 2026-11-02 read-only Docker inventory no isaac-sim container was running. Retain proposed/partial/staged pending the named build and simulator fixtures. The internal trusted-script API boundary in Consequences remains a limitation, not public API authentication.
 
 This is a scoped assessment; existing whole-record verification fields are retained.

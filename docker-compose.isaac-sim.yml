@@ -1,6 +1,16 @@
 # Isaac Sim sidecar (ADR-2149). Opt-in; headless; no published ports.
 #   ISAAC_SIM_GPU_UUID=GPU-... ./agentbox.sh isaac-sim up
 # The compose file fails closed when no GPU UUID is given: there is deliberately no `all` default.
+#
+# Variables (set in the gitignored .env; never commit a value):
+#   ISAAC_SIM_GPU_UUID        required; GPU UUID from `nvidia-smi -L`
+#   ISAAC_RUNNER_TOKEN        required bearer token for the control plane (CD-F3). The runner refuses every
+#                             request except /healthz while it is unset or empty. The same variable must be
+#                             set where skills/isaac-sim/tools/isaac-job.js runs, which sends it as
+#                             `Authorization: Bearer <token>`. Generate a long random value, e.g. `openssl rand -hex 32`.
+#   ISAAC_SIM_MAX_CONCURRENT  simultaneous jobs (default 1)
+#   ISAAC_SIM_MIN_FREE_GIB    refuse submission below this free space (default 20)
+#   ISAAC_SIM_PRIVACY_CONSENT, ISAAC_SIM_UID, ISAAC_SIM_GID, ISAAC_SIM_VENDOR_GID: vendor-image options
 services:
   isaac-sim:
     build:
@@ -29,6 +39,8 @@ services:
       HUB__CACHE__PATH: /isaac-cache/hub
       OMNICLIENT_HUB_CACHE_DIR: /isaac-cache/hub
       ISAAC_RUNNER_ROOT: /exchange/isaac
+      # No default and no `:?`: an unset value starts the runner closed (it logs why), so the container stays diagnosable.
+      ISAAC_RUNNER_TOKEN: ${ISAAC_RUNNER_TOKEN:-}
       ISAAC_MAX_CONCURRENT: ${ISAAC_SIM_MAX_CONCURRENT:-1}
       ISAAC_MIN_FREE_GIB: ${ISAAC_SIM_MIN_FREE_GIB:-20}
     deploy:

@@ -3,6 +3,8 @@
 Internal only: `http://isaac-sim:9890` on the container network, no published port. Use
 `tools/isaac-job.js`; the HTTP shapes are below for other clients.
 
+Every route except `GET /healthz` needs `Authorization: Bearer $ISAAC_RUNNER_TOKEN`: 401 for a missing or wrong token, 503 when the runner itself has no token configured (it then refuses everything). `isaac-job.js` sends the variable from its own environment.
+
 | Route | Purpose |
 |---|---|
 | `GET /healthz` | control endpoint only |

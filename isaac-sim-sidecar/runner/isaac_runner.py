@@ -23,12 +23,15 @@ a restart is never reported as running and never signalled.
 Environment:
   ISAAC_RUNNER_ROOT        job tree (default /exchange/isaac)
   ISAAC_RUNNER_BIND/PORT   listen address (default 0.0.0.0:9890; internal network only)
+  ISAAC_RUNNER_TOKEN       required bearer token for every route except /healthz. Unset or empty
+                           means every other request is refused (503); the value is never logged.
   ISAAC_PYTHON             interpreter for job scripts (default /isaac-sim/python.sh)
   ISAAC_MAX_CONCURRENT     simultaneous jobs (default 1)
   ISAAC_MIN_FREE_GIB       refuse submission below this free space (default 20)
   ISAAC_RUNNER_VERSIONS    JSON file with image/sim/lab revisions (default /etc/isaac-sim-versions.json)
 """
 import hashlib
+import hmac
 import json
 import os
 import re
@@ -43,6 +46,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
 ROOT = os.environ.get("ISAAC_RUNNER_ROOT", "/exchange/isaac")
+RUNNER_TOKEN = os.environ.get("ISAAC_RUNNER_TOKEN", "").strip()
 PYTHON = os.environ.get("ISAAC_PYTHON", "/isaac-sim/python.sh")
 MAX_CONCURRENT = int(os.environ.get("ISAAC_MAX_CONCURRENT", "1"))
 MIN_FREE_GIB = float(os.environ.get("ISAAC_MIN_FREE_GIB", "20"))
@@ -497,6 +501,19 @@ def capabilities():
 
 
 # ── HTTP ──────────────────────────────────────────────────────────────────────
+def authorise(header, token):
+    """Pure bearer check: (True, None) or (False, reason). An unset or empty token accepts nothing."""
+    if not token:
+        return False, "unconfigured"
+    scheme, _, presented = (header or "").partition(" ")
+    if scheme.lower() != "bearer" or not presented:
+        return False, "missing"
+    # compare bytes: compare_digest raises on non-ASCII str, and a header must never crash the handler
+    if not hmac.compare_digest(presented.encode("utf-8", "replace"), token.encode("utf-8")):
+        return False, "invalid"
+    return True, None
+
+
 class Handler(BaseHTTPRequestHandler):
     server_version = "isaac-runner/1"
 
@@ -528,6 +545,11 @@ class Handler(BaseHTTPRequestHandler):
         try:
             if parts == ["healthz"]:
                 return self.send(200, {"ok": True})
+            ok, why = authorise(self.headers.get("authorization"), RUNNER_TOKEN)
+            if not ok:
+                if why == "unconfigured":
+                    return self.send(503, {"error": "runner token not configured: set ISAAC_RUNNER_TOKEN; all requests are refused"})
+                return self.send(401, {"error": "bearer token required"})
             if parts == ["v1", "capabilities"] and method == "GET":
                 return self.send(200, capabilities())
             if parts == ["v1", "jobs"]:
@@ -575,6 +597,9 @@ def main():
     reconcile()
     bind = os.environ.get("ISAAC_RUNNER_BIND", "0.0.0.0")
     port = int(os.environ.get("ISAAC_RUNNER_PORT", "9890"))
+    if not RUNNER_TOKEN:
+        print("isaac-runner: ISAAC_RUNNER_TOKEN is unset or empty; refusing every request except /healthz "
+              "until it is set (fail closed)", file=sys.stderr, flush=True)
     srv = ThreadingHTTPServer((bind, port), Handler)
     print(f"isaac-runner listening on {bind}:{port} root={ROOT} python={PYTHON}", flush=True)
     srv.serve_forever()
