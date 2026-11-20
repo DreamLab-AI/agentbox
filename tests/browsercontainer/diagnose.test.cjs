@@ -87,3 +87,14 @@ test('no target URL -> sidecar checks only', () => {
   assert.equal(diag.parseArgs(['http://x:1', '2000'], {}).waitMs, 2000);
   assert.equal(diag.parseArgs([], { TARGET_URL: 'http://y' }).targetUrl, 'http://y');
 });
+
+test('probe waits for the probe URL itself to load, not the initial about:blank', () => {
+  const url = 'http://127.0.0.1:8931/health';
+  const expr = diag.readyExpression(url);
+  assert.match(expr, /location\.href === "http:\/\/127\.0\.0\.1:8931\/health"/);
+  assert.match(expr, /document\.readyState === 'complete'/);
+  const src = fs.readFileSync(path.join(REPO, 'browsercontainer/cdp-diagnose.js'), 'utf8');
+  const checks = src.slice(src.indexOf('async function sidecarChecks'), src.indexOf('// end sidecarChecks'));
+  assert.match(checks, /readyExpression\(/);
+  assert.match(checks, /probe page did not load/);
+});

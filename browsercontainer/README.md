@@ -93,7 +93,10 @@ upload_file({ uid: "<file input uid>", filePath: "/home/devuser/exchange/in/form
 ```
 
 `mcp/` and `recordings/` are created on first use; nothing in the volume is ever
-deleted by the sidecar. If the exchange is missing or read-only the bridge logs one
+deleted by the sidecar. Because the connector's temp directory is now the exchange,
+its own scratch directories (`chrome-devtools-mcp-*`, made by `mkdtemp` for unnamed
+screenshots and screencasts) also land in the exchange root and survive recreates;
+remove them by hand when they pile up. If the exchange is missing or read-only the bridge logs one
 warning and the connector falls back to its own temp directory (then only
 `docker cp` reaches those files).
 

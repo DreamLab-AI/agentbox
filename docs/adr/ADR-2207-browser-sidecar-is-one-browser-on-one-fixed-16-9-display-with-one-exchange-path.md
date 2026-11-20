@@ -67,6 +67,7 @@ Measured on the live sidecar (image of 2026-11-05). Xvfb `:2` ran at 1920x1080 w
   - the boot-time `browser-gpu` registration in `config/entrypoint-unified.sh` treats 503 as reachable (an agentbox image change);
   - `healthcheck.sh` probes DevTools by name.
 - Screenshot paths under the sidecar's `/tmp` stop being accepted, because the connector's temp root is now the exchange. The skills now use `/home/devuser/exchange`.
+- The connector's own `mkdtemp` scratch directories (`chrome-devtools-mcp-*`) now land in the exchange root and survive recreates. Nothing deletes them, so the owner clears them by hand.
 - NVIDIA: host and sidecar run 615.78.08 and WebGPU works with it. R620 is the newer production branch, and moving to it is a host decision outside this record.
 - Not verified here: no image build, no openbox/Xvfb/Chrome/ffmpeg run, and no resolved model of the agentbox override (that is checked host-side).
 

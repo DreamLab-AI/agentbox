@@ -38,6 +38,15 @@ function probeUrl(env = process.env) {
   return `http://127.0.0.1:${env.SIDECAR_PORT || '8931'}/health`;
 }
 
+/**
+ * True in the probe tab only once the probe URL itself has loaded. A new target
+ * starts on about:blank, which already reports readyState 'complete'; probing
+ * there would lose the execution context when the real page commits.
+ */
+function readyExpression(url) {
+  return `location.href === ${JSON.stringify(url)} && document.readyState === 'complete'`;
+}
+
 // Evaluated in the probe tab. Returns a plain object; never throws.
 const WEBGPU_PROBE = `(async () => {
   const out = { gpu: !!navigator.gpu, secure: window.isSecureContext, nostr: typeof window.nostr !== 'undefined' };
@@ -131,13 +140,27 @@ async function sidecarChecks() {
         const { sessionId } = await send('Target.attachToTarget', { targetId, flatten: true });
         const w = await send('Browser.getWindowForTarget', { targetId });
         win = { windowId: w.windowId, bounds: w.bounds };
-        for (let i = 0; i < 50; i++) {
-          const r = await send('Runtime.evaluate', { expression: 'document.readyState', returnByValue: true }, sessionId);
-          if (r.result && r.result.value === 'complete') break;
-          await new Promise((res) => setTimeout(res, 200));
+        const url = probeUrl();
+        let ready = false;
+        for (let i = 0; i < 50 && !ready; i++) {
+          try {
+            const r = await send('Runtime.evaluate', { expression: readyExpression(url), returnByValue: true }, sessionId);
+            ready = !!(r.result && r.result.value === true);
+          } catch {
+            // The execution context was swapped by the navigation: not ready yet.
+          }
+          if (!ready) await new Promise((res) => setTimeout(res, 200));
         }
-        const r = await send('Runtime.evaluate', { expression: WEBGPU_PROBE, awaitPromise: true, returnByValue: true }, sessionId);
-        webgpu = r.result ? r.result.value : { error: 'no result' };
+        if (!ready) {
+          webgpu = { error: 'probe page did not load' };
+        } else {
+          try {
+            const r = await send('Runtime.evaluate', { expression: WEBGPU_PROBE, awaitPromise: true, returnByValue: true }, sessionId);
+            webgpu = r.result ? r.result.value : { error: 'no result' };
+          } catch (e) {
+            webgpu = { error: e.message };
+          }
+        }
       } finally {
         await send('Target.closeTarget', { targetId }).catch(() => {});
       }
@@ -314,7 +337,7 @@ async function main() {
   process.exit(v.ok ? 0 : 1);
 }
 
-module.exports = { WEBGPU_PROBE, parseArgs, probeUrl, verdict };
+module.exports = { WEBGPU_PROBE, parseArgs, probeUrl, readyExpression, verdict };
 
 if (require.main === module) {
   main().catch((e) => { console.error('Fatal:', e.message); process.exit(1); });
