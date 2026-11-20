@@ -81,5 +81,16 @@ mount still needs its separately checked activation migration.
 
 No new live identity/role-isolation rehearsal, retrieval-geometry benchmark,
 cloud-model round trip, paid evaluation or whole-record acceptance is claimed.
-Image preparation, offline hook-engine checks and final runtime checks are
-deployment gates, not implied by a source verification stamp.
+Claude Code 2.1.329 subsequently passed 88 Jev and 52 Factrail engine tests in a
+network-isolated container with temporary configuration, no credentials and no
+production volumes. Factrail's tests came from the exact pinned source because
+the runtime image deliberately omits them. An initial isolated Jev run inherited
+an unavailable workspace TMPDIR; setting the test TMPDIR to its tmpfs resolved
+that fixture-environment failure. The real Ruflo-packaged aidefence 3.2.1 detector
+also accepted a benign input and flagged a synthetic injection, with networking
+disabled and no gateway started. These checks do not claim universal screening.
+
+Image preparation and final runtime checks remain deployment gates, not implied
+by a source verification stamp. Podkey loading is currently blocked by the
+existing wildcard extension policy; it has not been weakened. The connector's
+separate default-on CrUX URL export was disabled at `9c1728cc0` and tested.

@@ -4,20 +4,38 @@ title: The browser sidecar is one browser on one fixed 16:9 display, with one ex
 date: 2026-11-20
 decision_status: accepted
 implementation_status: complete
-activation_status: inactive
+activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 9263a39761c0c69e651e77ec1c91be33f015a1b5
+verified_commit: 9c1728cc0b195c9eeb297cb787891d97dd198ceb
 verified_paths: [browsercontainer/*, tests/browsercontainer/*, docker-compose.browsercontainer.yml, .github/workflows/browsercontainer.yml]
 owner: operator
 review_trigger: the owner's sidecar rebuild (activation), a change of window manager, display size rules or exchange path, or chrome-devtools-mcp moving past 1.13
 repo: agentbox
 domain: BASELINE-container
-evidence_class: test
-acceptance_boundary: Fixture and unit tests under tests/browsercontainer (stub Chrome, Xvfb and ffmpeg; fake DevTools upstream; Compose's resolved model of docker-compose.browsercontainer.yml). No image was built, and openbox, Xvfb, Chrome and ffmpeg were not run. The agentbox override's resolved model is asserted only host-side (tests/config/compose-persistence.test.cjs). Activation is the owner's rebuild and diagnostic.
+evidence_class: source+test+deployment+runtime
+acceptance_boundary: Browser rebuilt and running with exact-size display, non-fallback NVIDIA WebGPU compute, real MCP connection and isolated-display FFmpeg recording verified. Agentbox exchange-mount activation is still pending. Podkey loading is blocked by the existing wildcard extension policy; no policy relaxation or signing-key access is claimed.
 ---
 
 # ADR-2207 — The browser sidecar is one browser on one fixed 16:9 display, with one exchange path
+
+## Scoped source and partial activation — 2026-11-20
+
+At `9c1728cc0b195c9eeb297cb787891d97dd198ceb`, the connector additionally
+passes its supported `--no-performance-crux` option. Usage statistics alone did
+not disable external URL exports from performance tools. Twelve bridge tests
+pass. The rebuilt browser passes the exact 1920x1080 bounds and NVIDIA WebGPU
+checks (1,024 compute results, zero mismatches); the real MCP bridge advertises
+49 tools and answers a read-only call. An isolated X display, not the operator's
+VNC display, produced a finalised H.264 recording at 1920x1080.
+
+Agentbox's exchange alias still needs its separately reviewed mount migration.
+Podkey cannot currently load: Chromium's unpacked loader rejects the wildcard
+extension blocklist before the ID allowlist exception. The profile remains
+intact; policy relaxation is an owner decision, not silently applied here.
+Source: [Chromium unpacked loader](https://chromium.googlesource.com/chromium/src/+/refs/heads/main/extensions/browser/unpacked_installer.cc).
+Activation is staged until the remaining Agentbox migration is checked; this
+does not make the Podkey signing path ready.
 
 ## Context
 
