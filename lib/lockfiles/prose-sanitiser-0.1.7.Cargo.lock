@@ -2459,7 +2459,7 @@ dependencies = [
 
 [[package]]
 name = "prose-sanitiser"
-version = "0.1.6"
+version = "0.1.7"
 dependencies = [
  "clap",
  "flate2",
@@ -2479,7 +2479,7 @@ dependencies = [
 
 [[package]]
 name = "prose-sanitiser-core"
-version = "0.1.6"
+version = "0.1.7"
 dependencies = [
  "serde",
  "serde_json",
@@ -2490,7 +2490,7 @@ dependencies = [
 
 [[package]]
 name = "prose-sanitiser-media"
-version = "0.1.6"
+version = "0.1.7"
 dependencies = [
  "c2pa",
  "crc32fast",
@@ -2511,7 +2511,7 @@ dependencies = [
 
 [[package]]
 name = "prose-sanitiser-server"
-version = "0.1.6"
+version = "0.1.7"
 dependencies = [
  "axum",
  "base64 0.22.1",
@@ -2519,13 +2519,14 @@ dependencies = [
  "prose-sanitiser",
  "prose-sanitiser-core",
  "serde_json",
+ "subtle",
  "tempfile",
  "tokio",
 ]
 
 [[package]]
 name = "prose-sanitiser-slop"
-version = "0.1.6"
+version = "0.1.7"
 dependencies = [
  "prose-sanitiser-core",
  "prose-sanitiser-uk",
@@ -2536,7 +2537,7 @@ dependencies = [
 
 [[package]]
 name = "prose-sanitiser-uk"
-version = "0.1.6"
+version = "0.1.7"
 dependencies = [
  "prose-sanitiser-core",
  "pulldown-cmark",
@@ -2545,7 +2546,7 @@ dependencies = [
 
 [[package]]
 name = "prose-sanitiser-unicode"
-version = "0.1.6"
+version = "0.1.7"
 dependencies = [
  "prose-sanitiser-core",
  "serde_json",

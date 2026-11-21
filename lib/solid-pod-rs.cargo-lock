@@ -208,6 +208,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "actix-ws"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "12d4f2fbee3ef7a22fa6cb0e416b962237a167ed0419f22d4e451da2d7f082f8"
+dependencies = [
+ "actix-codec",
+ "actix-http",
+ "actix-web",
+ "bytestring",
+ "futures-core",
+ "tokio",
+]
+
+[[package]]
 name = "adler2"
 version = "2.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2451,6 +2465,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "json-event-parser"
+version = "0.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "574b0cd5e90ee2ba03a66d0611fc9a09c9a0c28b2ecc2dc8a181dd31a53ca5d7"
+
+[[package]]
 name = "jsonwebtoken"
 version = "9.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2974,6 +2994,18 @@ name = "oxiri"
 version = "0.2.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "54b4ed3a7192fa19f5f48f99871f2755047fabefd7f222f12a1df1773796a102"
+
+[[package]]
+name = "oxjsonld"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "13a1a66dc569350f3f4e5eff8a8e1a72b0c9e6ad395bb5805493cb7a2fda185f"
+dependencies = [
+ "json-event-parser",
+ "oxiri",
+ "oxrdf",
+ "thiserror 2.0.20",
+]
 
 [[package]]
 name = "oxrdf"
@@ -4094,7 +4126,7 @@ dependencies = [
 
 [[package]]
 name = "solid-pod-rs"
-version = "0.5.0-alpha.22"
+version = "0.5.0-alpha.23"
 dependencies = [
  "actix-web",
  "async-trait",
@@ -4120,6 +4152,7 @@ dependencies = [
  "mime_guess",
  "notify",
  "openidconnect",
+ "oxjsonld",
  "oxrdf",
  "oxttl",
  "p256",
@@ -4127,6 +4160,7 @@ dependencies = [
  "pkcs8 0.10.2",
  "rand 0.8.7",
  "reqwest",
+ "rustix",
  "serde",
  "serde_json",
  "serde_norway",
@@ -4134,6 +4168,7 @@ dependencies = [
  "solid-pod-rs",
  "solid-pod-rs-server",
  "spargebra",
+ "subtle",
  "tempfile",
  "thiserror 1.0.69",
  "tokio",
@@ -4148,7 +4183,7 @@ dependencies = [
 
 [[package]]
 name = "solid-pod-rs-activitypub"
-version = "0.5.0-alpha.22"
+version = "0.5.0-alpha.23"
 dependencies = [
  "async-trait",
  "base64 0.22.1",
@@ -4161,6 +4196,7 @@ dependencies = [
  "serde_json",
  "sha2 0.10.9",
  "solid-pod-rs",
+ "solid-pod-rs-activitypub",
  "sqlx",
  "tempfile",
  "thiserror 1.0.69",
@@ -4174,7 +4210,7 @@ dependencies = [
 
 [[package]]
 name = "solid-pod-rs-didkey"
-version = "0.5.0-alpha.22"
+version = "0.5.0-alpha.23"
 dependencies = [
  "async-trait",
  "base64 0.22.1",
@@ -4195,7 +4231,7 @@ dependencies = [
 
 [[package]]
 name = "solid-pod-rs-forge"
-version = "0.5.0-alpha.22"
+version = "0.5.0-alpha.23"
 dependencies = [
  "async-trait",
  "base64 0.22.1",
@@ -4223,7 +4259,7 @@ dependencies = [
 
 [[package]]
 name = "solid-pod-rs-git"
-version = "0.5.0-alpha.22"
+version = "0.5.0-alpha.23"
 dependencies = [
  "async-trait",
  "base64 0.22.1",
@@ -4243,7 +4279,7 @@ dependencies = [
 
 [[package]]
 name = "solid-pod-rs-idp"
-version = "0.5.0-alpha.22"
+version = "0.5.0-alpha.23"
 dependencies = [
  "argon2",
  "async-trait",
@@ -4276,7 +4312,7 @@ dependencies = [
 
 [[package]]
 name = "solid-pod-rs-nostr"
-version = "0.5.0-alpha.22"
+version = "0.5.0-alpha.23"
 dependencies = [
  "async-trait",
  "futures-util",
@@ -4298,10 +4334,11 @@ dependencies = [
 
 [[package]]
 name = "solid-pod-rs-server"
-version = "0.5.0-alpha.22"
+version = "0.5.0-alpha.23"
 dependencies = [
  "actix-http",
  "actix-web",
+ "actix-ws",
  "anyhow",
  "async-trait",
  "base64 0.22.1",
@@ -4314,6 +4351,7 @@ dependencies = [
  "k256",
  "parking_lot",
  "percent-encoding",
+ "rand 0.8.7",
  "reqwest",
  "rustls",
  "serde",
@@ -4324,9 +4362,11 @@ dependencies = [
  "solid-pod-rs-forge",
  "solid-pod-rs-git",
  "solid-pod-rs-idp",
+ "solid-pod-rs-nostr",
  "subtle",
  "tempfile",
  "tokio",
+ "tokio-tungstenite",
  "tracing",
  "tracing-subscriber",
  "url",

@@ -37,7 +37,7 @@
 { lib, pkgs }:
 
 let
-  version = "0.1.0";
+  version = "0.1.1";
 
   # The crate lives in its own repository (extracted from services/ with full
   # history on 2026-09-03) and is published to crates.io as `diagram-ir`.
@@ -52,7 +52,7 @@ let
     owner = "DreamLab-AI";
     repo  = "diagram-ir";
     rev   = "v${version}";
-    hash  = "sha256-GCWhD/o223quC2P8HVSSQNG2WiB/LztsRsebU26hGtg=";
+    hash  = "sha256-ZtxVxcS1jmk74UjDtjGHzvziMTasjrBeW6atjl23EAA=";
   };
 
 in
