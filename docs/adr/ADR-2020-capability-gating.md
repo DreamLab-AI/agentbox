@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 2ebc3859c77fce7996eb584d78a2b89c286d72c2
+verified_commit: aa6c38322068d21b39515feeecc128434612051e
 verified_paths: [agentbox.toml, skills/tree-search-coder/SKILL.md, services/agentbox-ops/src/bin/tree-search-cap.rs]
 owner: jjohare
 review_trigger: any new optional skill/feature block added to agentbox.toml, or any change to the tree-search-coder spend/route posture
@@ -413,3 +413,7 @@ Re-verified 2026-11-11 at `f475e0b8e` (ADR-2196, removal of the dead `skills.bro
 The only change to this record's governed paths since its previous `verified_commit` is `25f751250` (the diagram-review audit leg: `[diagram_review]` keys `gemini_*` renamed `audit_*` with aliases, `producer_family` added, system-manifest and setup-seed text, a supervisor comment; ADR-2131 amendment of the same date). Checked mechanically: nothing else touched these paths in between. This record's one affected sentence is the `[diagram_review]` paragraph: its "`gemini_monthly_usd` cap" is now `audit_monthly_usd` (the old name is kept as a deprecated alias), and the audit it caps is run by the Codex consultant (ADR-2131, amended 2026-11-16). The gate pattern it describes is unchanged. The sentence itself is left as written. Its other claims were not re-read. Decision and status axes are unchanged.
 
 Re-verified 2026-11-17 at 8c895455a: `agentbox.toml` changes only inside `[system_one]` (`backend` `typesafe` to `laya`, `local_only` filled with eighteen consumers); this record makes no claim about it.
+
+## Re-verification — 2026-11-21 at `aa6c38322068d21b39515feeecc128434612051e` (lost beema key)
+
+Tripped by `fix/beema-key`. The governed delta is three hunks, the same in every record it trips: `agentbox.toml` and `setup/agentbox.default.toml` drop one allowlist entry, the operator's lost older beema key `cd37af94…`, and relabel `b41654017f…` as beema in two trailing comments; the manifest golden fixture drops the same entry. This record was read for any claim about those lines and makes none; its decision is untouched. Checked with `git diff origin/main..aa6c38322 -- agentbox.toml setup/agentbox.default.toml services/agentbox-manifest/tests/golden/live-agentbox.toml` and `cargo test` in `services/agentbox-manifest` (all pass).

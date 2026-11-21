@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 2ebc3859c77fce7996eb584d78a2b89c286d72c2
+verified_commit: aa6c38322068d21b39515feeecc128434612051e
 verified_paths: [services/dream-engine/src/review.rs, services/dream-engine/src/archive.rs, services/dream-engine/src/ledger_io.rs, services/dream-engine/src/gitcmd.rs, services/dream-engine/src/records.rs, services/dream-engine/src/lib.rs, services/dream-engine/src/engine.rs, services/dream-engine/src/main.rs, services/dream-engine/src/config.rs, services/dream-engine/src/estate.rs, services/dream-engine/src/digest.rs, services/dream-engine/src/governance.rs, config/tmux-autostart.sh, schema/agentbox.toml.schema.json, setup/agentbox.default.toml]
 owner: jjohare
 review_trigger: a forge identity that separates agent merges from human merges (a dedicated agent account or signed human approvals), which would reopen merge events as review evidence; a review tool that authenticates its reviewer; any change that prunes, relocates or stops archiving the artefact directory; a dream-core release that changes the ledger row or the witness
@@ -127,3 +127,7 @@ Re-verified 2026-11-11 at `f475e0b8e` (ADR-2196, removal of the dead `skills.bro
 ## Scoped source check — 2026-11-16
 
 The only change to this record's governed paths since its previous `verified_commit` is `25f751250` (the diagram-review audit leg: `[diagram_review]` keys `gemini_*` renamed `audit_*` with aliases, `producer_family` added, system-manifest and setup-seed text, a supervisor comment; ADR-2131 amendment of the same date). Checked mechanically: nothing else touched these paths in between. The change does not concern this record's decision, and its claims were not otherwise re-read. Decision and status axes are unchanged.
+
+## Re-verification — 2026-11-21 at `aa6c38322068d21b39515feeecc128434612051e` (lost beema key)
+
+Tripped by `fix/beema-key`. The governed delta is three hunks, the same in every record it trips: `agentbox.toml` and `setup/agentbox.default.toml` drop one allowlist entry, the operator's lost older beema key `cd37af94…`, and relabel `b41654017f…` as beema in two trailing comments; the manifest golden fixture drops the same entry. This record was read for any claim about those lines and makes none; its decision is untouched. Checked with `git diff origin/main..aa6c38322 -- agentbox.toml setup/agentbox.default.toml services/agentbox-manifest/tests/golden/live-agentbox.toml` and `cargo test` in `services/agentbox-manifest` (all pass).

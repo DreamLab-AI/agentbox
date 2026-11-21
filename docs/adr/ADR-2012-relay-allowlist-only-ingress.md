@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 0913d5458837d8c4d1fa4b5b3e52b70e7975cb5a
+verified_commit: aa6c38322068d21b39515feeecc128434612051e
 verified_paths: [agentbox.toml, flake.nix]
 owner: jjohare
 review_trigger: ingress_policy changes from allowlist, or the ADR-040 D3 governance-publisher key-split lands
@@ -599,3 +599,7 @@ Governed delta: `flake.nix` changed in one line, `:3169`: the `[program:nip98-pr
 ## Re-verification — 2026-11-20 at `0913d5458837d8c4d1fa4b5b3e52b70e7975cb5a` (closeout branch)
 
 Governed delta: `flake.nix` changed only in a comment in the generated compose file's header (R-025, the optional `claude-zai` sidecar, `:4164-4169`): comment text, one line longer, so `flake.nix` lines after `:4165` move by +1. No program, port, mount, environment value or derivation changes. Citations in this record to lines after these points are as of their own commit and are not renumbered. Commands run on this commit: `git diff 6a73c5a73..0913d5458 -- <the paths above>` read in full; `node scripts/adr-index-gen.js docs/adr --check`. The Decision and status axes are unchanged and no claim of this record is falsified.
+
+## Re-verification — 2026-11-21 at `aa6c38322068d21b39515feeecc128434612051e` (lost beema key)
+
+Tripped by `fix/beema-key`, which revokes one publisher: the operator's lost older beema key `cd37af94…` leaves the static allowlist, and `b41654017f…` (the operator's NIP-07 signer) is relabelled as beema. The decision holds at that commit: `ingress_policy = "allowlist"` (`agentbox.toml:150`), the `[sovereign_mesh.relay]` `allowed_pubkeys` list is static and non-empty (5 entries, `:156`), `agent_event_auth = "nip98"` (`:185`), and the list is still baked at build by `relayAllowedPubkeysCsv` (`flake.nix:2079`). This is the build-baked revocation the Consequences describe: it takes effect at the next image rebuild. Commands: `git show aa6c38322:agentbox.toml | grep -n 'ingress_policy\|allowed_pubkeys\|agent_event_auth'`, `git show aa6c38322:flake.nix | grep -n relayAllowedPubkeysCsv`; `cargo test` in `services/agentbox-manifest` passes.

@@ -7,7 +7,7 @@ implementation_status: none
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: 2ebc3859c77fce7996eb584d78a2b89c286d72c2
+verified_commit: aa6c38322068d21b39515feeecc128434612051e
 verified_paths: [mcp/servers/lib/aggregate-effectiveness.js, scripts/ruvector-sona-feeder.mjs, agentbox.toml]
 owner: jjohare
 review_trigger: A SONA binary with configurable embedding_dim (384-capable) ships, or a dimension migration is planned
@@ -402,3 +402,7 @@ Re-verified 2026-11-11 at `f475e0b8e` (ADR-2196, removal of the dead `skills.bro
 The only change to this record's governed paths since its previous `verified_commit` is `25f751250` (the diagram-review audit leg: `[diagram_review]` keys `gemini_*` renamed `audit_*` with aliases, `producer_family` added, system-manifest and setup-seed text, a supervisor comment; ADR-2131 amendment of the same date). Checked mechanically: nothing else touched these paths in between. The change does not concern this record's decision, and its claims were not otherwise re-read. Decision and status axes are unchanged.
 
 Re-verified 2026-11-17 at 8c895455a: `agentbox.toml` changes only inside `[system_one]` (`backend` `typesafe` to `laya`, `local_only` filled with eighteen consumers); this record makes no claim about it.
+
+## Re-verification — 2026-11-21 at `aa6c38322068d21b39515feeecc128434612051e` (lost beema key)
+
+Tripped by `fix/beema-key`. The governed delta is three hunks, the same in every record it trips: `agentbox.toml` and `setup/agentbox.default.toml` drop one allowlist entry, the operator's lost older beema key `cd37af94…`, and relabel `b41654017f…` as beema in two trailing comments; the manifest golden fixture drops the same entry. This record was read for any claim about those lines and makes none; its decision is untouched. Checked with `git diff origin/main..aa6c38322 -- agentbox.toml setup/agentbox.default.toml services/agentbox-manifest/tests/golden/live-agentbox.toml` and `cargo test` in `services/agentbox-manifest` (all pass).
