@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 0913d5458837d8c4d1fa4b5b3e52b70e7975cb5a
+verified_commit: aa6c38322068d21b39515feeecc128434612051e
 verified_paths: [skills/ontology-augment, skills/podcast-knowledge-ingest, agents/ontology-curator.md, mcp/mcp.json, agentbox.toml, AGENTS.md]
 owner: jjohare
 review_trigger: a request to register any MCP server that reads or writes visionGraph, the ADR-140 /mcp plane reaching the deployed Loom, or the first `vault` subcommand an agent cannot express
@@ -262,3 +262,7 @@ Governed delta: `AGENTS.md` gains one sentence on the browser sidecar (one fixed
 ## Re-verification — 2026-11-20 at `0913d5458837d8c4d1fa4b5b3e52b70e7975cb5a` (closeout branch)
 
 Governed delta: `AGENTS.md`, one table row: the `DreamLab-AI/sidestr-rs` entry gains "status: running, development paused, adoption of its capabilities parked (owner decision 2026-11-16)". It is not about the corpus, and no MCP server for the corpus, corpus writer or `vault`/`ontomark` instruction changed, so the decision and its review trigger are untouched. Run: `git diff 6a73c5a73..0913d5458 -- AGENTS.md` read in full. The decision and status axes are unchanged.
+
+## Re-verification — 2026-11-21 at `aa6c38322068d21b39515feeecc128434612051e` (lost beema key)
+
+Tripped by `fix/beema-key`. The governed delta is three hunks, the same in every record it trips: `agentbox.toml` and `setup/agentbox.default.toml` drop one allowlist entry, the operator's lost older beema key `cd37af94…`, and relabel `b41654017f…` as beema in two trailing comments; the manifest golden fixture drops the same entry. This record was read for any claim about those lines and makes none; its decision is untouched. Checked with `git diff origin/main..aa6c38322 -- agentbox.toml setup/agentbox.default.toml services/agentbox-manifest/tests/golden/live-agentbox.toml` and `cargo test` in `services/agentbox-manifest` (all pass).
