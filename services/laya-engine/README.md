@@ -63,7 +63,7 @@ that survived and the head cost — never a guess, and never a stringly-typed
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `LAYA_MODELS` | `laya-typed-decisions=convaiinnovations/laya:typed-decisions,laya=convaiinnovations/laya` | `name=repo[:subfolder][@revision]` pairs; `@revision` pins a Hub commit SHA (unset follows the default branch); a local path is also accepted |
+| `LAYA_MODELS` | `laya-typed-decisions=convaiinnovations/laya:typed-decisions@e333cb7c823cd1787276228260f56d02fbf5180b,laya=convaiinnovations/laya@e333cb7c823cd1787276228260f56d02fbf5180b` | `name=repo[:subfolder][@revision]` pairs; `@revision` pins a Hub commit SHA (unset follows the default branch); a local path is also accepted |
 | `LAYA_DEFAULT_MODEL` | first entry | Model used when the request names none |
 | `LAYA_DEVICE` | auto (`cuda` when available) | Passed to the SDK |
 | `LAYA_MODEL_DIR` | `/models` | Where checkpoints are materialised (a volume) |

@@ -112,8 +112,11 @@ class Settings:
                 "LAYA_MODELS",
                 # English deployment (contract §5). Both checkpoints live in one
                 # repo, so the two entries share a single download.
-                "laya-typed-decisions=convaiinnovations/laya:typed-decisions,"
-                "laya=convaiinnovations/laya",
+                # Pinned to the revision the deployed engine downloaded on
+                # 2026-11-18 (refs/main in its Hugging Face cache), before the
+                # upstream repository moved on 2026-11-19 (CD-F4).
+                "laya-typed-decisions=convaiinnovations/laya:typed-decisions@e333cb7c823cd1787276228260f56d02fbf5180b,"
+                "laya=convaiinnovations/laya@e333cb7c823cd1787276228260f56d02fbf5180b",
             )
         )
         default_model = os.environ.get("LAYA_DEFAULT_MODEL", "").strip()

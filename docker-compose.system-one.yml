@@ -31,7 +31,7 @@ services:
       # entries share a single ~843 MB download each into the models volume.
       # The default follows the repo's default branch; to pin, append `@<full commit
       # SHA>` to each entry, as OPENJEV_MODELS does below.
-      - LAYA_MODELS=${LAYA_MODELS:-laya-typed-decisions=convaiinnovations/laya:typed-decisions,laya=convaiinnovations/laya}
+      - LAYA_MODELS=${LAYA_MODELS:-laya-typed-decisions=convaiinnovations/laya:typed-decisions@e333cb7c823cd1787276228260f56d02fbf5180b,laya=convaiinnovations/laya@e333cb7c823cd1787276228260f56d02fbf5180b}
       - LAYA_DEFAULT_MODEL=${LAYA_DEFAULT_MODEL:-laya-typed-decisions}
       - LAYA_DEVICE=${LAYA_DEVICE:-cuda}
       - LAYA_BIND_HOST=127.0.0.1
