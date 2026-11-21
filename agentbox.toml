@@ -157,8 +157,7 @@ allowed_pubkeys  = [
   # Populated 2026-07-22 from the dreamlab-ai D1 whitelist + forum-config (Tock-0 staging;
   # baked at nix build — takes effect at the next image rebuild).
   "6407eed80e2a8646e41a5ddba0ae6619425fc54af40e2b30482b9623c682425a",  # operator-jjohare — human admin (Dr John O'Hare)
-  "b41654017f6850b13857d19d8ae0e3f88f1365600cab0321e8101c9e92682f7a",  # operator NIP-07 signer — signs 31403 governance decisions (Q15, 2026-10-03: NOT visionclaw-server, which signs 31402 as 11ed6422…; G-5)
-  "cd37af940054d7b2dc979b6f51296db1ca2c34d2a234f35bc6a84888a69a1f88",  # beema — forum admin
+  "b41654017f6850b13857d19d8ae0e3f88f1365600cab0321e8101c9e92682f7a",  # beema — operator NIP-07 signer and forum admin (the only beema key; an older beema key cd37af94… was lost and removed 2026-11-21) — signs 31403 governance decisions (Q15, 2026-10-03: NOT visionclaw-server, which signs 31402 as 11ed6422…; G-5)
   "a3af4977eb4c93bc7270b9e48cac69e8e6c18bb3bcb4ec3aaeeee360c3efd954",  # RedDread — forum admin (house admin; remove if misidentified)
   "2de44d5622eef79519ac078f6e227a85aecbaefd561e4e50c5f51dfadbf916e9",  # junkiejarvis — agentbox-bridge forum agent
   "a5f2a38c44c654b7d7d7c99744e061e02c4402fbc2444d4d5813b7c00eda4beb",  # mobile — operator's phone (Amethyst/Amber; npub15he28rzyce2t047hext5fcrpuqkygqhmcfzy6n2czwmuqrk6f04sgr03mf)
@@ -224,7 +223,7 @@ info_contact     = ""
 # changes need a rebuild. Validated by E078 / W075.
 [sovereign_mesh.forum_governance]
 relay_url = "wss://dreamlab-nostr-relay.solitary-paper-764d.workers.dev"
-signers   = ["b41654017f6850b13857d19d8ae0e3f88f1365600cab0321e8101c9e92682f7a"]  # operator browser-extension key; never the box key
+signers   = ["b41654017f6850b13857d19d8ae0e3f88f1365600cab0321e8101c9e92682f7a"]  # beema — operator browser-extension key; never the box key
 
 # ── Multi-tenant did:nostr user pods (PRD-007, ADR-017) ─────────────────────
 # When enabled, agentbox hosts per-user pods at pods/<pubkey-hex>/ for each
@@ -2199,7 +2198,7 @@ proxy_port  = 9096
 [interaction_plane.proxy]
 allowed_pubkeys = [
   "6407eed80e2a8646e41a5ddba0ae6619425fc54af40e2b30482b9623c682425a",  # operator-jjohare (dreamlab roster)
-  "b41654017f6850b13857d19d8ae0e3f88f1365600cab0321e8101c9e92682f7a",  # operator NIP-07 signer — 31403 decisions ([sovereign_mesh.operator]); not visionclaw-server (Q15, G-5)
+  "b41654017f6850b13857d19d8ae0e3f88f1365600cab0321e8101c9e92682f7a",  # beema — operator NIP-07 signer, 31403 decisions ([sovereign_mesh.operator]); not visionclaw-server (Q15, G-5)
   "11ed64225dd5e2c5e18f61ad43d5ad9272d08739d3a20dd25886197b0738663c",  # agentbox sovereign / house key (browsercontainer Podkey vault copy to be replaced by K_browser; G-5)
 ]
 
