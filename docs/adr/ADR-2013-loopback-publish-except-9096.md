@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 0913d5458837d8c4d1fa4b5b3e52b70e7975cb5a
+verified_commit: 9df43fd17c698bf687b9a90a84a69fee6302ebd6
 verified_paths: [scripts/ci/check-ports-loopback.sh, scripts/ci/check-ports-loopback.mjs, tests/security/ports-gate.test.mjs, .github/workflows/invariants.yml, flake.nix, docker-compose*.yml]
 owner: jjohare
 review_trigger: Any new entry on the SANCTIONED list, or a new compose overlay file
@@ -580,3 +580,7 @@ Governed delta: `flake.nix` changed in one line, `:3169`: the `[program:nip98-pr
 ## Re-verification — 2026-11-20 at `0913d5458837d8c4d1fa4b5b3e52b70e7975cb5a` (closeout branch)
 
 Governed delta: `docker-compose.yml` changed only in the R-025 header comment (`:5-10`), one line longer, so lines after `:10` move by +1 (the `"9096:9096"` line is now `:48`). No service, port, mount or environment value changed. `flake.nix` changed only in a comment in the generated compose file's header (R-025, the optional `claude-zai` sidecar, `:4164-4169`): comment text, one line longer, so `flake.nix` lines after `:4165` move by +1. No program, port, mount, environment value or derivation changes. The isaac-sim overlay gains an `ISAAC_RUNNER_TOKEN` environment entry and header comments, the system-one overlay gains comments and `HF_HUB_OFFLINE`; neither adds a `ports:` block or changes a bind. Run: `sh scripts/ci/check-ports-loopback.sh` exit 0; `node --test tests/security/ports-gate.test.mjs` 1 pass, 0 fail. Citations in this record to lines after these points are as of their own commit and are not renumbered. Commands run on this commit: `git diff 6a73c5a73..0913d5458 -- <the paths above>` read in full; `node scripts/adr-index-gen.js docs/adr --check`. The Decision and status axes are unchanged and no claim of this record is falsified.
+
+## Re-verification — 2026-11-21 at `9df43fd17c698bf687b9a90a84a69fee6302ebd6` (pin bumps)
+
+Governed delta: `docker-compose.system-one.yml:34` changes only the `LAYA_MODELS` default, which now pins both models to revision `e333cb7c` (CD-F4). No `ports:` entry, bind address or published port changed in any overlay, so the loopback-publish rule and the sanctioned-exposure list are unaffected. Checked by reading the diff; the ports gate was not re-run.
