@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: aa6c38322068d21b39515feeecc128434612051e
+verified_commit: 47a8be565ac3277da07f5c0c11e6b2df45a8067b
 verified_paths: [flake.nix, agentbox.toml, schema/agentbox.toml.schema.json, scripts/agentbox-config-validate.js, management-api/lib/system-manifest.js, scripts/visioncraft-deepsec-gate.sh, services/agentbox-manifest/src/deepsec_gate.rs, skills/visioncraft/references/deepsec.md, .github/workflows/deepsec.yml, lib/visioncraft.nix, config/visioncraft-source.json, lib/lockfiles/visioncraft-0.3.0.Cargo.lock, tests/config/visioncraft-deepsec.test.mjs]
 owner: jjohare
 review_trigger: a deepsec major version, a change to its CLI exit-code contract or model-route schema, any new model route, or the first paid full-repo run
@@ -17,6 +17,14 @@ domain: GOVERNANCE-capabilities
 
 # ADR-2033 — Deepsec is the optional VisionCraft security reviewer
 
+
+## Scoped consolidation check — 2026-11-22
+
+Compared every governed path since the previous verification. The only changes
+are the description of `user_cron.enabled` in the shared schema and, where
+governed here, its explicit default-off setup seed. No existing value, authority,
+privacy boundary or runtime implementation governed by this decision changes.
+The setup drift suite passes 8/8. This is source verification, not activation.
 
 ## Scoped source verification — 2026-11-20
 

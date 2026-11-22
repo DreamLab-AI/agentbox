@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 0913d5458837d8c4d1fa4b5b3e52b70e7975cb5a
+verified_commit: 47a8be565ac3277da07f5c0c11e6b2df45a8067b
 verified_paths: [lib/factrail.nix, lib/lockfiles/factrail-af23eca6.Cargo.lock, lib/claude-code-binary.nix, config/entrypoint-unified.sh, config/claude-plugins/.claude-plugin/marketplace.json, scripts/factrail-store-migrate.mjs, tests/config/factrail-store-migrate.test.mjs, tests/config/factrail-projection.test.sh, schema/agentbox.toml.schema.json, scripts/bake-ruflo-console.sh, scripts/ruflo-console-project.mjs, tests/config/ruflo-console.test.mjs]
 owner: jjohare
 review_trigger: a factrail rev bump in lib/factrail.nix, the end of the post-rebuild residency soak, a Claude Code function-hook API change, or a decision to train a local judge on recorded Jev decisions
@@ -18,6 +18,14 @@ lineage: ADR-2093 (the decision this implements; amends its implementation, not 
 
 # ADR-2121 — Implement Jev compaction with factrail — fact rails in Rust, baked at a pinned commit
 
+
+## Scoped consolidation check — 2026-11-22
+
+Compared every governed path since the previous verification. The only changes
+are the description of `user_cron.enabled` in the shared schema and, where
+governed here, its explicit default-off setup seed. No existing value, authority,
+privacy boundary or runtime implementation governed by this decision changes.
+The setup drift suite passes 8/8. This is source verification, not activation.
 
 ## Scoped source verification — 2026-11-20
 

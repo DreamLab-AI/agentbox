@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: aa6c38322068d21b39515feeecc128434612051e
+verified_commit: 47a8be565ac3277da07f5c0c11e6b2df45a8067b
 verified_paths: [agentbox.toml, schema/agentbox.toml.schema.json, management-api/lib/system-manifest.js, flake.nix, config/entrypoint-unified.sh, config/claude-plugins/.claude-plugin/marketplace.json, scripts/ci/check-manifest-catalogue.js, tests/config/jev-checkpoints.test.mjs, tests/config/factrail-projection.test.sh, tests/config/ruflo-console.test.mjs]
 owner: jjohare
 review_trigger: the first soak report of injections per hundred turns and USD per session, a measured shadow-log agreement rate for spawn routing (ADR-2110 labels), a change to the advisor checkpoints in ADR-2134, or a Claude Code function-hook API change
@@ -18,6 +18,14 @@ lineage: ADR-2134 (the advisor whose consult timing this judges), ADR-2121 (fact
 
 # ADR-2135 — Use Jev to time the advisor — jev-checkpoints, with spawn routing shadow-only
 
+
+## Scoped consolidation check — 2026-11-22
+
+Compared every governed path since the previous verification. The only changes
+are the description of `user_cron.enabled` in the shared schema and, where
+governed here, its explicit default-off setup seed. No existing value, authority,
+privacy boundary or runtime implementation governed by this decision changes.
+The setup drift suite passes 8/8. This is source verification, not activation.
 
 ## Scoped source verification — 2026-11-20
 

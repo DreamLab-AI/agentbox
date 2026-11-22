@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: aa6c38322068d21b39515feeecc128434612051e
+verified_commit: 47a8be565ac3277da07f5c0c11e6b2df45a8067b
 verified_paths: [config/role-accounts.json, services/agentbox-manifest/src/role_accounts.rs, services/agentbox-manifest/src/main.rs, lib/agentbox-manifest.nix, config/lib/role-custody.sh, config/entrypoint-unified.sh, flake.nix, docker-compose.yml, agentbox.toml, setup/agentbox.default.toml, schema/agentbox.toml.schema.json, management-api/lib/system-manifest.js, tests/config/role-isolation-supervisor.test.sh, tests/config/role-secrets-delivery.test.sh, tests/config/role-isolation-boot.test.sh, tests/config/fixtures/role-isolation/supervisord.conf, config/custody/env-classes.json, scripts/ci/env-secret-inventory.js, management-api/lib/role-secret.js, services/nostr-pod-bridge/src/role_secret.rs, services/nostr-pod-bridge/src/bootstrap.rs, tests/runtime-contract/RC-X1-06.sh, config/custody/identity-port-acl.json, services/nostr-pod-bridge/src/identity_port/mod.rs, services/nostr-pod-bridge/src/identity_port/server.rs, management-api/lib/pod-signer.js, scripts/activation/role-isolation-rehearsal.sh, scripts/activation/role-isolation-rehearsal.host.sh, tests/config/role-isolation-rehearsal.test.sh, tests/config/role-isolation-class.test.cjs, config/bake-devuser-privilege.sh, tests/runtime-contract/RC-X1-07.sh, tests/security/compose-role-env.test.mjs, docker-compose.override.yml, tests/config/role-custody-migrate.test.sh, config/sidechain/run-producer.sh, config/sidechain/run-faucet.sh, config/sidechain/mirror-sync.sh]
 owner: jjohare
 review_trigger: the role-isolation rehearsal (scripts/activation/role-isolation-rehearsal.sh) passing or failing on a rebuilt image; a new secret-bearing supervisor program; a new [sidechain.<name>] chain; a change to the host docker gid; the identity port's consumer cutover (W3b: JunkieJarvis, the mirror hook, the gateway, dream-engine); a change to config/custody/identity-port-acl.json
@@ -18,6 +18,14 @@ lineage: ADR-2027 (secret custody; role accounts become its custodians, owner Q3
 
 # ADR-2122 — Role service accounts, /run/secrets, and the identity port
 
+
+## Scoped consolidation check — 2026-11-22
+
+Compared every governed path since the previous verification. The only changes
+are the description of `user_cron.enabled` in the shared schema and, where
+governed here, its explicit default-off setup seed. No existing value, authority,
+privacy boundary or runtime implementation governed by this decision changes.
+The setup drift suite passes 8/8. This is source verification, not activation.
 
 ## Scoped source verification — 2026-11-20
 

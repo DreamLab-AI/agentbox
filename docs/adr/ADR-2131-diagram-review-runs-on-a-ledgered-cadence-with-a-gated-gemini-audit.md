@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 2ebc3859c77fce7996eb584d78a2b89c286d72c2
+verified_commit: 47a8be565ac3277da07f5c0c11e6b2df45a8067b
 verified_paths: [mcp/consultants/shared/model-diversity.js, skills/sealmap-review/scripts/review-cadence.cjs, skills/sealmap-review/scripts/external-review.cjs, skills/sealmap-review/scripts/review-context.cjs, skills/sealmap-review/scripts/merge-findings.cjs, skills/sealmap-review/run-cron.sh, skills/sealmap-review/crontab, schema/agentbox.toml.schema.json]
 owner: jjohare
 review_trigger: the first real Codex audit (compare ledger cost with the estimate, and confirm the codex CLI reads the pack on stdin under the cron's environment); a change to Gemini or Z.AI pricing; a GLM model change behind [consultants.zai]; a second corpus joining repos
@@ -18,6 +18,14 @@ lineage: ADR-2130 (external review is a transport outside [model_routing]; seal 
 
 # ADR-2131 — Diagram review runs on a ledgered cadence with a gated Gemini audit
 
+
+## Scoped consolidation check — 2026-11-22
+
+Compared every governed path since the previous verification. The only changes
+are the description of `user_cron.enabled` in the shared schema and, where
+governed here, its explicit default-off setup seed. No existing value, authority,
+privacy boundary or runtime implementation governed by this decision changes.
+The setup drift suite passes 8/8. This is source verification, not activation.
 
 ## Scoped source verification — 2026-11-20
 

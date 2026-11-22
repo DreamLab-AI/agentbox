@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: aa6c38322068d21b39515feeecc128434612051e
+verified_commit: 47a8be565ac3277da07f5c0c11e6b2df45a8067b
 verified_paths: [scripts/hp-loom-reconcile.sh, config/entrypoint-unified.sh, agentbox.toml, management-api/lib/system-manifest.js, schema/agentbox.toml.schema.json, tests/config/hp-loom-reconcile.test.sh, skills/ontology-augment/scripts/ontology-augment.sh, tests/skills/ontology-augment-grounding.test.sh]
 owner: jjohare
 review_trigger: a reconcile failure or change to the builder pin or published-generation schema; any proposal to run an agentbox on the HP again; any proposal for the HP to read the vault directly; a second consumer of the built generation
@@ -16,6 +16,14 @@ repo: agentbox
 
 # ADR-2140 — Keep the vault canonical on this host, reconcile the HP Loom to it at every boot, and retire the HP agentbox
 
+
+## Scoped consolidation check — 2026-11-22
+
+Compared every governed path since the previous verification. The only changes
+are the description of `user_cron.enabled` in the shared schema and, where
+governed here, its explicit default-off setup seed. No existing value, authority,
+privacy boundary or runtime implementation governed by this decision changes.
+The setup drift suite passes 8/8. This is source verification, not activation.
 
 ## Scoped source verification — 2026-11-20
 

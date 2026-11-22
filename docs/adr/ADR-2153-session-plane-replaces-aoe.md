@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: [ADR-2002, ADR-2063, ADR-2079]
 superseded_by: []
-verified_commit: aa6c38322068d21b39515feeecc128434612051e
+verified_commit: 47a8be565ac3277da07f5c0c11e6b2df45a8067b
 verified_paths: [services/agentbox-sessions, config/session-plane, lib/agentbox-sessions.nix, flake.nix, flake.lock, agentbox.toml, config/entrypoint-unified.sh, config/role-accounts.json, config/custody/session-plane-acl.json, config/tab0-bridge, config/nostr-gateway/gateway.cjs, config/nip98-proxy, config/tmux-autostart.sh, config/hooks/session-state.cjs, config/registered-hooks.txt, scripts/session-provision.mjs, scripts/session-control.cjs, scripts/activation/session-plane-acceptance.mjs, management-api/lib/system-manifest.js, schema/agentbox.toml.schema.json, services/agentbox-manifest/src/stacks.rs, services/agentbox-manifest/src/stacks_env.rs, tests/cli/session-launch-contract.test.mjs, tests/cli/session-control.test.cjs, tests/config/session-plane-notify.test.sh]
 owner: jjohare
 review_trigger: Antigravity signed in and OpenRouter answering the canned round trip (closes §11 acceptance → implementation complete); any AoE consumer found to have been missed
@@ -16,6 +16,14 @@ repo: agentbox
 
 # ADR-2153 — Replace Agent of Empires with an owned, tmux-backed session plane that reconciles to the manifest
 
+
+## Scoped consolidation check — 2026-11-22
+
+Compared every governed path since the previous verification. The only changes
+are the description of `user_cron.enabled` in the shared schema and, where
+governed here, its explicit default-off setup seed. No existing value, authority,
+privacy boundary or runtime implementation governed by this decision changes.
+The setup drift suite passes 8/8. This is source verification, not activation.
 
 ## Scoped source verification — 2026-11-20
 

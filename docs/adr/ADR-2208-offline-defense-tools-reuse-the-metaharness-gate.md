@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: aa6c38322068d21b39515feeecc128434612051e
+verified_commit: 47a8be565ac3277da07f5c0c11e6b2df45a8067b
 verified_paths: [flake.nix, agentbox.toml, schema/agentbox.toml.schema.json, management-api/lib/system-manifest.js, config/npm-locks/metaharness-artex-defense-0.1.0.package-lock.json, tests/config/offline-defense.test.cjs]
 owner: operator
 review_trigger: ARTEX or its harness dependency changes, a proposal to intercept live traffic or start the aidefence gateway, or a change to the single memory-store boundary
@@ -18,6 +18,14 @@ acceptance_boundary: Standalone Nix package plus five checks covering the image 
 ---
 
 # ADR-2208 — Offline defense tools reuse the MetaHarness gate
+
+## Scoped consolidation check — 2026-11-22
+
+Compared every governed path since the previous verification. The only changes
+are the description of `user_cron.enabled` in the shared schema and, where
+governed here, its explicit default-off setup seed. No existing value, authority,
+privacy boundary or runtime implementation governed by this decision changes.
+The setup drift suite passes 8/8. This is source verification, not activation.
 
 ## Activation witness — 2026-11-20
 

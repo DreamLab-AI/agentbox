@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: aa6c38322068d21b39515feeecc128434612051e
+verified_commit: 47a8be565ac3277da07f5c0c11e6b2df45a8067b
 verified_paths: [services/dream-engine/src/review.rs, services/dream-engine/src/archive.rs, services/dream-engine/src/ledger_io.rs, services/dream-engine/src/gitcmd.rs, services/dream-engine/src/records.rs, services/dream-engine/src/lib.rs, services/dream-engine/src/engine.rs, services/dream-engine/src/main.rs, services/dream-engine/src/config.rs, services/dream-engine/src/estate.rs, services/dream-engine/src/digest.rs, services/dream-engine/src/governance.rs, config/tmux-autostart.sh, schema/agentbox.toml.schema.json, setup/agentbox.default.toml]
 owner: jjohare
 review_trigger: a forge identity that separates agent merges from human merges (a dedicated agent account or signed human approvals), which would reopen merge events as review evidence; a review tool that authenticates its reviewer; any change that prunes, relocates or stops archiving the artefact directory; a dream-core release that changes the ledger row or the witness
@@ -21,6 +21,14 @@ acceptance_boundary: "cargo test in services/dream-engine at 542031581 passes 25
 
 # ADR-2190: Dream ledger human cells come only from recorded reviews, and night artefacts are a durable, archived record
 
+
+## Scoped consolidation check — 2026-11-22
+
+Compared every governed path since the previous verification. The only changes
+are the description of `user_cron.enabled` in the shared schema and, where
+governed here, its explicit default-off setup seed. No existing value, authority,
+privacy boundary or runtime implementation governed by this decision changes.
+The setup drift suite passes 8/8. This is source verification, not activation.
 
 ## Scoped source verification — 2026-11-20
 

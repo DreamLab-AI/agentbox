@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: [ADR-2022, ADR-2054]
 superseded_by: []
-verified_commit: aa6c38322068d21b39515feeecc128434612051e
+verified_commit: 47a8be565ac3277da07f5c0c11e6b2df45a8067b
 verified_paths: [lib/vault.nix, flake.nix, agentbox.toml, schema/agentbox.toml.schema.json, config/entrypoint-unified.sh, mcp/mcp.json, services/agentbox-manifest/tests/golden, management-api/lib/ontology-propose.js]
 owner: jjohare
 review_trigger: a `vault --version` gate failure at boot; a request to re-register any deleted server; ontology-monitor, typed-spawn and ontology-workingset re-pointed off mcp/servers/lib/ontology-local.js (vault shipped, so this is now due; ADR-2136); a vaultSrc bump that changes the vault verb set
@@ -18,6 +18,14 @@ lineage: ADR-2107 (no MCP for the corpus), ADR-2029 (rune, the gated-binary patt
 
 # ADR-2108 — ontology-bridge is retired; the vault binary is baked by Nix
 
+
+## Scoped consolidation check — 2026-11-22
+
+Compared every governed path since the previous verification. The only changes
+are the description of `user_cron.enabled` in the shared schema and, where
+governed here, its explicit default-off setup seed. No existing value, authority,
+privacy boundary or runtime implementation governed by this decision changes.
+The setup drift suite passes 8/8. This is source verification, not activation.
 
 ## Scoped source verification — 2026-11-20
 

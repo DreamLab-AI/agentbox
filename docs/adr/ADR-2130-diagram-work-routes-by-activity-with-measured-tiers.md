@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: aa6c38322068d21b39515feeecc128434612051e
+verified_commit: 47a8be565ac3277da07f5c0c11e6b2df45a8067b
 verified_paths: [services/agentbox-manifest/src/routing.rs, agentbox.toml, schema/agentbox.toml.schema.json]
 owner: jjohare
 review_trigger: the sealmap skill landing (DESIGN §10 step 5) with the four routes and two hosts; a Loom model swap; a change of the GLM model behind [consultants.zai]; a seal review whose author and reviewer share a family; ADR-2079's router consolidating [model_routing.routes]
@@ -18,6 +18,14 @@ lineage: ADR-2079 (the routing table this extends; still proposed); ADR-2080 (th
 
 # ADR-2130 — Diagram work routes by activity, with measured tiers
 
+
+## Scoped consolidation check — 2026-11-22
+
+Compared every governed path since the previous verification. The only changes
+are the description of `user_cron.enabled` in the shared schema and, where
+governed here, its explicit default-off setup seed. No existing value, authority,
+privacy boundary or runtime implementation governed by this decision changes.
+The setup drift suite passes 8/8. This is source verification, not activation.
 
 ## Scoped source verification — 2026-11-20
 

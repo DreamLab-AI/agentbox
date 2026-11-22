@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 8482214befe8ee2f40cd35e422ac43c78e392a7c
+verified_commit: 47a8be565ac3277da07f5c0c11e6b2df45a8067b
 verified_paths: [agentbox.toml, setup/agentbox.default.toml, schema/agentbox.toml.schema.json, config/entrypoint-unified.sh, mcp/servers/lib/ontology-local.js, mcp/servers/lib/ontology-index-build.js, scripts/ontology-condense-scheduler.mjs, scripts/ontology-condense-refresh.sh, skills/podcast-knowledge-ingest/SKILL.md, skills/ontology-core/SKILL.md, skills/ontology-enrich/SKILL.md, skills/ontology-augment/SKILL.md, skills/web-summary/SKILL.md]
 owner: jjohare
 review_trigger: any new skill, MCP server, or supervised program that reads or writes authored markdown
@@ -17,6 +17,14 @@ lineage: ADR-2003 (manifest-driven composition), ADR-2008 (single source of trut
 ---
 
 # ADR-2028 — `[vault]` is the single path authority for the authored corpus
+
+## Scoped consolidation check — 2026-11-22
+
+Compared every governed path since the previous verification. The only changes
+are the description of `user_cron.enabled` in the shared schema and, where
+governed here, its explicit default-off setup seed. No existing value, authority,
+privacy boundary or runtime implementation governed by this decision changes.
+The setup drift suite passes 8/8. This is source verification, not activation.
 
 ## Scoped re-verification — 2026-11-22
 

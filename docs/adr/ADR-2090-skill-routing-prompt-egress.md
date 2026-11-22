@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: aa6c38322068d21b39515feeecc128434612051e
+verified_commit: 47a8be565ac3277da07f5c0c11e6b2df45a8067b
 verified_paths: [agentbox.toml, schema/agentbox.toml.schema.json, scripts/agentbox-config-validate.js, config/entrypoint-unified.sh, config/hooks/skill-route.cjs, config/hooks/lib/skill-route.cjs, skills/skill-router/scripts/route.mjs, config/egress-policy.json, tests/config/skill-route.test.js]
 owner: jjohare
 review_trigger: the first project whose content must not reach the judge, or any proposal to widen this beyond skill routing
@@ -18,6 +18,14 @@ acceptance_boundary: jest skill-route 70 passed, semantic-rules and routing-labe
 
 # ADR-2090 — Skill-routing prompts may egress to the judge; per-project gates are deferred, not waived
 
+
+## Scoped consolidation check — 2026-11-22
+
+Compared every governed path since the previous verification. The only changes
+are the description of `user_cron.enabled` in the shared schema and, where
+governed here, its explicit default-off setup seed. No existing value, authority,
+privacy boundary or runtime implementation governed by this decision changes.
+The setup drift suite passes 8/8. This is source verification, not activation.
 
 ## Scoped source verification — 2026-11-20
 
