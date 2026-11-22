@@ -559,7 +559,7 @@
     "toolchains.metaharness": {
       "class": "rebuild",
       "name": "MetaHarness runtime CLIs",
-      "summary": "ADR-064: bakes metaharness + metaharness-darwin CLIs at the plugin-pinned versions; makes score/genome/evolve/security-bench offline-functional."
+      "summary": "ADR-064/ADR-2208: bakes metaharness, metaharness-darwin and artex-defense CLIs; offline evidence replay adds no gateway, interception hook or persistent adapter."
     },
     "toolchains.nagual_qe": {
       "class": "rebuild",
