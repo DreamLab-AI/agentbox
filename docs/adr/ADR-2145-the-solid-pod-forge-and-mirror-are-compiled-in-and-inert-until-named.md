@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 9df43fd17c698bf687b9a90a84a69fee6302ebd6
+verified_commit: e535e9de45abc9e60bb6c1bac77f1aa73a90ec9b
 verified_paths: [lib/solid-pod-rs.nix, lib/solid-pod-rs.cargo-lock, flake.nix, agentbox.toml, scripts/ci/check-manifest-catalogue.js]
 owner: jjohare
 review_trigger: the first image rebuilt with this pin; any change to the forge block defaults (open_edit, allow_mainnet, mirror_follow); a solid-pod-rs release that changes the forge feature names; a second operator
@@ -271,3 +271,7 @@ Tripped by `fix/beema-key`. The governed delta is three hunks, the same in every
 ## Re-verification — 2026-11-21 at `9df43fd17c698bf687b9a90a84a69fee6302ebd6` (solid-pod-rs 0.5.0-alpha.23)
 
 Governed delta: `lib/solid-pod-rs.nix` pins 0.5.0-alpha.23 (`a3c7bba`) and `lib/solid-pod-rs.cargo-lock` is that tag's lockfile. The decision still holds: the forge and mirror are compiled in through the same feature selection, and the mirror stays inert until relays and follows are named. Two behaviour changes upstream bear on this record: (1) `start_forge` now returns an error and the server refuses to boot when a compiled-in forge cannot start (`crates/solid-pod-rs-server/src/main.rs:691` at `a3c7bba`; SP-PAR-293), where before it logged and answered 500 per request, so an invalid forge data directory or `FORGE_*` setting now stops the whole pod at boot; (2) the mirror's relay connection is admitted only for operator-listed relays (`FORGE_MIRROR_RELAYS`) and dials the address the SSRF check approved. No agentbox feature selection enables the crate's test-only `test-loopback` feature. Checked by reading the diff and the upstream source; no image was built.
+
+## Re-verification — 2026-11-22 at `e535e9de45abc9e60bb6c1bac77f1aa73a90ec9b` (solid-pod-rs 0.5.0-alpha.24)
+
+Governed delta: the pin moves from alpha.23 to alpha.24 (`eb22d21`), which changes only dependency versions (actix-http 3.22.0, quinn-udp 0.5.16), a doc link, test helpers and the storage lock-key setup retry. The forge and mirror behaviour recorded in the 2026-11-21 note is unchanged. Checked by reading the upstream diff a3c7bba..eb22d21; no image was built.
