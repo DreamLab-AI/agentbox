@@ -24,20 +24,20 @@
       "blockers": ["Yes, I trust this folder"]
     },
     "codex": {
-      "argv": ["env", "AGENTBOX_PROFILE={slug}", "codex"],
+      "argv": ["env", "AGENTBOX_PROFILE={slug}", "codex", "--dangerously-bypass-approvals-and-sandbox"],
       "model_argv": ["--model", "{model}"],
       "trust": ["codex"],
       "blockers": ["Trust this folder?", "Sign in with ChatGPT"]
     },
     "antigravity": {
-      "argv": ["env", "AGENTBOX_PROFILE={slug}", "agy"],
+      "argv": ["env", "AGENTBOX_PROFILE={slug}", "agy", "--dangerously-skip-permissions"],
       "model_argv": ["--model", "{model}"],
       "trust": [],
       "blockers": ["You are currently not signed in", "Select login method"]
     },
     "opencode": {
       "$comment": "OpenCode v2 removed the TUI model flag (2.0.32: -m and --model are 'Unrecognized flag'). The model rides OPENCODE_CONFIG_CONTENT; --standalone keeps each session off the shared background service so per-session models cannot collide.",
-      "argv": ["opencode", "--standalone"],
+      "argv": ["opencode", "--standalone", "--auto"],
       "model_env": { "OPENCODE_CONFIG_CONTENT": "{\"model\":\"{model}\"}" },
       "trust": [],
       "blockers": [],

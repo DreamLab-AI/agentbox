@@ -113,6 +113,27 @@ test('OpenCode never receives the model on argv (v2 removed the TUI flag)', () =
   }
 });
 
+// ADR-2215: every harness the session plane launches runs without approval
+// prompts. Claude seeds get bypassPermissions from [claude_code].permission_mode
+// (ADR-2116) via their settings, not argv; the custom router console has no
+// tool-permission prompts. Everything else carries its CLI's own flag.
+const YOLO_FLAG = {
+  codex: '--dangerously-bypass-approvals-and-sandbox',
+  antigravity: '--dangerously-skip-permissions',
+  opencode: '--auto',
+};
+test('every non-Claude harness launches in yolo mode (ADR-2215)', () => {
+  for (const [tool, flag] of Object.entries(YOLO_FLAG)) {
+    assert.ok(contract.tools[tool].argv.includes(flag), `${tool}: missing ${flag}`);
+  }
+  for (const seed of seeds) {
+    const kind = launchKind(seed);
+    if (kind === 'claude' || kind === 'wrapper') continue;
+    assert.ok(YOLO_FLAG[kind], `${seed.slug}: ${kind} has no yolo posture declared`);
+    assert.ok(resolveLaunch(seed).argv.includes(YOLO_FLAG[kind]), seed.slug);
+  }
+});
+
 test('the roster matches ADR-2153: loom-raw is the local Qwen seed, the scaffolded loom seed is gone', () => {
   const slugs = seeds.map((s) => s.slug);
   assert.ok(!slugs.includes('loom'), 'scaffolded OpenCode seed "loom" must be removed');

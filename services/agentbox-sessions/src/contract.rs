@@ -146,7 +146,7 @@ mod tests {
     #[test]
     fn opencode_model_rides_env_never_argv() {
         let l = contract().resolve(&seed("deepseek", "opencode", Some("deepseek-agent/deepseek-flash"), true), Path::new("/nowhere")).unwrap();
-        assert_eq!(l.argv, vec!["opencode", "--standalone"]);
+        assert_eq!(l.argv, vec!["opencode", "--standalone", "--auto"]);
         assert_eq!(l.env["OPENCODE_CONFIG_CONTENT"], r#"{"model":"deepseek-agent/deepseek-flash"}"#);
         assert_eq!(l.ready.as_deref(), Some("Ask anything"));
     }
@@ -154,7 +154,7 @@ mod tests {
     #[test]
     fn native_tools_take_the_model_flag() {
         let l = contract().resolve(&seed("antigravity", "antigravity", Some("gemini-3.8-flash"), true), Path::new("/nowhere")).unwrap();
-        assert_eq!(l.argv, vec!["env", "AGENTBOX_PROFILE=antigravity", "agy", "--model", "gemini-3.8-flash"]);
+        assert_eq!(l.argv, vec!["env", "AGENTBOX_PROFILE=antigravity", "agy", "--dangerously-skip-permissions", "--model", "gemini-3.8-flash"]);
         assert!(l.blockers.iter().any(|b| b == "You are currently not signed in"));
         assert!(l.blockers.iter().any(|b| b == "Unrecognized flag"), "common blockers are included");
     }
