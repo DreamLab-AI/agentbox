@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: aa6c38322068d21b39515feeecc128434612051e
+verified_commit: fc95b38774814f9bc83ddfac28649d12cd74fe12
 verified_paths: [agentbox.toml, flake.nix]
 owner: jjohare
 review_trigger: ingress_policy changes from allowlist, or the ADR-040 D3 governance-publisher key-split lands
@@ -603,3 +603,13 @@ Governed delta: `flake.nix` changed only in a comment in the generated compose f
 ## Re-verification — 2026-11-21 at `aa6c38322068d21b39515feeecc128434612051e` (lost beema key)
 
 Tripped by `fix/beema-key`, which revokes one publisher: the operator's lost older beema key `cd37af94…` leaves the static allowlist, and `b41654017f…` (the operator's NIP-07 signer) is relabelled as beema. The decision holds at that commit: `ingress_policy = "allowlist"` (`agentbox.toml:150`), the `[sovereign_mesh.relay]` `allowed_pubkeys` list is static and non-empty (5 entries, `:156`), `agent_event_auth = "nip98"` (`:185`), and the list is still baked at build by `relayAllowedPubkeysCsv` (`flake.nix:2079`). This is the build-baked revocation the Consequences describe: it takes effect at the next image rebuild. Commands: `git show aa6c38322:agentbox.toml | grep -n 'ingress_policy\|allowed_pubkeys\|agent_event_auth'`, `git show aa6c38322:flake.nix | grep -n relayAllowedPubkeysCsv`; `cargo test` in `services/agentbox-manifest` passes.
+
+## ADR-2214 drift check — 2026-11-22
+
+Compared every governed path changed by `fc95b3877` (ADR-2214). Those changes
+move `/home/devuser/.gemini` from a tmpfs to the named volume `agentbox-
+antigravity-state`, set `[providers.gemini].auth_mode = "oauth"`, add `gemini`
+to the OAuth-capable providers, export `AGENTBOX_ANTIGRAVITY_AUTH_MODE` to the
+Antigravity consultant, and correct comments and docs. No value, authority,
+boundary or runtime behaviour governed by this decision changes. This is source
+verification, not activation.

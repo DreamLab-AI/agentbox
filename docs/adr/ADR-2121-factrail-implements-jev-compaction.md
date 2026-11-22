@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 47a8be565ac3277da07f5c0c11e6b2df45a8067b
+verified_commit: fc95b38774814f9bc83ddfac28649d12cd74fe12
 verified_paths: [lib/factrail.nix, lib/lockfiles/factrail-af23eca6.Cargo.lock, lib/claude-code-binary.nix, config/entrypoint-unified.sh, config/claude-plugins/.claude-plugin/marketplace.json, scripts/factrail-store-migrate.mjs, tests/config/factrail-store-migrate.test.mjs, tests/config/factrail-projection.test.sh, schema/agentbox.toml.schema.json, scripts/bake-ruflo-console.sh, scripts/ruflo-console-project.mjs, tests/config/ruflo-console.test.mjs]
 owner: jjohare
 review_trigger: a factrail rev bump in lib/factrail.nix, the end of the post-rebuild residency soak, a Claude Code function-hook API change, or a decision to train a local judge on recorded Jev decisions
@@ -525,3 +525,13 @@ Governed delta: `config/entrypoint-unified.sh` changed in one hunk, `:2336-2348`
 ## Re-verification — 2026-11-20 at `0913d5458837d8c4d1fa4b5b3e52b70e7975cb5a` (closeout branch)
 
 Governed delta: `config/entrypoint-unified.sh` changed only in a comment block at `:2333-2339` above the nip98 projection (net +2 lines, so lines after `:2338` move by +2). No executable line changed. Citations in this record to lines after these points are as of their own commit and are not renumbered. Commands run on this commit: `git diff 6a73c5a73..0913d5458 -- <the paths above>` read in full; `node scripts/adr-index-gen.js docs/adr --check`. The Decision and status axes are unchanged and no claim of this record is falsified.
+
+## ADR-2214 drift check — 2026-11-22
+
+Compared every governed path changed by `fc95b3877` (ADR-2214). Those changes
+move `/home/devuser/.gemini` from a tmpfs to the named volume `agentbox-
+antigravity-state`, set `[providers.gemini].auth_mode = "oauth"`, add `gemini`
+to the OAuth-capable providers, export `AGENTBOX_ANTIGRAVITY_AUTH_MODE` to the
+Antigravity consultant, and correct comments and docs. No value, authority,
+boundary or runtime behaviour governed by this decision changes. This is source
+verification, not activation.

@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 0913d5458837d8c4d1fa4b5b3e52b70e7975cb5a
+verified_commit: fc95b38774814f9bc83ddfac28649d12cd74fe12
 verified_paths: [flake.nix, config/nip98-proxy/proxy.mjs, config/lib/nip98-config.sh, config/entrypoint-unified.sh, services/agentbox-manifest/src/proxy.rs, tests/config/nip98-boot-failclosed.test.mjs, tests/config/nip98-config-projection.test.sh]
 owner: jjohare
 review_trigger: first host rebuild that bakes this change, or any change to where the nip98-config projection runs
@@ -63,3 +63,13 @@ A review of this change found that `agentbox-manifest nip98-config` read a misty
 ## Re-verification — 2026-11-20 at `0913d5458837d8c4d1fa4b5b3e52b70e7975cb5a` (closeout branch)
 
 Governed delta: `config/entrypoint-unified.sh` changed only in a comment block at `:2333-2339` above the nip98 projection (net +2 lines, so lines after `:2338` move by +2). No executable line changed. `config/nip98-proxy/proxy.mjs` (NIP98-STALE-CONFIG): under `NIP98_PROXY_REQUIRE_CONFIG=1` the config poll now also runs when a file was loaded. The proxy keeps the loaded text (`LOADED_CONFIG_RAW`) and exits 0 for a supervised restart when a readable, parsing file differs from it, never before 3.5 s of uptime (`proxy.mjs:1094-1118`, the comparison at `:1112`). The pending behaviour (refuse every identity until a readable file appears), routing, header stripping and re-injection, the verifier and the allow-list parsing are untouched. The fix is partial, as the ADR-2210 note says: the previous boot's file is still served until Stage B rewrites it. `flake.nix` changed only in a comment in the generated compose file's header (R-025, the optional `claude-zai` sidecar, `:4164-4169`): comment text, one line longer, so `flake.nix` lines after `:4165` move by +1. No program, port, mount, environment value or derivation changes. This is the record the change belongs to. Its body cites the restart probe at `proxy.mjs:1090-1104`; it is now `:1094-1118`. The two new cases are `tests/config/nip98-boot-failclosed.test.mjs` 8a and 8b. Run: `node tests/config/nip98-boot-failclosed.test.mjs` 10 passed, 0 failed; `bash tests/config/nip98-config-projection.test.sh` 7 passed, 0 failed. The dated note above states the limits (Stage B ordering window, failed projection, fail-closed fix left for a rebuild-tested change). Citations in this record to lines after these points are as of their own commit and are not renumbered. Commands run on this commit: `git diff 6a73c5a73..0913d5458 -- <the paths above>` read in full; `node scripts/adr-index-gen.js docs/adr --check`. The Decision and status axes are unchanged and no claim of this record is falsified.
+
+## ADR-2214 drift check — 2026-11-22
+
+Compared every governed path changed by `fc95b3877` (ADR-2214). Those changes
+move `/home/devuser/.gemini` from a tmpfs to the named volume `agentbox-
+antigravity-state`, set `[providers.gemini].auth_mode = "oauth"`, add `gemini`
+to the OAuth-capable providers, export `AGENTBOX_ANTIGRAVITY_AUTH_MODE` to the
+Antigravity consultant, and correct comments and docs. No value, authority,
+boundary or runtime behaviour governed by this decision changes. This is source
+verification, not activation.

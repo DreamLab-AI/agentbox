@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: 8c895455ae96bf3c1b07c56dc1c2756b23f22a80
+verified_commit: fc95b38774814f9bc83ddfac28649d12cd74fe12
 verified_paths: [mcp/servers/nostr-bridge.js, scripts/agentbox-config-validate.js, tests/config/semantic-rules.test.js]
 owner: jjohare
 review_trigger: provisioning per-stack nostr key material, changing the profiles root or `$WORKSPACE`, or any new consumer of `loadSigner`
@@ -128,3 +128,13 @@ Re-verified 2026-11-11 at `0ed05167b` (ADR-2196, removal of the dead `skills.bro
 Re-verified 2026-11-11 at `f475e0b8e` (ADR-2196, removal of the dead `skills.browser.qe_browser` switch). Governed-path delta since `0ed05167b`: `tests/config/semantic-rules.test.js` fixtures use `agent_browser` in its place. No published port, mount, secret, identity, route, vault path or registry entry changes, so what this record decides is not touched. Run on this commit: the manifest validator (live and default manifests), manifest catalogue, configuration jest (301), the TUI non-interactive validation (5), agentbox-manifest cargo tests (235). The flake edit is one whole-line deletion, not evaluated. The decision and status axes are unchanged.
 
 Re-verified 2026-11-17 at 8c895455a: `mcp/servers/nostr-bridge.js` takes the governance kind numbers (31400-31405) from `management-api/lib/governance-contract.js` instead of literals, with identical values; `loadSigner`, `profilesRoot` and the signing path are not touched; this record makes no claim about it.
+
+## ADR-2214 drift check — 2026-11-22
+
+Compared every governed path changed by `fc95b3877` (ADR-2214). Those changes
+move `/home/devuser/.gemini` from a tmpfs to the named volume `agentbox-
+antigravity-state`, set `[providers.gemini].auth_mode = "oauth"`, add `gemini`
+to the OAuth-capable providers, export `AGENTBOX_ANTIGRAVITY_AUTH_MODE` to the
+Antigravity consultant, and correct comments and docs. No value, authority,
+boundary or runtime behaviour governed by this decision changes. This is source
+verification, not activation.

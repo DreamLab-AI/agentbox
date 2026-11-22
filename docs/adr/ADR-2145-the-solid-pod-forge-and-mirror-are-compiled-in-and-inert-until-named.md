@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: e535e9de45abc9e60bb6c1bac77f1aa73a90ec9b
+verified_commit: fc95b38774814f9bc83ddfac28649d12cd74fe12
 verified_paths: [lib/solid-pod-rs.nix, lib/solid-pod-rs.cargo-lock, flake.nix, agentbox.toml, scripts/ci/check-manifest-catalogue.js]
 owner: jjohare
 review_trigger: the first image rebuilt with this pin; any change to the forge block defaults (open_edit, allow_mainnet, mirror_follow); a solid-pod-rs release that changes the forge feature names; a second operator
@@ -275,3 +275,13 @@ Governed delta: `lib/solid-pod-rs.nix` pins 0.5.0-alpha.23 (`a3c7bba`) and `lib/
 ## Re-verification — 2026-11-22 at `e535e9de45abc9e60bb6c1bac77f1aa73a90ec9b` (solid-pod-rs 0.5.0-alpha.24)
 
 Governed delta: the pin moves from alpha.23 to alpha.24 (`eb22d21`), which changes only dependency versions (actix-http 3.22.0, quinn-udp 0.5.16), a doc link, test helpers and the storage lock-key setup retry. The forge and mirror behaviour recorded in the 2026-11-21 note is unchanged. Checked by reading the upstream diff a3c7bba..eb22d21; no image was built.
+
+## ADR-2214 drift check — 2026-11-22
+
+Compared every governed path changed by `fc95b3877` (ADR-2214). Those changes
+move `/home/devuser/.gemini` from a tmpfs to the named volume `agentbox-
+antigravity-state`, set `[providers.gemini].auth_mode = "oauth"`, add `gemini`
+to the OAuth-capable providers, export `AGENTBOX_ANTIGRAVITY_AUTH_MODE` to the
+Antigravity consultant, and correct comments and docs. No value, authority,
+boundary or runtime behaviour governed by this decision changes. This is source
+verification, not activation.

@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 9df43fd17c698bf687b9a90a84a69fee6302ebd6
+verified_commit: fc95b38774814f9bc83ddfac28649d12cd74fe12
 verified_paths: [scripts/ci/check-ports-loopback.sh, scripts/ci/check-ports-loopback.mjs, tests/security/ports-gate.test.mjs, .github/workflows/invariants.yml, flake.nix, docker-compose*.yml]
 owner: jjohare
 review_trigger: Any new entry on the SANCTIONED list, or a new compose overlay file
@@ -584,3 +584,13 @@ Governed delta: `docker-compose.yml` changed only in the R-025 header comment (`
 ## Re-verification — 2026-11-21 at `9df43fd17c698bf687b9a90a84a69fee6302ebd6` (pin bumps)
 
 Governed delta: `docker-compose.system-one.yml:34` changes only the `LAYA_MODELS` default, which now pins both models to revision `e333cb7c` (CD-F4). No `ports:` entry, bind address or published port changed in any overlay, so the loopback-publish rule and the sanctioned-exposure list are unaffected. Checked by reading the diff; the ports gate was not re-run.
+
+## ADR-2214 drift check — 2026-11-22
+
+Compared every governed path changed by `fc95b3877` (ADR-2214). Those changes
+move `/home/devuser/.gemini` from a tmpfs to the named volume `agentbox-
+antigravity-state`, set `[providers.gemini].auth_mode = "oauth"`, add `gemini`
+to the OAuth-capable providers, export `AGENTBOX_ANTIGRAVITY_AUTH_MODE` to the
+Antigravity consultant, and correct comments and docs. No value, authority,
+boundary or runtime behaviour governed by this decision changes. This is source
+verification, not activation.
