@@ -1,0 +1,641 @@
+From 5611e72707c4803bc58ad94510a852d9a6363ea5 Mon Sep 17 00:00:00 2001
+From: jjohare <github@thedreamlab.uk>
+Date: Fri, 20 Nov 2026 10:02:54 +0000
+Subject: [PATCH] fix(core,syntax): compute on stored values, not on the print
+ format
+
+Procedures read numeric cells through `DataSet::get_cell_display` and parsed the formatted string
+back to f64. Numeric CSV columns get a two-decimal print format, so every procedure computed on
+values rounded to 2 dp (0.123456 was read as 0.12). As in SPSS, a print format governs display
+only.
+
+Add `DataSet::get_cell_numeric`, which returns the stored value with the same missing-value
+handling (Null, empty, ".", "NA"), and use it at the 30 sites that parsed the display string as a
+number (DESCRIPTIVES, REGRESSION, CORRELATIONS, PARTIAL CORR, t-tests, ANOVA, GLM, nonparametric,
+FACTOR, RELIABILITY, CURVEFIT, logistic and multinomial regression, MEANS, SELECT IF). Sites that
+use the display string as a group key or to match text are unchanged.
+
+Tests: numeric_precision_tests.rs on exactly linear data (y = 2x + 0.001, three decimals): mean,
+slope, intercept and r are exact to 1e-9; three of the four fail before this change.
+
+Co-Authored-By: jjohare <github@thedreamlab.uk>
+---
+ crates/statcraft_core/src/dataset.rs          | 22 +++++
+ .../src/commands/anova_oneway_cmd.rs          |  7 +-
+ .../src/commands/correlations_cmd.rs          |  7 +-
+ .../src/commands/curvefit_cmd.rs              | 14 +--
+ .../src/commands/descriptives_cmd.rs          |  7 +-
+ .../src/commands/factor_cmd.rs                |  7 +-
+ .../src/commands/glm_multivariate_cmd.rs      |  6 +-
+ .../src/commands/glm_repeated_cmd.rs          |  3 +-
+ .../src/commands/glm_univariate_cmd.rs        |  6 +-
+ .../src/commands/kruskal_wallis_cmd.rs        |  8 +-
+ .../src/commands/logistic_regression_cmd.rs   | 14 +--
+ .../src/commands/means_cmd.rs                 |  3 +-
+ .../src/commands/multinomial_logistic_cmd.rs  | 21 +----
+ .../src/commands/nonparam_related_cmd.rs      | 16 +---
+ .../src/commands/nonparam_twosample_cmd.rs    |  7 +-
+ .../src/commands/partial_corr_cmd.rs          | 14 +--
+ .../src/commands/regression_linear_cmd.rs     | 14 +--
+ .../src/commands/reliability_cmd.rs           |  7 +-
+ .../src/commands/select_cases_cmd.rs          |  3 +-
+ .../src/commands/ttest_indep_cmd.rs           |  7 +-
+ .../src/commands/ttest_onesample_cmd.rs       |  7 +-
+ .../src/commands/ttest_paired_cmd.rs          |  7 +-
+ .../tests/numeric_precision_tests.rs          | 88 +++++++++++++++++++
+ 23 files changed, 141 insertions(+), 154 deletions(-)
+ create mode 100644 crates/statcraft_syntax/tests/numeric_precision_tests.rs
+
+diff --git a/crates/statcraft_core/src/dataset.rs b/crates/statcraft_core/src/dataset.rs
+index 8109ecb..780d52e 100644
+--- a/crates/statcraft_core/src/dataset.rs
++++ b/crates/statcraft_core/src/dataset.rs
+@@ -402,6 +402,28 @@ impl DataSet {
+         self.table.get_value(row, col)
+     }
+ 
++    /// The cell's value as a number for computation, at full precision.
++    ///
++    /// A variable's print format (`decimals`) only governs how a value is shown, as in SPSS: it
++    /// never changes what a procedure computes. Procedures must read numbers through this method,
++    /// not by parsing [`Self::get_cell_display`], which rounds to the format's decimals. Missing
++    /// values (`Null`, and text cells that are empty, `.` or `NA`) and text that is not a number
++    /// give `None`.
++    pub fn get_cell_numeric(&self, row: usize, col: usize) -> Option<f64> {
++        match self.get_cell(row, col)? {
++            RawValue::Number(n) => Some(*n),
++            RawValue::Text(s) => {
++                let t = s.trim();
++                if t.is_empty() || t == "." || t == "NA" {
++                    None
++                } else {
++                    t.parse::<f64>().ok()
++                }
++            }
++            RawValue::Null => None,
++        }
++    }
++
+     pub fn get_cell_display(&self, row: usize, col: usize, show_labels: bool) -> String {
+         let raw = match self.get_cell(row, col) {
+             Some(v) => v,
+diff --git a/crates/statcraft_syntax/src/commands/anova_oneway_cmd.rs b/crates/statcraft_syntax/src/commands/anova_oneway_cmd.rs
+index dbae1a8..7123333 100644
+--- a/crates/statcraft_syntax/src/commands/anova_oneway_cmd.rs
++++ b/crates/statcraft_syntax/src/commands/anova_oneway_cmd.rs
+@@ -140,12 +140,7 @@ impl EngineCommand for OneWayAnovaCommand {
+ 
+             let mut dep_values: Vec<Option<f64>> = Vec::with_capacity(active_rows.len());
+             for &r in &active_rows {
+-                let cell_str = ds.get_cell_display(r, col_idx, false);
+-                let val = if cell_str.trim().is_empty() || cell_str == "." || cell_str == "NA" {
+-                    None
+-                } else {
+-                    cell_str.parse::<f64>().ok()
+-                };
++                let val = ds.get_cell_numeric(r, col_idx);
+                 dep_values.push(val);
+             }
+ 
+diff --git a/crates/statcraft_syntax/src/commands/correlations_cmd.rs b/crates/statcraft_syntax/src/commands/correlations_cmd.rs
+index af7976d..78f1bdd 100644
+--- a/crates/statcraft_syntax/src/commands/correlations_cmd.rs
++++ b/crates/statcraft_syntax/src/commands/correlations_cmd.rs
+@@ -144,12 +144,7 @@ impl EngineCommand for CorrelationsCommand {
+ 
+             let mut vals: Vec<Option<f64>> = Vec::with_capacity(active_rows.len());
+             for &r in &active_rows {
+-                let cell_str = ds.get_cell_display(r, col_idx, false);
+-                let v = if cell_str.trim().is_empty() || cell_str == "." || cell_str == "NA" {
+-                    None
+-                } else {
+-                    cell_str.parse::<f64>().ok()
+-                };
++                let v = ds.get_cell_numeric(r, col_idx);
+                 vals.push(v);
+             }
+             var_data.push((var_name.as_str(), vals));
+diff --git a/crates/statcraft_syntax/src/commands/curvefit_cmd.rs b/crates/statcraft_syntax/src/commands/curvefit_cmd.rs
+index e57a5de..3b95331 100644
+--- a/crates/statcraft_syntax/src/commands/curvefit_cmd.rs
++++ b/crates/statcraft_syntax/src/commands/curvefit_cmd.rs
+@@ -140,20 +140,10 @@ impl EngineCommand for CurveFitCommand {
+         let mut indep_vals = Vec::with_capacity(active_rows.len());
+ 
+         for &r in &active_rows {
+-            let s_dep = ds.get_cell_display(r, dep_col_idx, false);
+-            let val_dep = if s_dep.trim().is_empty() || s_dep == "." || s_dep == "NA" {
+-                None
+-            } else {
+-                s_dep.parse::<f64>().ok()
+-            };
++            let val_dep = ds.get_cell_numeric(r, dep_col_idx);
+             dep_vals.push(val_dep);
+ 
+-            let s_indep = ds.get_cell_display(r, indep_col_idx, false);
+-            let val_indep = if s_indep.trim().is_empty() || s_indep == "." || s_indep == "NA" {
+-                None
+-            } else {
+-                s_indep.parse::<f64>().ok()
+-            };
++            let val_indep = ds.get_cell_numeric(r, indep_col_idx);
+             indep_vals.push(val_indep);
+         }
+ 
+diff --git a/crates/statcraft_syntax/src/commands/descriptives_cmd.rs b/crates/statcraft_syntax/src/commands/descriptives_cmd.rs
+index 231125e..958ecd8 100644
+--- a/crates/statcraft_syntax/src/commands/descriptives_cmd.rs
++++ b/crates/statcraft_syntax/src/commands/descriptives_cmd.rs
+@@ -91,12 +91,7 @@ impl EngineCommand for DescriptivesCommand {
+             let mut values: Vec<Option<f64>> = Vec::with_capacity(active_rows.len());
+             let mut weights: Vec<f64> = Vec::with_capacity(active_rows.len());
+             for &r in &active_rows {
+-                let cell_str = ds.get_cell_display(r, col_idx, false);
+-                let val = if cell_str.trim().is_empty() || cell_str == "." || cell_str == "NA" {
+-                    None
+-                } else {
+-                    cell_str.parse::<f64>().ok()
+-                };
++                let val = ds.get_cell_numeric(r, col_idx);
+                 values.push(val);
+                 weights.push(ds.row_weight(r));
+             }
+diff --git a/crates/statcraft_syntax/src/commands/factor_cmd.rs b/crates/statcraft_syntax/src/commands/factor_cmd.rs
+index 9a14024..932b77f 100644
+--- a/crates/statcraft_syntax/src/commands/factor_cmd.rs
++++ b/crates/statcraft_syntax/src/commands/factor_cmd.rs
+@@ -122,12 +122,7 @@ impl EngineCommand for FactorCommand {
+ 
+             let mut vals: Vec<Option<f64>> = Vec::with_capacity(active_rows.len());
+             for &r in &active_rows {
+-                let cell_str = ds.get_cell_display(r, col_idx, false);
+-                let v = if cell_str.trim().is_empty() || cell_str == "." || cell_str == "NA" {
+-                    None
+-                } else {
+-                    cell_str.parse::<f64>().ok()
+-                };
++                let v = ds.get_cell_numeric(r, col_idx);
+                 vals.push(v);
+             }
+             var_data.push((var_name.clone(), vals));
+diff --git a/crates/statcraft_syntax/src/commands/glm_multivariate_cmd.rs b/crates/statcraft_syntax/src/commands/glm_multivariate_cmd.rs
+index fc04bb9..5a70c09 100644
+--- a/crates/statcraft_syntax/src/commands/glm_multivariate_cmd.rs
++++ b/crates/statcraft_syntax/src/commands/glm_multivariate_cmd.rs
+@@ -133,8 +133,7 @@ impl EngineCommand for MultivariateGlmCommand {
+             })?;
+             let mut vals = Vec::with_capacity(active_rows.len());
+             for &r in &active_rows {
+-                let s = ds.get_cell_display(r, col_idx, false);
+-                let val = s.parse::<f64>().unwrap_or(f64::NAN);
++                let val = ds.get_cell_numeric(r, col_idx).unwrap_or(f64::NAN);
+                 vals.push(val);
+             }
+             dep_vectors.push(vals);
+@@ -166,8 +165,7 @@ impl EngineCommand for MultivariateGlmCommand {
+             })?;
+             let mut c_vals = Vec::with_capacity(active_rows.len());
+             for &r in &active_rows {
+-                let s = ds.get_cell_display(r, col_idx, false);
+-                let val = s.parse::<f64>().unwrap_or(f64::NAN);
++                let val = ds.get_cell_numeric(r, col_idx).unwrap_or(f64::NAN);
+                 c_vals.push(val);
+             }
+             covariates.push((c_name.clone(), c_vals));
+diff --git a/crates/statcraft_syntax/src/commands/glm_repeated_cmd.rs b/crates/statcraft_syntax/src/commands/glm_repeated_cmd.rs
+index 3cdfdb0..2b3d215 100644
+--- a/crates/statcraft_syntax/src/commands/glm_repeated_cmd.rs
++++ b/crates/statcraft_syntax/src/commands/glm_repeated_cmd.rs
+@@ -91,8 +91,7 @@ impl EngineCommand for RepeatedGlmCommand {
+             })?;
+             let mut vals = Vec::with_capacity(active_rows.len());
+             for &r in &active_rows {
+-                let s = ds.get_cell_display(r, col_idx, false);
+-                let val = s.parse::<f64>().unwrap_or(f64::NAN);
++                let val = ds.get_cell_numeric(r, col_idx).unwrap_or(f64::NAN);
+                 vals.push(val);
+             }
+             measure_vectors.push(vals);
+diff --git a/crates/statcraft_syntax/src/commands/glm_univariate_cmd.rs b/crates/statcraft_syntax/src/commands/glm_univariate_cmd.rs
+index 2425517..b50c2a5 100644
+--- a/crates/statcraft_syntax/src/commands/glm_univariate_cmd.rs
++++ b/crates/statcraft_syntax/src/commands/glm_univariate_cmd.rs
+@@ -142,8 +142,7 @@ impl EngineCommand for UnivariateGlmCommand {
+         let active_rows = ds.active_row_indices();
+         let mut y_vals = Vec::with_capacity(active_rows.len());
+         for &r in &active_rows {
+-            let s = ds.get_cell_display(r, dep_col_idx, false);
+-            let val = s.parse::<f64>().unwrap_or(f64::NAN);
++            let val = ds.get_cell_numeric(r, dep_col_idx).unwrap_or(f64::NAN);
+             y_vals.push(val);
+         }
+ 
+@@ -167,8 +166,7 @@ impl EngineCommand for UnivariateGlmCommand {
+             })?;
+             let mut c_vals = Vec::with_capacity(active_rows.len());
+             for &r in &active_rows {
+-                let s = ds.get_cell_display(r, col_idx, false);
+-                let val = s.parse::<f64>().unwrap_or(f64::NAN);
++                let val = ds.get_cell_numeric(r, col_idx).unwrap_or(f64::NAN);
+                 c_vals.push(val);
+             }
+             covariates.push((c_name.clone(), c_vals));
+diff --git a/crates/statcraft_syntax/src/commands/kruskal_wallis_cmd.rs b/crates/statcraft_syntax/src/commands/kruskal_wallis_cmd.rs
+index 9b00b0d..3cccf60 100644
+--- a/crates/statcraft_syntax/src/commands/kruskal_wallis_cmd.rs
++++ b/crates/statcraft_syntax/src/commands/kruskal_wallis_cmd.rs
+@@ -139,13 +139,7 @@ impl EngineCommand for KruskalWallisCommand {
+ 
+             let mut var_values: Vec<Option<f64>> = Vec::with_capacity(active_rows.len());
+             for &row_idx in &active_rows {
+-                let cell_str = ds.get_cell_display(row_idx, var_col_idx, false);
+-                let cell_num = if cell_str.trim().is_empty() || cell_str == "." || cell_str == "NA"
+-                {
+-                    None
+-                } else {
+-                    cell_str.parse::<f64>().ok()
+-                };
++                let cell_num = ds.get_cell_numeric(row_idx, var_col_idx);
+                 var_values.push(cell_num);
+             }
+ 
+diff --git a/crates/statcraft_syntax/src/commands/logistic_regression_cmd.rs b/crates/statcraft_syntax/src/commands/logistic_regression_cmd.rs
+index a6e7a3a..ce455ca 100644
+--- a/crates/statcraft_syntax/src/commands/logistic_regression_cmd.rs
++++ b/crates/statcraft_syntax/src/commands/logistic_regression_cmd.rs
+@@ -150,12 +150,7 @@ impl EngineCommand for LogisticRegressionCommand {
+ 
+         let mut dep_vals = Vec::with_capacity(n_active);
+         for &r in &active_rows {
+-            let s = ds.get_cell_display(r, dep_col_idx, false);
+-            let val = if s.trim().is_empty() || s == "." || s == "NA" {
+-                None
+-            } else {
+-                s.parse::<f64>().ok()
+-            };
++            let val = ds.get_cell_numeric(r, dep_col_idx);
+             dep_vals.push(val);
+         }
+ 
+@@ -163,12 +158,7 @@ impl EngineCommand for LogisticRegressionCommand {
+             vec![Vec::with_capacity(n_active); covariates.len()];
+         for &r in &active_rows {
+             for (c_idx, &col_idx) in cov_col_indices.iter().enumerate() {
+-                let s = ds.get_cell_display(r, col_idx, false);
+-                let val = if s.trim().is_empty() || s == "." || s == "NA" {
+-                    None
+-                } else {
+-                    s.parse::<f64>().ok()
+-                };
++                let val = ds.get_cell_numeric(r, col_idx);
+                 cov_vals[c_idx].push(val);
+             }
+         }
+diff --git a/crates/statcraft_syntax/src/commands/means_cmd.rs b/crates/statcraft_syntax/src/commands/means_cmd.rs
+index a859c40..fdaaff0 100644
+--- a/crates/statcraft_syntax/src/commands/means_cmd.rs
++++ b/crates/statcraft_syntax/src/commands/means_cmd.rs
+@@ -212,8 +212,7 @@ impl EngineCommand for MeansCommand {
+ 
+                 let mut dep_values: Vec<Option<f64>> = Vec::with_capacity(active_rows.len());
+                 for &r in &active_rows {
+-                    let cell = ds.get_cell_display(r, dep_col_idx, false);
+-                    let val = cell.trim().parse::<f64>().ok();
++                    let val = ds.get_cell_numeric(r, dep_col_idx);
+                     dep_values.push(val);
+                 }
+ 
+diff --git a/crates/statcraft_syntax/src/commands/multinomial_logistic_cmd.rs b/crates/statcraft_syntax/src/commands/multinomial_logistic_cmd.rs
+index 7bb0e9e..541356f 100644
+--- a/crates/statcraft_syntax/src/commands/multinomial_logistic_cmd.rs
++++ b/crates/statcraft_syntax/src/commands/multinomial_logistic_cmd.rs
+@@ -222,12 +222,7 @@ impl EngineCommand for MultinomialLogisticCommand {
+ 
+         let mut dep_vals = Vec::with_capacity(n_active);
+         for &r in &active_rows {
+-            let s = ds.get_cell_display(r, dep_col_idx, false);
+-            let val = if s.trim().is_empty() || s == "." || s == "NA" {
+-                None
+-            } else {
+-                s.parse::<f64>().ok()
+-            };
++            let val = ds.get_cell_numeric(r, dep_col_idx);
+             dep_vals.push(val);
+         }
+ 
+@@ -235,12 +230,7 @@ impl EngineCommand for MultinomialLogisticCommand {
+             vec![Vec::with_capacity(n_active); factors.len()];
+         for &r in &active_rows {
+             for (f_idx, &col_idx) in factor_col_indices.iter().enumerate() {
+-                let s = ds.get_cell_display(r, col_idx, false);
+-                let val = if s.trim().is_empty() || s == "." || s == "NA" {
+-                    None
+-                } else {
+-                    s.parse::<f64>().ok()
+-                };
++                let val = ds.get_cell_numeric(r, col_idx);
+                 factor_vals[f_idx].push(val);
+             }
+         }
+@@ -249,12 +239,7 @@ impl EngineCommand for MultinomialLogisticCommand {
+             vec![Vec::with_capacity(n_active); covariates.len()];
+         for &r in &active_rows {
+             for (c_idx, &col_idx) in cov_col_indices.iter().enumerate() {
+-                let s = ds.get_cell_display(r, col_idx, false);
+-                let val = if s.trim().is_empty() || s == "." || s == "NA" {
+-                    None
+-                } else {
+-                    s.parse::<f64>().ok()
+-                };
++                let val = ds.get_cell_numeric(r, col_idx);
+                 cov_vals[c_idx].push(val);
+             }
+         }
+diff --git a/crates/statcraft_syntax/src/commands/nonparam_related_cmd.rs b/crates/statcraft_syntax/src/commands/nonparam_related_cmd.rs
+index 953c80d..be0c543 100644
+--- a/crates/statcraft_syntax/src/commands/nonparam_related_cmd.rs
++++ b/crates/statcraft_syntax/src/commands/nonparam_related_cmd.rs
+@@ -130,19 +130,9 @@ impl EngineCommand for RelatedSamplesTestCommand {
+                 Vec::with_capacity(active_rows.len());
+ 
+             for &r in &active_rows {
+-                let cell1 = ds.get_cell_display(r, col1_idx, false);
+-                let val1 = if cell1.trim().is_empty() || cell1 == "." || cell1 == "NA" {
+-                    None
+-                } else {
+-                    cell1.trim().parse::<f64>().ok()
+-                };
+-
+-                let cell2 = ds.get_cell_display(r, col2_idx, false);
+-                let val2 = if cell2.trim().is_empty() || cell2 == "." || cell2 == "NA" {
+-                    None
+-                } else {
+-                    cell2.trim().parse::<f64>().ok()
+-                };
++                let val1 = ds.get_cell_numeric(r, col1_idx);
++
++                let val2 = ds.get_cell_numeric(r, col2_idx);
+ 
+                 paired_data.push((val1, val2));
+             }
+diff --git a/crates/statcraft_syntax/src/commands/nonparam_twosample_cmd.rs b/crates/statcraft_syntax/src/commands/nonparam_twosample_cmd.rs
+index aa480a5..b30ace6 100644
+--- a/crates/statcraft_syntax/src/commands/nonparam_twosample_cmd.rs
++++ b/crates/statcraft_syntax/src/commands/nonparam_twosample_cmd.rs
+@@ -130,12 +130,7 @@ impl EngineCommand for MannWhitneyCommand {
+ 
+             let mut var_values: Vec<Option<f64>> = Vec::with_capacity(active_rows.len());
+             for &r in &active_rows {
+-                let cell_str = ds.get_cell_display(r, col_idx, false);
+-                let val = if cell_str.trim().is_empty() || cell_str == "." || cell_str == "NA" {
+-                    None
+-                } else {
+-                    cell_str.parse::<f64>().ok()
+-                };
++                let val = ds.get_cell_numeric(r, col_idx);
+                 var_values.push(val);
+             }
+ 
+diff --git a/crates/statcraft_syntax/src/commands/partial_corr_cmd.rs b/crates/statcraft_syntax/src/commands/partial_corr_cmd.rs
+index 2d27b63..03c4ad4 100644
+--- a/crates/statcraft_syntax/src/commands/partial_corr_cmd.rs
++++ b/crates/statcraft_syntax/src/commands/partial_corr_cmd.rs
+@@ -166,12 +166,7 @@ impl EngineCommand for PartialCorrCommand {
+             vec![Vec::with_capacity(n_active); var_names.len()];
+         for &r in &active_rows {
+             for (v_idx, &col_idx) in var_col_indices.iter().enumerate() {
+-                let s = ds.get_cell_display(r, col_idx, false);
+-                let val = if s.trim().is_empty() || s == "." || s == "NA" {
+-                    None
+-                } else {
+-                    s.parse::<f64>().ok()
+-                };
++                let val = ds.get_cell_numeric(r, col_idx);
+                 var_data[v_idx].push(val);
+             }
+         }
+@@ -180,12 +175,7 @@ impl EngineCommand for PartialCorrCommand {
+             vec![Vec::with_capacity(n_active); control_names.len()];
+         for &r in &active_rows {
+             for (c_idx, &col_idx) in control_col_indices.iter().enumerate() {
+-                let s = ds.get_cell_display(r, col_idx, false);
+-                let val = if s.trim().is_empty() || s == "." || s == "NA" {
+-                    None
+-                } else {
+-                    s.parse::<f64>().ok()
+-                };
++                let val = ds.get_cell_numeric(r, col_idx);
+                 control_data[c_idx].push(val);
+             }
+         }
+diff --git a/crates/statcraft_syntax/src/commands/regression_linear_cmd.rs b/crates/statcraft_syntax/src/commands/regression_linear_cmd.rs
+index 01ed01d..b0b8108 100644
+--- a/crates/statcraft_syntax/src/commands/regression_linear_cmd.rs
++++ b/crates/statcraft_syntax/src/commands/regression_linear_cmd.rs
+@@ -131,21 +131,11 @@ impl EngineCommand for LinearRegressionCommand {
+         let mut weights = Vec::with_capacity(active_rows.len());
+ 
+         for &r in &active_rows {
+-            let dep_str = ds.get_cell_display(r, dep_col_idx, false);
+-            let dep_val = if dep_str.trim().is_empty() || dep_str == "." || dep_str == "NA" {
+-                None
+-            } else {
+-                dep_str.parse::<f64>().ok()
+-            };
++            let dep_val = ds.get_cell_numeric(r, dep_col_idx);
+             dep_vals.push(dep_val);
+ 
+             for (p_idx, &c_idx) in indep_col_indices.iter().enumerate() {
+-                let x_str = ds.get_cell_display(r, c_idx, false);
+-                let x_val = if x_str.trim().is_empty() || x_str == "." || x_str == "NA" {
+-                    None
+-                } else {
+-                    x_str.parse::<f64>().ok()
+-                };
++                let x_val = ds.get_cell_numeric(r, c_idx);
+                 indep_vals[p_idx].push(x_val);
+             }
+ 
+diff --git a/crates/statcraft_syntax/src/commands/reliability_cmd.rs b/crates/statcraft_syntax/src/commands/reliability_cmd.rs
+index 613ae11..c81a548 100644
+--- a/crates/statcraft_syntax/src/commands/reliability_cmd.rs
++++ b/crates/statcraft_syntax/src/commands/reliability_cmd.rs
+@@ -137,12 +137,7 @@ impl EngineCommand for ReliabilityCommand {
+ 
+             let mut vals: Vec<Option<f64>> = Vec::with_capacity(active_rows.len());
+             for &r in &active_rows {
+-                let cell_str = ds.get_cell_display(r, col_idx, false);
+-                let v = if cell_str.trim().is_empty() || cell_str == "." || cell_str == "NA" {
+-                    None
+-                } else {
+-                    cell_str.parse::<f64>().ok()
+-                };
++                let v = ds.get_cell_numeric(r, col_idx);
+                 vals.push(v);
+             }
+             var_data.push((var_name.clone(), vals));
+diff --git a/crates/statcraft_syntax/src/commands/select_cases_cmd.rs b/crates/statcraft_syntax/src/commands/select_cases_cmd.rs
+index 1a8698e..eb2ebac 100644
+--- a/crates/statcraft_syntax/src/commands/select_cases_cmd.rs
++++ b/crates/statcraft_syntax/src/commands/select_cases_cmd.rs
+@@ -238,8 +238,7 @@ impl EngineCommand for SelectCasesCommand {
+                     let mut row_map = HashMap::new();
+                     for c in 0..total_cols {
+                         if let Some(meta) = ds.dictionary.get(c) {
+-                            let cell_str = ds.get_cell_display(r, c, false);
+-                            if let Ok(num) = cell_str.trim().parse::<f64>() {
++                            if let Some(num) = ds.get_cell_numeric(r, c) {
+                                 row_map.insert(meta.name.clone(), num);
+                             }
+                         }
+diff --git a/crates/statcraft_syntax/src/commands/ttest_indep_cmd.rs b/crates/statcraft_syntax/src/commands/ttest_indep_cmd.rs
+index 7f8117f..d8cd2e6 100644
+--- a/crates/statcraft_syntax/src/commands/ttest_indep_cmd.rs
++++ b/crates/statcraft_syntax/src/commands/ttest_indep_cmd.rs
+@@ -131,12 +131,7 @@ impl EngineCommand for IndependentSamplesTTestCommand {
+ 
+             let mut var_values: Vec<Option<f64>> = Vec::with_capacity(active_rows.len());
+             for &r in &active_rows {
+-                let cell_str = ds.get_cell_display(r, col_idx, false);
+-                let val = if cell_str.trim().is_empty() || cell_str == "." || cell_str == "NA" {
+-                    None
+-                } else {
+-                    cell_str.parse::<f64>().ok()
+-                };
++                let val = ds.get_cell_numeric(r, col_idx);
+                 var_values.push(val);
+             }
+ 
+diff --git a/crates/statcraft_syntax/src/commands/ttest_onesample_cmd.rs b/crates/statcraft_syntax/src/commands/ttest_onesample_cmd.rs
+index 843730a..e3ba2e1 100644
+--- a/crates/statcraft_syntax/src/commands/ttest_onesample_cmd.rs
++++ b/crates/statcraft_syntax/src/commands/ttest_onesample_cmd.rs
+@@ -97,12 +97,7 @@ impl EngineCommand for OneSampleTTestCommand {
+ 
+             let mut values: Vec<Option<f64>> = Vec::with_capacity(active_rows.len());
+             for &r in &active_rows {
+-                let cell_str = ds.get_cell_display(r, col_idx, false);
+-                let val = if cell_str.trim().is_empty() || cell_str == "." || cell_str == "NA" {
+-                    None
+-                } else {
+-                    cell_str.parse::<f64>().ok()
+-                };
++                let val = ds.get_cell_numeric(r, col_idx);
+                 values.push(val);
+             }
+ 
+diff --git a/crates/statcraft_syntax/src/commands/ttest_paired_cmd.rs b/crates/statcraft_syntax/src/commands/ttest_paired_cmd.rs
+index 6c800d8..5ff5a93 100644
+--- a/crates/statcraft_syntax/src/commands/ttest_paired_cmd.rs
++++ b/crates/statcraft_syntax/src/commands/ttest_paired_cmd.rs
+@@ -105,12 +105,7 @@ impl EngineCommand for PairedSamplesTTestCommand {
+ 
+                     let mut values: Vec<Option<f64>> = Vec::with_capacity(active_rows.len());
+                     for &r in &active_rows {
+-                        let cell = ds.get_cell_display(r, col_idx, false);
+-                        let val = if cell.trim().is_empty() || cell == "." || cell == "NA" {
+-                            None
+-                        } else {
+-                            cell.parse::<f64>().ok()
+-                        };
++                        let val = ds.get_cell_numeric(r, col_idx);
+                         values.push(val);
+                     }
+                     col_data_cache.insert(v_name.clone(), values);
+diff --git a/crates/statcraft_syntax/tests/numeric_precision_tests.rs b/crates/statcraft_syntax/tests/numeric_precision_tests.rs
+new file mode 100644
+index 0000000..c621182
+--- /dev/null
++++ b/crates/statcraft_syntax/tests/numeric_precision_tests.rs
+@@ -0,0 +1,88 @@
++//! Procedures compute on full-precision values, never on the print format.
++//!
++//! Numeric CSV columns get a print format of two decimals (`F8.2`). That format must only govern
++//! display: as in SPSS, `DESCRIPTIVES`, `REGRESSION`, `CORRELATIONS` and the other procedures work
++//! on the stored values. The data here is exactly linear, y = 2x + 0.001, on values with three
++//! decimals, so the reference results are exact: mean(x) = 0.6505, slope 2, intercept 0.001,
++//! r = 1. Read through the two-decimal format, every one of them is off by more than 1e-4.
++
++use statcraft_core::DataSet;
++use statcraft_io::{load_csv_from_reader, CsvOptions};
++use statcraft_syntax::{CommandBus, SyntaxDispatcher};
++
++const TOL: f64 = 1e-9;
++
++fn dataset() -> DataSet {
++    let csv = "x,y\n0.123,0.247\n0.456,0.913\n0.789,1.579\n1.234,2.469\n";
++    let table = load_csv_from_reader(csv.as_bytes(), CsvOptions::default()).expect("valid csv");
++    DataSet::from_raw_table(table).expect("valid dataset")
++}
++
++fn run(sps: &str) -> serde_json::Value {
++    let mut bus = CommandBus::with_defaults();
++    let mut ds = Some(dataset());
++    let res =
++        SyntaxDispatcher::execute_batch(sps, &mut ds, &mut bus).expect("batch should succeed");
++    assert_eq!(res.len(), 1);
++    res[0].1.clone()
++}
++
++#[test]
++fn print_format_does_not_round_stored_values() {
++    let ds = dataset();
++    assert_eq!(
++        ds.get_cell_display(0, 0, false),
++        "0.12",
++        "the format still governs display"
++    );
++    assert_eq!(
++        ds.get_cell_numeric(0, 0),
++        Some(0.123),
++        "the value keeps its precision"
++    );
++}
++
++#[test]
++fn descriptives_use_full_precision() {
++    let v = run("DESCRIPTIVES /VARIABLES=x.");
++    let x = v
++        .as_array()
++        .and_then(|a| a.iter().find(|r| r["variable"] == "x"))
++        .expect("x row");
++    let mean = x["mean"].as_f64().expect("mean");
++    assert!(
++        (mean - 0.6505).abs() < TOL,
++        "mean {mean}, expected 0.6505 (0.65 from rounded values)"
++    );
++    let min = x["min"].as_f64().expect("min");
++    assert!((min - 0.123).abs() < TOL, "min {min}, expected 0.123");
++}
++
++#[test]
++fn regression_uses_full_precision() {
++    let v = run("REGRESSION /DEPENDENT y /METHOD=ENTER x.");
++    let coefs = v["coefficients"].as_array().expect("coefficients");
++    let b = |name: &str| {
++        coefs
++            .iter()
++            .find(|c| c["var_name"] == name)
++            .and_then(|c| c["b"].as_f64())
++            .expect(name)
++    };
++    assert!((b("x") - 2.0).abs() < TOL, "slope {}, expected 2", b("x"));
++    assert!(
++        (b("(Constant)") - 0.001).abs() < TOL,
++        "intercept {}, expected 0.001",
++        b("(Constant)")
++    );
++}
++
++#[test]
++fn correlations_use_full_precision() {
++    let v = run("CORRELATIONS /VARIABLES=x y.");
++    let r = v["matrices"][0]["cells"][0][1]["r"].as_f64().expect("r");
++    assert!(
++        (r - 1.0).abs() < TOL,
++        "r {r}, expected 1 for an exactly linear pair"
++    );
++}
+-- 
+2.56.0
+
