@@ -24,7 +24,8 @@
 #     self-update fails harmlessly and the pin here stays authoritative.
 #   - agy hard-codes ~/.gemini for logs/crash/oauth state (no env override —
 #     GEMINI_CLI_HOME is ignored, verified 2026-08-05), so the image must
-#     provide a writable /home/devuser/.gemini (tmpfs mount in flake.nix).
+#     provide a writable /home/devuser/.gemini: the named volume
+#     agentbox-antigravity-state, which keeps the Google OAuth token (ADR-2214).
 
 { lib, pkgs }:
 

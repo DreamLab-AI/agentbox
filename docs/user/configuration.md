@@ -225,9 +225,13 @@ does not yet include it. The tested model URI is
 `gemini-api://models/gemini-4-hydrogen` with native tool formatting; this version
 forwards the URI remainder as the SDK model name, so the full base-URL form
 currently shown in Google's settings docs returns 404. Recheck on CLI upgrades.
-Consultants use `--settings`, rather than depending on prior interactive login. Set
-`auth_mode = "oauth"` and remove the consultant's key environment to retain
-subscription-based login instead. API usage is separate from subscription quota.
+Under `api_key`, consultants use `--settings` rather than a prior interactive login.
+The running manifest sets `auth_mode = "oauth"` (ADR-2214): sign in once with
+`agy` (choose Google OAuth, then paste back the code the sign-in page shows).
+The token lives on the `agentbox-antigravity-state` volume at `/home/devuser/.gemini`,
+so it survives restarts. Boot then removes the API provider projection, and the
+consultant passes no key and copies the token into its own home. `GEMINI_API_KEY`
+stays set for other Gemini clients. API usage is separate from subscription quota.
 See [Google's authentication guide](https://antigravity.google/docs/install?tab=cli)
 and [Hydrogen announcement](https://blog.google/innovation-and-ai/models-and-research/gemini-models/introducing-gemini-4-hydrogen/).
 

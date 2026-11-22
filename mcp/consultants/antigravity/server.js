@@ -8,20 +8,64 @@
  * in the agentbox image). Antigravity replaces @google/gemini-cli
  * (sunset 2026-06-18) with a Go-native binary and Pro tier web login.
  *
- * Auth: GEMINI_API_KEY with session-only modelProvider=gemini, or interactive
- * OAuth when no key is supplied. GOOGLE_* aliases remain backwards-compatible.
+ * Auth follows [providers.gemini].auth_mode, projected at boot as
+ * AGENTBOX_ANTIGRAVITY_AUTH_MODE:
+ *   - "oauth": the Google sign-in token from the primary agy state dir
+ *     (/home/devuser/.gemini, a named volume) is copied into this consultant's
+ *     own home before each call; no key and no provider override are passed,
+ *     so agy uses the subscription session.
+ *   - otherwise: GEMINI_API_KEY with session-only modelProvider=gemini, or the
+ *     cached OAuth session when no key is supplied. GOOGLE_* aliases remain
+ *     backwards-compatible.
  * HOME points at the antigravity home dir so cached session tokens are honoured.
  */
 
+const fs = require('node:fs');
+const path = require('node:path');
 const { BaseConsultant } = require('../shared/consultant-base');
 const { spawnCli } = require('../shared/spawn-cli');
 
 const AGY_BIN = process.env.AGENTBOX_ANTIGRAVITY_BIN || 'agy';
 const AGY_HOME = process.env.AGENTBOX_ANTIGRAVITY_HOME || '/home/devuser/.antigravity';
+const PRIMARY_HOME = process.env.AGENTBOX_ANTIGRAVITY_PRIMARY_HOME || '/home/devuser';
 const MODEL = process.env.AGENTBOX_ANTIGRAVITY_MODEL || 'gemini-4-hydrogen';
+const TOKEN_REL = path.join('.gemini', 'antigravity-cli', 'antigravity-oauth-token');
 
-function cliAuth() {
-  const key = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.GOOGLE_GEMINI_API_KEY || '';
+function authMode(env = process.env) {
+  return env.AGENTBOX_ANTIGRAVITY_AUTH_MODE === 'oauth' ? 'oauth' : 'api_key';
+}
+
+// Copy, never link: the consultant must not write the only persisted token.
+// A refresh agy performs here stays in this home's tmpfs; the refresh token in
+// the primary file stays authoritative. Re-copies when the primary is newer
+// (a fresh sign-in) or the local copy is missing. Returns true when copied.
+function syncOAuthToken(primaryHome = PRIMARY_HOME, home = AGY_HOME) {
+  if (path.resolve(primaryHome) === path.resolve(home)) return false;
+  const source = path.join(primaryHome, TOKEN_REL);
+  const target = path.join(home, TOKEN_REL);
+  let src;
+  try { src = fs.statSync(source); } catch { return false; }
+  try {
+    const dst = fs.lstatSync(target);
+    if (dst.isFile() && dst.mtimeMs >= src.mtimeMs) return false;
+  } catch (error) { if (error.code !== 'ENOENT') throw error; }
+  fs.mkdirSync(path.dirname(target), { recursive: true, mode: 0o700 });
+  const temporary = `${target}.agentbox-${process.pid}`;
+  fs.copyFileSync(source, temporary);
+  try { JSON.parse(fs.readFileSync(temporary, 'utf8')); }
+  catch (error) { fs.rmSync(temporary, { force: true }); throw error; } // torn read: retry next call
+  fs.chmodSync(temporary, 0o600);
+  fs.utimesSync(temporary, src.atime, src.mtime);
+  fs.renameSync(temporary, target);
+  return true;
+}
+
+function cliAuth(env = process.env) {
+  if (authMode(env) === 'oauth') {
+    try { syncOAuthToken(); } catch { /* health reports the missing session */ }
+    return { mode: 'oauth', args: [], env: { HOME: AGY_HOME } };
+  }
+  const key = env.GEMINI_API_KEY || env.GOOGLE_API_KEY || env.GOOGLE_GEMINI_API_KEY || '';
   const settings = {
     modelProvider: 'gemini',
     customModelsConfig: { customModels: { 'gemini-4-hydrogen': {
@@ -32,6 +76,7 @@ function cliAuth() {
     } } },
   };
   return {
+    mode: 'api_key',
     args: key ? ['--settings', JSON.stringify(settings)] : [],
     env: { HOME: AGY_HOME, GEMINI_API_KEY: key },
   };
@@ -116,7 +161,7 @@ async function healthCheck() {
       ok: false, model: MODEL, version: v.stdout.trim(),
       last_error: auth.env.GEMINI_API_KEY
         ? `agy API-key model discovery failed: ${why}`
-        : `agy not authenticated in ${AGY_HOME}: ${why} — run: HOME=${AGY_HOME} agy   (interactive OAuth, once)`,
+        : `agy not authenticated (${auth.mode}): ${why} — sign in once as devuser with plain \`agy\` (HOME=${PRIMARY_HOME}, token persists in ${path.join(PRIMARY_HOME, TOKEN_REL)})`,
     };
   }
   return { ok: true, model: MODEL, last_error: null, version: v.stdout.trim() };
@@ -142,7 +187,11 @@ const consultant = new BaseConsultant({
   estimateCost,
 });
 
-consultant.start().catch((err) => {
-  process.stderr.write(`[consultant-antigravity] failed to start: ${err.message}\n`);
-  process.exit(1);
-});
+module.exports = { authMode, cliAuth, syncOAuthToken };
+
+if (require.main === module) {
+  consultant.start().catch((err) => {
+    process.stderr.write(`[consultant-antigravity] failed to start: ${err.message}\n`);
+    process.exit(1);
+  });
+}

@@ -259,7 +259,8 @@ if (gpu.backend === 'local-cuda') {
 // E018: an enabled provider's env_var value must not be a placeholder literal.
 // W040: auth_mode = "oauth" is only honoured for providers whose CLI ships an OAuth flow.
 const PLACEHOLDER_RE = /^(change[-_]?this|your[-_]?key[-_]?here|sk[-_]?xxx+|AKIA[A-Z0-9]{12}EXAMPLE|<[^>]+>|PLACEHOLDER|TODO)$/i;
-const OAUTH_CAPABLE_PROVIDERS = new Set(['anthropic', 'openai', 'zai']);
+// gemini: the Antigravity CLI's Google sign-in persists on a named volume (ADR-2214).
+const OAUTH_CAPABLE_PROVIDERS = new Set(['anthropic', 'gemini', 'openai', 'zai']);
 
 for (const [name, provConf] of Object.entries(providers)) {
   if (!provConf || provConf.enabled !== true) continue;

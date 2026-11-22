@@ -1030,9 +1030,10 @@ Docs: docs/reference/prd/PRD-001-capabilities-and-adapters.md §Providers" \
 
   # Providers whose CLI ships a web sign-in / OAuth flow. The wizard offers
   # an "OAuth" branch for these; the validator's W040 list must stay in sync.
-  declare -A OAUTH_CAPABLE=( [anthropic]=1 [openai]=1 [zai]=1 )
+  declare -A OAUTH_CAPABLE=( [anthropic]=1 [gemini]=1 [openai]=1 [zai]=1 )
   declare -A OAUTH_HINT=(
     [anthropic]="Run \`claude login\` inside the container after first boot.\nThe Claude Code CLI completes an OAuth handshake in your browser\nand stores the session token under /home/devuser/.claude/."
+    [gemini]="Run \`agy\` inside the container after first boot and choose\nGoogle OAuth, then paste back the code the sign-in page shows.\nThe token persists on the agentbox-antigravity-state volume."
     [openai]="Run \`codex login\` inside the container after first boot.\nThe Codex Rust CLI completes an OAuth handshake in your browser\nand stores credentials under /home/devuser/.codex/auth.json."
     [zai]="Run \`claude-zai login\` (or \`zai-cli login\`) inside the container\nafter first boot. The Z.AI / GLM wrapper opens a browser session\nand persists tokens under /home/devuser/.zai/."
   )

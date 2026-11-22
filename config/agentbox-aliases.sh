@@ -167,7 +167,8 @@ alias profile-docs="cd /home/devuser/workspace/profiles/docs-latex"
 alias zantigravity='zellij action launch-or-focus-plugin -- antigravity'
 alias agy-help="agy --help"
 alias agy-version="agy --version"
-alias agy-login="agy auth login"
+# agy has no auth subcommand: plain `agy` offers Google OAuth when signed out; the token persists on agentbox-antigravity-state (ADR-2214)
+alias agy-login="agy"
 
 # === OPENAI CODEX RUST CLI (github.com/openai/codex rust-v0.124.0) ===
 # Enabled via [toolchains.codex] = true in agentbox.toml.

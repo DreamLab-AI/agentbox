@@ -556,6 +556,11 @@ UID/GID 1000. The parent `/home/devuser/.codex` is the disk-backed
 sessions, history, session indexes and SQLite state. The host `auth.json`
 bind remains separate. Claude uses `agentbox-claude-home` in the standard
 override; routed Claude profiles persist under the workspace volume.
+Antigravity's state dir `/home/devuser/.gemini` is the disk-backed
+`agentbox-antigravity-state` volume (ADR-2214), so its Google OAuth token,
+the standing sign-in under `[providers.gemini].auth_mode = "oauth"`, survives
+restarts. The consultant copies that token into its tmpfs home and never
+writes the persisted file.
 Local image builds refresh and validate generated Compose before building, so
 `./agentbox.sh rebuild` applies changes to mounts as well as image contents.
 

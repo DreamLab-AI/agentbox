@@ -20,6 +20,7 @@ const expected = {
   '/home/devuser/.local/share/opencode': 'agentbox-opencode-store',
   '/home/devuser/.codex': 'agentbox-codex-home',
   '/home/devuser/.codex/packages': 'agentbox-codex-packages',
+  '/home/devuser/.gemini': 'agentbox-antigravity-state',
   '/var/lib/nostr-relay': 'agentbox-nostr-relay-data',
   '/var/lib/tailscale': 'agentbox-tailscale-state',
   '/home/devuser/.claude': 'agentbox-claude-home',
@@ -49,7 +50,7 @@ assert.equal(model.volumes['gui-tools-exchange']?.name, process.env.GUI_TOOLS_EX
 console.log(`PASS: ${Object.keys(expected).length} persistent volume identities, external Claude home, read-only instructions and SystemScape hosts, and PID parity`);
 
 // Nested tool/credential mounts must not be the only durable home state.
-for (const target of ['/home/devuser/.codex', '/home/devuser/.claude', '/home/devuser/.local']) {
+for (const target of ['/home/devuser/.codex', '/home/devuser/.claude', '/home/devuser/.local', '/home/devuser/.gemini']) {
   assert.ok(!(model.services.agentbox.tmpfs || []).some(entry =>
     (typeof entry === 'string' ? entry.split(':')[0] : entry.target) === target),
     `${target} must not be shadowed by tmpfs`);

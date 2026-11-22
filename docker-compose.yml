@@ -119,7 +119,6 @@ services:
       - /home/devuser/.config:mode=755,size=64M,uid=1000,gid=1000
       - /home/devuser/.claude-flow:mode=755,size=64M,uid=1000,gid=1000
       - /home/devuser/.antigravity:mode=755,size=256M,uid=1000,gid=1000
-      - /home/devuser/.gemini:mode=755,size=256M,uid=1000,gid=1000
       - /var/cache:mode=755,size=512M,uid=1000,gid=1000
       - /usr/local/bin:mode=755,size=8M,exec,suid
       - /app/mcp-logs:mode=755,size=100M,uid=1000,gid=1000
@@ -147,6 +146,7 @@ services:
       - opencode-store:/home/devuser/.local/share/opencode
       - codex-home:/home/devuser/.codex
       - codex-packages:/home/devuser/.codex/packages
+      - antigravity-state:/home/devuser/.gemini
       - codeserver-config:/home/devuser/.local/share/code-server
       - nostr-relay-data:/var/lib/nostr-relay
       - tailscale-state:/var/lib/tailscale
@@ -202,6 +202,8 @@ volumes:
     name: agentbox-codex-home
   codex-packages:
     name: agentbox-codex-packages
+  antigravity-state:
+    name: agentbox-antigravity-state
   codeserver-config:
     name: agentbox-codeserver-config
   nostr-relay-data:

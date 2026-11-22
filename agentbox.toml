@@ -1601,7 +1601,10 @@ auth_mode = "api_key"
 enabled = true
 env_var = "GEMINI_API_KEY"
 optional_env_vars = ["GOOGLE_API_KEY", "GOOGLE_GEMINI_API_KEY"]
-auth_mode = "api_key"
+# ADR-2214: Antigravity (agy session + consultant) signs in with Google OAuth;
+# the token persists on agentbox-antigravity-state. GEMINI_API_KEY stays for
+# other Gemini clients. Set "api_key" to bill the API instead.
+auth_mode = "oauth"
 
 [providers.deepseek]
 enabled = true
@@ -2255,7 +2258,7 @@ eager_mandate = false
 
 [[interaction_plane.session_seeds]]
 slug          = "antigravity"         # native Antigravity CLI; Hydrogen verified in the Gemini API catalogue
-tool          = "antigravity"         # @google/gemini-cli is SUNSET (2026-06-18); flake pins the Antigravity CLI (binary agy, lib/antigravity-cli.nix — NOT nixpkgs antigravity, which is the IDE); agy state lives in ~/.gemini (tmpfs)
+tool          = "antigravity"         # @google/gemini-cli is SUNSET (2026-06-18); flake pins the Antigravity CLI (binary agy, lib/antigravity-cli.nix — NOT nixpkgs antigravity, which is the IDE); agy state lives in ~/.gemini (named volume agentbox-antigravity-state, ADR-2214)
 model         = "gemini-4-hydrogen"
 worktree      = true
 eager_mandate = false

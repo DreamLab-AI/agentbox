@@ -1220,8 +1220,9 @@
         # 2026-06-18). Pinned upstream release tarball via lib/antigravity-cli.nix.
         # NOT nixpkgs `antigravity` — that is the Antigravity IDE (a VS Code
         # fork), a different product sharing the name.
-        # Pro tier web-based login: `agy auth login` (state in ~/.gemini —
-        # tmpfs-mounted below, so re-auth is needed per container boot).
+        # Google OAuth sign-in: run `agy`, choose Google OAuth, paste the code
+        # back. State (incl. the token) lives in ~/.gemini, the named volume
+        # agentbox-antigravity-state below, so it survives restarts (ADR-2214).
         antigravityCliLib = import ./lib/antigravity-cli.nix { inherit lib pkgs; };
         antigravityCliPackages = lib.optionals (toolchainCfg.antigravity_cli or false) [
           (antigravityCliLib.makeAntigravityCli system)
@@ -3995,12 +3996,9 @@ stderr_logfile_maxbytes=5MB
           "/home/devuser/.claude-flow:mode=755,size=64M,uid=1000,gid=1000"
           # Antigravity CLI home. Model cache + session state; 256M is generous.
           "/home/devuser/.antigravity:mode=755,size=256M,uid=1000,gid=1000"
-          # agy state dir. The Antigravity CLI hard-codes ~/.gemini (its
-          # gemini-cli heritage; no env override — GEMINI_CLI_HOME ignored,
-          # verified 2026-08-05) for logs, crash reports, and the oauth token.
-          # Without this mount agy dies at startup on the read-only home.
-          # tmpfs ⇒ `agy auth login` is needed once per container boot.
-          "/home/devuser/.gemini:mode=755,size=256M,uid=1000,gid=1000"
+          # agy state dir (~/.gemini) is NOT tmpfs: it is the named volume
+          # agentbox-antigravity-state (agentboxBaselineMounts), so the Google
+          # OAuth token survives restarts (ADR-2214).
           # ruflo plugins git cache. Phase 7 sparse-clones github.com/ruvnet/ruflo
           # here; plugins are then symlinked from cache into .claude-flow/plugins.
           # 512M covers the full plugin tree with room for npm artefacts.
@@ -4109,6 +4107,10 @@ stderr_logfile_maxbytes=5MB
           "codex-home:/home/devuser/.codex"
           # ADR-2120: retain the existing executable package volume independently.
           "codex-packages:/home/devuser/.codex/packages"
+          # ADR-2214: agy hard-codes ~/.gemini (no env override; GEMINI_CLI_HOME
+          # ignored, verified 2026-08-05) for logs, crash reports, conversations
+          # and the Google OAuth token. Disk-backed so the sign-in is standing.
+          "antigravity-state:/home/devuser/.gemini"
         ];
         # NOTE: no ruvnet-brain-data volume. The corpus persists in
         # ruvector-postgres; the ingest only needs transient, writable staging,
@@ -4138,7 +4140,7 @@ stderr_logfile_maxbytes=5MB
         # are auto-derived so every volume referenced in the agentbox service's
         # volumes list has a matching top-level declaration. Without this,
         # docker compose rejects the file with "undefined volume <name>".
-        baselineTopLevelVolumeNames = [ "ruvector-data" "solid-data" "sovereign-identities" "agentbox-secrets" "code-harness-data" "agentbox-events" "consultations-data" "telemetry-data" "hf-cache" "local-home" "opencode-store" "codex-home" "codex-packages" ];
+        baselineTopLevelVolumeNames = [ "ruvector-data" "solid-data" "sovereign-identities" "agentbox-secrets" "code-harness-data" "agentbox-events" "consultations-data" "telemetry-data" "hf-cache" "local-home" "opencode-store" "codex-home" "codex-packages" "antigravity-state" ];
         exceptionVolumeNames = lib.unique (
           map (v: lib.head (lib.splitString ":" v)) exceptionWritableVolumes
         );
