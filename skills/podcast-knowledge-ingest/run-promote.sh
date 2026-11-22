@@ -15,6 +15,17 @@ fi
 # ADR-2028: the corpus paths come from the [vault] path authority the entrypoint
 # exported. No hard-coded graph path — with no vault configured this aborts
 # loudly rather than promoting into a stale or non-existent tree (D3).
+# A podcast-promote built before 2026-11-21 writes working pages that fail
+# `ontomark validate` (`type: podcast-news`, `key:: value` lines) and dossiers
+# the submitter can no longer use. Stand down until the image is rebuilt
+# instead of re-breaking the vault every Monday. `PODCAST_PROMOTE_BIN` names a
+# newer build for a manual run.
+BIN="${PODCAST_PROMOTE_BIN:-$BIN}"
+if ! "$BIN" --help 2>/dev/null | grep -q -- '--refresh-working-pages'; then
+    echo "run-promote.sh: ${BIN} predates the valid-page writer (no --refresh-working-pages); rebuild the image. Aborting." >&2
+    exit 1
+fi
+
 if [ -z "${VAULT_ROOT:-}" ] || [ -z "${VAULT_PAGES:-}" ] || [ -z "${VAULT_WORKING_PAGES:-}" ]; then
     echo "run-promote.sh: [vault] disabled — VAULT_ROOT/VAULT_PAGES/VAULT_WORKING_PAGES unset; set [vault].root and [vault].working in agentbox.toml. Aborting." >&2
     exit 1

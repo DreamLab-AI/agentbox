@@ -293,15 +293,17 @@ file (same directory) for quick review.
 
 ## The `vault propose` adapter contract
 
-`ontology_propose_payload` on a survivor dossier is the splice, shaped so the
-adapter (`submit-proposals.mjs`) can apply it to the target page and hand the proposed page to
-`vault propose` with minimal transformation. The field keeps its historical name;
+`ontology_propose_payload` on a survivor dossier carries the proposed page in
+full and the hash of the page it was drafted against, so the adapter
+(`submit-proposals.mjs`) hands `vault propose` exactly what the judge scored. The field keeps its historical name;
 the MCP tool it was named after is retired (ADR-2107/ADR-2108):
 
 ```jsonc
 "ontology_propose_payload": {
   "target_page": "Synthetic Test Topic Beta.md",
+  "target_page_sha256": "<sha-256 of the page the draft was made against>",
   "edit": { "mode": "insert_after", "anchor": "...", "content": "..." },
+  "proposed_page": "<the whole page with the edit applied, frontmatter included>",
   "provenance": {
     "assertion_fingerprints": ["..."],
     "source_episodes": ["..."]
@@ -322,13 +324,18 @@ The adapter is `submit-proposals.mjs`, and it does this:
    demanding an **exact slug match**. A fuzzy hit must never receive someone
    else's amendment, so an unresolved page is reported and skipped. It needs a
    class *create* proposal, which stays human-initiated.
-3. Splices `edit.content` into the target page (`knowledge/<page>.md`) before
-   or after `edit.anchor`, as `edit.mode` dictates, and calls
-   `vault propose <iri> --level content --hypothesis "…" --diff <file>` with the
-   proposed page in full (that is what `--diff` takes). The hypothesis carries
-   the provenance and scores. The anchor must still be one contiguous run of
-   the page's lines: if the page moved under the dossier, the splice is
-   refused and banked as `anchor-moved` instead of being placed by guess.
+3. Reads the live page (`knowledge/<page>.md`) and compares its SHA-256 with
+   `target_page_sha256`. On a match it calls
+   `vault propose <iri> --level content --hypothesis "…" --diff <file>` with
+   `proposed_page` (that is what `--diff` takes: the proposed page in full).
+   The hypothesis carries the provenance and scores. The adapter never applies
+   `edit` itself. A dossier with no hash (written before 2026-11-21) or whose
+   page has changed is reported `STALE` and is **not** banked:
+   `podcast-promote` redrafts it on its next run, because a candidate is
+   current only while both its evidence and its target page are unchanged.
+   Until 2026-11-21 the adapter re-applied the edit by line-matching the
+   anchor and banked a miss as `anchor-moved`; after the 2026-09 page
+   migration that left all 22 survivors blocked, with nothing to redraft them.
 4. Reports the outcome without dressing it up. `blockers` non-empty means
    nothing was posted — an automatic refusal on Whelk inconsistency, a subclass
    cycle, a relation contradiction or a vocabulary violation — and the submitter

@@ -3,7 +3,7 @@
 //! `DraftResult`, and `assemble_draft` from `promote.py`.
 
 use super::ledger_parse::Assertion;
-use super::splice::{apply_splice, clean_loom_response, extract_splice_json};
+use super::splice::{apply_splice, clean_loom_response, extract_splice_json, split_frontmatter};
 use crate::common::http::client;
 use loom_client::{ChatRequest, LoomClient, LoomOptions, Message};
 use serde_json::Value;
@@ -48,10 +48,21 @@ New verified evidence to integrate, drawn from podcast-evidence ledger pages\n\
 (each already fingerprinted and source-attributed):\n\
 {facts_block}\n\
 \n\
-Produce a JSON splice edit that integrates this evidence into the page as a\n\
-new or extended section (e.g. \"### Recent Developments\" or an existing\n\
-comparable heading). Preserve everything else on the page unchanged. Pick an\n\
-anchor that is unambiguous (appears exactly once) in CURRENT PAGE.\n"
+Produce a JSON splice edit that integrates this evidence into the page.\n\
+\n\
+Rules:\n\
+- Use only the evidence that is about the page topic itself. Leave out items\n\
+  that merely mention it, and state each fact once.\n\
+- If the page already has a section for recent developments, extend it with\n\
+  mode \"replace_section\", anchored on that section's heading line, and keep\n\
+  its existing text. Otherwise add one new section headed\n\
+  \"## Recent Developments\" with mode \"insert_after\", anchored on the heading\n\
+  line of the section it should follow.\n\
+- Write the section as the page writes its own: a heading line, then either\n\
+  short paragraphs or \"- \" bullets, one fact per bullet, each naming its\n\
+  source. No indented lines, no nested lists.\n\
+- Preserve everything else on the page unchanged. The anchor must appear\n\
+  exactly once in CURRENT PAGE.\n"
     )
 }
 
@@ -114,7 +125,11 @@ pub struct DraftResult {
     pub error: Option<String>,
 }
 
-/// Port of `assemble_draft`.
+/// Port of `assemble_draft`, drafting against the page body only.
+///
+/// The YAML frontmatter is withheld from the model and re-attached unchanged,
+/// so an edit can neither anchor on governed data nor alter it.
+/// `spliced_text` is the whole proposed page, frontmatter included.
 pub async fn assemble_draft(
     topic: &str,
     page_text: &str,
@@ -122,20 +137,23 @@ pub async fn assemble_draft(
     loom_url: &str,
     loom_model: &str,
 ) -> DraftResult {
-    let prompt = build_dossier_prompt(topic, page_text, assertions);
-    let raw = match call_loom(&prompt, loom_url, loom_model, 300, 4096).await {
-        Some(r) => r,
-        None => {
-            return DraftResult {
-                ok: false,
-                spliced_text: None,
-                edit: None,
-                error: Some("loom_unreachable_or_error".to_string()),
-            }
-        }
-    };
+    let (_, body) = split_frontmatter(page_text);
+    let prompt = build_dossier_prompt(topic, body, assertions);
+    match call_loom(&prompt, loom_url, loom_model, 300, 4096).await {
+        Some(raw) => draft_from_response(page_text, &raw),
+        None => DraftResult {
+            ok: false,
+            spliced_text: None,
+            edit: None,
+            error: Some("loom_unreachable_or_error".to_string()),
+        },
+    }
+}
 
-    let cleaned = clean_loom_response(&raw);
+/// Turn the model's reply into a validated draft of `page_text`.
+pub fn draft_from_response(page_text: &str, raw: &str) -> DraftResult {
+    let (head, body) = split_frontmatter(page_text);
+    let cleaned = clean_loom_response(raw);
     let edit = match extract_splice_json(&cleaned) {
         Some(e) => e,
         None => {
@@ -149,10 +167,10 @@ pub async fn assemble_draft(
         }
     };
 
-    match apply_splice(page_text, &edit) {
+    match apply_splice(body, &edit) {
         Ok(spliced) => DraftResult {
             ok: true,
-            spliced_text: Some(spliced),
+            spliced_text: Some(format!("{head}{spliced}")),
             edit: Some(edit),
             error: None,
         },
@@ -187,5 +205,27 @@ mod tests {
         assert!(prompt.contains("Page topic: Topic"));
         assert!(prompt.contains("=== CURRENT PAGE ===\npage body\n=== END CURRENT PAGE ==="));
         assert!(prompt.contains("- A claim. [source: Host, confidence 0.9, tier 1]"));
+    }
+
+    #[test]
+    fn a_draft_is_spliced_into_the_body_and_keeps_the_frontmatter() {
+        let page = "---\ntype: Class\ntitle: T\n---\n# T\n\n## Overview\nText.\n";
+        let reply = r###"{"mode": "insert_after", "anchor": "Text.", "content": "## Recent Developments\nNew."}"###;
+        let draft = draft_from_response(page, reply);
+        assert!(draft.ok, "{:?}", draft.error);
+        assert_eq!(
+            draft.spliced_text.as_deref(),
+            Some("---\ntype: Class\ntitle: T\n---\n# T\n\n## Overview\nText.\n\n## Recent Developments\nNew.\n")
+        );
+    }
+
+    #[test]
+    fn an_anchor_in_the_frontmatter_is_refused() {
+        let page = "---\ntype: Class\ntitle: Unique Title\n---\n# T\n\nBody.\n";
+        let reply =
+            r###"{"mode": "insert_after", "anchor": "title: Unique Title", "content": "x"}"###;
+        let draft = draft_from_response(page, reply);
+        assert!(!draft.ok);
+        assert!(draft.error.unwrap().contains("anchor not found"));
     }
 }

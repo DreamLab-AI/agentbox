@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { findHits, resolveIri, resolveRepo, slugFromPage, spliceProposal } from '../submit-proposals.mjs';
+import { findHits, resolveIri, resolveRepo, slugFromPage, fpKey, proposedPage, sha256Hex } from '../submit-proposals.mjs';
 
 test('slugFromPage lower-cases and dashes a page title', () => {
   assert.equal(slugFromPage('Agentic Workflow.md'), 'agentic-workflow');
@@ -41,19 +41,33 @@ test('the repository comes from VAULT_REPO, else the parent of a knowledge or wo
   assert.equal(resolveRepo({}), null);
 });
 
-test('a splice inserts the content after its anchor and keeps every other line', () => {
-  const page = '---\ntype: Class\n---\n# Topic\n\nFirst line.\nSecond line.\n\nTail.\n';
-  const out = spliceProposal(page, { mode: 'insert_after', anchor: 'First line.\nSecond line.', content: '- New evidence.\n' });
-  assert.equal(out, '---\ntype: Class\n---\n# Topic\n\nFirst line.\nSecond line.\n- New evidence.\n\nTail.\n');
+test('sha256Hex matches the published vector', () => {
+  assert.equal(sha256Hex('abc'), 'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad');
 });
 
-test('insert_before places the content above the anchor', () => {
-  const out = spliceProposal('A\nB\nC', { mode: 'insert_before', anchor: 'B', content: 'X' });
-  assert.equal(out, 'A\nX\nB\nC');
+test('the stored page is proposed while the live page still has the drafted hash', () => {
+  const live = '---\ntype: Class\n---\n# Topic\n\nBody.\n';
+  const payload = { target_page_sha256: sha256Hex(live), proposed_page: `${live}\n## Recent Developments\nNew.\n` };
+  assert.deepEqual(proposedPage(live, payload), { ok: true, page: payload.proposed_page });
 });
 
-test('a moved or ambiguous anchor refuses the splice rather than guess', () => {
-  assert.equal(spliceProposal('A\nB\n', { mode: 'insert_after', anchor: 'Gone', content: 'X' }), null);
-  assert.equal(spliceProposal('B\nB\n', { mode: 'insert_after', anchor: 'B', content: 'X' }), null);
-  assert.equal(spliceProposal('A\n', { mode: 'insert_after', anchor: '', content: 'X' }), null);
+test('a page that changed after drafting is stale, never spliced by guess', () => {
+  const payload = { target_page_sha256: sha256Hex('old'), proposed_page: 'old + new' };
+  assert.deepEqual(proposedPage('edited since', payload), { ok: false, reason: 'page-changed' });
+});
+
+test('a dossier without a hash or a stored page is an old dossier', () => {
+  const edit = { mode: 'insert_after', anchor: 'Body.', content: 'X' };
+  assert.deepEqual(proposedPage('Body.\n', { edit }), { ok: false, reason: 'old-dossier' });
+  assert.deepEqual(proposedPage('Body.\n', { edit, target_page_sha256: sha256Hex('Body.\n') }), { ok: false, reason: 'old-dossier' });
+  assert.deepEqual(proposedPage('Body.\n', undefined), { ok: false, reason: 'old-dossier' });
+});
+
+test('the idempotency key changes when the dossier is redrafted against a new page', () => {
+  const fps = ['b', 'a'];
+  const v1 = { assertion_fingerprints: fps, ontology_propose_payload: { target_page_sha256: 'h1' } };
+  const v2 = { assertion_fingerprints: ['a', 'b'], ontology_propose_payload: { target_page_sha256: 'h2' } };
+  const v1again = { assertion_fingerprints: ['a', 'b'], ontology_propose_payload: { target_page_sha256: 'h1' } };
+  assert.equal(fpKey(v1), fpKey(v1again));
+  assert.notEqual(fpKey(v1), fpKey(v2));
 });

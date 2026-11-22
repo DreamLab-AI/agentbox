@@ -283,19 +283,33 @@ podcast-promote --loom-url "$LOOM_BASE_URL" --pages-dir "$VAULT_PAGES" \
 ```
 
 Rejected-from-ontology is not discarded: with `--working-graph-dir`, every
-terminal reject also writes `<Topic>.md` into the working graph — the Loom-drafted
-prose section plus the attributed evidence bullets, `type: Note` and
-`public: false` in the frontmatter (the pre-v2 `type: podcast-news` is not a
-`working_types` value and fails validation), overwritten on each dossier
-refresh. The curated main graph is
-never touched.
+terminal reject also writes `<Topic>.md` into the working vault: `type: Note`,
+`public: false`, `status: draft`, a `generated` stamp
+(`process:podcast-promote/<version>`), a `sources` list linking each episode
+ledger, `promotion-status`, then the Loom-drafted section and the evidence
+bullets with `**key:** value` detail. It is overwritten on each dossier refresh.
+A page of the same name that this stage did not write (no `promotion-status`
+key) is left alone and reported. The curated vault is never touched.
+`podcast-promote --refresh-working-pages` rewrites every reject's page from the
+stored dossiers with no network call, for use after the page format changes.
+
+A dossier records `target_page_sha256`, the hash of the curated page it was
+drafted against, and a candidate is skipped only while both its evidence and
+that page are unchanged. When the page changes the dossier is redrafted. The
+splice is drafted against the page body only; the frontmatter is withheld from
+the model and re-attached unchanged. A new section anchored on a heading is
+placed after that whole section.
 
 Survivors flow onward via `node submit-proposals.mjs` (weekly cron stage 3):
-each dossier's splice is applied to the target page and the full proposed page is submitted as a governed
-content proposal with `vault propose --level content --diff <file>` (ADR-2107;
-contract C2). `vault` (the governance transport) runs Whelk and the conflict detector as **blockers**, then
-posts a forum 31402 for a human 31403 signature. There is no VisionClaw
-round-trip and no MCP server in this path any more.
+the survivor's `proposed_page` (the exact page the judge scored) is submitted
+as a governed content proposal with `vault propose --level content --diff <file>`
+(ADR-2107; contract C2), and only while the live page still has
+`target_page_sha256`. The submitter never applies the edit itself; a dossier
+that predates the hash, or whose page has changed, is reported `STALE`, is not
+banked, and is redrafted by the next promote run. `vault` (the governance
+transport) runs Whelk and the conflict detector as **blockers**, then posts a
+forum 31402 for a human 31403 signature. There is no VisionClaw round-trip and
+no MCP server in this path any more.
 
 A non-empty `blockers` array means **nothing was posted**. The submitter banks
 that outcome and never retries it: a subclass cycle or a Whelk inconsistency is

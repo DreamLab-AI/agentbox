@@ -12,16 +12,35 @@ use serde_json::{json, Map, Value};
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
 
-/// Port of `load_processed_fingerprint_sets`.
-pub fn load_processed_fingerprint_sets(
-    proposals_dir: &Path,
-    rejects_dir: &Path,
-) -> HashMap<String, HashSet<String>> {
-    let mut out: HashMap<String, HashSet<String>> = HashMap::new();
+/// What a terminal dossier (survivor or reject) was built from.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Processed {
+    /// The assertion fingerprints the dossier covered.
+    pub fingerprints: HashSet<String>,
+    /// SHA-256 of the target page the splice was drafted against. `None` for a
+    /// dossier written before the hash was recorded.
+    pub target_page_sha256: Option<String>,
+}
+
+impl Processed {
+    /// Is a dossier for these fingerprints, drafted against a page with this
+    /// hash, still current?
+    ///
+    /// Both must match. A dossier whose page has since changed carries an
+    /// anchor that may no longer exist, so it is redrafted. 22 survivors
+    /// drafted in 2026-08 stayed blocked as `anchor-moved` for twelve weeks
+    /// because the fingerprint set alone said nothing had changed.
+    pub fn is_current(&self, fingerprints: &HashSet<String>, page_sha256: &str) -> bool {
+        self.fingerprints == *fingerprints
+            && self.target_page_sha256.as_deref() == Some(page_sha256)
+    }
+}
+
+/// Port of `load_processed_fingerprint_sets`, extended with the page hash.
+/// Deferred dossiers are left out: they are always retried.
+pub fn load_processed(proposals_dir: &Path, rejects_dir: &Path) -> HashMap<String, Processed> {
+    let mut out: HashMap<String, Processed> = HashMap::new();
     for dir in [proposals_dir, rejects_dir] {
-        if !dir.exists() {
-            continue;
-        }
         let entries = match std::fs::read_dir(dir) {
             Ok(e) => e,
             Err(_) => continue,
@@ -31,13 +50,11 @@ pub fn load_processed_fingerprint_sets(
             if path.extension().map(|e| e != "json").unwrap_or(true) {
                 continue;
             }
-            let text = match std::fs::read_to_string(&path) {
-                Ok(t) => t,
-                Err(_) => continue,
+            let Ok(text) = std::fs::read_to_string(&path) else {
+                continue;
             };
-            let data: Value = match serde_json::from_str(&text) {
-                Ok(v) => v,
-                Err(_) => continue,
+            let Ok(data) = serde_json::from_str::<Value>(&text) else {
+                continue;
             };
             if data.get("status").and_then(|v| v.as_str()) == Some("candidate_deferred") {
                 continue;
@@ -47,11 +64,19 @@ pub fn load_processed_fingerprint_sets(
                 .get("assertion_fingerprints")
                 .and_then(|v| v.as_array());
             if let (Some(slug), Some(fps)) = (slug, fps) {
-                let set: HashSet<String> = fps
-                    .iter()
-                    .filter_map(|v| v.as_str().map(|s| s.to_string()))
-                    .collect();
-                out.insert(slug.to_string(), set);
+                out.insert(
+                    slug.to_string(),
+                    Processed {
+                        fingerprints: fps
+                            .iter()
+                            .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                            .collect(),
+                        target_page_sha256: data
+                            .get("target_page_sha256")
+                            .and_then(|v| v.as_str())
+                            .map(|s| s.to_string()),
+                    },
+                );
             }
         }
     }
@@ -73,6 +98,11 @@ pub fn clear_slug_outputs(slug: &str, dirs: &[&Path]) {
 /// Port of `write_dossier_json`. Writes `path` and returns the built
 /// document (the caller passes it on to [`write_dossier_md`], mirroring
 /// `write_dossier_md(path, data)` in Python).
+///
+/// `target_page_sha256` is the hash of the page the draft was made against,
+/// `None` when there was no page. A survivor's payload also carries
+/// `proposed_page`, the whole page with the splice applied, so the submitter
+/// proposes exactly what the judge scored and never re-applies the edit.
 #[allow(clippy::too_many_arguments)]
 pub fn write_dossier_json(
     path: &Path,
@@ -84,6 +114,7 @@ pub fn write_dossier_json(
     status: &str,
     reasons: &[String],
     target_page_rel: &str,
+    target_page_sha256: Option<&str>,
 ) -> Value {
     let assertions_json: Vec<Value> = candidate
         .assertions
@@ -112,6 +143,7 @@ pub fn write_dossier_json(
         json!(candidate.sorted_fingerprints()),
     );
     data.insert("target_page".to_string(), json!(target_page_rel));
+    data.insert("target_page_sha256".to_string(), json!(target_page_sha256));
     data.insert("assertions".to_string(), json!(assertions_json));
     data.insert(
         "draft".to_string(),
@@ -141,7 +173,9 @@ pub fn write_dossier_json(
             "ontology_propose_payload".to_string(),
             json!({
                 "target_page": target_page_rel,
+                "target_page_sha256": target_page_sha256,
                 "edit": draft.edit,
+                "proposed_page": draft.spliced_text,
                 "provenance": {
                     "assertion_fingerprints": candidate.sorted_fingerprints(),
                     "source_episodes": candidate.sorted_episodes(),
@@ -336,6 +370,52 @@ mod tests {
     }
 
     #[test]
+    fn a_dossier_is_current_only_for_the_same_evidence_and_the_same_page() {
+        let fps: HashSet<String> = ["a".to_string(), "b".to_string()].into();
+        let done = Processed {
+            fingerprints: fps.clone(),
+            target_page_sha256: Some("h1".to_string()),
+        };
+        assert!(done.is_current(&fps, "h1"));
+        assert!(!done.is_current(&fps, "h2"), "the page changed");
+        assert!(
+            !done.is_current(&["a".to_string()].into(), "h1"),
+            "the evidence changed"
+        );
+        let legacy = Processed {
+            fingerprints: fps.clone(),
+            target_page_sha256: None,
+        };
+        assert!(
+            !legacy.is_current(&fps, "h1"),
+            "a dossier with no hash is redrafted"
+        );
+    }
+
+    #[test]
+    fn load_processed_reads_the_page_hash_and_skips_deferred() {
+        let dir = tempfile::tempdir().unwrap();
+        let (p, r) = (dir.path().join("p"), dir.path().join("r"));
+        std::fs::create_dir_all(&p).unwrap();
+        std::fs::create_dir_all(&r).unwrap();
+        std::fs::write(p.join("a.json"), r#"{"topic_slug":"a","status":"candidate_survivor","assertion_fingerprints":["x"],"target_page_sha256":"h"}"#).unwrap();
+        std::fs::write(
+            r.join("b.json"),
+            r#"{"topic_slug":"b","status":"candidate_rejected","assertion_fingerprints":["y"]}"#,
+        )
+        .unwrap();
+        std::fs::write(
+            r.join("c.json"),
+            r#"{"topic_slug":"c","status":"candidate_deferred","assertion_fingerprints":["z"]}"#,
+        )
+        .unwrap();
+        let got = load_processed(&p, &r);
+        assert_eq!(got.len(), 2);
+        assert_eq!(got["a"].target_page_sha256.as_deref(), Some("h"));
+        assert_eq!(got["b"].target_page_sha256, None);
+    }
+
+    #[test]
     fn dossier_json_has_python_field_order() {
         let candidate = sample_candidate();
         let draft = DraftResult {
@@ -354,6 +434,7 @@ mod tests {
             "candidate_rejected",
             &["some_reason".to_string()],
             "Advertising.md",
+            Some("abc123"),
         );
         let obj = value.as_object().unwrap();
         let keys: Vec<&String> = obj.keys().collect();
@@ -368,6 +449,7 @@ mod tests {
                 "episodes",
                 "assertion_fingerprints",
                 "target_page",
+                "target_page_sha256",
                 "assertions",
                 "draft",
                 "judge",
@@ -452,7 +534,11 @@ mod tests {
             "candidate_survivor",
             &[],
             "Advertising.md",
+            Some("abc123"),
         );
+        let payload = &data["ontology_propose_payload"];
+        assert_eq!(payload["target_page_sha256"], "abc123");
+        assert_eq!(payload["proposed_page"], json!(draft.spliced_text));
         let md_path = dir.path().join("advertising.md");
         write_dossier_md(&md_path, &data);
         let content = std::fs::read_to_string(&md_path).unwrap();

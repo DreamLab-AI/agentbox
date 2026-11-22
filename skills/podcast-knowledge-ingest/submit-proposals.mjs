@@ -85,10 +85,21 @@ const REPO = resolveRepo();
 
 const state = fs.existsSync(STATE) ? JSON.parse(fs.readFileSync(STATE, 'utf8')) : {};
 
-function fpKey(dossier) {
+/**
+ * Idempotency key: the evidence AND the page text the splice was drafted
+ * against. A dossier redrafted against a changed page is a new proposal, so a
+ * blocker banked for the old draft does not silence it.
+ */
+export function fpKey(dossier) {
+  const payload = dossier.ontology_propose_payload || {};
   return crypto.createHash('sha256')
     .update(JSON.stringify([...dossier.assertion_fingerprints].sort()))
+    .update(String(payload.target_page_sha256 || ''))
     .digest('hex').slice(0, 16);
+}
+
+export function sha256Hex(text) {
+  return crypto.createHash('sha256').update(text, 'utf8').digest('hex');
 }
 
 /** Run a corpus CLI inside the repository; stdout parsed as JSON. */
@@ -142,37 +153,36 @@ export function resolveIri(targetPage, find = (q) => cli(ONTOMARK, ['find', '--q
 }
 
 /**
- * The target page with the dossier's splice applied, in full: `vault propose
- * --diff` takes the proposed page itself, not a diff (VisionClaw
- * `crates/vault/src/main.rs`, the `diff` argument). `edit.mode` is
- * insert_after/insert_before against `edit.anchor`, prose lines taken from the
- * page when the dossier was built. They must still appear as one contiguous
- * run of lines; if the anchor has moved or is ambiguous the splice is refused
- * (`null`), never placed by guess.
+ * The page to propose, in full: `vault propose --diff` takes the proposed page
+ * itself, not a diff (VisionClaw `crates/vault/src/main.rs`, the `diff`
+ * argument).
+ *
+ * The dossier carries `proposed_page`, the exact text the judge scored, and
+ * `target_page_sha256`, the hash of the page it was drafted against. The page
+ * is proposed only while the live page still has that hash. This script never
+ * applies the edit itself: a second splice implementation here once disagreed
+ * with the drafter's (it knew `insert_before`, the drafter `replace_section`),
+ * and a line-matching anchor check left 22 survivors blocked for twelve weeks
+ * after the pages changed format.
+ *
+ * Returns `{ ok: true, page }`, or `{ ok: false, reason }` where reason is
+ * `old-dossier` (written before the hash was recorded) or `page-changed`.
+ * Neither is banked: `podcast-promote` redrafts both on its next run.
  */
-export function spliceProposal(pageText, edit) {
-  const anchor = String(edit.anchor || '').split('\n').filter((l) => l.trim());
-  if (!anchor.length) return null;
-  const lines = pageText.split('\n');
-  const starts = [];
-  for (let i = 0; i + anchor.length <= lines.length; i++) {
-    if (anchor.every((a, k) => lines[i + k].trim() === a.trim())) starts.push(i);
+export function proposedPage(pageText, payload) {
+  if (typeof payload?.proposed_page !== 'string' || !payload.target_page_sha256) {
+    return { ok: false, reason: 'old-dossier' };
   }
-  if (starts.length !== 1) return null;
-  const at = edit.mode === 'insert_before' ? starts[0] : starts[0] + anchor.length;
-  const added = String(edit.content || '').replace(/\n+$/, '').split('\n');
-  return [...lines.slice(0, at), ...added, ...lines.slice(at)].join('\n');
+  if (sha256Hex(pageText) !== payload.target_page_sha256) {
+    return { ok: false, reason: 'page-changed' };
+  }
+  return { ok: true, page: payload.proposed_page };
 }
 
-/** Write the proposed page for `vault propose --diff`, or return null. */
-function writeProposedPage(dossier, page) {
-  const source = path.join(REPO, 'knowledge', `${page}.md`);
-  const proposed = spliceProposal(fs.readFileSync(source, 'utf8'), dossier.ontology_propose_payload.edit);
-  if (proposed === null) return null;
-  const file = path.join(os.tmpdir(), `podcast-propose-${dossier.topic_slug}-${process.pid}.md`);
-  fs.writeFileSync(file, proposed);
-  return file;
-}
+const STALE_DETAIL = {
+  'old-dossier': 'the dossier predates page hashing; podcast-promote redrafts it on its next run',
+  'page-changed': 'the page changed after the dossier was drafted; podcast-promote redrafts it on its next run',
+};
 
 function hypothesisFor(dossier, dossierFile) {
   const s = dossier.ontology_propose_payload.scores || {};
@@ -207,7 +217,7 @@ function main() {
   const files = fs.existsSync(PROPOSALS)
     ? fs.readdirSync(PROPOSALS).filter((f) => f.endsWith('.json')).sort()
     : [];
-  let proposed = 0, skipped = 0, unresolved = 0, blocked = 0, failed = 0;
+  let proposed = 0, skipped = 0, unresolved = 0, blocked = 0, failed = 0, stale = 0;
 
   for (const f of files) {
     const d = JSON.parse(fs.readFileSync(path.join(PROPOSALS, f), 'utf8'));
@@ -231,17 +241,17 @@ function main() {
       continue;
     }
 
-    const diffFile = writeProposedPage(d, target.page);
-    if (!diffFile) {
-      // The anchor is gone or ambiguous: the page moved on since the dossier
-      // was built. Bank it as blocked; a new dossier gets a new fingerprint.
-      console.log(`BLOCKED [${d.topic_slug}] -> ${target.iri}`);
-      console.log('         anchor-moved: the splice anchor is not one contiguous run of the page\'s lines');
-      state[d.topic_slug] = { fp: key, blocked: ['anchor-moved'], at: new Date().toISOString() };
-      fs.writeFileSync(STATE, JSON.stringify(state, null, 2));
-      blocked++;
+    const source = path.join(REPO, 'knowledge', `${target.page}.md`);
+    const next = proposedPage(fs.readFileSync(source, 'utf8'), d.ontology_propose_payload);
+    if (!next.ok) {
+      // Not banked: nothing is wrong with the model, the draft is out of date.
+      console.log(`STALE [${d.topic_slug}] -> ${target.iri}`);
+      console.log(`         ${next.reason}: ${STALE_DETAIL[next.reason]}`);
+      stale++;
       continue;
     }
+    const diffFile = path.join(os.tmpdir(), `podcast-propose-${d.topic_slug}-${process.pid}.md`);
+    fs.writeFileSync(diffFile, next.page);
     const args = ['propose', target.iri,
       '--level', 'content',
       '--hypothesis', hypothesisFor(d, f),
@@ -277,7 +287,7 @@ function main() {
     }
   }
 
-  console.log(`\nproposed=${proposed} skipped(unchanged)=${skipped} unresolved=${unresolved} blocked=${blocked} failed=${failed}`);
+  console.log(`\nproposed=${proposed} skipped(unchanged)=${skipped} unresolved=${unresolved} stale=${stale} blocked=${blocked} failed=${failed}`);
   if (proposed && !DRY) {
     console.log('None of these have landed: a proposal is a request for a signature, not a write.');
     console.log('They need a human 31403 Approve on the forum, and they expire at stale_after.');

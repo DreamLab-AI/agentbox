@@ -23,7 +23,10 @@ fn re_full_fence() -> &'static Regex {
 }
 fn re_heading() -> &'static Regex {
     static RE: OnceLock<Regex> = OnceLock::new();
-    RE.get_or_init(|| Regex::new(r"(?m)^-\s+#{1,6}\s+.+$").unwrap())
+    // A section ends at the next heading. Vault pages are plain markdown
+    // (`## Heading`); pages written before the 2026-09 migration were Logseq
+    // outlines (`- ## Heading`). Both forms end a section.
+    RE.get_or_init(|| Regex::new(r"(?m)^(?:-\s+)?#{1,6}\s+.+$").unwrap())
 }
 
 /// Port of `extract_splice_json` (also reused, unmodified, as
@@ -110,14 +113,21 @@ pub fn apply_splice(original: &str, edit: &Value) -> Result<String, SpliceError>
 
     if mode == "insert_after" {
         let line_end = original[anchor_end..].find('\n').map(|i| anchor_end + i);
-        let insert_at = line_end.map(|le| le + 1).unwrap_or(original.len());
-        let new_text = format!(
-            "{}{}\n{}",
-            &original[..insert_at],
-            content.trim_end_matches('\n'),
-            &original[insert_at..]
-        );
-        return Ok(new_text);
+        let after_line = line_end.map(|le| le + 1).unwrap_or(original.len());
+        let anchor_line_start = original[..anchor_start]
+            .rfind('\n')
+            .map(|i| i + 1)
+            .unwrap_or(0);
+        let anchor_line = &original[anchor_line_start..line_end.unwrap_or(original.len())];
+        // "After a heading" with content that opens its own section means
+        // after that whole section. Placed straight after the heading line the
+        // new section would cut the old one off from its body, which the
+        // judge scored coherence 1 on every candidate (2026-11-21).
+        let insert_at = match (heading_level(anchor_line), first_heading_level(content)) {
+            (Some(anchor_level), Some(_)) => section_end(original, after_line, anchor_level),
+            _ => after_line,
+        };
+        return Ok(insert_block(original, insert_at, content));
     }
 
     let line_start = original[..anchor_start]
@@ -136,6 +146,95 @@ pub fn apply_splice(original: &str, edit: &Value) -> Result<String, SpliceError>
         format!("{content}\n")
     };
     Ok(format!("{before}{new_content}{after}"))
+}
+
+/// Heading level of one line, for both the plain (`## H`) and the Logseq
+/// outline (`- ## H`) form. `None` when the line is not a heading.
+fn heading_level(line: &str) -> Option<usize> {
+    let t = line.trim_start();
+    let t = t.strip_prefix("- ").map(str::trim_start).unwrap_or(t);
+    let level = t.chars().take_while(|c| *c == '#').count();
+    ((1..=6).contains(&level) && t[level..].starts_with(' ')).then_some(level)
+}
+
+/// Heading level of the first non-blank line of `content`, if it is one.
+fn first_heading_level(content: &str) -> Option<usize> {
+    content
+        .lines()
+        .find(|l| !l.trim().is_empty())
+        .and_then(heading_level)
+}
+
+/// Byte offset where the section opened by a heading of `level` ends: the
+/// start of the next heading at that level or above, searching from `from`
+/// (a line start), or the end of the text.
+fn section_end(text: &str, from: usize, level: usize) -> usize {
+    let mut offset = from;
+    for line in text[from..].split_inclusive('\n') {
+        if heading_level(line).is_some_and(|l| l <= level) {
+            return offset;
+        }
+        offset += line.len();
+    }
+    text.len()
+}
+
+/// Insert `content` as its own block at `at` (a line start). On a plain
+/// markdown page a block that opens with a heading is set off by blank lines;
+/// a Logseq outline keeps its bullets adjacent.
+fn insert_block(original: &str, at: usize, content: &str) -> String {
+    let (before, after) = original.split_at(at);
+    let content = content.trim_matches('\n');
+    let outline = content.trim_start().starts_with("- ");
+    let mut out = String::with_capacity(original.len() + content.len() + 4);
+    out.push_str(before);
+    if !before.is_empty() && !before.ends_with('\n') {
+        out.push('\n');
+    }
+    let spaced = !outline && first_heading_level(content).is_some();
+    if spaced && !before.is_empty() && !out.ends_with("\n\n") {
+        out.push('\n');
+    }
+    out.push_str(content);
+    out.push('\n');
+    if spaced && !after.is_empty() && !after.starts_with('\n') {
+        out.push('\n');
+    }
+    out.push_str(after);
+    out
+}
+
+/// Split a vault page into its YAML frontmatter block (including both `---`
+/// fences and the newline after the closing one) and its body.
+///
+/// A page without frontmatter is all body. The splice is drafted against, and
+/// applied to, the body only: the frontmatter is governed data that a prose
+/// edit must never anchor on or alter.
+pub fn split_frontmatter(text: &str) -> (&str, &str) {
+    let Some(rest) = text
+        .strip_prefix("---\n")
+        .or_else(|| text.strip_prefix("---\r\n"))
+    else {
+        return ("", text);
+    };
+    let mut offset = text.len() - rest.len();
+    for line in rest.split_inclusive('\n') {
+        offset += line.len();
+        if line.trim_end_matches(['\n', '\r']) == "---" {
+            return text.split_at(offset);
+        }
+    }
+    ("", text)
+}
+
+/// Lowercase hex SHA-256 of a page, the identity a dossier records for the
+/// text it was drafted against.
+pub fn page_sha256(text: &str) -> String {
+    use sha2::{Digest, Sha256};
+    Sha256::digest(text.as_bytes())
+        .iter()
+        .map(|b| format!("{b:02x}"))
+        .collect()
 }
 
 /// Port of `clean_loom_response`.
@@ -226,5 +325,89 @@ mod tests {
     fn clean_loom_response_strips_think_tags_and_fence() {
         let text = "<think>reasoning</think>\n```json\n{\"a\": 1}\n```";
         assert_eq!(clean_loom_response(text), "{\"a\": 1}");
+    }
+
+    #[test]
+    fn frontmatter_is_split_from_the_body() {
+        let page = "---\ntype: Class\ntitle: X\n---\n# X\n\nBody.\n";
+        let (head, body) = split_frontmatter(page);
+        assert_eq!(head, "---\ntype: Class\ntitle: X\n---\n");
+        assert_eq!(body, "# X\n\nBody.\n");
+        assert_eq!(format!("{head}{body}"), page);
+    }
+
+    #[test]
+    fn crlf_frontmatter_is_preserved_byte_for_byte() {
+        let page = "---\r\ntype: Class\r\ntitle: X\r\n---\r\n# X\r\nBody.\r\n";
+        let (head, body) = split_frontmatter(page);
+        assert_eq!(head, "---\r\ntype: Class\r\ntitle: X\r\n---\r\n");
+        assert_eq!(body, "# X\r\nBody.\r\n");
+        assert_eq!(format!("{head}{body}"), page);
+    }
+
+    #[test]
+    fn a_page_without_frontmatter_or_with_an_unclosed_block_is_all_body() {
+        assert_eq!(split_frontmatter("# X\n"), ("", "# X\n"));
+        assert_eq!(
+            split_frontmatter("---\ntype: Class\n"),
+            ("", "---\ntype: Class\n")
+        );
+    }
+
+    #[test]
+    fn replace_section_ends_at_a_plain_markdown_heading() {
+        let page = "# T\n\n## Overview\nold\n\n## Later\nkeep\n";
+        let edit = json!({"mode": "replace_section", "anchor": "## Overview", "content": "## Overview\nnew\n"});
+        assert_eq!(
+            apply_splice(page, &edit).unwrap(),
+            "# T\n\n## Overview\nnew\n## Later\nkeep\n"
+        );
+    }
+
+    #[test]
+    fn page_sha256_matches_the_published_vector() {
+        assert_eq!(
+            page_sha256("abc"),
+            "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        );
+    }
+
+    #[test]
+    fn a_new_section_anchored_on_a_heading_goes_after_that_whole_section() {
+        let page =
+            "# T\n\n## Landscape\nBody of landscape.\n\n### Detail\nMore.\n\n## References\nR.\n";
+        let edit = json!({"mode": "insert_after", "anchor": "## Landscape", "content": "## Recent Developments\nNew."});
+        assert_eq!(
+            apply_splice(page, &edit).unwrap(),
+            "# T\n\n## Landscape\nBody of landscape.\n\n### Detail\nMore.\n\n## Recent Developments\nNew.\n\n## References\nR.\n"
+        );
+    }
+
+    #[test]
+    fn a_new_section_after_the_last_section_lands_at_the_end() {
+        let page = "# T\n\n## Landscape\nBody.\n";
+        let edit = json!({"mode": "insert_after", "anchor": "## Landscape", "content": "## Recent Developments\nNew.\n"});
+        assert_eq!(
+            apply_splice(page, &edit).unwrap(),
+            "# T\n\n## Landscape\nBody.\n\n## Recent Developments\nNew.\n"
+        );
+    }
+
+    #[test]
+    fn plain_content_after_a_prose_anchor_is_inserted_on_the_next_line() {
+        let page = "Intro.\nTail.\n";
+        let edit = json!({"mode": "insert_after", "anchor": "Intro.", "content": "- New fact."});
+        assert_eq!(
+            apply_splice(page, &edit).unwrap(),
+            "Intro.\n- New fact.\nTail.\n"
+        );
+    }
+
+    #[test]
+    fn heading_levels_cover_plain_and_outline_forms() {
+        assert_eq!(heading_level("## H"), Some(2));
+        assert_eq!(heading_level("- ### H"), Some(3));
+        assert_eq!(heading_level("#hashtag"), None);
+        assert_eq!(heading_level("plain"), None);
     }
 }

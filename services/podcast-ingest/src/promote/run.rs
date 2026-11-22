@@ -2,13 +2,12 @@
 //! (`main()`) from `promote.py`.
 
 use super::candidate::{find_candidates, find_candidates_from, target_page_name};
-use super::dossier::{
-    clear_slug_outputs, load_processed_fingerprint_sets, write_dossier_json, write_dossier_md,
-};
+use super::dossier::{clear_slug_outputs, load_processed, write_dossier_json, write_dossier_md};
 use super::judge::judge_before_after;
 use super::ledger_parse::{load_ledger_dir_assertions, Assertion};
 use super::loom::{assemble_draft, check_loom_reachable, DraftResult};
-use super::working_page::write_working_page;
+use super::splice::page_sha256;
+use super::working_page::{write_working_page, WorkingPage};
 use super::{completeness, DEFAULT_LOOM_MODEL, DEFAULT_LOOM_URL};
 use crate::ingest::ledger::LEDGER_SUBDIR;
 use clap::Parser;
@@ -81,6 +80,12 @@ pub struct Args {
     #[arg(long, env = "VAULT_WORKING_PAGES")]
     pub working_graph_dir: Option<PathBuf>,
 
+    /// rewrite the working-vault page of every terminal reject from its stored
+    /// dossier, then exit: no ledger scan, no Loom or judge call. For use after
+    /// the page format changes
+    #[arg(long)]
+    pub refresh_working_pages: bool,
+
     /// cap assertions handed to draft/completeness, strongest first; 0 = uncapped
     #[arg(long, default_value_t = 12)]
     pub max_dossier_assertions: usize,
@@ -115,6 +120,62 @@ fn resolve_path(p: &Path) -> PathBuf {
     }
 }
 
+fn now_rfc3339() -> String {
+    chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Secs, true)
+}
+
+/// Write one reject's working page and report it. Returns false on a failed
+/// write.
+fn land_working_page(working_dir: &Path, data: &serde_json::Value) -> bool {
+    match write_working_page(working_dir, data, &now_rfc3339()) {
+        WorkingPage::Written(p) => println!("  news page -> {}", p.display()),
+        WorkingPage::Foreign(p) => println!(
+            "  news page NOT written: {} exists and is not a promotion-stage page",
+            p.display()
+        ),
+        WorkingPage::Failed(p, e) => {
+            eprintln!("  news page FAILED: {}: {e}", p.display());
+            return false;
+        }
+    }
+    true
+}
+
+/// `--refresh-working-pages`: rewrite every terminal reject's working page
+/// from the dossier already on disk. Returns the process exit code.
+pub fn refresh_working_pages(rejects_dir: &Path, working_dir: &Path) -> i32 {
+    let mut names: Vec<PathBuf> = std::fs::read_dir(rejects_dir)
+        .map(|rd| {
+            rd.filter_map(|e| e.ok())
+                .map(|e| e.path())
+                .filter(|p| p.extension().is_some_and(|x| x == "json"))
+                .collect()
+        })
+        .unwrap_or_default();
+    names.sort();
+    let (mut written, mut failed) = (0usize, 0usize);
+    for path in names {
+        let Some(data) = std::fs::read_to_string(&path)
+            .ok()
+            .and_then(|t| serde_json::from_str::<serde_json::Value>(&t).ok())
+        else {
+            eprintln!("  unreadable dossier: {}", path.display());
+            failed += 1;
+            continue;
+        };
+        if data.get("status").and_then(|v| v.as_str()) != Some("candidate_rejected") {
+            continue;
+        }
+        if land_working_page(working_dir, &data) {
+            written += 1;
+        } else {
+            failed += 1;
+        }
+    }
+    println!("refreshed {written} working page(s), {failed} failure(s).");
+    i32::from(failed > 0)
+}
+
 /// Port of `run(args)`. Returns the process exit code.
 pub async fn run(args: &Args) -> i32 {
     let pages_dir = resolve_path(&args.pages_dir);
@@ -126,6 +187,14 @@ pub async fn run(args: &Args) -> i32 {
             .map(|p| p.join("rejects"))
             .unwrap_or_else(|| PathBuf::from("rejects")),
     };
+
+    if args.refresh_working_pages {
+        let Some(working_dir) = &args.working_graph_dir else {
+            eprintln!("--refresh-working-pages needs --working-graph-dir");
+            return 2;
+        };
+        return refresh_working_pages(&rejects_dir, working_dir);
+    }
 
     if !pages_dir.exists() {
         eprintln!("pages-dir does not exist: {}", pages_dir.display());
@@ -182,7 +251,7 @@ pub async fn run(args: &Args) -> i32 {
 
     let _ = std::fs::create_dir_all(&proposals_dir);
     let _ = std::fs::create_dir_all(&rejects_dir);
-    let processed = load_processed_fingerprint_sets(&proposals_dir, &rejects_dir);
+    let processed = load_processed(&proposals_dir, &rejects_dir);
 
     let loom_reachable = check_loom_reachable(&args.loom_url, 5).await;
     println!(
@@ -198,6 +267,7 @@ pub async fn run(args: &Args) -> i32 {
     }
 
     let mut n_processed = 0usize;
+    let mut write_failures = 0usize;
     for candidate in &candidates {
         if let Some(limit) = args.limit {
             if n_processed >= limit {
@@ -207,16 +277,31 @@ pub async fn run(args: &Args) -> i32 {
 
         let slug = candidate.slug();
         let fps = candidate.fingerprints();
-        if let Some(prior_fps) = processed.get(&slug) {
-            if *prior_fps == fps {
-                println!("\n[{slug}] unchanged since last run (same fingerprint set) — skipping.");
+        let target_page_rel = target_page_name(&candidate.topic);
+        let target_page = pages_dir.join(&target_page_rel);
+        // `None` when the topic has no page. A page that exists but cannot be
+        // read is treated the same way: deferred, and retried next run.
+        let page_text = std::fs::read_to_string(&target_page).ok();
+        let page_hash = page_text.as_deref().map(page_sha256);
+
+        if let (Some(prior), Some(hash)) = (processed.get(&slug), page_hash.as_deref()) {
+            if prior.is_current(&fps, hash) {
+                println!(
+                    "\n[{slug}] unchanged since last run (same evidence, same page) — skipping."
+                );
                 continue;
             }
-            println!(
-                "\n[{slug}] fingerprint set changed since last run ({} -> {}) — refreshing.",
-                prior_fps.len(),
-                fps.len()
-            );
+            if prior.fingerprints == fps {
+                println!(
+                    "\n[{slug}] target page changed since the dossier was drafted — refreshing."
+                );
+            } else {
+                println!(
+                    "\n[{slug}] fingerprint set changed since last run ({} -> {}) — refreshing.",
+                    prior.fingerprints.len(),
+                    fps.len()
+                );
+            }
         }
 
         n_processed += 1;
@@ -245,11 +330,9 @@ pub async fn run(args: &Args) -> i32 {
             );
         }
 
-        let target_page_rel = target_page_name(&candidate.topic);
-        let target_page = pages_dir.join(&target_page_rel);
         let mut reasons: Vec<String> = Vec::new();
 
-        if !target_page.exists() {
+        let (Some(page_text), Some(page_hash)) = (page_text, page_hash) else {
             reasons.push(format!(
                 "no_target_page: {target_page_rel} does not exist in pages-dir"
             ));
@@ -270,14 +353,12 @@ pub async fn run(args: &Args) -> i32 {
                 "candidate_deferred",
                 &reasons,
                 &target_page_rel,
+                None,
             );
             write_dossier_md(&rejects_dir.join(format!("{slug}.md")), &data);
             println!("  DEFER [{slug}]: no target page — recorded in rejects/, retry-eligible");
             continue;
-        }
-
-        let page_bytes = std::fs::read(&target_page).unwrap_or_default();
-        let page_text = String::from_utf8_lossy(&page_bytes).to_string();
+        };
 
         if !loom_reachable {
             reasons.push("loom_unreachable".to_string());
@@ -298,6 +379,7 @@ pub async fn run(args: &Args) -> i32 {
                 "candidate_deferred",
                 &reasons,
                 &target_page_rel,
+                Some(&page_hash),
             );
             write_dossier_md(&rejects_dir.join(format!("{slug}.md")), &data);
             println!("  DEFER [{slug}]: Loom unreachable — recorded in rejects/, retry-eligible");
@@ -328,6 +410,7 @@ pub async fn run(args: &Args) -> i32 {
                 "candidate_deferred",
                 &reasons,
                 &target_page_rel,
+                Some(&page_hash),
             );
             write_dossier_md(&rejects_dir.join(format!("{slug}.md")), &data);
             println!(
@@ -382,6 +465,7 @@ pub async fn run(args: &Args) -> i32 {
                 "candidate_deferred",
                 &reasons,
                 &target_page_rel,
+                Some(&page_hash),
             );
             write_dossier_md(&rejects_dir.join(format!("{slug}.md")), &data);
             println!(
@@ -443,6 +527,7 @@ pub async fn run(args: &Args) -> i32 {
             status,
             &reasons,
             &target_page_rel,
+            Some(&page_hash),
         );
         write_dossier_md(&out_dir.join(format!("{slug}.md")), &data);
 
@@ -458,12 +543,17 @@ pub async fn run(args: &Args) -> i32 {
                 out_dir.join(format!("{slug}.json")).display()
             );
             if let Some(wg_dir) = &args.working_graph_dir {
-                let wg_path = write_working_page(wg_dir, &data);
-                println!("  news page -> {}", wg_path.display());
+                if !land_working_page(wg_dir, &data) {
+                    write_failures += 1;
+                }
             }
         }
     }
 
+    if write_failures > 0 {
+        eprintln!("{write_failures} working page(s) could not be written.");
+        return 1;
+    }
     0
 }
 
@@ -575,5 +665,51 @@ mod tests {
             "--dry-run",
         ]);
         assert_eq!(run(&a).await, 2);
+    }
+
+    #[test]
+    fn refresh_rewrites_only_terminal_rejects_and_leaves_foreign_pages() {
+        let rejects = tempdir().unwrap();
+        let work = tempdir().unwrap();
+        let dossier = |topic: &str, status: &str| {
+            serde_json::json!({"topic": topic, "status": status, "episodes": ["ep1"],
+                "n_assertions": 1, "draft": {"ok": false},
+                "assertions": [{"claim": "C.", "source": "S", "episode": "ep1", "confidence": "0.9"}]})
+            .to_string()
+        };
+        std::fs::write(
+            rejects.path().join("a.json"),
+            dossier("Alpha", "candidate_rejected"),
+        )
+        .unwrap();
+        std::fs::write(
+            rejects.path().join("b.json"),
+            dossier("Beta", "candidate_deferred"),
+        )
+        .unwrap();
+        std::fs::write(
+            rejects.path().join("c.json"),
+            dossier("Gamma", "candidate_rejected"),
+        )
+        .unwrap();
+        std::fs::write(
+            work.path().join("Gamma.md"),
+            "---\ntype: Note\n---\nMine.\n",
+        )
+        .unwrap();
+
+        assert_eq!(refresh_working_pages(rejects.path(), work.path()), 0);
+        let alpha = std::fs::read_to_string(work.path().join("Alpha.md")).unwrap();
+        assert!(
+            alpha.contains("type: Note") && alpha.contains("promotion-status: candidate_rejected")
+        );
+        assert!(
+            !work.path().join("Beta.md").exists(),
+            "a deferred dossier has no page"
+        );
+        assert_eq!(
+            std::fs::read_to_string(work.path().join("Gamma.md")).unwrap(),
+            "---\ntype: Note\n---\nMine.\n"
+        );
     }
 }
