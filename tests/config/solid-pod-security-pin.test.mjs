@@ -59,9 +59,11 @@ test('dream-engine manifest and lockfile agree on the patched dependency chain',
   const core = packages.find(p => p.name === 'nostr-bbs-core');
   assert.equal(manifest.dependencies['nostr-bbs-core'], `=${core.version}`);
   const pods = packages.filter(p => p.name === 'solid-pod-rs');
-  assert.equal(pods.length, 1);
+  // beta.19's core no longer depends on solid-pod-rs. A removed dependency
+  // needs no imaginary lock entry; any present copy must still meet the floor.
+  assert.equal(pods.length, core.dependencies.some(d => /^solid-pod-rs(?: |$)/.test(d)) ? 1 : 0);
   // This is a registry library owned by nostr-bbs-core, not the server or
   // relay path dependency. Its independently pinned release must be secure,
   // but does not have to track new forge-only server releases in lockstep.
-  assertSecurityFloor(pods[0].version);
+  for (const pod of pods) assertSecurityFloor(pod.version);
 });
