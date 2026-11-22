@@ -24,6 +24,15 @@ and supports one-off historical backfill.
 podcast-ingest --help
 ```
 
+Promotion drafts are bound to both evidence fingerprints and the target page's
+SHA-256. The submitter proposes the exact page the judge scored through
+`vault propose`, never by editing the curated page directly. Changed or legacy
+dossiers are redrafted instead of banked as permanent anchor failures.
+Frontmatter is preserved; private rejected-candidate notes use the working
+vault's typed format. `podcast-promote --refresh-working-pages` is an explicit
+derived-note rewrite, not part of an image build. See ADR-2213 and the skill's
+`references/promotion.md` for the contract and acceptance limits.
+
 ## Licence
 
 Licensed under either of

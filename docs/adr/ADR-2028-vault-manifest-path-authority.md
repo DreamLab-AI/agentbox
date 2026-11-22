@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: aa6c38322068d21b39515feeecc128434612051e
+verified_commit: 8482214befe8ee2f40cd35e422ac43c78e392a7c
 verified_paths: [agentbox.toml, setup/agentbox.default.toml, schema/agentbox.toml.schema.json, config/entrypoint-unified.sh, mcp/servers/lib/ontology-local.js, mcp/servers/lib/ontology-index-build.js, scripts/ontology-condense-scheduler.mjs, scripts/ontology-condense-refresh.sh, skills/podcast-knowledge-ingest/SKILL.md, skills/ontology-core/SKILL.md, skills/ontology-enrich/SKILL.md, skills/ontology-augment/SKILL.md, skills/web-summary/SKILL.md]
 owner: jjohare
 review_trigger: any new skill, MCP server, or supervised program that reads or writes authored markdown
@@ -17,6 +17,16 @@ lineage: ADR-2003 (manifest-driven composition), ADR-2008 (single source of trut
 ---
 
 # ADR-2028 — `[vault]` is the single path authority for the authored corpus
+
+## Scoped re-verification — 2026-11-22
+
+Reviewed the governed delta through `8482214befe8ee2f40cd35e422ac43c78e392a7c`:
+the podcast skill documents page-hash freshness, valid private working notes
+and exact judged-page proposals (ADR-2213). It still uses the exported
+`VAULT_*` paths; no corpus path, manifest value or boot precedence changes.
+The promoter's 182 offline Rust tests and 11 proposal tests pass. Existing
+status axes and unrelated acceptance boundaries remain unchanged; no live
+corpus refresh or proposal was executed.
 
 
 ## Scoped source verification — 2026-11-20

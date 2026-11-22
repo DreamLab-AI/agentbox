@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: aa6c38322068d21b39515feeecc128434612051e
+verified_commit: 8482214befe8ee2f40cd35e422ac43c78e392a7c
 verified_paths: [skills/ontology-augment, skills/podcast-knowledge-ingest, agents/ontology-curator.md, mcp/mcp.json, agentbox.toml, AGENTS.md]
 owner: jjohare
 review_trigger: a request to register any MCP server that reads or writes visionGraph, the ADR-140 /mcp plane reaching the deployed Loom, or the first `vault` subcommand an agent cannot express
@@ -19,6 +19,17 @@ acceptance_boundary: ontomark and vault --help verb checks at 3e3e09b1d, a grep 
 ---
 
 # ADR-2107 — No MCP inside the estate for the corpus; agents use the vault CLI
+
+## Scoped re-verification — 2026-11-22
+
+Reviewed the podcast skill, promotion reference, shell gate, submitter and tests
+through `8482214befe8ee2f40cd35e422ac43c78e392a7c`. The submitter still calls
+`ontomark find` and `vault propose --level content --diff`; no corpus MCP or
+direct curated-page edit is added. It now proposes the stored judged page
+only after a target-hash check, and stale dossiers remain retryable instead
+of being banked as blockers. Eleven JavaScript tests and 182 offline Rust
+tests pass. The existing staged status and live Loom acceptance limits remain;
+no production corpus write or paid model call was executed. See ADR-2213.
 
 
 ## Scoped source verification — 2026-11-20

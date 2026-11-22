@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 52183d76fde866ab1f05aea524aeea33d8573c3f
+verified_commit: 8482214befe8ee2f40cd35e422ac43c78e392a7c
 verified_paths: [services/dream-engine/src/llm.rs, services/podcast-ingest/src/ingest/loom.rs, services/podcast-ingest/src/promote/loom.rs, services/explainer-tools/src/bin/loom_draft.rs, services/agentbox-mcp/src/web_summary/llm.rs, lib/explainer-tools.nix]
 owner: jjohare
 review_trigger: the Loom façade changes its request or telemetry contract, or a fifth caller appears
@@ -15,6 +15,16 @@ repo: agentbox
 ---
 
 # ADR-2084 — One published loom-client for every façade caller
+
+## Scoped re-verification — 2026-11-22
+
+The governed delta through `8482214befe8ee2f40cd35e422ac43c78e392a7c` changes
+only podcast promotion prompt/splice handling: frontmatter is withheld and
+the judged full page is retained. `call_loom` still uses the same published
+`LoomClient`, request types and options; no hand-rolled façade transport or
+provider fallback was introduced. The 182 offline crate tests pass; no live
+model call or transport-wide acceptance rehearsal is claimed. Existing status
+axes and unrelated limitations remain unchanged.
 
 ## Context
 

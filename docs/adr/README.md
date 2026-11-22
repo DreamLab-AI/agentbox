@@ -59,7 +59,7 @@ detect changes to files it already lists — it is structurally blind to **addit
 is exactly how a new crate landed unlicensed under ADR-2030 while the record still read as
 verified and its `review_trigger` ("any new crate under `services/`") sat unactioned.
 
-_167 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
+_168 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
 
 | ID | Title | Domain | Date | Decision | Impl | Activation | Supersedes | Superseded by | Owner | Repo |
 |----|-------|--------|------|----------|------|------------|------------|---------------|-------|------|
@@ -230,3 +230,4 @@ _167 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
 | [ADR-2210](ADR-2210-the-nip98-door-refuses-every-identity-until-its-boot-config-exists.md) | The NIP-98 door refuses every identity until its boot config file exists | — | 2026-11-20 | accepted | complete | live | — | — | jjohare | agentbox |
 | [ADR-2211](ADR-2211-events-journal-appends-run-under-a-cross-process-lock.md) | Events journal appends run under a cross-process lock | GOVERNANCE-capabilities | 2026-11-20 | accepted | complete | live | — | — | jjohare | agentbox |
 | [ADR-2212](ADR-2212-podkey-policy-blocks-the-store-not-the-default.md) | The sidecar policy blocks the Web Store, not the default, so unpacked Podkey can load | — | 2026-11-20 | accepted | partial | live | — | — | operator | agentbox |
+| [ADR-2213](ADR-2213-podcast-proposals-bind-the-judged-page-to-its-source-hash.md) | Podcast promotion proposes the exact judged page only against its source hash | BASELINE-container | 2026-11-22 | accepted | complete | staged | — | — | operator | agentbox |
