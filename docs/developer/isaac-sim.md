@@ -4,6 +4,30 @@ Governing record: [ADR-2149](../adr/ADR-2149-isaac-sim-sidecar.md). Agent-facing
 
 ## Bring-up (host shell only)
 
+### Shared runner token
+
+`ISAAC_RUNNER_TOKEN` is a private random bearer secret for the job control
+plane, not an NVIDIA/NGC account token. Generate 32 random bytes, for example
+with `openssl rand -hex 32`, and save `ISAAC_RUNNER_TOKEN=<value>` in this
+checkout's **gitignored `.env`**, mode `0600`. Never commit or print a real value.
+The local `docker-compose.override.yml` passes that file to Agentbox using
+`env_file`; `docker-compose.isaac-sim.yml` passes the same variable to the runner.
+Other deployments must arrange the same runtime environment for both services.
+An `export` in a host shell alone does not populate Agentbox's `env_file`.
+
+Every runner route except `/healthz` requires this bearer token. Missing/empty
+configuration fails closed with 503; an absent or wrong request credential
+gets 401. The token authorises trusted script submission, not a safe sandbox
+for untrusted jobs. It is unrelated to the sidecar's GPU UUID or EULA settings.
+
+The token is **not a build input**: do not bake it into Nix, an image layer or
+`agentbox.toml`. Saving it prepares the next container creation; it does not
+change running process environments. Rotation requires coordinated recreation
+of the runner and Agentbox clients when authorised. `agentbox.sh prepare`
+does not restart either service and can run before that cutover.
+
+### Host procedure
+
 Host bind paths resolve on the host, so building from the agent container would bake stale code
 (`agentbox.sh` refuses). Free space first; the image is about 10 GB compressed and expands well beyond
 that, and 20 GiB must remain free throughout. Do not prune other services' caches to make room.
