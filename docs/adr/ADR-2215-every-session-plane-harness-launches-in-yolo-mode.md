@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 50591d267ac8700e88fb2a43e45e27648f5e8cf6
+verified_commit: 904a98d93aac3bc30402a7c616d3f3d5f530ffc4
 verified_paths: [config/session-plane/launch.json, services/agentbox-sessions/src/contract.rs, tests/cli/session-launch-contract.test.mjs]
 owner: jjohare
 review_trigger: a pinned CLI renames or removes its approval-bypass flag, a new seed tool, or the container stops being the sandbox

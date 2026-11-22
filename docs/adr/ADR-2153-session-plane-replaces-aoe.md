@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: [ADR-2002, ADR-2063, ADR-2079]
 superseded_by: []
-verified_commit: fc95b38774814f9bc83ddfac28649d12cd74fe12
+verified_commit: 904a98d93aac3bc30402a7c616d3f3d5f530ffc4
 verified_paths: [services/agentbox-sessions, config/session-plane, lib/agentbox-sessions.nix, flake.nix, flake.lock, agentbox.toml, config/entrypoint-unified.sh, config/role-accounts.json, config/custody/session-plane-acl.json, config/tab0-bridge, config/nostr-gateway/gateway.cjs, config/nip98-proxy, config/tmux-autostart.sh, config/hooks/session-state.cjs, config/registered-hooks.txt, scripts/session-provision.mjs, scripts/session-control.cjs, scripts/activation/session-plane-acceptance.mjs, management-api/lib/system-manifest.js, schema/agentbox.toml.schema.json, services/agentbox-manifest/src/stacks.rs, services/agentbox-manifest/src/stacks_env.rs, tests/cli/session-launch-contract.test.mjs, tests/cli/session-control.test.cjs, tests/config/session-plane-notify.test.sh]
 owner: jjohare
 review_trigger: Antigravity signed in and OpenRouter answering the canned round trip (closes §11 acceptance → implementation complete); any AoE consumer found to have been missed
@@ -470,3 +470,11 @@ ADR-2214 is the route to closing this record's Antigravity sign-in gate; that
 gate stays open until a sign-in survives a restart. No value, authority,
 boundary or runtime behaviour governed by this decision changes. This is source
 verification, not activation.
+
+## ADR-2215 drift check — 2026-11-22
+
+The launch contract adds each CLI's approval-bypass flag to the codex, antigravity
+and opencode templates; the matching Rust and contract assertions follow. The
+resolution rules, the roster, worktrees, blockers, trust and daemon parity are
+unchanged, and the live launch tier still starts every seed unblocked. The §11
+acceptance gaps recorded above are unaffected. Source verification only.
