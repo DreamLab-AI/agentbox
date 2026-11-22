@@ -21,9 +21,9 @@ dependencies = [
 
 [[package]]
 name = "actix-http"
-version = "3.20.5"
+version = "3.22.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "26d4b0133245a77674c3703c71b416c59cbee8b570368fc263d3154604c6841c"
+checksum = "50f98f47b03911915aa3f0b856749aa3d3915033afabb295ab6ac5ff3b8bd5c1"
 dependencies = [
  "actix-codec",
  "actix-service",
@@ -1227,7 +1227,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c54e03a951783e8b327515db3f2a2fd0e3bed362a96b066f341ce66ed49b4ead"
 dependencies = [
  "data-encoding",
- "syn 2.0.119",
+ "syn 3.0.3",
 ]
 
 [[package]]
@@ -3362,9 +3362,9 @@ dependencies = [
 
 [[package]]
 name = "quinn-udp"
-version = "0.5.15"
+version = "0.5.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "35a133f956daabe89a61a685c2649f13d82d5aa4bd5d12d1277e1072a21c0694"
+checksum = "af66907df18639dcf4db56ca65490cabc4b27a97dbadd96f2926cca73298f016"
 dependencies = [
  "cfg_aliases",
  "libc",
@@ -4126,7 +4126,7 @@ dependencies = [
 
 [[package]]
 name = "solid-pod-rs"
-version = "0.5.0-alpha.23"
+version = "0.5.0-alpha.24"
 dependencies = [
  "actix-web",
  "async-trait",
@@ -4183,7 +4183,7 @@ dependencies = [
 
 [[package]]
 name = "solid-pod-rs-activitypub"
-version = "0.5.0-alpha.23"
+version = "0.5.0-alpha.24"
 dependencies = [
  "async-trait",
  "base64 0.22.1",
@@ -4210,7 +4210,7 @@ dependencies = [
 
 [[package]]
 name = "solid-pod-rs-didkey"
-version = "0.5.0-alpha.23"
+version = "0.5.0-alpha.24"
 dependencies = [
  "async-trait",
  "base64 0.22.1",
@@ -4231,7 +4231,7 @@ dependencies = [
 
 [[package]]
 name = "solid-pod-rs-forge"
-version = "0.5.0-alpha.23"
+version = "0.5.0-alpha.24"
 dependencies = [
  "async-trait",
  "base64 0.22.1",
@@ -4259,7 +4259,7 @@ dependencies = [
 
 [[package]]
 name = "solid-pod-rs-git"
-version = "0.5.0-alpha.23"
+version = "0.5.0-alpha.24"
 dependencies = [
  "async-trait",
  "base64 0.22.1",
@@ -4279,7 +4279,7 @@ dependencies = [
 
 [[package]]
 name = "solid-pod-rs-idp"
-version = "0.5.0-alpha.23"
+version = "0.5.0-alpha.24"
 dependencies = [
  "argon2",
  "async-trait",
@@ -4312,7 +4312,7 @@ dependencies = [
 
 [[package]]
 name = "solid-pod-rs-nostr"
-version = "0.5.0-alpha.23"
+version = "0.5.0-alpha.24"
 dependencies = [
  "async-trait",
  "futures-util",
@@ -4334,7 +4334,7 @@ dependencies = [
 
 [[package]]
 name = "solid-pod-rs-server"
-version = "0.5.0-alpha.23"
+version = "0.5.0-alpha.24"
 dependencies = [
  "actix-http",
  "actix-web",

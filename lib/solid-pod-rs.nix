@@ -63,14 +63,15 @@ let
   #   3. Lockfile: `git -C ../solid-pod-rs show <tag>:Cargo.lock > lib/solid-pod-rs.cargo-lock`
   #      (upstream ships its Cargo.lock since 0.5.0; the vendored copy keeps the
   #      Nix build hermetic and byte-identical to the tag).
-  version = "0.5.0-alpha.23";
+  version = "0.5.0-alpha.24";
 
-  # 0.5.0-alpha.23 (2026-11-21): ActivityPub, remoteStorage and WebRTC signalling (all off by
+  # 0.5.0-alpha.24 (2026-11-22): actix-http 3.22.0 (RUSTSEC-2026-0552/0553/0554) and quinn-udp
+  # 0.5.16 on top of alpha.23 (2026-11-21): ActivityPub, remoteStorage and WebRTC signalling (all off by
   # default and not enabled here), the 2026-11-20/21 security fixes, the opt-in ACL layout
   # (default `sidecar`, unchanged) and nosniff on LDP responses. Retains the existing Jev gate.
-  rev     = "a3c7bbaab4cfa0feeeec7ee35acc35972edf2418";
+  rev     = "eb22d2167ed496e64569e6074c738d20e57c7b5c";
 
-  srcHash = "sha256-edA7IDr03MrdpJyBB4JWVXtivdZI+zsnEVOo5braT8k=";
+  srcHash = "sha256-pvFtjMt8Ii8khZ2b9ikMCnt8/QD0kHswBZRMk+k+aCg=";
 
   cargoLockFile = ./solid-pod-rs.cargo-lock;
 
