@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 0913d5458837d8c4d1fa4b5b3e52b70e7975cb5a
+verified_commit: e31fe2f85faf79b94c1faca393d37902f8ea0db7
 verified_paths: [services/LICENSING-NOTICE.md, docs/developer/licensing.md, scripts/ci/check-crate-licensing.sh, scripts/ci/check-sidestr-sources.py, services/*/Cargo.toml]
 owner: jjohare
 review_trigger: any new crate under services/, any services crate gaining an AGPL dependency, or first publication of a services crate to crates.io
@@ -423,3 +423,5 @@ Re-verified 2026-11-11 at `924f4282a` (ADR-2196). Governed-path delta since `237
 ## Re-verification — 2026-11-20 at `0913d5458837d8c4d1fa4b5b3e52b70e7975cb5a` (closeout branch)
 
 Governed delta: `scripts/ci/check-crate-licensing.sh` and `docs/developer/licensing.md` (W3-04). Rules 1-4 (per-crate licence texts, README statements, the recognised expressions) are unchanged. Rule 5, the crates.io-only rule for `sidestr-*` dependencies, no longer uses awk: it calls the new `scripts/ci/check-sidestr-sources.py`, which parses every `Cargo.toml` and `.cargo/config.toml` with `tomllib` and resolves the package name (the `package` field, else the key), so renamed, dotted-key, quoted-key, `[replace]` and config `[patch]`/`paths` forms are caught. That script is added to `verified_paths` because the gate now depends on it. Nothing here changes which licence a `services/` crate declares or which texts it must carry. Run: `sh scripts/ci/check-crate-licensing.sh` exit 0 (12 services/ package directories; 34 manifests and config files scanned); `bash tests/config/crate-licensing-sidestr-source.test.sh` 38 passed, 0 failed (19 of the new cases failed on the old awk gate). The Decision and status axes are unchanged and no claim of this record is falsified.
+
+Re-verified 2026-11-23 at `e31fe2f85` (`deps/dream-core-0.5.0`, the dream-core 0.5.0 adoption). Governed-path delta since `0913d5458`: `services/dream-engine/Cargo.toml` only. It moves `dream-core` from `=0.4.1` to `=0.5.0` and rewraps the comment above it. dream-core 0.5.0 is still `MIT OR Apache-2.0` from crates.io, no path or git dependency is added, and the crate's own licence and texts are unchanged. `sh scripts/ci/check-crate-licensing.sh` passes (12 package directories, 34 manifests). The decision and status axes are unchanged. Re-run: `git diff 0913d5458..e31fe2f85 -- services/dream-engine/Cargo.toml`.

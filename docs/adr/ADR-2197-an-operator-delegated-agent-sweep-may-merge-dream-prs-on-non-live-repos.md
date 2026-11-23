@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 21318b600597671d34c6028758d1a950e722a483
+verified_commit: e31fe2f85faf79b94c1faca393d37902f8ea0db7
 verified_paths: [services/dream-engine/src/*.rs, scripts/dream-inbox.mjs]
 owner: jjohare
 review_trigger: any estate repo going live or gaining external users (contributors, customers, a public deployment others depend on); a forge identity that separates agent merges from human merges (ADR-2190's trigger); any engine change that makes a merge, an inbox answer or a governance decision happen without an agent session acting
@@ -82,3 +82,5 @@ At `21318b600597671d34c6028758d1a950e722a483` (the base of this change):
 - `docs/developer/dream-engine.md:323` states that ACCEPT triggers no automation. This change adds a sentence that leaves that statement true.
 - The first sweep (2026-11-11) made both point-8 repairs from night evidence. visioncraft `a995fcc` ignores `__pycache__/`: `python3 -I` does not imply `-B`, so the skill-eval evaluator wrote bytecode that changed the candidate tree hash (night `2026-11-11-visioncraft`, BLOCKED-ENV with every required evaluator passing). visioncraft `d21ea9c` and visiontouch-rs `39feaf5` opt `fmt` into the rustfmt fixer, which was configured nowhere outside dream-engine itself (fmt vetoes on 11-06 to 11-11). Both configs pass `dream validate`.
 - `implementation_status: complete` covers the procedure as written (the `/dream sweep` section, the governing-document invariant amendment and the fail-closed exclusion rule). It does not cover any run. Activation needs a rebuilt image that bakes the skill, and one sweep whose merges carry the comment.
+
+Re-verified 2026-11-23 at `e31fe2f85` (`deps/dream-core-0.5.0`, the dream-core 0.5.0 adoption). Governed-path delta since `21318b600`: `services/dream-engine/src/engine.rs` only: the draft-PR step (`engine.rs:1868-1907`) sets `DraftPr::head_sha` to the branch tip read by `branch_tip` (`:2232`, `git rev-parse --verify refs/heads/<branch>^{commit}`), and a tip that cannot be read publishes nothing and takes the existing lost-PR alert. The engine's only forge write is still `Forge::publish_draft` on a gated ACCEPT, now at `engine.rs:1873-1907`. It still never calls `Forge::enable_automerge` or `persist::publish`, so it has no merge path; `head_sha` is set so that a forge which does enable automerge pins it to the pushed commit. The Verification `git grep` now also matches three comment lines describing that pin (`engine.rs:1868`, `:1870`, `:2229`); none is a merge path. The decision and status axes are unchanged. Re-run: `git diff 21318b600..e31fe2f85 -- services/dream-engine/src/engine.rs`; `cargo test --locked` in `services/dream-engine` passes 256 + 11 + 3 at `e31fe2f85`.

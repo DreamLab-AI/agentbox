@@ -169,10 +169,25 @@ impl Llm for ScriptedLlm {
 #[derive(Default)]
 struct RecordingForge {
     asked: Mutex<Vec<DraftPr>>,
+    /// The tip of each requested branch, read by the forge itself at the moment
+    /// of the (simulated) push: the commit a real push would send.
+    pushed_tips: Mutex<Vec<String>>,
 }
 
 impl Forge for RecordingForge {
     fn publish_draft(&self, pr: &DraftPr) -> PrOutcome {
+        let tip = git(
+            &pr.repo_dir,
+            &[
+                "rev-parse",
+                "--verify",
+                &format!("refs/heads/{}", pr.branch),
+            ],
+        );
+        self.pushed_tips
+            .lock()
+            .unwrap()
+            .push(tip.trim().to_string());
         self.asked.lock().unwrap().push(pr.clone());
         PrOutcome {
             branch: pr.branch.clone(),
@@ -516,6 +531,21 @@ async fn an_accepted_night_leaves_a_branch_a_forge_request_a_ledger_row_and_a_re
     assert_eq!(asked[0].repo_slug, "o/e2e-accept");
     assert_eq!(asked[0].repo_dir, rig.repo);
     assert!(asked[0].body.contains("check=") || asked[0].body.contains("GATED ACCEPT"));
+
+    // The automerge pin is the commit the push sends: the branch tip as the
+    // forge saw it, not the candidate's tree hash.
+    let tips = rig.forge.pushed_tips.lock().unwrap().clone();
+    assert_eq!(tips.len(), 1);
+    assert_eq!(
+        asked[0].head_sha, tips[0],
+        "head_sha is the pushed branch tip"
+    );
+    let tree = git(&rig.repo, &["rev-parse", &format!("{branch}^{{tree}}")]);
+    assert_ne!(
+        asked[0].head_sha,
+        tree.trim(),
+        "head_sha is not the tree hash"
+    );
 
     // Ledger row, committed on main, carrying the forge's PR reference.
     let ledger = rig.ledger_text();
