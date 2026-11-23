@@ -59,6 +59,7 @@ Local lifecycle commands:
   ${GREEN}isaac-sim${NC}        Manage headless Isaac Sim physics sidecar [up|down|logs|health|status|preflight|smoke|rebuild]
   ${GREEN}openmed${NC}          Manage optional clinical-PHI redaction sidecar [up|down|logs|health|status|rebuild|shell]
   ${GREEN}voice${NC}            Manage/open the operator cockpit + web voice stack [open|up|down|logs|health|status|certs|rebuild|shell]
+  ${GREEN}config${NC}           Manifest tools [validate [file]|plan "<request>"] (AB-05-S1-01 plan is read-only, propose-only)
   ${GREEN}systemone${NC}        ADR-2094 Sovereign System One sidecar + ADR-2139 vendor slot [up|down|logs|health|status|eval|models|rebuild|shell|backend|proxy]
   ${GREEN}model-router${NC}     ADR-2080 metaharness router console [fetch|check|status|route "<task>" [--dry-run]|console]
   ${GREEN}xr-runtime${NC}       Manage Monado OpenXR + Godot XR test runtime [up|down|logs|health|status|rebuild|shell|gpu|vnc]
@@ -2051,7 +2052,7 @@ while [[ $# -gt 0 ]]; do
             usage
             exit 0
             ;;
-        ssh|vnc|browser|code|api|all|status|ip|provision|setup|start-browser|backup|restore|up|down|build|prepare|activate|rebuild|update|ruvector|ruvnet-brain|logs|shell|health|browsercontainer|gui-tools|isaac-sim|openmed|voice|systemone|model-router|xr-runtime|android|concat|migrate-workspace|migrate-claude-home|preflight|security)
+        ssh|vnc|browser|code|api|all|status|ip|provision|setup|start-browser|backup|restore|up|down|build|prepare|activate|rebuild|update|ruvector|ruvnet-brain|logs|shell|health|browsercontainer|gui-tools|isaac-sim|openmed|voice|config|systemone|model-router|xr-runtime|android|concat|migrate-workspace|migrate-claude-home|preflight|security)
             CMD="$1"
             shift
             break

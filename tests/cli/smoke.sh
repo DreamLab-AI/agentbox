@@ -40,6 +40,12 @@ check "health --help"           bash "$SCRIPT" health --help
 check "backup in usage"         bash -c "bash '$SCRIPT' --help | grep -q backup"
 check "restore in usage"        bash -c "bash '$SCRIPT' --help | grep -q restore"
 
+# AB-05.5: `config` must be in the command allowlist (was "Unknown command") and in usage
+check "config in usage"         bash -c "bash '$SCRIPT' --help | grep -q 'config '"
+check "config is a known verb"  bash -c "! bash '$SCRIPT' config 2>&1 | grep -q 'Unknown command'"
+check "config usage exits 2"    bash -c "bash '$SCRIPT' config >/dev/null 2>&1; [ \$? -eq 2 ]"
+check "config validate"         bash "$SCRIPT" config validate "$(dirname "$SCRIPT")/agentbox.toml"
+
 # Gemini CLI toolchain check (when enabled, gemini --help should work)
 if command -v gemini &>/dev/null; then
     check "gemini --help"           gemini --help

@@ -746,6 +746,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "json-event-parser"
+version = "0.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "574b0cd5e90ee2ba03a66d0611fc9a09c9a0c28b2ecc2dc8a181dd31a53ca5d7"
+
+[[package]]
 name = "k256"
 version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -904,6 +910,18 @@ name = "oxiri"
 version = "0.2.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "54b4ed3a7192fa19f5f48f99871f2755047fabefd7f222f12a1df1773796a102"
+
+[[package]]
+name = "oxjsonld"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "13a1a66dc569350f3f4e5eff8a8e1a72b0c9e6ad395bb5805493cb7a2fda185f"
+dependencies = [
+ "json-event-parser",
+ "oxiri",
+ "oxrdf",
+ "thiserror 2.0.21",
+]
 
 [[package]]
 name = "oxrdf"
@@ -1303,9 +1321,9 @@ checksum = "149309498a5f7334b12ddae0cad8aba81ce785fe91755068867e017cf98fee46"
 
 [[package]]
 name = "solid-pod-rs"
-version = "0.5.0-alpha.21"
+version = "0.5.0-alpha.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1b3960401054516783afb507967c472597892033a4545d7c1bdb77f274fa2234"
+checksum = "6963bb94d769a503385cf7e40b9ca5348a28572ec8b0b7f455f2821d1d3f7702"
 dependencies = [
  "async-trait",
  "base64",
@@ -1317,12 +1335,14 @@ dependencies = [
  "js-sys",
  "k256",
  "mime_guess",
+ "oxjsonld",
  "oxrdf",
  "oxttl",
  "serde",
  "serde_json",
  "sha2 0.10.9",
  "spargebra",
+ "subtle",
  "thiserror 1.0.69",
  "tracing",
  "url",

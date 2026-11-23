@@ -21,6 +21,18 @@
  * orchestrator; this is the thin typing+attribution+ownership skin over a spawn.
  */
 
+/**
+ * Normalise a beads db path. An unset, empty or whitespace-only value (e.g. the
+ * `AGENTBOX_BEADS_DB=""` that mcp.json injects when the variable is unset) means
+ * "use the adapter's real default path", not ":memory:". Tests opt into an
+ * in-memory db explicitly by passing ':memory:'.
+ * @param {string|undefined|null} p
+ * @returns {string|undefined}
+ */
+function resolveDbPath(p) {
+  return typeof p === 'string' && p.trim() !== '' ? p : undefined;
+}
+
 /** Resolve the ontology + beads backends (both overridable for tests). */
 function loadDeps(opts) {
   let ontology = opts.ontology;
@@ -31,7 +43,7 @@ function loadDeps(opts) {
   let beads = opts.beads;
   if (!beads) {
     const { LocalSqliteBeadsAdapter } = require('../../../management-api/adapters/beads/local-sqlite.js');
-    beads = new LocalSqliteBeadsAdapter({ dbPath: opts.dbPath || ':memory:' });
+    beads = new LocalSqliteBeadsAdapter({ dbPath: resolveDbPath(opts.dbPath) });
   }
   return { ontology, beads };
 }
@@ -57,7 +69,7 @@ function validateIris(ontology, iris, role) {
  * @param {string} [opts.epicTitle]  - title when creating the epic
  * @param {object} [opts.ontology]   - ontology backend override
  * @param {object} [opts.beads]      - beads adapter override
- * @param {string} [opts.dbPath]     - beads db path (default :memory:)
+ * @param {string} [opts.dbPath]     - beads db path (empty/unset => adapter default <WORKSPACE>/beads.db)
  */
 async function createSpawnContext(opts = {}) {
   const { ontology, beads } = loadDeps(opts);
@@ -113,4 +125,4 @@ async function createSpawnContext(opts = {}) {
   return { epicId, owner, spawnChild, completeChild, ready, _beads: beads };
 }
 
-module.exports = { createSpawnContext, validateIris, loadDeps };
+module.exports = { createSpawnContext, validateIris, loadDeps, resolveDbPath };

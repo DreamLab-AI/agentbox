@@ -97,6 +97,51 @@
             "off"
           ],
           "description": "Agent spawn and monitor channel adapter."
+        },
+        "connect_timeout_ms": {
+          "description": "Boot-time connect deadline in milliseconds (ADR-2035). Either a single integer applied to every slot, or a table of per-slot overrides (beads, pods, memory, events, orchestrator) with an optional `default` key. Non-positive values are ignored at runtime in favour of the 10000 ms default.",
+          "oneOf": [
+            {
+              "type": "integer",
+              "minimum": 1
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "beads": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "description": "Connect deadline in milliseconds."
+                },
+                "pods": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "description": "Connect deadline in milliseconds."
+                },
+                "memory": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "description": "Connect deadline in milliseconds."
+                },
+                "events": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "description": "Connect deadline in milliseconds."
+                },
+                "orchestrator": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "description": "Connect deadline in milliseconds."
+                },
+                "default": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "description": "Connect deadline in milliseconds."
+                }
+              }
+            }
+          ]
         }
       }
     },
