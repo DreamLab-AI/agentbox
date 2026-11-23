@@ -2345,8 +2345,13 @@ if [ -r /opt/agentbox/config/lib/nip98-config.sh ]; then
   . /opt/agentbox/config/lib/nip98-config.sh
   ab_nip98_project "${AGENTBOX_CONFIG:-}" "$_NIP98_CFG" || true
 elif [ -f "$AGENTBOX_CONFIG" ] && command -v agentbox-manifest >/dev/null 2>&1; then
+  # (the lib normally hands a root-owned workspace .agentbox back to devuser itself)
+  _nip98_dir="$(dirname "$_NIP98_CFG")"
+  [ -d "$_nip98_dir" ] && [ ! -L "$_nip98_dir" ] && chown -h 1000:1000 "$_nip98_dir" 2>/dev/null || true
   agentbox-manifest nip98-config --manifest "$AGENTBOX_CONFIG" --out "$_NIP98_CFG" 2>&1 \
     | sed 's/^/  /' || true
+  # Fallback only (lib unreadable): no ab_nip98_own here, so under role isolation
+  # the file stays 1000:1000 0600 and the door stays closed (AB-36.1).
   chown 1000:1000 "$_NIP98_CFG" 2>/dev/null || true
   chmod 600 "$_NIP98_CFG" 2>/dev/null || true
 fi

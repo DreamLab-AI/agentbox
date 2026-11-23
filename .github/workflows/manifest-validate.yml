@@ -151,6 +151,7 @@ jobs:
         run: |
           bash tests/config/nip98-config-projection.test.sh
           node tests/config/nip98-boot-failclosed.test.mjs
+          node tests/config/nip98-config-path.test.mjs
       - name: /run/secrets delivery builds the right owner/mode tree (ADR-2122)
         # The real plan against a scratch root; chown is a recording stub (no root in CI).
         run: bash tests/config/role-secrets-delivery.test.sh

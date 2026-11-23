@@ -22,7 +22,7 @@ import http from 'node:http';
 import net from 'node:net';
 import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
-import { mkdtempSync, writeFileSync, rmSync, chmodSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, rmSync, chmodSync, mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -45,6 +45,8 @@ await new Promise((r) => upstream.listen(0, '127.0.0.1', r));
 const UP = `http://127.0.0.1:${upstream.address().port}`;
 const tmp = mkdtempSync(join(tmpdir(), 'nip98-boot-'));
 const kids = [];
+const FAKE_UID_PRELOAD = join(tmp, 'fake-uid.mjs');
+writeFileSync(FAKE_UID_PRELOAD, 'process.getuid = () => Number(process.env.FAKE_UID);\n');
 
 function sign(port, sk) {
   const url = `http://127.0.0.1:${port}/mgmt/x`;
@@ -62,7 +64,11 @@ function start(env) {
       NIP98_PROXY_ROUTES: '', NOSTR_BRIDGE_PATH: BRIDGE, ...env };
     delete e.NIP98_PROXY_REQUIRE_CONFIG_POLL_MS;
     if (env.NIP98_PROXY_REQUIRE_CONFIG_POLL_MS) e.NIP98_PROXY_REQUIRE_CONFIG_POLL_MS = env.NIP98_PROXY_REQUIRE_CONFIG_POLL_MS;
-    const proc = spawn(process.execPath, [PROXY], { env: e, stdio: ['ignore', 'ignore', 'ignore'] });
+    // FAKE_UID boots the real proxy as another uid WITHOUT being root: a preload
+    // makes process.getuid() answer it, so config-path.mjs takes the role branch.
+    const args = [PROXY];
+    if (env.FAKE_UID) args.unshift('--import', FAKE_UID_PRELOAD);
+    const proc = spawn(process.execPath, args, { env: e, stdio: ['ignore', 'ignore', 'ignore'] });
     const k = { proc, port, exit: new Promise((r) => proc.on('exit', (c) => r(c))) };
     kids.push(k);
     return new Promise((resolveStart) => {
@@ -108,6 +114,33 @@ try {
   upstreamHits = 0;
   const a = await get(k.port, sign(k.port, sk)); const b = await get(k.port, sign(k.port, rnd()));
   ok(a === 200 && b === 401 && upstreamHits === 1, 'REQUIRE_CONFIG + allowlist: listed key 200, other key 401', `a=${a} b=${b}`);
+
+  // 3b. AB-36.1: the ab-ingress role (uid 962) must refuse the workspace path.
+  {
+    const sk2 = rnd(); const pk2 = tools.getPublicKey(sk2);
+    const wsFile = file('ws-allow.json', JSON.stringify({ routes: [], allowedPubkeys: [pk2] }));
+    const secretsDir = join(tmp, 'secrets-ab-ingress'); mkdirSync(secretsDir);
+    k = await start({ FAKE_UID: '1000', NIP98_PROXY_REQUIRE_CONFIG: '1', NIP98_PROXY_CONFIG_FILE: wsFile });
+    upstreamHits = 0;
+    ok((await get(k.port, sign(k.port, sk2))) === 200 && upstreamHits === 1,
+      'control: as uid 1000 the same file is read (listed key 200)');
+    k = await start({ FAKE_UID: '962', NIP98_PROXY_REQUIRE_CONFIG: '1', NIP98_PROXY_CONFIG_FILE: wsFile, AGENTBOX_SECRETS_DIR: secretsDir });
+    upstreamHits = 0;
+    const refused = k.dead ? -1 : await get(k.port, sign(k.port, sk2));
+    ok(!k.dead && refused === 401 && upstreamHits === 0,
+      'uid 962 refuses a config path outside its secrets dir: even the listed key is denied (pending)', `status=${refused}`);
+    k = await start({ FAKE_UID: '962', NIP98_PROXY_REQUIRE_CONFIG: '1', AGENTBOX_SECRETS_DIR: secretsDir });
+    upstreamHits = 0;
+    const pending = k.dead ? -1 : await get(k.port, sign(k.port, sk2));
+    ok(!k.dead && pending === 401 && upstreamHits === 0,
+      'uid 962 with nothing projected yet: pending, never the workspace default', `status=${pending}`);
+    writeFileSync(join(secretsDir, 'nip98-proxy-config.json'), JSON.stringify({ routes: [], allowedPubkeys: [pk2] }));
+    k = await start({ FAKE_UID: '962', NIP98_PROXY_REQUIRE_CONFIG: '1', AGENTBOX_SECRETS_DIR: secretsDir });
+    upstreamHits = 0;
+    const a3 = await get(k.port, sign(k.port, sk2)); const b3 = await get(k.port, sign(k.port, rnd()));
+    ok(a3 === 200 && b3 === 401 && upstreamHits === 1,
+      'uid 962 reads <AGENTBOX_SECRETS_DIR>/nip98-proxy-config.json: listed key 200, other 401', `a=${a3} b=${b3}`);
+  }
 
   // 4. required + explicit empty allowlist
   k = await start({ NIP98_PROXY_REQUIRE_CONFIG: '1',

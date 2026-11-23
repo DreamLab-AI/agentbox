@@ -35,8 +35,24 @@ describe('POST /v1/exec/record (ADR-2071 Phase 1)', () => {
   let app;
   let eventsDir;
 
+  // The global auth gate (middleware/auth.js) is not mounted here; this stand-in
+  // sets `request.auth` from a header, exactly the shape the gate produces.
+  const OPERATOR = 'a'.repeat(64);
+  const STRANGER = 'b'.repeat(64);
+  const AS_OPERATOR = JSON.stringify({ mode: 'nip98', pubkey: OPERATOR });
+  const savedOperatorEnv = process.env.AGENTBOX_X_ONLY_PUBKEY_HEX;
+  beforeAll(() => { process.env.AGENTBOX_X_ONLY_PUBKEY_HEX = OPERATOR; });
+  afterAll(() => {
+    if (savedOperatorEnv === undefined) delete process.env.AGENTBOX_X_ONLY_PUBKEY_HEX;
+    else process.env.AGENTBOX_X_ONLY_PUBKEY_HEX = savedOperatorEnv;
+  });
+
   async function build(plane) {
     const a = Fastify({ logger: false });
+    a.addHook('onRequest', async (request) => {
+      const raw = request.headers['x-test-auth'];
+      if (raw) request.auth = JSON.parse(raw);
+    });
     await a.register(execRecordRoutes, { logger: silentLogger, getPlane: () => plane });
     await a.ready();
     return a;
@@ -53,7 +69,12 @@ describe('POST /v1/exec/record (ADR-2071 Phase 1)', () => {
     fs.rmSync(eventsDir, { recursive: true, force: true });
   });
 
-  const post = (body) => app.inject({ method: 'POST', url: '/v1/exec/record', payload: body });
+  const post = (body, auth = AS_OPERATOR) => app.inject({
+    method: 'POST',
+    url: '/v1/exec/record',
+    payload: body,
+    headers: auth ? { 'x-test-auth': auth } : {},
+  });
 
   test('a called/completed pair lands under one session with contiguous seqs', async () => {
     const base = { session: '2026-09-30-VisionFlow-1759200000', harness: 'dream-engine', turn: 0 };
@@ -114,9 +135,38 @@ describe('POST /v1/exec/record (ADR-2071 Phase 1)', () => {
     expect(JSON.stringify(readEvents(eventsDir))).not.toMatch(/"extra"/);
   });
 
+  describe('operator gate (AB-03.1)', () => {
+    const ev = { session: 'gate-1', harness: 'dream-engine', type: 'turn.started', turn: 0 };
+
+    test('a non-operator NIP-98 signer is refused 403 and nothing is journalled', async () => {
+      const res = await post(ev, JSON.stringify({ mode: 'nip98', pubkey: STRANGER }));
+      expect(res.statusCode).toBe(403);
+      expect(res.json().error).toBe('forbidden_not_operator');
+      expect(readEvents(eventsDir)).toEqual([]);
+    });
+
+    test('an unauthenticated request is refused 403', async () => {
+      const res = await post(ev, null);
+      expect(res.statusCode).toBe(403);
+      expect(readEvents(eventsDir)).toEqual([]);
+    });
+
+    test('the operator NIP-98 key is accepted', async () => {
+      const res = await post(ev, AS_OPERATOR);
+      expect(res.statusCode).toBe(201);
+      expect(readEvents(eventsDir)).toHaveLength(1);
+    });
+
+    test('the operator bearer is accepted', async () => {
+      const res = await post(ev, JSON.stringify({ mode: 'bearer' }));
+      expect(res.statusCode).toBe(201);
+    });
+  });
+
   test('no live events adapter → 503, nothing recorded', async () => {
     const down = await build({ ready: false, reason: 'events adapter is not live (impl=off)', journal: null });
     const r = await down.inject({ method: 'POST', url: '/v1/exec/record',
+      headers: { 'x-test-auth': AS_OPERATOR },
       payload: { session: 's', harness: 'dream-engine', type: 'tool.called' } });
     expect(r.statusCode).toBe(503);
     expect(r.json().details).toMatch(/impl=off/);

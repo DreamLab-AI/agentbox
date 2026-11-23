@@ -53,6 +53,8 @@ let nostrBridge = null;
   }
 }
 
+const { signedUrlForRequest } = require('../lib/nip98-url');
+
 function decodeBase64Json(value) {
   const decoded = Buffer.from(value, 'base64').toString('utf8');
   return JSON.parse(decoded);
@@ -70,7 +72,11 @@ function verifyNip98Header(header, request) {
     return null;
   }
 
-  const requestUrl = `${request.protocol || 'http'}://${request.host}${request.url}`;
+  // AB-03.15: the URL the client SIGNED (proxy-prefix aware,
+  // forwarded headers honoured only from a loopback peer). See lib/nip98-url.js.
+  // The query is passed too: a client that signed the full URL stays valid.
+  const requestUrl = signedUrlForRequest(request);
+  if (!requestUrl) return null; // missing/invalid Host: fail closed (401), never guess
 
   // Full path: delegate to NostrBridge for Schnorr signature verification.
   if (nostrBridge) {

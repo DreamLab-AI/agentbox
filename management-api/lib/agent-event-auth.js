@@ -63,6 +63,8 @@
 // so no manifest-driven deployment's behaviour changes — only a boot that
 // never set the env var (e.g. running management-api directly, outside the
 // flake-composed image) now gets the hardened behaviour it was missing.
+const { signedUrlForRequest } = require('./nip98-url');
+
 const DEFAULT_POLICY = 'nip98';
 
 // 64 lowercase hex chars — the sole storage/URL identity format
@@ -168,13 +170,15 @@ function verifyAgentEventRequest(request, deps = {}) {
       catch { bridgeMod = require('../../mcp/servers/nostr-bridge'); }
       verify = bridgeMod.NostrBridge.verifyNip98;
     }
-    // The originator strips the query string from the signed `u` tag, so
-    // compare against the path only (verifyNip98 accepts urlTag.endsWith(url)).
-    const pathOnly = String((request && request.url) || '').split('?')[0];
+    // AB-03.15: verifyNip98 needs the ABSOLUTE signed URL (no `endsWith` path
+    // match), rebuilt proxy-aware like the global auth gate. The query is passed
+    // too: it is compared only when the signed tag carries one.
+    const signedUrl = signedUrlForRequest(request || {});
+    if (!signedUrl) return { ok: false, status: 401, error: 'NIP-98 verification failed: invalid Host' };
 
     let result;
     try {
-      result = verify(authHeader, 'POST', pathOnly);
+      result = verify(authHeader, 'POST', signedUrl);
     } catch (err) {
       return { ok: false, status: 401, error: `NIP-98 verification failed: ${err.message}` };
     }

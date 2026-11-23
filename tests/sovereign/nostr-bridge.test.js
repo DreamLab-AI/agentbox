@@ -227,13 +227,13 @@ describe('NostrBridge.verifyNip98', () => {
     expect(result.error).toMatch(/expected kind 27235/);
   });
 
-  it('accepts path-only URL when the u tag suffix-matches', () => {
+  it('rejects a path-only expected URL (AB-03.15: exact match, no endsWith)', () => {
     const header = makeNip98Token({
       tags: [['u', 'http://localhost/v1/test'], ['method', 'GET']],
     });
-    // The u tag ends with the path — should still pass
     const result = NostrBridge.verifyNip98(header, 'GET', '/v1/test');
-    expect(result.valid).toBe(true);
+    expect(result.valid).toBe(false);
+    expect(result.error).toMatch(/url tag mismatch/);
   });
 
   // ── Finding 4: request-body / payload-tag binding ────────────────────────

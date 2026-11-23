@@ -16,7 +16,8 @@ const {
 const AGENT = 'c'.repeat(64);
 
 function req(headers = {}, url = '/v1/agent-events/emit') {
-  return { headers, url };
+  // A real request always carries Host; a missing/invalid one is a 401 by design.
+  return { headers: { host: 'agentbox.local:9090', ...headers }, url };
 }
 
 describe('resolvePolicy', () => {
@@ -54,13 +55,14 @@ describe('verifyAgentEventRequest', () => {
       return { valid: true, pubkey: AGENT, error: null };
     };
     const r = verifyAgentEventRequest(
-      req({ authorization: 'Nostr token' }, '/v1/agent-events/emit?x=1'),
+      req({ authorization: 'Nostr token', host: 'agentbox.local:9090' }, '/v1/agent-events/emit?x=1'),
       { policy: 'nip98', verify }
     );
     expect(r).toEqual({ ok: true, did: `did:nostr:${AGENT}`, pubkey: AGENT });
     expect(seen.method).toBe('POST');
-    // query string is stripped before comparison (originator signs path only)
-    expect(seen.url).toBe('/v1/agent-events/emit');
+    // AB-03.15: verifyNip98 needs the ABSOLUTE signed URL; the query is passed and
+    // compared only when the signed tag carries one.
+    expect(seen.url).toBe('http://agentbox.local:9090/v1/agent-events/emit?x=1');
   });
 
   it('an unknown policy fails closed (500)', () => {

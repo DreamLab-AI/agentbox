@@ -6,6 +6,7 @@
 import http from 'node:http';
 import net from 'node:net';
 import crypto from 'node:crypto';
+import { resolveConfigPath } from './config-path.mjs';
 import { accessSync, constants as fsConstants, existsSync, readFileSync, statSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
@@ -247,8 +248,10 @@ function normalizeRoute(r, i, source) {
 // at image build and cannot safely carry JSON. The entrypoint projects
 // agentbox.toml [interaction_plane.proxy] into this file every boot; when it
 // exists it extends ROUTES and the pubkey allowlist without a rebuild.
-const CONFIG_FILE = process.env.NIP98_PROXY_CONFIG_FILE
-  || '/home/devuser/workspace/.agentbox/nip98-proxy-config.json';
+// AB-36.1: which file may be read depends on the uid (config-path.mjs). The
+// ab-ingress role reads only its own secrets directory, never the devuser-writable
+// workspace copy; no permitted file means PENDING under REQUIRE_CONFIG.
+const CONFIG_FILE = resolveConfigPath({ env: process.env, uid: process.getuid ? process.getuid() : 1000 }).file;
 
 // W3-05 / ADR-2210: under the supervisor the config file is projected by the
 // entrypoint in Stage B, AFTER supervisord has already autostarted this process,
@@ -268,6 +271,7 @@ let LOADED_CONFIG_RAW = '';
 const FILE_CONFIG = (() => {
   let raw;
   try {
+    if (CONFIG_FILE === null) throw Object.assign(new Error('no permitted config path for this uid'), { code: 'EPERM_PATH' });
     raw = readFileSync(CONFIG_FILE, 'utf-8');
     LOADED_CONFIG_RAW = raw;
   } catch (err) {
@@ -351,7 +355,7 @@ function routeFor(rawUrl) {
       if (isBare) path = url === bare ? '/' : `/${url.slice(bare.length)}`;
       else path = `/${url.slice(r.prefix.length)}`;
     }
-    return { upstream: r.upstream, path, bearer: r.bearer, preserveHost: r.preserveHost };
+    return { upstream: r.upstream, path, bearer: r.bearer, preserveHost: r.preserveHost, strippedPrefix: r.strip ? bare : '' };
   }
   return null;
 }
@@ -518,18 +522,22 @@ function sessionSetCookie(token, req, maxAgeS) {
 }
 
 /**
- * Reconstruct the URL the client signed. NIP-98's `u` tag is signed WITHOUT the
- * query string (buildNip98Header strips it; verifyNip98 compares against the
- * stripped tag), so we present the scheme://host/path form with no query — the
- * exact value the signer committed to.
+ * Reconstruct the URL the client signed: scheme://host/path plus the RAW query
+ * with this proxy's own credential carriers (?auth=, ?access_token=, ...)
+ * removed. A signer that committed to the query (spec-style, full URL) passes;
+ * one that stripped it (buildNip98Header) also passes, because the verifier
+ * compares the query only when the signed tag carries one. The scheme is the
+ * single value forwardedProto() yields, the same one sent upstream.
  */
 function signedUrlFor(req) {
-  const proto = (req.headers['x-forwarded-proto'] || 'http').split(',')[0].trim();
   const host = req.headers.host || `127.0.0.1:${PORT}`;
-  const path = String(req.url || '/');
-  const q = path.indexOf('?');
-  const pathNoQuery = q === -1 ? path : path.slice(0, q);
-  return `${proto}://${host}${pathNoQuery}`;
+  return `${forwardedProto(req)}://${host}${stripUrlCreds(String(req.url || '/'))}`;
+}
+
+/** The ONE x-forwarded-proto value used for verification AND forwarded upstream. */
+function forwardedProto(req) {
+  const first = String(req.headers['x-forwarded-proto'] || 'http').split(',')[0].trim().toLowerCase();
+  return first === 'https' ? 'https' : 'http';
 }
 
 /**
@@ -880,6 +888,7 @@ const server = http.createServer((req, res) => {
       if (key.toLowerCase() === 'x-agentbox-pubkey') continue;
       if (key.toLowerCase() === 'x-agentbox-auth-mode') continue;
       if (key.toLowerCase() === 'x-forwarded-host') continue; // re-emitted below
+      if (key.toLowerCase() === 'x-forwarded-prefix') continue; // proxy-owned, re-emitted below
       if (key.toLowerCase() === 'cookie') {
         const kept = stripSessionCookie(value); // upstreams never see the session token
         if (kept) headers[key] = kept;
@@ -890,11 +899,19 @@ const server = http.createServer((req, res) => {
     headers.host = route.preserveHost && req.headers.host
       ? req.headers.host : `${route.upstream.hostname}:${route.upstream.port}`;
     headers['x-forwarded-for'] = appendXff(req.headers['x-forwarded-for'], clientIp(req));
-    headers['x-forwarded-proto'] = (req.headers['x-forwarded-proto'] || 'http').split(',')[0].trim();
+    headers['x-forwarded-proto'] = forwardedProto(req);
     // ADR-2010: the host the client signed into the NIP-98 `u` tag. `Host` is
     // rewritten to the upstream, so without this an upstream cannot rebuild the
     // signed URL to re-verify the operator signature it is being handed.
     headers['x-forwarded-host'] = req.headers.host || `127.0.0.1:${PORT}`;
+    // AB-03.15: tell the upstream which route prefix was stripped, so it can
+    // rebuild the URL the client actually signed (`/mgmt/v1/x`, not `/v1/x`).
+    // The proxy only REPORTS this; it never re-signs (it holds no signing key,
+    // and authority stays with the operator's signature). The upstream honours
+    // the header only from a loopback peer and only for allowlisted prefixes
+    // (management-api/lib/nip98-url.js), and the signed `u` tag must still equal
+    // the reconstructed URL exactly. Any inbound copy was dropped above.
+    if (route.strippedPrefix) headers['x-forwarded-prefix'] = route.strippedPrefix;
     headers['x-agentbox-pubkey'] = auth.pubkey;
     headers['x-agentbox-auth-mode'] = auth.mode;
     // ADR-069 credential exchange: for routes that declare a bearer, inject the
@@ -973,7 +990,7 @@ server.on('upgrade', (req, socket, head) => {
   // the proxy did not). The ?auth= value is lifted into the Authorization
   // header so it flows through verifyIdentity's canonical NIP-98 path —
   // identical signature/URL-binding/allowlist checks as the header form
-  // (signedUrlFor strips the query, matching what the signer committed to).
+  // (signedUrlFor drops these credential params from the query it verifies).
   // Query credentials are WS-handshake-only; HTTP requests must use headers.
   let queryToken = null;
   try {
@@ -1019,6 +1036,8 @@ server.on('upgrade', (req, socket, head) => {
       }
       if (lname === 'x-forwarded-for') continue; // re-emitted below, canonicalised
       if (lname === 'x-forwarded-host') continue; // re-emitted below, canonicalised
+      if (lname === 'x-forwarded-prefix') continue; // proxy-owned (AB-03.15), re-emitted below
+      if (lname === 'x-forwarded-proto') continue; // re-emitted below as the single verified value
       if (lname === 'cookie') {
         const kept = stripSessionCookie(value); // upstreams never see the session token
         if (kept) lines.push(`${name}: ${kept}`);
@@ -1027,8 +1046,9 @@ server.on('upgrade', (req, socket, head) => {
       lines.push(`${name}: ${value}`);
     }
     lines.push(`X-Forwarded-For: ${appendXff(req.headers['x-forwarded-for'], clientIp(req))}`);
-    lines.push(`X-Forwarded-Proto: ${(req.headers['x-forwarded-proto'] || 'http').split(',')[0].trim()}`);
+    lines.push(`X-Forwarded-Proto: ${forwardedProto(req)}`);
     lines.push(`X-Forwarded-Host: ${req.headers.host || `127.0.0.1:${PORT}`}`); // ADR-2010: signed-URL reconstruction
+    if (route.strippedPrefix) lines.push(`X-Forwarded-Prefix: ${route.strippedPrefix}`); // AB-03.15
     lines.push(`X-Agentbox-Pubkey: ${auth.pubkey}`);
     lines.push(`X-Agentbox-Auth-Mode: ${auth.mode}`);
     // ADR-069 credential exchange (WS): the upstream's own bearer, never the
@@ -1103,6 +1123,7 @@ if (REQUIRE_CONFIG) {
     // exit 1 on the next start and count against supervisord's startretries.
     let current;
     try {
+      if (CONFIG_FILE === null) return;
       accessSync(CONFIG_FILE, fsConstants.R_OK);
       current = readFileSync(CONFIG_FILE, 'utf-8');
       JSON.parse(current);

@@ -23,6 +23,7 @@ const crypto = require('crypto');
 const uris = require('../lib/uris');
 const { JournalError } = require('../lib/execution-journal');
 const { getActionPlane, resolveAgentDid } = require('../lib/action-plane');
+const authz = require('../lib/authz');
 
 /**
  * Event types an external harness may record. The model-visibility types
@@ -60,7 +61,14 @@ async function execRecordRoutes(fastify, options) {
   // the shared singleton so this route and POST /v1/tasks share one writer.
   const getPlane = options.getPlane || (() => getActionPlane({ logger }));
 
+  const manifest = options.manifest || {};
+
   fastify.post('/v1/exec/record', {
+    // AB-03.1: the global auth gate only proves WHO signed; any valid NIP-98
+    // signer would otherwise be able to write the hash-chained journal. Admit
+    // only the box operator (NIP-98 operator key, or the operator bearer), the
+    // same gate as POST /v1/mandate.
+    preHandler: authz.requireOperator({ manifest }),
     schema: {
       description:
         'Append one execution-journal event for an out-of-process harness (ADR-2071). ' +

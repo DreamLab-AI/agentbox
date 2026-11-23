@@ -262,6 +262,60 @@ class RelayConnection {
 // ─── NostrBridge ──────────────────────────────────────────────────────────────
 
 /**
+ * Canonical form of an absolute http(s) URL for NIP-98 comparison: lower-cased
+ * scheme and host, default port elided, fragment dropped. The path is NOT
+ * resolved: a URL whose path holds `.`/`..` segments (raw or percent-encoded),
+ * an encoded slash or backslash (`%2f`, `%5c`, `\`) is refused outright, because
+ * WHATWG URL would collapse it while the router matches the raw path, which
+ * lets one signed URL authorise a different route. A trailing slash is trimmed
+ * only when `ignoreTrailingSlash` is set (it must mirror the server's router).
+ * The query is returned separately because signers usually strip it.
+ *
+ * @param {string} raw
+ * @param {{ ignoreTrailingSlash?: boolean }} [opts]
+ * @returns {{ base: string, search: string }|null} null when not an absolute, unambiguous http(s) URL.
+ */
+function canonicalNip98Url(raw, opts = {}) {
+  if (typeof raw !== 'string' || raw === '') return null;
+  // WHATWG URL silently strips tab/CR/LF and the router would not: refuse them.
+  if (/[\u0000-\u0020\u007f]/.test(raw)) return null;
+  const m = /^(https?):\/\/([^/?#]*)([^?#]*)(\?[^#]*)?(#.*)?$/i.exec(raw);
+  if (!m) return null;
+  const rawPath = m[3] || '';
+  if (/[\\]/.test(raw.split('#')[0].split('?')[0]) || /%2f|%5c/i.test(rawPath)) return null;
+  for (const seg of rawPath.split('/')) {
+    if (/^(\.|%2e)(\.|%2e)?$/i.test(seg)) return null;
+  }
+  let u;
+  try { u = new URL(raw); } catch { return null; }
+  if (u.username || u.password) return null;
+  let pathname = u.pathname;
+  if (opts.ignoreTrailingSlash && pathname.length > 1 && pathname.endsWith('/')) pathname = pathname.slice(0, -1);
+  return { base: `${u.protocol}//${u.host}${pathname}`, search: u.search };
+}
+
+/**
+ * Exact NIP-98 `u`-tag comparison. Both sides must be absolute, unambiguous
+ * http(s) URLs. Scheme, host, port and path must be equal after
+ * canonicalisation. The query is compared whenever the signed tag carries one
+ * (spec-style clients sign the full URL); when the tag has none the request's
+ * query is unbound, matching buildNip98Header and the proxy's own verification.
+ *
+ * @param {string} urlTag  The signed `u` tag value.
+ * @param {string} actual  The URL the verifier reconstructed for this request.
+ * @param {{ ignoreTrailingSlash?: boolean }} [opts]
+ * @returns {{ ok: boolean }}
+ */
+function nip98UrlsMatch(urlTag, actual, opts = {}) {
+  const a = canonicalNip98Url(urlTag, opts);
+  const b = canonicalNip98Url(actual, opts);
+  if (!a || !b) return { ok: false };
+  if (a.base !== b.base) return { ok: false };
+  if (a.search && a.search !== b.search) return { ok: false };
+  return { ok: true };
+}
+
+/**
  * Main Nostr client class.
  *
  * @example
@@ -493,16 +547,17 @@ class NostrBridge {
    *
    * @param {string} authHeader - The raw Authorization header value.
    * @param {string} method     - Expected HTTP method (e.g. 'GET').
-   * @param {string} url        - Expected request URL (full or path).
+   * @param {string} url        - ABSOLUTE request URL the client signed (scheme://host[:port]/path); a bare path is rejected.
    * @param {string|Buffer} [rawBody] - The EXACT request body bytes. When
    *   supplied and non-empty, a `payload` tag equal to hex(sha256(rawBody)) is
    *   MANDATORY and is verified (Finding 4) — this binds the body to the
    *   signature and closes the replay-with-substituted-body vector. Mirrors the
    *   payload semantics of src/utils/nip98.rs. A caller that omits this argument
    *   (undefined) opts out of body binding — legacy behaviour, unchanged.
+   * @param {{ ignoreTrailingSlash?: boolean }} [opts] Set only when the server's router ignores trailing slashes.
    * @returns {{ valid: boolean, pubkey: string|null, error: string|null }}
    */
-  static verifyNip98(authHeader, method, url, rawBody) {
+  static verifyNip98(authHeader, method, url, rawBody, opts = {}) {
     if (!authHeader || !authHeader.startsWith('Nostr ')) {
       return { valid: false, pubkey: null, error: 'missing or malformed Nostr header' };
     }
@@ -547,7 +602,14 @@ class NostrBridge {
       return { valid: false, pubkey: null, error: 'method tag mismatch' };
     }
 
-    if (!urlTag || (urlTag !== url && !urlTag.endsWith(url))) {
+    // AB-03.15: EXACT URL match (scheme, host[:port], path, and query only when
+    // the signer committed to one). The previous `urlTag.endsWith(url)` accepted
+    // any signed URL that merely ENDED with the request path, so a signature for
+    // `https://other-host/anything/v1/x` authorised `/v1/x` here. Callers must
+    // therefore pass the ABSOLUTE URL the client signed (see
+    // management-api/lib/nip98-url.js for the proxy-aware reconstruction).
+    const urlCheck = nip98UrlsMatch(urlTag, url, opts);
+    if (!urlCheck.ok) {
       return { valid: false, pubkey: null, error: 'url tag mismatch' };
     }
 

@@ -86,7 +86,9 @@ const app = fastify({
   // `logger` now only accepts a boolean or pino options object.
   loggerInstance: logger,
   // Request-id label stays the default `reqId`; request logging stays on.
-  trustProxy: true,
+  // Only a loopback peer (the co-located nip98-proxy) may set X-Forwarded-*.
+  // `true` let ANY peer choose request.host / request.protocol / request.ip.
+  trustProxy: '127.0.0.1,::1',
   routerOptions: {
     // Canonical agentbox URNs carried as path params (/v1/uri/:urn,
     // /v1/beads/:id, …) are scope-bearing and content-addressed — e.g.
@@ -203,6 +205,9 @@ app.register(rateLimit, {
   max: 100,
   timeWindow: '1 minute',
   cache: 10000,
+  // trustProxy is loopback-only (see above), so proxied traffic is keyed by the
+  // proxy-verified identity rather than collapsing into one LAN-door bucket.
+  keyGenerator: require('./lib/rate-limit-key').rateLimitKey,
   allowList: ['127.0.0.1'],
   continueExceeding: true,
   skipOnError: false

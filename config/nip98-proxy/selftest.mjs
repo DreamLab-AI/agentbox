@@ -115,10 +115,21 @@ function once(server, port) {
 
 let lastMgmtReq = null;
 
+// AB-03.15: the fake management-api re-verifies a forwarded NIP-98 header the
+// way management-api/middleware/auth.js does: real NostrBridge.verifyNip98
+// against the URL rebuilt by the real lib/nip98-url.js (loopback peer, so the
+// proxy's X-Forwarded-Host / X-Forwarded-Prefix are honoured). It is the
+// regression for "/mgmt/ NIP-98 gets 401 upstream".
+let mgmtReverify = null; // set in main() once the modules resolve
 const mgmtUpstream = http.createServer((req, res) => {
   lastMgmtReq = { method: req.method, url: req.url, headers: { ...req.headers } };
+  let reverified = null;
+  const authz = req.headers.authorization || '';
+  if (mgmtReverify && authz.startsWith('Nostr ')) {
+    reverified = mgmtReverify(req);
+  }
   res.writeHead(200, { 'content-type': 'application/json' });
-  res.end(JSON.stringify({ ok: true, surface: 'mgmt' }));
+  res.end(JSON.stringify({ ok: true, surface: 'mgmt', reverified }));
 });
 
 // ─── Fake governance upstream (ADR-2010 bearer_env route) ──────────────────────
@@ -272,6 +283,20 @@ function mintCookieWith(secret, pubkey, exp) {
 // ─── Run ────────────────────────────────────────────────────────────────────────
 
 async function main() {
+  try {
+    const bridgePath = process.env.NOSTR_BRIDGE_PATH
+      || pathResolve(__dirname, '../../mcp/servers/nostr-bridge.js');
+    const { NostrBridge: Bridge } = createRequire(import.meta.url)(bridgePath);
+    const { signedUrlForRequest } = createRequire(import.meta.url)(
+      pathResolve(__dirname, '../../management-api/lib/nip98-url.js'));
+    mgmtReverify = (req) => {
+      const fake = { headers: req.headers, url: req.url, host: req.headers.host, protocol: 'http', socket: req.socket };
+      // The proxy verified this same event in-process (shared replay cache); the
+      // real upstream is a separate process with its own cache.
+      if (typeof Bridge._resetReplayCache === 'function') Bridge._resetReplayCache();
+      return Bridge.verifyNip98(req.headers.authorization, req.method, signedUrlForRequest(fake));
+    };
+  } catch { mgmtReverify = null; }
   const upstreamPort = await once(upstream, 0);
   const mgmtPort = await once(mgmtUpstream, 0);
   const govPort = await once(govUpstream, 0);
@@ -344,6 +369,32 @@ async function main() {
         'C: upstream received the signer pubkey',
         `${lastReq && lastReq.headers['x-agentbox-pubkey']} != ${nip98.pubkey}`);
     }
+  }
+
+  // C3. re-review item 4: a spec-style client signs the FULL url (query included).
+  {
+    const nip98 = buildNip98('GET', `http://127.0.0.1:${PROXY_PORT}/api/sessions?x=1`);
+    if (nip98.skip) {
+      skip('C3: full-URL (query) NIP-98 accepted', nip98.skip);
+    } else {
+      const ok = await request('/api/sessions?x=1', { authorization: nip98.header });
+      assert(ok.status === 200, 'C3: a signer that committed to the query is accepted', `got ${ok.status}`);
+      const nip98b = buildNip98('GET', `http://127.0.0.1:${PROXY_PORT}/api/sessions?x=1`);
+      const bad = await request('/api/sessions?x=2', { authorization: nip98b.header });
+      assert(bad.status === 401, 'C3: a different query than the signed one is refused', `got ${bad.status}`);
+    }
+  }
+
+  // C4. re-review item 5: the proxy forwards the single x-forwarded-proto it verified with.
+  {
+    lastReq = null;
+    await request('/api/sessions', { authorization: `Bearer ${BREAK_GLASS}`, 'x-forwarded-proto': 'https, http' });
+    assert(lastReq && lastReq.headers['x-forwarded-proto'] === 'https',
+      'C4: HTTP upstream receives ONE x-forwarded-proto value', JSON.stringify(lastReq && lastReq.headers['x-forwarded-proto']));
+    lastUpgrade = null;
+    await wsUpgrade(`/sessions/abc/live-ws?access_token=${BREAK_GLASS}`, 'X-Forwarded-Proto: https, http\r\nX-Forwarded-Prefix: /evil\r\n');
+    assert(lastUpgrade && lastUpgrade.headers['x-forwarded-proto'] === 'https',
+      'C4: WS upstream receives ONE x-forwarded-proto value', JSON.stringify(lastUpgrade && lastUpgrade.headers['x-forwarded-proto']));
   }
 
   // C2. forged NIP-98 (bad signature) → 401
@@ -425,6 +476,37 @@ async function main() {
     assert(lastMgmtReq && lastMgmtReq.headers.authorization === undefined,
       'E: Authorization stripped on routed upstream');
     assert(lastReq === null, 'E: default upstream NOT hit for routed path');
+  }
+
+  // E4. AB-03.15: a correctly signed NIP-98 request through /mgmt/ must verify
+  // UPSTREAM too (the signed URL is the public /mgmt/ URL, the upstream sees the
+  // stripped path and a rewritten Host).
+  {
+    const signedUrl = `http://127.0.0.1:${PROXY_PORT}/mgmt/v1/system`;
+    const nip98 = buildNip98('GET', signedUrl);
+    if (nip98.skip || !mgmtReverify) {
+      skip('E4: NIP-98 through /mgmt/ re-verifies upstream', nip98.skip || 'bridge/helper unresolvable');
+    } else {
+      lastMgmtReq = null;
+      const r = await request('/mgmt/v1/system?probe=1', { authorization: nip98.header });
+      let body = {};
+      try { body = JSON.parse(r.body); } catch { /* assert below */ }
+      assert(r.status === 200, 'E4: NIP-98 via /mgmt/ accepted by the proxy', `got ${r.status}`);
+      assert(lastMgmtReq && lastMgmtReq.headers['x-forwarded-prefix'] === '/mgmt',
+        'E4: proxy reports the stripped prefix', JSON.stringify(lastMgmtReq && lastMgmtReq.headers['x-forwarded-prefix']));
+      assert(lastMgmtReq && lastMgmtReq.headers.authorization === nip98.header,
+        'E4: signed Authorization forwarded unchanged (proxy never re-signs)');
+      assert(body.reverified && body.reverified.valid === true && body.reverified.pubkey === nip98.pubkey,
+        'E4: upstream verifies the client signature against the rebuilt /mgmt/ URL', JSON.stringify(body.reverified));
+
+      // A client-supplied X-Forwarded-Prefix is dropped and replaced by the proxy's own.
+      const nip98b = buildNip98('GET', `http://127.0.0.1:${PROXY_PORT}/mgmt/v1/other`);
+      lastMgmtReq = null;
+      await request('/mgmt/v1/other', { authorization: nip98b.header, 'x-forwarded-prefix': '/evil' });
+      assert(lastMgmtReq && lastMgmtReq.headers['x-forwarded-prefix'] === '/mgmt',
+        'E4: spoofed inbound X-Forwarded-Prefix replaced by the proxy-owned value',
+        JSON.stringify(lastMgmtReq && lastMgmtReq.headers['x-forwarded-prefix']));
+    }
   }
 
   // ADR-2153: no default upstream, for HTTP or WebSocket.
