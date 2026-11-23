@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: 06c2f701130aa94edf24a20f9f86de2131a0bcf4
+verified_commit: 5b02f72a7c380a2a22372aab8141c664a560e5c3
 verified_paths: [mcp/servers/nostr-bridge.js, scripts/agentbox-config-validate.js, tests/config/semantic-rules.test.js]
 owner: jjohare
 review_trigger: provisioning per-stack nostr key material, changing the profiles root or `$WORKSPACE`, or any new consumer of `loadSigner`

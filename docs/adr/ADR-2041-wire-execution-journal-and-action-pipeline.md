@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 06c2f701130aa94edf24a20f9f86de2131a0bcf4
+verified_commit: 5b02f72a7c380a2a22372aab8141c664a560e5c3
 verified_paths: [management-api/server.js, management-api/lib/action-plane.js, management-api/lib/execution-coverage.js, tests/contract/system-execution-wiring.contract.spec.js]
 owner: jjohare
 review_trigger: a second route or MCP tool needs to become an AgentAction, or task-spawn's `local` classification is challenged by a real incident

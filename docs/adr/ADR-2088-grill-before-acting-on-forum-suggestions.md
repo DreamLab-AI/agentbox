@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 06c2f701130aa94edf24a20f9f86de2131a0bcf4
+verified_commit: 5b02f72a7c380a2a22372aab8141c664a560e5c3
 verified_paths: [management-api/lib/junkiejarvis-clarify.js, management-api/lib/junkiejarvis-agent.js, management-api/server.js, scripts/dream-forum-suggestions.mjs, scripts/run-junkiejarvis.cjs, tests/sovereign/junkiejarvis-clarify.test.js, tests/sovereign/junkiejarvis-dm-send.test.js, tests/sovereign/dream-forum-suggestions-jj-gate.test.js]
 owner: jjohare
 review_trigger: any change to the clarity signals, MIN_SPECIFICITY, the 7-day expiry, or the forum-suggestions ingest path

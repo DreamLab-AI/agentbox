@@ -59,7 +59,7 @@ detect changes to files it already lists — it is structurally blind to **addit
 is exactly how a new crate landed unlicensed under ADR-2030 while the record still read as
 verified and its `review_trigger` ("any new crate under `services/`") sat unactioned.
 
-_170 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
+_171 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
 
 | ID | Title | Domain | Date | Decision | Impl | Activation | Supersedes | Superseded by | Owner | Repo |
 |----|-------|--------|------|----------|------|------------|------------|---------------|-------|------|
@@ -233,3 +233,4 @@ _170 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
 | [ADR-2213](ADR-2213-podcast-proposals-bind-the-judged-page-to-its-source-hash.md) | Podcast promotion proposes the exact judged page only against its source hash | BASELINE-container | 2026-11-22 | accepted | complete | staged | — | — | operator | agentbox |
 | [ADR-2214](ADR-2214-antigravity-signs-in-with-a-standing-google-oauth-session.md) | Antigravity signs in with a standing Google OAuth session | BASELINE-container | 2026-11-22 | accepted | partial | inactive | — | — | jjohare | agentbox |
 | [ADR-2215](ADR-2215-every-session-plane-harness-launches-in-yolo-mode.md) | Every session-plane harness launches in yolo mode | BASELINE-container | 2026-11-22 | accepted | complete | staged | — | — | jjohare | agentbox |
+| [ADR-2216](ADR-2216-mandates-are-enforced-at-the-pod-and-signing-fails-closed.md) | Mandates are enforced at the pod, and mandate signing fails closed | INGRESS-identity | 2026-11-23 | accepted | complete | staged | — | — | jjohare | agentbox |

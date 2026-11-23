@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 4f3bd5325eb56b582d1220bc9b0a0b79e918fdae
+verified_commit: 5b02f72a7c380a2a22372aab8141c664a560e5c3
 verified_paths: [management-api/lib/pod-signer.js, management-api/lib/agent-identity.js, management-api/adapters/index.js, management-api/adapters/pods/_solid-http-base.js, tests/sovereign/pod-sovereign-signer.node-test.js]
 owner: jjohare
 review_trigger: ADR-2064 flipping sign_requests back to true, a change to nostr-pod-bridge bootstrap key layout, or a second stack needing its own pod identity
