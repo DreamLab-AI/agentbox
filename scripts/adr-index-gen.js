@@ -47,6 +47,15 @@
  * existing green step red as a side effect would be a worse outcome than the
  * drift it detects.
  *
+ * Optional `guard: [path, path#name]` (ADR-2217): the tests that enforce a
+ * record. Each entry is a repo-relative file, resolved against the git toplevel
+ * exactly as `verified_paths` are, optionally followed by `#name` (a test
+ * function, class or describe identifier). The run fails when a guard is
+ * malformed, names a file that does not exist, or names an identifier that does
+ * not occur in that file. Static only: nothing is executed, and no status
+ * requires a guard. Without git the existence checks are skipped, as the
+ * staleness checks are. The generated index does not show guards.
+ *
  * The generated README.md is a build artefact — never hand-edit it.
  */
 
@@ -79,6 +88,26 @@ const TEMPLATE_ID = 'ADR-NNNN';
 
 function fail(msg) { console.error(`error: ${msg}`); }
 function warn(msg) { console.warn(`warning: ${msg}`); }
+
+// ADR-2217: a guard entry is `path` or `path#name`. `path` is a single file
+// relative to the repository root: no glob characters (it names one file, not a
+// set), not absolute, and it may not climb out of the repository. `name` is any
+// non-empty text without a further '#'. The frontmatter parser splits inline
+// lists on ',' and strips ` #...` comments only when whitespace precedes '#', so
+// a name cannot contain ',' or ']' and no space may sit before the '#'.
+// Returns an error string, or null when the entry is well formed.
+function guardShapeError(entry) {
+  if (typeof entry !== 'string' || entry.trim() === '') return 'an empty entry';
+  const parts = entry.split('#');
+  if (parts.length > 2) return `'${entry}' has more than one '#'`;
+  const [file, name] = parts;
+  if (file === '') return `'${entry}' has no path before '#'`;
+  if (name !== undefined && name.trim() === '') return `'${entry}' has an empty name after '#'`;
+  if (/[*?[\]\\]/.test(file)) return `'${entry}' has a glob character: a guard names one file`;
+  if (path.isAbsolute(file) || /^[A-Za-z]:/.test(file)) return `'${entry}' is absolute: use a path relative to the repository root`;
+  if (file.split('/').includes('..')) return `'${entry}' climbs out with '..': use a path relative to the repository root`;
+  return null;
+}
 
 // --- minimal YAML frontmatter parser (flat scalars + inline [a, b] lists) ---
 function parseFrontmatter(text, file) {
@@ -250,6 +279,18 @@ function main() {
     if ('verified_paths' in fm && !Array.isArray(fm.verified_paths)) {
       fail(`${rel}: 'verified_paths' must be a list of repo-relative paths`); errors++;
     }
+    // ADR-2217: optional guard list. Shape is checked here; existence after the
+    // repository root is known (below). The template skeleton is a form, exempt.
+    if (!isTemplate && 'guard' in fm) {
+      if (!Array.isArray(fm.guard)) {
+        fail(`${rel}: 'guard' must be a list, e.g. [tests/foo.test.mjs, tests/bar.rs#name]`); errors++;
+      } else {
+        for (const g of fm.guard) {
+          const why = guardShapeError(g);
+          if (why) { fail(`${rel}: malformed guard: ${why}`); errors++; }
+        }
+      }
+    }
     records.push({ file, rel, fm });
   }
 
@@ -319,6 +360,30 @@ function main() {
         errors++;
       }
     }
+  }
+
+  // --- guards: every well-formed `path[#name]` must resolve (ADR-2217) ---
+  // Paths resolve against the repository root, as verified_paths do, and are
+  // read from the working tree. `#name` must occur verbatim in the file. The
+  // tests are never run.
+  if (repoRoot) {
+    for (const r of records) {
+      if (r.fm.id === TEMPLATE_ID || !Array.isArray(r.fm.guard)) continue;
+      for (const g of r.fm.guard) {
+        if (guardShapeError(g)) continue;              // already reported
+        const [file, name] = g.split('#');
+        const abs = path.join(repoRoot, file);
+        let st = null;
+        try { st = fs.statSync(abs); } catch { /* missing */ }
+        if (!st) { fail(`${r.rel}: guard '${g}': ${file} does not exist (paths are relative to the repository root)`); errors++; continue; }
+        if (!st.isFile()) { fail(`${r.rel}: guard '${g}': ${file} is not a file`); errors++; continue; }
+        if (name !== undefined && !fs.readFileSync(abs, 'utf8').includes(name)) {
+          fail(`${r.rel}: guard '${g}': '${name}' does not occur in ${file}`); errors++;
+        }
+      }
+    }
+  } else if (records.some(r => r.fm.id !== TEMPLATE_ID && Array.isArray(r.fm.guard) && r.fm.guard.length)) {
+    warn('guard files not resolved: no git repository to resolve them against');
   }
 
   if (errors > 0) {

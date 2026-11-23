@@ -14,12 +14,14 @@ on:
       - 'scripts/adr-index-gen.js'
       - 'tests/config/adr-ledger-config.test.mjs'
       - 'tests/config/adr-index-check.test.mjs'
+      - 'tests/config/adr-guard.test.mjs'
       - '.github/workflows/adr-checker.yml'
   pull_request:
     paths:
       - 'scripts/adr-index-gen.js'
       - 'tests/config/adr-ledger-config.test.mjs'
       - 'tests/config/adr-index-check.test.mjs'
+      - 'tests/config/adr-guard.test.mjs'
       - '.github/workflows/adr-checker.yml'
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -42,3 +44,5 @@ jobs:
         run: node tests/config/adr-ledger-config.test.mjs
       - name: index gate contract (ADR-2001)
         run: node tests/config/adr-index-check.test.mjs
+      - name: guard field contract (ADR-2217)
+        run: node tests/config/adr-guard.test.mjs

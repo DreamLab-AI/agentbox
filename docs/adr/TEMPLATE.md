@@ -14,6 +14,7 @@ review_trigger:                  # the event/date that forces a re-review of thi
 repo: agentbox                   # visionclaw | agentbox
 evidence_class:                  # required when implementation_status becomes complete or activation_status becomes live (adr-ratchet, VisionFlow ADR-2007): source | test | ci | deployment | runtime (join with +)
 acceptance_boundary:             # required with evidence_class: what the evidence does and does not establish
+guard: []                        # optional (ADR-2217): tests that enforce this record, `path` or `path#name`, paths relative to the repo root; the checker fails if a file is missing or a name does not occur in it; never run, never required
 ---
 
 # ADR-NNNN — Short imperative title
