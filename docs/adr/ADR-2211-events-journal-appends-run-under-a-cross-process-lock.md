@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 06c2f701130aa94edf24a20f9f86de2131a0bcf4
+verified_commit: 9df9ce56d373880e7fad42f6d0f89b9925ab9f5f
 verified_paths: [management-api/lib/journal-lock.js, management-api/adapters/events/local-jsonl.js, management-api/lib/journal-append.js, management-api/routes/exec-record.js, tests/contract/events-journal-lock.test.js]
 owner: jjohare
 review_trigger: Node gains a maintained flock binding in the dependency set, or a second implementation language writes the events journal
