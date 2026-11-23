@@ -2095,6 +2095,7 @@ key_file  = "/home/devuser/workspace/sidestr/agents/poker-citizen.key"
 #           workspace ledger flag-off and the custody ledger under [security].role_isolation (ADR-2122)
 relay     = "wss://dreamlab-nostr-relay.solitary-paper-764d.workers.dev"
 daily_cap = 20000    # DREAM the house pays out per day at most
+# alert_pubkey = ""   # operator npub1… or 64 hex: halted payout debts arrive as a gift-wrapped DM (docs/user/poker-citizen.md)
 
 # [poker_citizen.<name>]: a further seat, one per sidestr chain (kit ADR-2021,
 # website ADR-2009). <name> is the [sidechain.<name>] it settles on; its

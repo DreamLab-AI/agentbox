@@ -468,6 +468,9 @@
         pokerCitizenState = unplaceheld (pokerCitizenCfg.state or "");
         pokerCitizenRelay = unplaceheld (pokerCitizenCfg.relay or "");
         pokerCitizenCap = toString (pokerCitizenCfg.daily_cap or 20000);
+        # alert_pubkey: the operator key that receives the seat's alerts (halted
+        # payout debts) as a gift-wrapped DM; unset ⇒ stderr only.
+        pokerCitizenAlert = unplaceheld (pokerCitizenCfg.alert_pubkey or "");
         # [poker_citizen.<name>]: one further seat per sidestr chain (kit
         # ADR-2021). Each bakes [program:poker-citizen-<name>] on its chain's
         # producer port with its own key, ledger and asset. Gated on the chain's
@@ -483,6 +486,7 @@
             relay = unplaceheld (c.relay or "");
             port = toString (c.port or 3450);
             cap = toString (c.daily_cap or 20000);
+            alertPubkey = unplaceheld (c.alert_pubkey or "");
             instance = "poker-citizen-${name}";
           }) (lib.filterAttrs (_: v: builtins.isAttrs v) pokerCitizenCfg);
         pokerCitizenAnySeat = lib.any (c: c.enabled) (lib.attrValues pokerCitizenSeats);
@@ -3427,7 +3431,7 @@ ${lib.optionalString pokerCitizenEnabled ''
 [program:poker-citizen]
 command=/opt/agentbox/config/poker/run-citizen.sh
 user=devuser
-environment=HOME="/home/devuser",PATH="${lib.makeBinPath [ pokerCitizenPkg pkgs.curl pkgs.bash pkgs.coreutils ]}:/usr/local/bin:/bin:/usr/bin"${lib.optionalString (pokerCitizenKey != "") ",POKER_CITIZEN_KEY_FILE=\"${pokerCitizenKey}\""}${lib.optionalString (pokerCitizenState != "") ",POKER_CITIZEN_STATE=\"${pokerCitizenState}\""}${lib.optionalString (pokerCitizenRelay != "") ",POKER_CITIZEN_RELAY=\"${pokerCitizenRelay}\""},POKER_DAILY_CAP="${pokerCitizenCap}"
+environment=HOME="/home/devuser",PATH="${lib.makeBinPath [ pokerCitizenPkg pkgs.curl pkgs.bash pkgs.coreutils ]}:/usr/local/bin:/bin:/usr/bin"${lib.optionalString (pokerCitizenKey != "") ",POKER_CITIZEN_KEY_FILE=\"${pokerCitizenKey}\""}${lib.optionalString (pokerCitizenState != "") ",POKER_CITIZEN_STATE=\"${pokerCitizenState}\""}${lib.optionalString (pokerCitizenRelay != "") ",POKER_CITIZEN_RELAY=\"${pokerCitizenRelay}\""}${lib.optionalString (pokerCitizenAlert != "") ",POKER_CITIZEN_ALERT_PUBKEY=\"${pokerCitizenAlert}\""},POKER_DAILY_CAP="${pokerCitizenCap}"
 autostart=true
 autorestart=true
 startsecs=10
@@ -3442,7 +3446,7 @@ ${lib.concatMapStrings (c: lib.optionalString c.enabled ''
 [program:${c.instance}]
 command=/opt/agentbox/config/poker/run-citizen.sh
 user=devuser
-environment=HOME="/home/devuser",PATH="${lib.makeBinPath [ pokerCitizenPkg pkgs.curl pkgs.bash pkgs.coreutils ]}:/usr/local/bin:/bin:/usr/bin",POKER_CHAIN_ID="${c.chainId}",POKER_INSTANCE="${c.instance}",POKER_TICKER="${c.ticker}",POKER_ASSET_ID="${c.assetId}",SIDESTR_PORT="${c.port}",POKER_CITIZEN_KEY_FILE="${c.keyFile}"${lib.optionalString (c.state != "") ",POKER_CITIZEN_STATE=\"${c.state}\""}${lib.optionalString (c.relay != "") ",POKER_CITIZEN_RELAY=\"${c.relay}\""},POKER_DAILY_CAP="${c.cap}"
+environment=HOME="/home/devuser",PATH="${lib.makeBinPath [ pokerCitizenPkg pkgs.curl pkgs.bash pkgs.coreutils ]}:/usr/local/bin:/bin:/usr/bin",POKER_CHAIN_ID="${c.chainId}",POKER_INSTANCE="${c.instance}",POKER_TICKER="${c.ticker}",POKER_ASSET_ID="${c.assetId}",SIDESTR_PORT="${c.port}",POKER_CITIZEN_KEY_FILE="${c.keyFile}"${lib.optionalString (c.state != "") ",POKER_CITIZEN_STATE=\"${c.state}\""}${lib.optionalString (c.relay != "") ",POKER_CITIZEN_RELAY=\"${c.relay}\""}${lib.optionalString (c.alertPubkey != "") ",POKER_CITIZEN_ALERT_PUBKEY=\"${c.alertPubkey}\""},POKER_DAILY_CAP="${c.cap}"
 autostart=true
 autorestart=true
 startsecs=10

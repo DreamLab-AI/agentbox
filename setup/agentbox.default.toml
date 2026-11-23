@@ -1891,6 +1891,7 @@ enabled   = false
 key_file  = "${POKER_CITIZEN_KEY_FILE}"
 relay     = "${NOSTR_RELAY_URL}"
 daily_cap = 20000
+# alert_pubkey = ""   # operator npub1… or 64 hex: halted payout debts arrive as a gift-wrapped DM
 
 [poker_coach]
 enabled    = false

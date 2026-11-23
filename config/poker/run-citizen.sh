@@ -12,6 +12,8 @@
 #   POKER_CITIZEN_RELAY     the forum relay (wss://…)
 #   POKER_CITIZEN_STATE     the ledger file (what members owe, what the house owes)
 #   POKER_STAKES_BB / POKER_BUYIN_BB / POKER_BOT_PROFILE / POKER_DAILY_CAP
+#   POKER_CITIZEN_ALERT_PUBKEY  an operator pubkey (64 hex or npub1…) that gets halted-debt alerts as a DM
+#                           (read by the binary itself from the environment; unset ⇒ stderr only)
 #   SIDESTR_PORT            the local producer's port
 #   POKER_CUSTODY_ROOT      the custody ledger root under role_isolation (tests only)
 set -euo pipefail

@@ -4277,6 +4277,11 @@
           "daily_cap": {
             "type": "integer",
             "description": "Units of the asset the seat pays out per day at most."
+          },
+          "alert_pubkey": {
+            "type": "string",
+            "pattern": "^([0-9a-fA-F]{64}|npub1[0-9a-z]+)?$",
+            "description": "The operator's Nostr pubkey (64 hex or npub1…) that receives this seat's alerts (halted payout debts, a producer that keeps refusing a payout) as a gift-wrapped NIP-17 DM over the forum relay, passed as POKER_CITIZEN_ALERT_PUBKEY. The relay must admit the key as a gift-wrap recipient (whitelisted, e.g. the operator's forum account), or the DM is refused. Alerts always also go to stderr. Empty ⇒ stderr only. Needs a seat binary built with the alert option (forum kit pin after 8a0ca41); an older binary ignores it."
           }
         }
       },
@@ -4302,6 +4307,11 @@
           "type": "integer",
           "minimum": 0,
           "description": "DREAM the house pays out per day at most, passed as POKER_DAILY_CAP. Default 20000."
+        },
+        "alert_pubkey": {
+          "type": "string",
+          "pattern": "^([0-9a-fA-F]{64}|npub1[0-9a-z]+)?$",
+          "description": "The operator's Nostr pubkey (64 hex or npub1…) that receives the house's alerts (halted payout debts, a producer that keeps refusing a payout) as a gift-wrapped NIP-17 DM over the forum relay, passed as POKER_CITIZEN_ALERT_PUBKEY. The relay must admit the key as a gift-wrap recipient (whitelisted, e.g. the operator's forum account), or the DM is refused. Alerts always also go to stderr. Empty ⇒ stderr only. Needs a seat binary built with the alert option (forum kit pin after 8a0ca41); an older binary ignores it."
         }
       }
     },
