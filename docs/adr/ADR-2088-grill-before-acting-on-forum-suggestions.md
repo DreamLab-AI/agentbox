@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 8c895455ae96bf3c1b07c56dc1c2756b23f22a80
+verified_commit: 06c2f701130aa94edf24a20f9f86de2131a0bcf4
 verified_paths: [management-api/lib/junkiejarvis-clarify.js, management-api/lib/junkiejarvis-agent.js, management-api/server.js, scripts/dream-forum-suggestions.mjs, scripts/run-junkiejarvis.cjs, tests/sovereign/junkiejarvis-clarify.test.js, tests/sovereign/junkiejarvis-dm-send.test.js, tests/sovereign/dream-forum-suggestions-jj-gate.test.js]
 owner: jjohare
 review_trigger: any change to the clarity signals, MIN_SPECIFICITY, the 7-day expiry, or the forum-suggestions ingest path
@@ -225,3 +225,9 @@ Governed-path delta since `3d717c40f`: `management-api/server.js`: `/health` pub
 Re-verified 2026-11-11 at `0ed05167b` (ADR-2196, removal of the dead `skills.browser.playwright` switch). Governed-path delta since `c7c2f76b9`: `management-api/server.js` removes the `browserPlaywright` case. No published port, mount, secret, identity, route, vault path or registry entry changes, so what this record decides is not touched. Run on this commit: the manifest validator, manifest catalogue, configuration jest (301), agentbox-manifest cargo tests (235), skill lint (124). The flake edits are two whole-line deletions, not evaluated. The decision and status axes are unchanged.
 
 Re-verified 2026-11-17 at 8c895455a: `management-api/server.js` builds the elevation publisher at route mount and reports it under `components` on `/ready`; this record makes no claim about it.
+
+## Re-verification — 2026-11-23 at `06c2f701130aa94edf24a20f9f86de2131a0bcf4`
+
+Governed delta since `8c895455a`: `management-api/server.js`. `management-api/server.js` changes in two places: `trustProxy` is narrowed from `true` to `'127.0.0.1,::1'` (`:91`) and the rate limiter takes `keyGenerator: require('./lib/rate-limit-key').rateLimitKey` (`:210`). Lines after `:90` sit two lower and after `:210` five lower than at `8db362bc5`. No route mount, hook or schema in the file changes. The clarity assessment, expiry, forum-suggestions ingest and the JunkieJarvis start rule are outside these hunks.
+
+Judged from `git diff 8c895455a..06c2f7011 -- management-api/server.js`, read in full against this record's claims; `node scripts/adr-index-gen.js docs/adr --check`. The Decision and status axes are unchanged and no claim of this record is falsified. Citations in this record to lines after the points above are as of their own commit and are not renumbered.

@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: 469e55367db33e218051985e9d1c8f7b82d19889
+verified_commit: 06c2f701130aa94edf24a20f9f86de2131a0bcf4
 verified_paths: [flake.nix, docker-compose.yml, agentbox.toml, scripts/provision-antigravity.cjs, mcp/consultants/antigravity/server.js, config/entrypoint-unified.sh, skills/mcp.json, tests/config/antigravity-provision.test.cjs, tests/config/antigravity-consultant-auth.test.cjs, tests/config/compose-persistence.test.cjs]
 owner: jjohare
 review_trigger: an agy upgrade that moves its token or changes refresh behaviour, a change to the ~/.gemini mount, or a return to API billing
@@ -81,3 +81,9 @@ failed". `--model gemini-4-hydrogen` resolves under OAuth with no custom model e
 ## Comment-drift check — 2026-11-23 at `469e55367`
 
 Governed delta: `agentbox.toml` changed only in the comment above `[sidechain.dreamlab-txbt4]` (`:2042-2043`): "Off until the lead starts it" becomes "On since 2026-10-03", which matches `enabled = true` and the baked `autostart=true` producer, mirror and faucet programs. It is line-count neutral, so no `agentbox.toml:NNNN` citation moves, and no key or value changes. No decision, status axis or claim of this record is affected. Run: `git diff 59b1aca1c..469e55367 -- <governed paths>` read in full; the agentbox-manifest crate passes `cargo test` and `cargo clippy --all-targets -- -D warnings`, and `scripts/agentbox-config-validate.sh agentbox.toml` reports the manifest valid.
+
+## Re-verification — 2026-11-23 at `06c2f701130aa94edf24a20f9f86de2131a0bcf4`
+
+Governed delta since `469e55367`: `config/entrypoint-unified.sh`. In `config/entrypoint-unified.sh` the only hunk is in the `[interaction_plane.proxy]` projection (`:2343-2357`): the fallback branch, taken only when `config/lib/nip98-config.sh` is unreadable, now chowns a root-owned workspace `.agentbox` back to devuser first (`:2348-2350`), and a comment records that the fallback leaves the file `1000:1000 0600` so the door stays closed under role isolation (`:2353-2354`). Five lines added, so lines after `:2347` sit five lower than at `8db362bc5`. The Antigravity auth-mode projection and the `~/.gemini` volume are outside the hunk.
+
+Judged from `git diff 469e55367..06c2f7011 -- config/entrypoint-unified.sh`, read in full against this record's claims; `node scripts/adr-index-gen.js docs/adr --check`. The Decision and status axes are unchanged and no claim of this record is falsified. Citations in this record to lines after the points above are as of their own commit and are not renumbered.

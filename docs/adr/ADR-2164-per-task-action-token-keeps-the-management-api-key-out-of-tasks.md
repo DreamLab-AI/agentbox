@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: fc95b38774814f9bc83ddfac28649d12cd74fe12
+verified_commit: 06c2f701130aa94edf24a20f9f86de2131a0bcf4
 verified_paths: [config/hooks/trajectory-recorder.cjs, config/hooks/routing-label-recorder.cjs, config/entrypoint-unified.sh, management-api/lib/pg-config.js, management-api/lib/routing-label-store.js, management-api/lib/trajectory-store.js, mcp/consultants/shared/consultant-base.js, management-api/lib/task-action-tokens.js, management-api/middleware/auth.js, management-api/lib/agent-event-auth.js, management-api/routes/agent-events.js, management-api/utils/process-manager.js, management-api/adapters/index.js, management-api/adapters/lifecycle.js, management-api/adapters/events/external.js, management-api/server.js, scripts/ruvector-sidecar-update.sh]
 owner: jjohare
 review_trigger: any new reader of the RuVector Postgres password or any new place a connection is assembled, any new route a task needs to call, any change to the Management API auth gate or auth modes, or a hook that gains a way to sign NIP-98
@@ -210,3 +210,9 @@ to the OAuth-capable providers, export `AGENTBOX_ANTIGRAVITY_AUTH_MODE` to the
 Antigravity consultant, and correct comments and docs. No value, authority,
 boundary or runtime behaviour governed by this decision changes. This is source
 verification, not activation.
+
+## Re-verification — 2026-11-23 at `06c2f701130aa94edf24a20f9f86de2131a0bcf4`
+
+Governed delta since `fc95b3877`: `config/entrypoint-unified.sh`, `management-api/lib/agent-event-auth.js`, `management-api/middleware/auth.js`, `management-api/server.js`. In `config/entrypoint-unified.sh` the only hunk is in the `[interaction_plane.proxy]` projection (`:2343-2357`): the fallback branch, taken only when `config/lib/nip98-config.sh` is unreadable, now chowns a root-owned workspace `.agentbox` back to devuser first (`:2348-2350`), and a comment records that the fallback leaves the file `1000:1000 0600` so the door stays closed under role isolation (`:2353-2354`). Five lines added, so lines after `:2347` sit five lower than at `8db362bc5`. `management-api/server.js` changes in two places: `trustProxy` is narrowed from `true` to `'127.0.0.1,::1'` (`:91`) and the rate limiter takes `keyGenerator: require('./lib/rate-limit-key').rateLimitKey` (`:210`). Lines after `:90` sit two lower and after `:210` five lower than at `8db362bc5`. No route mount, hook or schema in the file changes. `management-api/middleware/auth.js` changes only how the NIP-98 URL is rebuilt (`:56`, `:78`): `signedUrlForRequest` instead of `${protocol}://${host}${url}`, and a missing or invalid Host fails closed. `management-api/lib/agent-event-auth.js` changes only its NIP-98 branch (`:66`, `:176`). Claims re-read: the task action token is still a third credential type on the same gate, scoped to `POST /v1/agent-events/emit` and `/batch`; `verifyAgentEventRequest` still accepts it under every policy because the task-token branch is not in the hunk. The review trigger "any change to the Management API auth gate or auth modes" was considered: the gate's URL reconstruction and proxy trust changed, the set of credential types and modes did not. The key-out-of-tasks property is not touched.
+
+Judged from `git diff fc95b3877..06c2f7011 -- config/entrypoint-unified.sh management-api/lib/agent-event-auth.js management-api/middleware/auth.js management-api/server.js`, read in full against this record's claims; `node scripts/adr-index-gen.js docs/adr --check`. The Decision and status axes are unchanged and no claim of this record is falsified. Citations in this record to lines after the points above are as of their own commit and are not renumbered.

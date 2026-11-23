@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: inactive
 supersedes: []
 superseded_by: [ADR-2153]
-verified_commit: fc95b38774814f9bc83ddfac28649d12cd74fe12
+verified_commit: 06c2f701130aa94edf24a20f9f86de2131a0bcf4
 verified_paths: [config/nip98-proxy/proxy.mjs, flake.nix]
 owner: jjohare
 review_trigger: next image rebuild (activation), or any new consumer of :9095, or per-process isolation becoming available
@@ -495,3 +495,9 @@ to the OAuth-capable providers, export `AGENTBOX_ANTIGRAVITY_AUTH_MODE` to the
 Antigravity consultant, and correct comments and docs. No value, authority,
 boundary or runtime behaviour governed by this decision changes. This is source
 verification, not activation.
+
+## Re-verification — 2026-11-23 at `06c2f701130aa94edf24a20f9f86de2131a0bcf4`
+
+Governed delta since `fc95b3877`: `config/nip98-proxy/proxy.mjs`. `config/nip98-proxy/proxy.mjs` changes in three ways. (1) The boot-config path is chosen by uid through the new `config/nip98-proxy/config-path.mjs` (`proxy.mjs:254`; uid 1000 keeps the workspace file, any other uid reads only `$AGENTBOX_SECRETS_DIR/nip98-proxy-config.json`, and no permitted path means PENDING, `proxy.mjs:274`, `:1126`). (2) The URL it verifies is the raw query minus the proxy's own credential parameters, with one `forwardedProto()` value (`proxy.mjs:532-541`). (3) An inbound `X-Forwarded-Prefix` is dropped and the proxy re-emits its own, taken from the route's stripped prefix (`:891`, `:914`, `:1039`, `:1051`); an inbound `x-forwarded-proto` is likewise dropped on the WebSocket path and re-emitted once (`:1040`). The strip-and-re-inject of `x-agentbox-pubkey` and `x-agentbox-auth-mode` (`:888`, `:915`, `:1032`), route and allow-list parsing, verifier loading and the identity checks are not touched. This record decides the AoE token boundary behind the proxy. Bearer injection and the named-route allow-list are not in the hunks; the new URL and prefix logic concerns the NIP-98 `u` tag only. Review trigger ("next image rebuild", a new `:9095` consumer, per-process isolation) did not fire: nothing here is rebuilt or activated.
+
+Judged from `git diff fc95b3877..06c2f7011 -- config/nip98-proxy/proxy.mjs`, read in full against this record's claims; `node scripts/adr-index-gen.js docs/adr --check`. The Decision and status axes are unchanged and no claim of this record is falsified. Citations in this record to lines after the points above are as of their own commit and are not renumbered.

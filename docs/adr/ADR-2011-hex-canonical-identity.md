@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 0913d5458837d8c4d1fa4b5b3e52b70e7975cb5a
+verified_commit: 06c2f701130aa94edf24a20f9f86de2131a0bcf4
 verified_paths: [management-api/lib/agent-identity.js, config/nip98-proxy/proxy.mjs]
 owner: jjohare
 review_trigger: A durable identity appears in bech32/npub form in storage or a URL, or the did:nostr:local fallback fires in production
@@ -147,3 +147,9 @@ Re-verified 2026-11-20 at dd78dba42: `git diff 57136dbc0..dd78dba42 -- config/ni
 ## Re-verification — 2026-11-20 at `0913d5458837d8c4d1fa4b5b3e52b70e7975cb5a` (closeout branch)
 
 Governed delta: `config/nip98-proxy/proxy.mjs` (NIP98-STALE-CONFIG): under `NIP98_PROXY_REQUIRE_CONFIG=1` the config poll now also runs when a file was loaded. The proxy keeps the loaded text (`LOADED_CONFIG_RAW`) and exits 0 for a supervised restart when a readable, parsing file differs from it, never before 3.5 s of uptime (`proxy.mjs:1094-1118`, the comparison at `:1112`). The pending behaviour (refuse every identity until a readable file appears), routing, header stripping and re-injection, the verifier and the allow-list parsing are untouched. The fix is partial, as the ADR-2210 note says: the previous boot's file is still served until Stage B rewrites it. Citations in this record to lines after these points are as of their own commit and are not renumbered. Commands run on this commit: `git diff 6a73c5a73..0913d5458 -- <the paths above>` read in full; `node scripts/adr-index-gen.js docs/adr --check`. The Decision and status axes are unchanged and no claim of this record is falsified.
+
+## Re-verification — 2026-11-23 at `06c2f701130aa94edf24a20f9f86de2131a0bcf4`
+
+Governed delta since `0913d5458`: `config/nip98-proxy/proxy.mjs`. `config/nip98-proxy/proxy.mjs` changes in three ways. (1) The boot-config path is chosen by uid through the new `config/nip98-proxy/config-path.mjs` (`proxy.mjs:254`; uid 1000 keeps the workspace file, any other uid reads only `$AGENTBOX_SECRETS_DIR/nip98-proxy-config.json`, and no permitted path means PENDING, `proxy.mjs:274`, `:1126`). (2) The URL it verifies is the raw query minus the proxy's own credential parameters, with one `forwardedProto()` value (`proxy.mjs:532-541`). (3) An inbound `X-Forwarded-Prefix` is dropped and the proxy re-emits its own, taken from the route's stripped prefix (`:891`, `:914`, `:1039`, `:1051`); an inbound `x-forwarded-proto` is likewise dropped on the WebSocket path and re-emitted once (`:1040`). The strip-and-re-inject of `x-agentbox-pubkey` and `x-agentbox-auth-mode` (`:888`, `:915`, `:1032`), route and allow-list parsing, verifier loading and the identity checks are not touched. Identity canonicalisation (`canonicalPubkey`, 64 lowercase hex) is not in the hunks; the proxy still stamps `x-agentbox-pubkey` from the verified identity (`proxy.mjs:915`).
+
+Judged from `git diff 0913d5458..06c2f7011 -- config/nip98-proxy/proxy.mjs`, read in full against this record's claims; `node scripts/adr-index-gen.js docs/adr --check`. The Decision and status axes are unchanged and no claim of this record is falsified. Citations in this record to lines after the points above are as of their own commit and are not renumbered.

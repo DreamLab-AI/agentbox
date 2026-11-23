@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: fc95b38774814f9bc83ddfac28649d12cd74fe12
+verified_commit: 06c2f701130aa94edf24a20f9f86de2131a0bcf4
 verified_paths: [mcp/servers/nostr-bridge.js, scripts/agentbox-config-validate.js, tests/config/semantic-rules.test.js]
 owner: jjohare
 review_trigger: provisioning per-stack nostr key material, changing the profiles root or `$WORKSPACE`, or any new consumer of `loadSigner`
@@ -138,3 +138,9 @@ to the OAuth-capable providers, export `AGENTBOX_ANTIGRAVITY_AUTH_MODE` to the
 Antigravity consultant, and correct comments and docs. No value, authority,
 boundary or runtime behaviour governed by this decision changes. This is source
 verification, not activation.
+
+## Re-verification — 2026-11-23 at `06c2f701130aa94edf24a20f9f86de2131a0bcf4`
+
+Governed delta since `fc95b3877`: `mcp/servers/nostr-bridge.js`. `mcp/servers/nostr-bridge.js` changes only NIP-98 verification: the new `canonicalNip98Url` and `nip98UrlsMatch` (`:278`, `:309`), the `opts` argument on `verifyNip98` (`:560`), and the exact-match check (`:611`). `loadSigner`, `profilesRoot` and the key-path resolution this record decides are not in the hunks. Review trigger "any new consumer of `loadSigner`": not fired. Because `verifyNip98` now rejects a bare path, every non-test caller was checked for an absolute URL: `management-api/middleware/auth.js:89` (via `signedUrlForRequest`), `management-api/lib/agent-event-auth.js:176` (same), `config/nip98-proxy/proxy.mjs:605` (via `signedUrlFor`) and `config/tab0-bridge/server.mjs:584` (`${proto}://${host}${path}`). All pass absolute URLs.
+
+Judged from `git diff fc95b3877..06c2f7011 -- mcp/servers/nostr-bridge.js`, read in full against this record's claims; `node scripts/adr-index-gen.js docs/adr --check`. The Decision and status axes are unchanged and no claim of this record is falsified. Citations in this record to lines after the points above are as of their own commit and are not renumbered.

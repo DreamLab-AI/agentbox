@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 460b8b8bb61503f27e576a3e9554bfafcc766cbb
+verified_commit: 06c2f701130aa94edf24a20f9f86de2131a0bcf4
 verified_paths: [management-api/lib/agent-event-auth.js]
 owner: jjohare
 review_trigger: management-api stops binding 0.0.0.0, a second carrier of caller identity is added, or any caller other than the NIP-98 proxy needs to send X-Agentbox-Pubkey
@@ -122,3 +122,9 @@ Checked at `218dc12c3` by reading each claim against the code, not by the stalen
 `lib/agent-event-auth.js` gained a task-token branch and `reconcileTaskScope`. The
 proxy-pubkey and NIP-98 paths are untouched; a task token yields no `did` and cannot assert
 `source_urn`/`pubkey`. `tests/sovereign/agent-event-auth.test.js` still passes unchanged.
+
+## Re-verification — 2026-11-23 at `06c2f701130aa94edf24a20f9f86de2131a0bcf4`
+
+Governed delta since `460b8b8bb`: `management-api/lib/agent-event-auth.js`. `management-api/server.js` changes in two places: `trustProxy` is narrowed from `true` to `'127.0.0.1,::1'` (`:91`) and the rate limiter takes `keyGenerator: require('./lib/rate-limit-key').rateLimitKey` (`:210`). Lines after `:90` sit two lower and after `:210` five lower than at `8db362bc5`. No route mount, hook or schema in the file changes. `management-api/lib/agent-event-auth.js` changes only path 1 (direct NIP-98): it now calls `signedUrlForRequest` (`:66`, `:176`) and passes the absolute signed URL to `verifyNip98`, returning 401 when the Host is invalid, instead of passing the bare path with `endsWith` matching. Path 2 (`proxyVerifiedPubkey`, `peerIsProxy`, the 64-lowercase-hex rule, `AGENTBOX_PROXY_PEERS`) and `reconcileSourceUrn` are not touched. Claims re-read: path 1 still rejects a failed signature without falling back to the header; path 2 is still honoured only from the loopback peer. `server.js` still binds `0.0.0.0` (`HOST` at `server.js:50`, `app.listen` at `:1548`; the `:49` and `:1502` in the 2026-10-13 note are as of that commit). The narrowed `trustProxy` is consistent with the claim: `request.ip` and `request.host` no longer follow a forwarded header from a non-loopback peer. A third reader of `X-Agentbox-Pubkey` now exists: `management-api/lib/rate-limit-key.js` (`:14-20`) uses the header as a rate-limit bucket key only when the socket peer is loopback (`127.0.0.1`, `::1`, `::ffff:127.0.0.1`), otherwise the peer address. That is an availability key, not an attribution, and a non-loopback holder of `MANAGEMENT_API_KEY` cannot choose its bucket; it does not consult `AGENTBOX_PROXY_PEERS`, so a topology that overrides the peer list rate-limits per address, which is the safe direction. The record's review trigger ("a second carrier of caller identity is added, or any caller other than the proxy needs to send `X-Agentbox-Pubkey`") did not fire: the header gained a reader, not a sender. Ran `jest tests/sovereign/agent-event-auth.test.js` (16 passed).
+
+Judged from `git diff 460b8b8bb..06c2f7011 -- management-api/lib/agent-event-auth.js`, read in full against this record's claims; `node scripts/adr-index-gen.js docs/adr --check`. The Decision and status axes are unchanged and no claim of this record is falsified. Citations in this record to lines after the points above are as of their own commit and are not renumbered.

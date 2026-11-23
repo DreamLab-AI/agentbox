@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: ba1265164ea309bd5443cfa37b3e4e8ede2ae9ab
+verified_commit: 06c2f701130aa94edf24a20f9f86de2131a0bcf4
 verified_paths: [management-api/lib/journal-lock.js, management-api/adapters/events/local-jsonl.js, management-api/lib/journal-append.js, management-api/routes/exec-record.js, tests/contract/events-journal-lock.test.js]
 owner: jjohare
 review_trigger: Node gains a maintained flock binding in the dependency set, or a second implementation language writes the events journal
@@ -57,3 +57,9 @@ Stamped so the record passes the ledger lint, which exempts only `proposed` and 
 ## Amendment — 2026-11-20 (review)
 
 A review found a second way for two holders to overlap, beyond the takeover race above: a live holder stalled for longer than `MAX_HOLD_MS` (30 s) is taken over, then resumes and appends from an old head. From dd78dba42 `withLock` passes the holder `assertHeld()` and the adapter calls it immediately before the append (`management-api/adapters/events/local-jsonl.js`), so a holder that lost the lock persists nothing. This narrows the window and does not close it: a stall between the check and the write still overlaps, and the verifier still reports it. Unchanged and accepted: a waiter that times out after 15 s delivers its event to subscribers without persisting it, the wait blocks the event loop, and each append by alternating writers re-reads the day's file under the lock.
+
+## Re-verification — 2026-11-23 at `06c2f701130aa94edf24a20f9f86de2131a0bcf4`
+
+Governed delta since `ba1265164`: `management-api/routes/exec-record.js`. `management-api/routes/exec-record.js` gains `preHandler: authz.requireOperator({ manifest })` on `POST /v1/exec/record` (`:71`). The record's claims concern the lock, the adapter and the tail re-read, and say of the route only that it stays as design (via ADR-2071). Re-read against the hunk: the route still appends through `getActionPlane()` and the events adapter, so every append still runs under `journal-lock.js` (`withLock` in `adapters/events/local-jsonl.js`); the new gate only narrows who may call it (operator bearer or operator NIP-98 key, `lib/authz.js:184-195`; the dream engine's bearer is admitted). The lock, takeover thresholds and the displaced-holder check are unchanged. Nothing in this record describes the route as ungated, so no text changes.
+
+Judged from `git diff ba1265164..06c2f7011 -- management-api/routes/exec-record.js`, read in full against this record's claims; `node scripts/adr-index-gen.js docs/adr --check`. The Decision and status axes are unchanged and no claim of this record is falsified. Citations in this record to lines after the points above are as of their own commit and are not renumbered.

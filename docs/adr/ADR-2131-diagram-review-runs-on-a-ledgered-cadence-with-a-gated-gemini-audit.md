@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 47a8be565ac3277da07f5c0c11e6b2df45a8067b
+verified_commit: 06c2f701130aa94edf24a20f9f86de2131a0bcf4
 verified_paths: [mcp/consultants/shared/model-diversity.js, skills/sealmap-review/scripts/review-cadence.cjs, skills/sealmap-review/scripts/external-review.cjs, skills/sealmap-review/scripts/review-context.cjs, skills/sealmap-review/scripts/merge-findings.cjs, skills/sealmap-review/run-cron.sh, skills/sealmap-review/crontab, schema/agentbox.toml.schema.json]
 owner: jjohare
 review_trigger: the first real Codex audit (compare ledger cost with the estimate, and confirm the codex CLI reads the pack on stdin under the cron's environment); a change to Gemini or Z.AI pricing; a GLM model change behind [consultants.zai]; a second corpus joining repos
@@ -352,3 +352,9 @@ Re-verified 2026-11-11 at `0ed05167b` (ADR-2196, removal of the dead `skills.bro
 Re-verified 2026-11-11 at `f475e0b8e` (ADR-2196, removal of the dead `skills.browser.qe_browser` switch). Governed-path delta since `0ed05167b`: `schema/agentbox.toml.schema.json` removes the `skills.browser.qe_browser` property. No published port, mount, secret, identity, route, vault path or registry entry changes, so what this record decides is not touched. Run on this commit: the manifest validator (live and default manifests), manifest catalogue, configuration jest (301), the TUI non-interactive validation (5), agentbox-manifest cargo tests (235). The flake edit is one whole-line deletion, not evaluated. The decision and status axes are unchanged.
 
 Re-verified 2026-11-16 at `e188960d9`: the audit leg's code, tests and docs were read against the amendment above; the Codex binary check, the containment flags and the cron `PATH` (`flake.nix`) were added after review. Decision and status axes are unchanged (`activation_status` stays `staged`).
+
+## Re-verification — 2026-11-23 at `06c2f701130aa94edf24a20f9f86de2131a0bcf4`
+
+Governed delta since `47a8be565`: `schema/agentbox.toml.schema.json`. `schema/agentbox.toml.schema.json` gains the optional `adapters.connect_timeout_ms` property (ADR-2035: one integer, or a table of per-slot integers, each at least 1) at `:101-145`. It is additive, 45 lines, so lines after `:99` sit 45 lower than at `8db362bc5`; no existing property is changed or tightened. The `diagram_review` schema object and the review-cadence scripts are untouched.
+
+Judged from `git diff 47a8be565..06c2f7011 -- schema/agentbox.toml.schema.json`, read in full against this record's claims; `node scripts/adr-index-gen.js docs/adr --check`. The Decision and status axes are unchanged and no claim of this record is falsified. Citations in this record to lines after the points above are as of their own commit and are not renumbered.

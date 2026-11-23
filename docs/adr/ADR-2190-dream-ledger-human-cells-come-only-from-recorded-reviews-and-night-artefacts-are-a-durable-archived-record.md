@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: e31fe2f85faf79b94c1faca393d37902f8ea0db7
+verified_commit: 06c2f701130aa94edf24a20f9f86de2131a0bcf4
 verified_paths: [services/dream-engine/src/review.rs, services/dream-engine/src/archive.rs, services/dream-engine/src/ledger_io.rs, services/dream-engine/src/gitcmd.rs, services/dream-engine/src/records.rs, services/dream-engine/src/lib.rs, services/dream-engine/src/engine.rs, services/dream-engine/src/main.rs, services/dream-engine/src/config.rs, services/dream-engine/src/estate.rs, services/dream-engine/src/digest.rs, services/dream-engine/src/governance.rs, config/tmux-autostart.sh, schema/agentbox.toml.schema.json, setup/agentbox.default.toml]
 owner: jjohare
 review_trigger: a forge identity that separates agent merges from human merges (a dedicated agent account or signed human approvals), which would reopen merge events as review evidence; a review tool that authenticates its reviewer; any change that prunes, relocates or stops archiving the artefact directory; a dream-core release that changes the ledger row or the witness
@@ -151,3 +151,9 @@ boundary or runtime behaviour governed by this decision changes. This is source
 verification, not activation.
 
 Re-verified 2026-11-23 at `e31fe2f85` (`deps/dream-core-0.5.0`, the dream-core 0.5.0 adoption). Governed-path delta since `fc95b3877`: `services/dream-engine/src/engine.rs` only: the draft-PR step (`engine.rs:1868-1907`) sets `DraftPr::head_sha` to the branch tip read by `branch_tip` (`:2232`, `git rev-parse --verify refs/heads/<branch>^{commit}`), and a tip that cannot be read publishes nothing and takes the existing lost-PR alert. The ledger row and the witness are unchanged, and dream-core 0.5.0 changes neither `ledger.rs` nor the witness, so this record's review trigger is not met. Line references in Verification below `:1868` move by 26: the row with empty human cells is now `engine.rs:1970-1979`. `:190`, `:396`, `:470` and `:510` hold. The decision and status axes are unchanged. Re-run: `git diff fc95b3877..e31fe2f85 -- services/dream-engine/src/engine.rs`; `cargo test --locked` in `services/dream-engine` passes 256 + 11 + 3 at `e31fe2f85`.
+
+## Re-verification — 2026-11-23 at `06c2f701130aa94edf24a20f9f86de2131a0bcf4`
+
+Governed delta since `e31fe2f85`: `schema/agentbox.toml.schema.json`. `schema/agentbox.toml.schema.json` gains the optional `adapters.connect_timeout_ms` property (ADR-2035: one integer, or a table of per-slot integers, each at least 1) at `:101-145`. It is additive, 45 lines, so lines after `:99` sit 45 lower than at `8db362bc5`; no existing property is changed or tightened. **Citation correction.** The record cites `schema/agentbox.toml.schema.json:2981-2992` for the three `dream_machine` keys; after the 45-line insertion they are at `:3027-3038` (`git_author_name` `:3027`, `git_author_email` `:3031`, `artefact_dir` `:3035`). Their content is unchanged. The ledger, review and archive code this record governs is untouched.
+
+Judged from `git diff e31fe2f85..06c2f7011 -- schema/agentbox.toml.schema.json`, read in full against this record's claims; `node scripts/adr-index-gen.js docs/adr --check`. The Decision and status axes are unchanged. The citation corrected above is the only one affected; no other claim of this record is falsified. Citations in this record to lines after the points above are as of their own commit and are not renumbered.
