@@ -122,11 +122,17 @@ describe('mandate enforcement against a real solid-pod-rs', { skip: !BIN && 'no 
     return fetch(`${podLocal()}${p}`, { method, headers, body });
   }
 
-  const deps = () => ({
+  const publishers = [];
+  const deps = () => {
+    const publisher = createPublisher({ relays: [`ws://127.0.0.1:${relayPort}`], requiredRelay: `ws://127.0.0.1:${relayPort}`, timeoutMs: 1500 });
+    publishers.push(publisher);
+    return depsWith(publisher);
+  };
+  const depsWith = (publisher) => ({
     resolveSigner: () => resolveMandateSigner({}, { env: { AGENTBOX_IDENTITY_ROOT: path.join(state, 'identities'), AGENTBOX_AGENT_ID: 'agentbox-core' } }),
     podEndpoints: () => ({ connectBase: podLocal(), signedBase: PUBLIC_ORIGIN }),
     spaceReplays: true,
-    publisher: createPublisher({ relays: [`ws://127.0.0.1:${relayPort}`], requiredRelay: `ws://127.0.0.1:${relayPort}`, timeoutMs: 1500 }),
+    publisher,
   });
   const logger = { debug() {}, info() {}, warn() {}, error() {} };
 
@@ -159,6 +165,7 @@ describe('mandate enforcement against a real solid-pod-rs', { skip: !BIN && 'no 
   });
 
   after(async () => {
+    for (const p of publishers) await p.close();
     try { proc.kill('SIGTERM'); } catch { /* gone */ }
     if (relay) await relay.close();
     fs.rmSync(root, { recursive: true, force: true });

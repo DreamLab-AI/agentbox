@@ -37,7 +37,7 @@ function relay(onEvent) {
 }
 
 async function withBridge(urls, fn) {
-  const bridge = new NostrBridge({ relays: urls, subRefreshIntervalMs: 0, relayOptions: { pingIntervalMs: 0 } });
+  const bridge = new NostrBridge({ relays: urls, subRefreshIntervalMs: 0 });
   await bridge.connect();
   try { return await fn(bridge); } finally { await bridge.disconnect(); }
 }
