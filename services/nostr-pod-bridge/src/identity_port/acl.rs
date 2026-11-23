@@ -101,6 +101,17 @@ pub const NEVER_GRANTABLE_KINDS: &[u64] = &[
 /// else, so the forum can tell agent authorship from human by the key alone.
 pub const AGENT_GOVERNANCE_KINDS: &[u64] = &[31_400, 31_402, 5];
 
+/// The addressable app-data kind (NIP-78) that carries an agent mandate.
+///
+/// A generic app-data kind must never ride a broad grant: it is grantable only
+/// to `sign_event` on the `core` key, and even then the port signs it only
+/// when it has the mandate envelope shape (one `d` tag holding this key's
+/// `urn:agentbox:mandate:` URN, plus `t=agent-mandate`). AB-11.
+pub const MANDATE_EVENT_KIND: u64 = 30_078;
+
+/// The only key a [`MANDATE_EVENT_KIND`] grant may name.
+pub const MANDATE_KEY: &str = "core";
+
 /// One grant: an operation a caller may run.
 #[derive(Debug, Clone, Default, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -349,6 +360,15 @@ fn validate_grant(
         NEVER_GRANTABLE_KINDS.contains(k) && !(agent_grant && AGENT_GOVERNANCE_KINDS.contains(k))
     }) {
         bail!("caller {uid}: kind {k} may never be granted (see NEVER_GRANTABLE_KINDS)");
+    }
+    if g.kinds.contains(&MANDATE_EVENT_KIND)
+        && (op != OP_SIGN_EVENT || g.keys.iter().any(|k| k != MANDATE_KEY))
+    {
+        bail!(
+            "caller {uid}: kind {MANDATE_EVENT_KIND} (agent mandate) is grantable only to \
+             {OP_SIGN_EVENT} on the {MANDATE_KEY:?} key, not {op} on {:?}",
+            g.keys
+        );
     }
     if g.secret {
         bail!("caller {uid}: secret export is retired; use mirror_wrap");

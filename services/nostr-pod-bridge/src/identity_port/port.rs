@@ -616,6 +616,9 @@ impl Port {
         d: Draft,
     ) -> Result<Admitted, Refused> {
         let kind = d.kind;
+        if kind == acl::MANDATE_EVENT_KIND {
+            check_mandate_envelope(op, &name, held, &d.tags)?;
+        }
         if !grant.kinds.contains(&kind) {
             return Err(Refused::new(
                 op,
@@ -893,6 +896,56 @@ impl Port {
 }
 
 /// Wall-clock seconds since the Unix epoch.
+/// The agent-mandate URN prefix a kind-30078 `d` tag must carry.
+const MANDATE_URN_PREFIX: &str = "urn:agentbox:mandate:";
+
+/// Refuse a kind-30078 that is not an agent-mandate envelope of this key.
+///
+/// Kind 30078 is generic app data, so the port signs it on no other terms than
+/// the mandate shape (AB-11): exactly one `d` tag (relays key the addressable
+/// slot on the first, so a second is an ambiguity attack) whose value is
+/// `urn:agentbox:mandate:<this key's x-only hex>:<local>`, and a
+/// `t=agent-mandate` tag. Runs in the shared signing path, so it holds whatever
+/// operation carried the request, and only the `core` key may sign one.
+fn check_mandate_envelope(
+    op: &str,
+    key: &str,
+    held: &HeldKey,
+    tags: &[Vec<String>],
+) -> Result<(), Refused> {
+    let refuse = |why: &str| Err(Refused::new(op, format!("kind 30078 refused: {why}")));
+    if key != DEFAULT_KEY {
+        return refuse("only the core key signs an agent mandate");
+    }
+    let mut d = tags
+        .iter()
+        .filter(|t| t.first().map(String::as_str) == Some("d"));
+    let (Some(d_tag), None) = (d.next(), d.next()) else {
+        return refuse("needs exactly one d tag");
+    };
+    let Some(urn) = d_tag.get(1) else {
+        return refuse("the d tag carries no value");
+    };
+    let Some(rest) = urn.strip_prefix(MANDATE_URN_PREFIX) else {
+        return refuse("the d tag is not a urn:agentbox:mandate: URN");
+    };
+    let owner_ok = rest
+        .strip_prefix(held.xonly.as_str())
+        .and_then(|r| r.strip_prefix(':'))
+        .is_some_and(|local| !local.is_empty());
+    if !owner_ok {
+        return refuse("the mandate URN is not scoped to the signing key");
+    }
+    let tagged = tags.iter().any(|t| {
+        t.first().map(String::as_str) == Some("t")
+            && t.get(1).map(String::as_str) == Some("agent-mandate")
+    });
+    if !tagged {
+        return refuse("missing the t=agent-mandate tag");
+    }
+    Ok(())
+}
+
 fn now_unix() -> u64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)

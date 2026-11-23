@@ -365,3 +365,107 @@ fn the_checked_in_acl_loads_and_grants_what_the_rehearsal_needs() {
     // The gateway gets the child's public half only.
     assert!(!acl.grant(961, "mirror_key").unwrap().secret);
 }
+
+// ── AB-11: the kind-30078 mandate envelope, and nothing else of kind 30078 ──────
+
+fn acl_with_mandate_kind(uid: u32) -> String {
+    let mut acl: Value = serde_json::from_str(&acl_for(uid)).unwrap();
+    acl["callers"][uid.to_string()]["ops"]["sign_event"]["kinds"] = json!([38410, 30078]);
+    acl.to_string()
+}
+
+#[test]
+fn a_30078_is_signed_only_when_it_is_a_mandate_envelope_of_the_signing_key() {
+    let (uid, gid) = own_ids();
+    let s = start(&acl_with_mandate_kind(uid), "1", Some(gid));
+    let sock = s.sock();
+    let owner = core_xonly();
+    let urn = format!("urn:agentbox:mandate:{owner}:{}", "c".repeat(64));
+    let good = |tags: Value| {
+        json!({"key":"core","kind":30078,"content":"{}","created_at":1_700_000_042u64,"tags":tags}).to_string()
+    };
+
+    // The shape the management-api signs: one d (this key's mandate URN), t=agent-mandate.
+    let (rc, v) = call(
+        &sock,
+        "sign_event",
+        &good(json!([["d", urn], ["p", "d".repeat(64)], ["t", "agent-mandate"], ["status", "revoked"]])),
+    );
+    assert_eq!(rc, 0, "{v}");
+    assert_eq!(v["event"]["kind"], 30078);
+    assert_eq!(v["event"]["created_at"], 1_700_000_042u64, "caller-supplied created_at is honoured");
+    assert_eq!(v["event"]["pubkey"], owner);
+    let ev: nostr_bbs_core::NostrEvent = serde_json::from_value(v["event"].clone()).unwrap();
+    assert!(nostr_bbs_core::verify_event(&ev));
+
+    let refused = |label: &str, tags: Value| {
+        let (rc, v) = call(&sock, "sign_event", &good(tags));
+        assert_eq!(rc, 1, "{label}: signed a 30078 it must refuse: {v}");
+        assert_eq!(v["refused"]["op"], "sign_event", "{label}");
+        assert!(v.get("event").is_none(), "{label}");
+    };
+    // No d tag at all: a 30078 is a generic app-data kind and may not ride this grant.
+    refused("no d", json!([["t", "agent-mandate"]]));
+    // d without the mandate URN prefix.
+    refused("wrong d prefix", json!([["d", "some-app-state"], ["t", "agent-mandate"]]));
+    refused("near prefix", json!([["d", format!("urn:agentbox:activity:{owner}:x")], ["t", "agent-mandate"]]));
+    // Two d tags: relays key the replaceable slot on the first one.
+    refused("two d", json!([["d", urn], ["d", "urn:agentbox:mandate:x"], ["t", "agent-mandate"]]));
+    // No t=agent-mandate tag.
+    refused("no t", json!([["d", urn]]));
+    refused("wrong t", json!([["d", urn], ["t", "other"]]));
+    // A mandate URN scoped to somebody else's key.
+    refused(
+        "foreign issuer in d",
+        json!([["d", format!("urn:agentbox:mandate:{}:{}", "e".repeat(64), "c".repeat(64))], ["t", "agent-mandate"]]),
+    );
+    // Empty local part.
+    refused("empty local", json!([["d", format!("urn:agentbox:mandate:{owner}:")], ["t", "agent-mandate"]]));
+}
+
+#[test]
+fn a_30078_stays_refused_when_the_policy_does_not_grant_it() {
+    let (uid, gid) = own_ids();
+    let s = start(&acl_for(uid), "1", Some(gid));
+    let owner = core_xonly();
+    let (rc, v) = call(
+        &s.sock(),
+        "sign_event",
+        &json!({"key":"core","kind":30078,"content":"{}","tags":[
+            ["d", format!("urn:agentbox:mandate:{owner}:x")], ["t","agent-mandate"]]})
+        .to_string(),
+    );
+    assert_eq!(rc, 1, "{v}");
+}
+
+#[test]
+fn the_acl_refuses_to_load_a_30078_grant_anywhere_but_sign_event_on_core() {
+    use nostr_pod_bridge::identity_port::acl::Acl;
+    let base = |ops: Value| {
+        json!({"version":1,
+          "keys":{"core":{"file":"core.key","mirror_root":true},"junkiejarvis":{"file":"jj.key"}},
+          "callers":{"1000":{"name":"d","ops":ops}}})
+        .to_string()
+    };
+    // The one permitted shape loads.
+    assert!(Acl::parse(&base(json!({"sign_event":{"keys":["core"],"kinds":[30078]}})), None).is_ok());
+    // Another key may not carry it.
+    assert!(Acl::parse(&base(json!({"sign_event":{"keys":["junkiejarvis"],"kinds":[30078]}})), None).is_err());
+    assert!(Acl::parse(&base(json!({"sign_event":{"keys":["core","junkiejarvis"],"kinds":[30078]}})), None).is_err());
+    // Neither may the forum path.
+    assert!(Acl::parse(&base(json!({"forum_event":{"keys":["junkiejarvis"],"kinds":[30078]}})), None).is_err());
+    assert!(Acl::parse(&base(json!({"forum_event":{"keys":["core"],"kinds":[30078]}})), None).is_err());
+}
+
+#[test]
+fn the_checked_in_acl_grants_the_mandate_kind_to_devuser_on_core_only() {
+    use nostr_pod_bridge::identity_port::acl::{Acl, OP_SIGN_EVENT};
+    let path =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../config/custody/identity-port-acl.json");
+    let acl = Acl::load(&path, None).unwrap();
+    let g = acl.grant(1000, OP_SIGN_EVENT).unwrap();
+    assert_eq!(g.keys, vec!["core".to_string()]);
+    assert!(g.kinds.contains(&30078));
+    // The gateway never gets it.
+    assert!(!acl.grant(961, OP_SIGN_EVENT).map_or(false, |g| g.kinds.contains(&30078)));
+}

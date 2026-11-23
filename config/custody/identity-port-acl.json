@@ -13,6 +13,7 @@
     "Human governance kinds 31401, 31403-31405 and 38414 remain forbidden. Only an independently marked",
     "agent_governance signer can author panels/cases; auth operations have their own relay/URL checks.",
     "mirror_key returns public identity only in this policy; mirror_wrap signs bounded self-DMs inside custody.",
+    "Kind 30078 (agent mandate, AB-11) is grantable only to sign_event on core; the port signs it only as a mandate envelope: exactly one d tag urn:agentbox:mandate:<core xonly>:<local>, plus t=agent-mandate.",
     "Optional agent_governance material must be independently provisioned and admitted by the operator before use."
   ],
   "keys": {
@@ -49,7 +50,7 @@
       "ops": {
         "pubkey": { "keys": ["core", "junkiejarvis", "agent_governance"] },
         "nip98": { "keys": ["core"] },
-        "sign_event": { "keys": ["core"], "kinds": [38410, 38411, 38412, 38413, 38415, 30840, 30841] },
+        "sign_event": { "keys": ["core"], "kinds": [38410, 38411, 38412, 38413, 38415, 30840, 30841, 30078] },
         "forum_event": { "keys": ["junkiejarvis"], "kinds": [0, 1, 42, 31923] },
         "governance_event": { "keys": ["agent_governance"], "kinds": [31400, 31402, 5] },
         "nip42_auth": { "keys": ["core", "junkiejarvis", "agent_governance"] },
