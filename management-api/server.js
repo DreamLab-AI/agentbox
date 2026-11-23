@@ -1280,6 +1280,14 @@ async function start() {
       try {
         await app.register(require('./routes/mandate'), { logger, manifest });
         logger.debug({ event: 'mandate.mounted' }, 'Mandate route ready at /v1/mandate');
+        // AB-11: re-drive any revocation a crash, pod outage or relay outage left half-done
+        // (`revoking`, `revoked_unpublished`), roll back a stale grant, retire expired mandates.
+        // Runs now (not awaited) and on an interval; idempotent; does nothing without a signer.
+        const reconciler = require('./lib/mandate-revocation').startReconciler({ manifest, logger });
+        app.addHook('onClose', async () => {
+          reconciler.stop();
+          try { await require('./lib/mandate-runtime').defaultPublisher().close(); } catch (_) { /* ignore */ }
+        });
       } catch (err) {
         logger.error({ err: err.message }, 'Mandate route failed to mount');
       }

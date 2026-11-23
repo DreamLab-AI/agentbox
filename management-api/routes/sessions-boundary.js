@@ -120,7 +120,10 @@ function _repoSlug(body) {
     || (body.project_path ? path.basename(String(body.project_path).replace(/\/+$/, '')) : '')
     || body.slug
     || 'workspace';
-  return String(raw).toLowerCase().replace(/[^a-z0-9._-]/g, '-').replace(/^-+|-+$/g, '').slice(0, 64) || 'workspace';
+  const slug = String(raw).toLowerCase().replace(/[^a-z0-9._-]/g, '-').replace(/^-+|-+$/g, '').slice(0, 64)
+    // A slug becomes a pod path segment: never a dot segment, never a sidecar suffix.
+    .replace(/\.(acl|meta)$/, '-$1');
+  return /^\.*$/.test(slug) ? 'workspace' : slug;
 }
 
 /** The session profile → AGENTBOX_PROFILE for did derivation (falls back to id). */
@@ -285,18 +288,20 @@ async function sessionsBoundaryRoutes(fastify, options) {
 
       // Eager mandate (D4.5): only for seeds flagged eager_mandate=true. Lazy
       // (first-pod-write) minting is the default and lives on the pods path via
-      // routes/mandate.js ensureMandate.
+      // routes/mandate.js ensureMandate. AB-11: the container is INSIDE the pod
+      // owner's pod (`/pods/<owner>/proj/<slug>/`), the grant is enforced at the
+      // pod, and signing is fail-closed — a missing signer is a note here (the
+      // session still starts) but never an unsigned mandate.
       let mandateUrn = null;
       if (body.eager_mandate === true) {
         const issuer = _operatorPubkey();
-        const container = body.mandate_container || `/proj/${repoSlug}/`;
+        const container = body.mandate_container || `/pods/${issuer}/proj/${repoSlug}/`;
         if (!issuer) {
           notes.push('eager_mandate requested but no operator pubkey — mandate skipped');
         } else {
           try {
-            const m = await ensureMandate({ issuer, agent: identity.pubkey, container, manifest, logger });
+            const m = await ensureMandate({ issuer, agent: identity.pubkey, container, manifest, logger, deps: options.mandateDeps });
             mandateUrn = m.urn;
-            if (!m.signed) notes.push('eager mandate minted but unsigned (no operator signer)');
           } catch (err) {
             notes.push(`eager mandate mint failed: ${err.message}`);
             logger.warn({ err: err.message, session_id: sessionId }, 'sessions-boundary: eager mandate mint failed');

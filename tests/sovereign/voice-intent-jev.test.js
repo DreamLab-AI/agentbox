@@ -127,7 +127,13 @@ describe('/v1/voice-intent — the Jev option in the route', () => {
     if (prevAuth === undefined) delete process.env.AGENTBOX_AGENT_EVENT_AUTH; else process.env.AGENTBOX_AGENT_EVENT_AUTH = prevAuth;
   });
   const fakeSigner = { async sign(unsigned) { return { ...unsigned, id: 'mandate-id', pubkey: ISSUER, sig: 'sig' }; } };
-  const mandate = async () => signMandate(createMandate({ issuer: ISSUER, agent: SPEAKER, container: '/kg/' }).record, fakeSigner);
+  // The registry (not the presented event) says a mandate is in force (AB-11).
+  const registered = new Map();
+  const mandate = async () => {
+    const { record } = createMandate({ issuer: ISSUER, agent: SPEAKER, container: `/pods/${ISSUER}/kg/` });
+    registered.set(record.urn, { record, state: 'active' });
+    return signMandate(record, fakeSigner);
+  };
 
   async function makeApp(extra = {}) {
     const app = Fastify({ logger: false });
@@ -136,6 +142,7 @@ describe('/v1/voice-intent — the Jev option in the route', () => {
       logger: { debug() {}, warn() {}, info() {}, error() {} }, manifest: {},
       dispatchActionRequest: async (u) => { dispatched.push(u); return { ...u, id: 'signed-31402-id', pubkey: 'signer', sig: 'sig' }; },
       verifyMandateEvent: () => true,
+      lookupMandate: (urn) => registered.get(urn) || null,
       ...extra,
     });
     await app.ready();

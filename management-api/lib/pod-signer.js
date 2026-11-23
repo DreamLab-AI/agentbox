@@ -73,10 +73,11 @@ function buildPodNip98(manifest, deps = {}) {
   if (!integ.sign_requests) return null;
 
   const env = deps.env || process.env;
-  if (identityPortSelected(manifest, integ, env)) {
+  const selected = podSignerSource(manifest, env);
+  if (selected.source === 'identity-port') {
     return buildPortNip98(deps.signRequest || spawnSignRequest, env);
   }
-  const stack = env.AGENTBOX_STACK || integ.sign_stack || null;
+  const stack = selected.stack;
 
   let bridge = null;
   const getBridge = () => {
@@ -126,6 +127,23 @@ function buildPodNip98(manifest, deps = {}) {
     if (!s) return null;
     return buildNip98Header(s, method, url, { body });
   };
+}
+
+/**
+ * The deterministic signing-source rule (ADR-2078, ADR-2122) as data, so a second
+ * consumer (lib/mandate-signer, AB-11) selects the SAME source the pods adapter does:
+ * the identity port under role isolation or `sign_source = "identity-port"`; else a
+ * stack named by `AGENTBOX_STACK` / `sign_stack`; else the sovereign identity.
+ *
+ * @param {object} manifest
+ * @param {object} [env]
+ * @returns {{ source: 'identity-port'|'stack'|'sovereign', stack: (string|null) }}
+ */
+function podSignerSource(manifest, env = process.env) {
+  const integ = (manifest && manifest.integrations && manifest.integrations.solid_pod_rs) || {};
+  if (identityPortSelected(manifest, integ, env)) return { source: 'identity-port', stack: null };
+  const stack = env.AGENTBOX_STACK || integ.sign_stack || null;
+  return stack ? { source: 'stack', stack } : { source: 'sovereign', stack: null };
 }
 
 /** Identity-port source selection: the flag forces it; `sign_source` may name it. */
@@ -196,4 +214,4 @@ function spawnSignRequest(op, params, env) {
   });
 }
 
-module.exports = { buildPodNip98, identityPortSelected };
+module.exports = { buildPodNip98, identityPortSelected, podSignerSource, payloadSha256 };

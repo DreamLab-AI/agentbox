@@ -163,10 +163,14 @@ describe('COM-15 — /v1/voice-intent mandate gate + signed 31402 dispatch', () 
   // A signer that stamps id/pubkey/sig without touching real crypto.
   const fakeSigner = { async sign(unsigned) { return { ...unsigned, id: 'mandate-id', pubkey: ISSUER, sig: 'sig' }; } };
 
-  async function validMandate({ issuedAt, expiresAt } = {}) {
-    const { record } = createMandate({ issuer: ISSUER, agent: SPEAKER, container: '/kg/', issuedAt, expiresAt });
-    return signMandate(record, fakeSigner);
+  // The REGISTRY decides whether a mandate is in force (AB-11); a presented event only says who signed.
+  const registered = new Map();
+  async function validMandate({ issuedAt, expiresAt, signer = fakeSigner, state = 'active', register = true } = {}) {
+    const { record } = createMandate({ issuer: ISSUER, agent: SPEAKER, container: `/pods/${ISSUER}/kg/`, issuedAt, expiresAt });
+    if (register) registered.set(record.urn, { record, state });
+    return signMandate(record, signer);
   }
+  beforeEach(() => registered.clear());
 
   // Build a throwaway Fastify app with the route + injected deps.
   async function makeApp(opts = {}) {
@@ -180,6 +184,7 @@ describe('COM-15 — /v1/voice-intent mandate gate + signed 31402 dispatch', () 
       manifest: {},
       dispatchActionRequest,
       verifyMandateEvent: opts.verifyMandateEvent || (() => true),
+      lookupMandate: opts.lookupMandate || ((urn) => registered.get(urn) || null),
     });
     await app.ready();
     return { app, dispatched };
@@ -272,6 +277,99 @@ describe('COM-15 — /v1/voice-intent mandate gate + signed 31402 dispatch', () 
     expect(res.statusCode).toBe(400);
     expect(res.json().error).toBe('actor_did-invalid');
     await app.close();
+  });
+
+  // ── AB-11: a presented event can never outlive the registry ──────────────────
+  const speak = (app, mandate) => app.inject({
+    method: 'POST', url: '/v1/voice-intent',
+    payload: { transcript: 'find the budget', actor_did: ACTOR_DID, mandate },
+  });
+
+  for (const state of ['revoking', 'revoked_unpublished', 'revoked', 'expired', 'failed', 'granting']) {
+    it(`DECLINES 403 mandate-inactive when the registry says "${state}", even for a validly signed revoked:false event`, async () => {
+      const { app, dispatched } = await makeApp();
+      const mandate = await validMandate({ state });
+      expect(JSON.parse(mandate.content).revoked).toBe(false);          // what the presenter holds
+      const res = await speak(app, mandate);
+      expect(res.statusCode).toBe(403);
+      expect(res.json().error).toBe('mandate-inactive');
+      expect(dispatched).toHaveLength(0);
+      await app.close();
+    });
+  }
+
+  it('DECLINES 403 mandate-inactive for a mandate the registry has never heard of (absent = inactive)', async () => {
+    const { app } = await makeApp();
+    const mandate = await validMandate({ register: false });
+    const res = await speak(app, mandate);
+    expect(res.statusCode).toBe(403);
+    expect(res.json().error).toBe('mandate-inactive');
+    await app.close();
+  });
+
+  it('DECLINES 403 mandate-issuer-mismatch when the event is not signed by the pod owner who issued it', async () => {
+    const { app } = await makeApp();
+    const forger = { async sign(unsigned) { return { ...unsigned, id: 'forged', pubkey: 'e'.repeat(64), sig: 'sig' }; } };
+    const mandate = await validMandate({ signer: forger });
+    const res = await speak(app, mandate);
+    expect(res.statusCode).toBe(403);
+    expect(res.json().error).toBe('mandate-issuer-mismatch');
+    await app.close();
+  });
+
+  it('DECLINES 403 mandate-invalid when the d tag is missing, doubled, or names a different urn than the content', async () => {
+    const { app } = await makeApp();
+    const base = await validMandate();
+    for (const tags of [
+      base.tags.filter((t) => t[0] !== 'd'),
+      [...base.tags, ['d', 'urn:agentbox:mandate:other']],
+      base.tags.map((t) => (t[0] === 'd' ? ['d', 'urn:agentbox:mandate:other'] : t)),
+    ]) {
+      const res = await speak(app, { ...base, tags });
+      expect(res.statusCode).toBe(403);
+      expect(res.json().error).toBe('mandate-invalid');
+    }
+    await app.close();
+  });
+
+  it('takes the grantee from the REGISTRY, not the event: an event naming a different agent is declined', async () => {
+    const { app } = await makeApp();
+    const mandate = await validMandate();
+    const forged = { ...mandate, content: JSON.stringify({ ...JSON.parse(mandate.content), agent: `did:nostr:${'9'.repeat(64)}` }) };
+    const res = await speak(app, forged);
+    expect(res.statusCode).toBe(403);
+    expect(res.json().error).toBe('mandate-invalid');
+    await app.close();
+  });
+
+  it('DECLINES 503 when the registry cannot be read (fail closed, not "no mandate")', async () => {
+    const { app } = await makeApp({ lookupMandate: () => { throw new Error('corrupt'); } });
+    const res = await speak(app, await validMandate());
+    expect(res.statusCode).toBe(503);
+    expect(res.json().error).toBe('mandate-registry-unavailable');
+    await app.close();
+  });
+
+  describe('default lookup against the durable registry', () => {
+    const fs = require('fs'); const os = require('os'); const path = require('path');
+    const registry = require('../../management-api/lib/mandate-registry');
+    let tmp; let prev;
+    beforeEach(() => { tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'vi-reg-')); prev = process.env.AGENTBOX_STATE_DIR; process.env.AGENTBOX_STATE_DIR = tmp; });
+    afterEach(() => { if (prev === undefined) delete process.env.AGENTBOX_STATE_DIR; else process.env.AGENTBOX_STATE_DIR = prev; fs.rmSync(tmp, { recursive: true, force: true }); });
+
+    it('accepts while the registry entry is active and declines the moment it is marked revoking', async () => {
+      const { app } = await makeApp({ lookupMandate: (urn) => { const h = registry.findByUrn(registry.load(), urn); return h ? h.entry : null; } });
+      const mandate = await validMandate({ register: false });
+      const record = JSON.parse(mandate.content);
+      const key = registry.keyFor(SPEAKER, record.container);
+      await registry.update((reg) => { reg[key] = { record, state: 'active' }; });
+      expect((await speak(app, mandate)).statusCode).toBe(200);
+      await registry.update((reg) => { reg[key].state = 'revoking'; });
+      const res = await speak(app, mandate);
+      expect(res.statusCode).toBe(403);
+      expect(res.json().error).toBe('mandate-inactive');
+      await app.close();
+    });
   });
 
   it('DECLINES 503 dispatch-unavailable when no signed-31402 dispatcher is wired (fail-closed)', async () => {

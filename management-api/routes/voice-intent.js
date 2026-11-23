@@ -42,6 +42,7 @@ const { verifyAgentEventRequest, reconcileSourceUrn } = require('../lib/agent-ev
 const { transcriptToAction } = require('../lib/voice-intent');
 const voiceIntentJev = require('../lib/voice-intent-jev');
 const mandateLib = require('../lib/mandate');
+const mandateRegistry = require('../lib/mandate-registry');
 const acs = require('../lib/agent-control-surface');
 
 /** Same u32 string hash the agent-events surface uses, kept consistent here. */
@@ -79,6 +80,13 @@ module.exports = async function voiceIntentRoutes(fastify, options) {
   // silent success). Mirrors lib/authority's publishActionRequest injection.
   const dispatchActionRequest = options.dispatchActionRequest || null;
   const verifyMandateEvent = options.verifyMandateEvent || defaultVerifyMandateEvent;
+  // The REGISTRY is the authority on whether a mandate is in force (AB-11): a
+  // presented event proves who SAID something, never that it still holds. The
+  // default reads the durable registry; tests inject.
+  const lookupMandate = options.lookupMandate || ((urn) => {
+    const hit = mandateRegistry.findByUrn(mandateRegistry.load(), urn);
+    return hit ? hit.entry : null;
+  });
   // Injectable for tests; the default is the Jev option, which resolves null unless switched on.
   const interpret = options.interpretIntent || voiceIntentJev.interpret;
 
@@ -179,12 +187,52 @@ module.exports = async function voiceIntentRoutes(fastify, options) {
         message: 'The mandate event signature did not verify.',
       });
     }
-    if (!mandateLib.isMandateActive(mandateRecord)) {
+    // The registry decides. A signed `revoked:false` event is a snapshot; once the
+    // registry says revoking/revoked/revoked_unpublished/expired, or has never
+    // heard of the URN, the mandate is inactive whatever the event claims.
+    // The event is looked up by its `d` tag and must agree with its own content.
+    const dTags = Array.isArray(mandate.tags) ? mandate.tags.filter((t) => Array.isArray(t) && t[0] === 'd') : [];
+    if (dTags.length !== 1 || dTags[0][1] !== mandateRecord.urn) {
       return reply.code(403).send({
-        success: false, error: 'mandate-inactive',
-        message: 'The mandate is revoked or expired.',
+        success: false, error: 'mandate-invalid',
+        message: 'The mandate event must carry exactly one d tag naming its own urn.',
       });
     }
+    let registered;
+    try {
+      registered = lookupMandate(mandateRecord.urn);
+    } catch (err) {
+      logger.error({ event: 'voice-intent.mandate-registry-error', err: err.message }, 'voice-intent: mandate registry unreadable — declining');
+      return reply.code(503).send({
+        success: false, error: 'mandate-registry-unavailable',
+        message: 'The mandate registry could not be read; declining (fail-closed).',
+      });
+    }
+    if (!mandateRegistry.isEnforceable(registered, Math.floor(Date.now() / 1000)) || mandateLib.isMandateActive(mandateRecord) === false) {
+      return reply.code(403).send({
+        success: false, error: 'mandate-inactive',
+        message: 'The mandate is revoked, expired or unknown to this pod owner.',
+      });
+    }
+    // Only the pod owner may issue: the event signer, the registered issuer and
+    // the owning pod must all be the same key (one authority per pod).
+    const registeredRecord = registered.record;
+    const issuerHex = mandateLib.normalisePubkey(registeredRecord.issuer);
+    const eventKey = typeof mandate.pubkey === 'string' ? mandate.pubkey.toLowerCase() : null;
+    if (!issuerHex || eventKey !== issuerHex || mandateLib.podOf(registeredRecord) !== issuerHex) {
+      return reply.code(403).send({
+        success: false, error: 'mandate-issuer-mismatch',
+        message: 'The mandate event was not signed by the pod owner who issued it.',
+      });
+    }
+    // Agent and container come from the registry, never from the event body.
+    if (mandateLib.normalisePubkey(mandateRecord.agent) !== mandateLib.normalisePubkey(registeredRecord.agent)) {
+      return reply.code(403).send({
+        success: false, error: 'mandate-invalid',
+        message: 'The mandate event does not match the registered grantee.',
+      });
+    }
+    mandateRecord = registeredRecord;
     // When the speaker is authenticated, the mandate must grant THAT speaker
     // (the grantee `agent` is the principal authorised to act). Reconcile the
     // same way source_urn is reconciled against the verified identity.

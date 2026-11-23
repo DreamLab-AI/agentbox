@@ -369,6 +369,7 @@ class NostrBridge {
     this._subCounter = 0;
     this._authSigner = null; // NIP-42 session signer (setAuthSigner)
     this._pendingAuth = new Map(); // relayUrl → in-flight NIP-42 AUTH event id
+    this._okWaiters = new Map();   // `${eventId}\n${relayUrl}` → (accepted, message) => void  (publishSigned)
 
     // Subscription-level keepalive (distinct from RelayConnection's socket
     // ping/pong). A Cloudflare Durable-Object relay stops PUSHING to an idle
@@ -534,6 +535,65 @@ class NostrBridge {
       conn.send(eventMsg);
     }
     return signedEvent;
+  }
+
+  /**
+   * Publish an ALREADY-SIGNED event and report, per relay, whether the relay
+   * answered `["OK", id, true]`. Unlike {@link publish} (which signs internally
+   * and never learns the outcome) this is for callers that must know the event
+   * landed, e.g. a mandate revocation (AB-11).
+   *
+   * Never throws for a relay problem: a rejecting, silent or unreachable relay
+   * is `{ ok: false, message }` (`timeout` when no OK arrived in time). A relay
+   * that answers `auth-required:` gets the event once more after the NIP-42
+   * handshake (this bridge answers the relay's AUTH challenge when a signer was
+   * registered with {@link setAuthSigner}).
+   *
+   * @param {object} signedEvent - id, pubkey, sig present (verified by the relay, not here)
+   * @param {object} [opts]
+   * @param {number} [opts.timeoutMs=5000]
+   * @param {string[]} [opts.relays] - await only these (default: every configured relay)
+   * @param {number} [opts.authRetryDelayMs=750] - wait before the single auth-required resend
+   * @returns {Promise<Object<string, { ok: boolean, message: string }>>}
+   */
+  async publishSigned(signedEvent, opts = {}) {
+    if (!signedEvent || typeof signedEvent.id !== 'string' || typeof signedEvent.sig !== 'string'
+        || typeof signedEvent.pubkey !== 'string' || !Number.isInteger(signedEvent.kind)) {
+      throw new TypeError('publishSigned: a signed event (id, pubkey, sig, kind) is required');
+    }
+    const timeoutMs = opts.timeoutMs ?? 5000;
+    const retryDelay = opts.authRetryDelayMs ?? 750;
+    const wanted = opts.relays ?? [...this._connections.keys()];
+    const frame = JSON.stringify(['EVENT', signedEvent]);
+
+    const one = (url) => new Promise((resolve) => {
+      const conn = this._connections.get(url);
+      if (!conn) { resolve({ ok: false, message: 'relay is not configured on this bridge' }); return; }
+      const wkey = `${signedEvent.id}\n${url}`;
+      let retried = false;
+      let timer = null;
+      let retryTimer = null;
+      const done = (r) => {
+        clearTimeout(timer); clearTimeout(retryTimer);
+        this._okWaiters.delete(wkey);
+        resolve(r);
+      };
+      timer = setTimeout(() => done({ ok: false, message: 'timeout: no OK from the relay' }), timeoutMs);
+      this._okWaiters.set(wkey, (accepted, message) => {
+        const msg = typeof message === 'string' ? message : '';
+        if (accepted === true) { done({ ok: true, message: msg }); return; }
+        if (!retried && this._authSigner && /^auth-required/i.test(msg)) {
+          retried = true;
+          retryTimer = setTimeout(() => conn.send(frame), retryDelay);
+          return;
+        }
+        done({ ok: false, message: msg || 'rejected' });
+      });
+      conn.send(frame);
+    });
+
+    const results = await Promise.all(wanted.map(async (url) => [url, await one(url)]));
+    return Object.fromEntries(results);
   }
 
   // ── NIP-98 verify ──
@@ -1019,6 +1079,9 @@ class NostrBridge {
     }
 
     if (type === 'OK') {
+      // publishSigned waiters first: ["OK", <eventId>, <accepted>, <msg>].
+      const waiter = this._okWaiters.get(`${subId}\n${relayUrl}`);
+      if (waiter) { try { waiter(message[2], message[3]); } catch { /* never crash the bridge */ } }
       // ["OK", <eventId>, <accepted>, <msg>]. When it acks our in-flight NIP-42
       // AUTH event, the relay session is now authenticated — replay every
       // subscription so gated zones start delivering. (subId carries the event

@@ -13,13 +13,17 @@
  * The flow:
  *   1. `createMandate()` produces the canonical record + its
  *      `urn:agentbox:mandate` URN (minted through lib/uris — never ad hoc).
- *   2. `mandateToAclTurtle()` renders the WAC fragment the user PUTs to
- *      `<container>/.acl`; solid-pod-rs parses `acl:agent` (individual
- *      grants) and matches it against the agent's NIP-98-derived
- *      `did:nostr` webid (verified upstream in solid-pod-rs evaluator).
- *   3. `signMandate()` wraps the record in a signed, parameterised-
- *      replaceable Nostr event so it is revocable: republish under the
- *      same `d` tag with `{ revoked: true }` to revoke.
+ *      The record names the owner `pod` (the issuer's pubkey) and a container
+ *      inside it (`/pods/<pod>/…`).
+ *   2. `lib/mandate-acl.js` renders the container's WHOLE WAC sidecar from the
+ *      registry (owner block + one block per active mandate) and PUTs it at
+ *      `<container-without-slash>.acl`, the layout solid-pod-rs reads.
+ *   3. `buildMandateEvent()` / `signMandate()` wrap the record in a signed,
+ *      parameterised-replaceable Nostr event; revocation republishes the same
+ *      `d` tag with `status=revoked` (lib/mandate-revocation.js).
+ *
+ * Control is never delegated: it is not an allowed mode, and the sidecar always
+ * keeps the owner's Control (AB-11, ADR amending ADR-043 D4.5).
  *
  * No new URN kind and no new identity primitive are introduced — `mandate`
  * is an existing kind (lib/uris KINDS), identity is `did:nostr`.
@@ -36,7 +40,9 @@ const uris = require('./uris');
 const MANDATE_EVENT_KIND = 30078;
 
 const PUBKEY_HEX_RE = /^[0-9a-f]{64}$/;
-const ALLOWED_MODES = Object.freeze(['Read', 'Write', 'Append', 'Control']);
+// Control is deliberately absent: a delegation never confers Control, or the
+// grantee could re-delegate or seize the container (forum pod-zone ACL, ADR-096).
+const ALLOWED_MODES = Object.freeze(['Read', 'Write', 'Append']);
 const DEFAULT_MODES = Object.freeze(['Read', 'Write', 'Append']);
 
 class MandateError extends Error {
@@ -65,6 +71,9 @@ function normaliseModes(modes) {
     // Accept 'acl:Write' or 'Write'; capitalise canonical form.
     const bare = String(m).replace(/^acl:/, '');
     const canon = bare.charAt(0).toUpperCase() + bare.slice(1).toLowerCase();
+    if (canon === 'Control') {
+      throw new MandateError('acl:Control is never delegated by a mandate (the owner alone holds Control)');
+    }
     if (!ALLOWED_MODES.includes(canon)) {
       throw new MandateError(`unsupported acl:mode "${m}" (allowed: ${ALLOWED_MODES.join(', ')})`);
     }
@@ -76,12 +85,59 @@ function normaliseModes(modes) {
   return out;
 }
 
-/** A pod container path must be absolute and end in a slash. */
+/**
+ * Characters a container path may use. Deliberately narrow: the value is
+ * written into a Turtle IRI and into a pod URL, so anything that could close
+ * the IRI (`>`), start a fragment/query, or smuggle a separator is refused.
+ */
+const CONTAINER_RE = /^\/[A-Za-z0-9._~\-/]*$/;
+
+/**
+ * A pod container path must be absolute, end in a slash, and be plain:
+ * no dot segments (raw or encoded), no empty segments, no sidecar suffix.
+ */
 function normaliseContainer(container) {
   if (typeof container !== 'string' || !container.startsWith('/')) {
     throw new MandateError(`container must be an absolute pod path, got "${container}"`);
   }
-  return container.endsWith('/') ? container : `${container}/`;
+  const path = container.endsWith('/') ? container : `${container}/`;
+  if (!CONTAINER_RE.test(path)) {
+    throw new MandateError('container may contain only letters, digits and . _ ~ - /');
+  }
+  const segments = path.split('/').slice(1, -1);
+  for (const seg of segments) {
+    if (seg === '' || seg === '.' || seg === '..') {
+      throw new MandateError('container must not contain empty or dot segments');
+    }
+    if (/\.(acl|meta)$/i.test(seg)) {
+      throw new MandateError('container must not name an .acl or .meta sidecar');
+    }
+  }
+  return path;
+}
+
+/**
+ * Normalise a container AND require it to sit strictly inside the owner's pod:
+ * `/pods/<ownerHex>/<something>/`. The pod root itself is refused (a mandate
+ * there would span the whole pod).
+ *
+ * @param {string} container
+ * @param {string} ownerHex - the pod owner's x-only pubkey hex
+ * @returns {string} the normalised container path
+ */
+function containerInPod(container, ownerHex) {
+  const path = normaliseContainer(container);
+  const prefix = `/pods/${ownerHex}/`;
+  if (!path.startsWith(prefix) || path === prefix) {
+    throw new MandateError(`container must be inside the issuer's pod (${prefix}<container>/), got "${path}"`);
+  }
+  return path;
+}
+
+/** The owning pod's pubkey hex for a record; old records derive it from `issuer`. */
+function podOf(record) {
+  if (!record) return null;
+  return normalisePubkey(record.pod) || normalisePubkey(record.issuer);
 }
 
 /**
@@ -90,19 +146,25 @@ function normaliseContainer(container) {
  * @param {object} args
  * @param {string} args.issuer    - Granting user (did:nostr or hex pubkey).
  * @param {string} args.agent     - Grantee agent (did:nostr or hex pubkey).
- * @param {string} args.container - Absolute pod container path (e.g. "/kg/").
+ * @param {string} args.container - Pod container path inside the issuer's pod
+ *   (e.g. "/pods/<issuerHex>/proj/foo/").
+ * @param {string} [args.pod]     - Owner pod pubkey; must equal the issuer when given.
  * @param {string[]} [args.modes=['Read','Write','Append']] - acl:mode names.
  * @param {number} [args.issuedAt]  - Unix seconds; defaults to now.
  * @param {number|null} [args.expiresAt=null] - Unix seconds, or null for no expiry.
  * @returns {{ urn: string, record: object }}
  */
-function createMandate({ issuer, agent, container, modes, issuedAt, expiresAt } = {}) {
+function createMandate({ issuer, agent, container, modes, issuedAt, expiresAt, pod } = {}) {
   const issuerHex = normalisePubkey(issuer);
   if (!issuerHex) throw new MandateError(`bad issuer identity: ${issuer}`);
   const agentHex = normalisePubkey(agent);
   if (!agentHex) throw new MandateError(`bad agent identity: ${agent}`);
 
-  const path = normaliseContainer(container);
+  // One authority per pod (design decision b): the issuer IS the pod owner.
+  if (pod !== undefined && normalisePubkey(pod) !== issuerHex) {
+    throw new MandateError('pod must be the issuer (a mandate is issued by the pod owner)');
+  }
+  const path = containerInPod(container, issuerHex);
   const modeList = normaliseModes(modes);
   const issued = Number.isInteger(issuedAt) ? issuedAt : Math.floor(Date.now() / 1000);
   const expires = expiresAt === undefined ? null : expiresAt;
@@ -113,6 +175,7 @@ function createMandate({ issuer, agent, container, modes, issuedAt, expiresAt } 
   const record = {
     issuer: `did:nostr:${issuerHex}`,
     agent: `did:nostr:${agentHex}`,
+    pod: issuerHex,
     container: path,
     modes: modeList,
     issued_at: issued,
@@ -126,57 +189,78 @@ function createMandate({ issuer, agent, container, modes, issuedAt, expiresAt } 
   return { urn, record };
 }
 
-/**
- * Render the WAC ACL Turtle granting the mandate's agent the recorded
- * modes over the container. The user PUTs this to `<container>.acl`.
- * Mirrors the owner-ACL shape solid-pod-rs writes at provision time.
- *
- * @param {object} record - A mandate record from createMandate().
- * @returns {string} Turtle document.
- */
-function mandateToAclTurtle(record) {
-  const agentHex = normalisePubkey(record && record.agent);
-  if (!agentHex) throw new MandateError('record.agent is not a valid did:nostr');
-  const container = normaliseContainer(record.container);
-  const modeList = normaliseModes(record.modes);
-  const modeClause = modeList.map((m) => `acl:${m}`).join(', ');
+const MANDATE_STATUSES = Object.freeze(['active', 'revoked']);
 
-  return (
-    '@prefix acl: <http://www.w3.org/ns/auth/acl#> .\n' +
-    '<#agent-mandate> a acl:Authorization ;\n' +
-    `    acl:agent <did:nostr:${agentHex}> ;\n` +
-    `    acl:accessTo <${container}> ;\n` +
-    `    acl:default <${container}> ;\n` +
-    `    acl:mode ${modeClause} .\n`
-  );
+/**
+ * The `created_at` for a mandate event that must supersede an earlier one in
+ * the same addressable slot: never earlier than now, and strictly later than
+ * the event it replaces (relays keep the highest `created_at` per
+ * `(pubkey, kind, d)`; a tie falls to the lower id, which is arbitrary).
+ *
+ * @param {number|undefined} afterCreatedAt - the grant event's created_at, if known
+ * @param {number} [nowSec]
+ * @returns {number}
+ */
+function mandateEventCreatedAt(afterCreatedAt, nowSec) {
+  const now = Number.isInteger(nowSec) ? nowSec : Math.floor(Date.now() / 1000);
+  return Number.isInteger(afterCreatedAt) ? Math.max(now, afterCreatedAt + 1) : now;
 }
 
 /**
- * Wrap a mandate record in a signed, parameterised-replaceable Nostr
- * event. Revoke by re-signing the same `d` tag with a record whose
- * `revoked` is true.
+ * Build the UNSIGNED kind-30078 envelope for a mandate record: tags
+ * `d=<urn>`, `p=<agent>`, `t=agent-mandate`, `status=<active|revoked>`, plus
+ * an `expiration` tag only when the mandate has a future expiry (relays reject
+ * an event whose expiration has already passed, and an empty tag is noise).
+ *
+ * @param {object} record
+ * @param {object} [opts]
+ * @param {'active'|'revoked'} [opts.status='active']
+ * @param {number} [opts.createdAt]      - explicit created_at (wins over the rest)
+ * @param {number} [opts.afterCreatedAt] - created_at of the event this one supersedes
+ * @param {number} [opts.nowSec]
+ * @returns {object} unsigned event
+ */
+function buildMandateEvent(record, opts = {}) {
+  if (!record || !record.urn) throw new MandateError('record must carry a urn (use createMandate)');
+  const status = opts.status || 'active';
+  if (!MANDATE_STATUSES.includes(status)) {
+    throw new MandateError(`status must be one of ${MANDATE_STATUSES.join(', ')}`);
+  }
+  const now = Number.isInteger(opts.nowSec) ? opts.nowSec : Math.floor(Date.now() / 1000);
+  const tags = [
+    ['d', record.urn],
+    ['p', normalisePubkey(record.agent)],
+    ['t', 'agent-mandate'],
+    ['status', status],
+  ];
+  if (Number.isInteger(record.expires_at) && record.expires_at > now) {
+    tags.push(['expiration', String(record.expires_at)]);
+  }
+  return {
+    kind: MANDATE_EVENT_KIND,
+    created_at: Number.isInteger(opts.createdAt)
+      ? opts.createdAt
+      : mandateEventCreatedAt(opts.afterCreatedAt, now),
+    tags,
+    content: JSON.stringify(status === 'revoked' ? { ...record, revoked: true } : record),
+  };
+}
+
+/**
+ * Wrap a mandate record in a signed, parameterised-replaceable Nostr event.
+ * Revoke by re-signing the same `d` tag with `status: 'revoked'`.
  *
  * @param {object} record - A mandate record (must carry `urn`).
- * @param {{ sign(event: object): Promise<object> }} signer - from loadSigner().
+ * @param {{ sign(event: object): Promise<object> }} signer
+ * @param {object} [opts] - see {@link buildMandateEvent}
  * @returns {Promise<object>} The signed Nostr event.
  */
-async function signMandate(record, signer) {
+async function signMandate(record, signer, opts = {}) {
   if (!record || !record.urn) throw new MandateError('record must carry a urn (use createMandate)');
   if (!signer || typeof signer.sign !== 'function') {
     throw new MandateError('signMandate requires a signer with sign(event)');
   }
-  const unsigned = {
-    kind: MANDATE_EVENT_KIND,
-    created_at: Math.floor(Date.now() / 1000),
-    tags: [
-      ['d', record.urn],
-      ['p', normalisePubkey(record.agent)],
-      ['t', 'agent-mandate'],
-      ['expiration', String(record.expires_at ?? '')],
-    ],
-    content: JSON.stringify(record),
-  };
-  return signer.sign(unsigned);
+  return signer.sign(buildMandateEvent(record, opts));
 }
 
 /**
@@ -230,8 +314,12 @@ module.exports = {
   ALLOWED_MODES,
   MandateError,
   createMandate,
-  mandateToAclTurtle,
+  buildMandateEvent,
+  mandateEventCreatedAt,
   signMandate,
+  containerInPod,
+  normaliseContainer,
+  podOf,
   isMandateActive,
   recordFromSignedMandate,
   normalisePubkey,
