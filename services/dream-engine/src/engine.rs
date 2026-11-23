@@ -15,7 +15,7 @@ use dream_core::ledger::{self, LedgerRow};
 use dream_core::replay;
 use dream_core::roster;
 use dream_core::runstate;
-use dream_core::seams::{DraftPr, Forge, Llm, LlmRequest, MemorySink, Notice, Notifier};
+use dream_core::seams::{DraftPr, Forge, Llm, LlmRequest, MemorySink, Notice, Notifier, PrOutcome};
 use dream_core::source;
 use dream_core::{persist, readiness, streak};
 use dream_gate::config::DreamConfig;
@@ -1865,20 +1865,46 @@ impl Engine {
                         .collect::<Vec<_>>()
                         .join(", "),
                 );
-                let jc = j.called("git.push", json!({ "branch": c.branch, "repo": cfg.repo, "then": "gh pr create --draft" })).await;
-                let out = self.forge.publish_draft(&DraftPr {
-                    repo_dir: repo_path.clone(),
-                    repo_slug: cfg.repo.clone(),
-                    branch: c.branch.clone(),
-                    title,
-                    body,
-                });
-                j.completed(
-                    jc,
-                    out.pushed && out.pr_url.is_some(),
-                    json!({ "pushed": out.pushed, "pr": out.pr_url }),
-                )
-                .await;
+                // Automerge is pinned to `head_sha` (`--match-head-commit`), so it
+                // must be the commit at the branch tip being pushed: the tree hash
+                // is not a commit, and a stale value would cancel the automerge or
+                // pin it to the wrong code. A tip that cannot be read publishes
+                // nothing and takes the lost-PR alert path below.
+                let out = match branch_tip(&repo_path, &c.branch) {
+                    Ok(head_sha) => {
+                        let jc = j.called("git.push", json!({ "branch": c.branch, "repo": cfg.repo, "head_sha": head_sha, "then": "gh pr create --draft" })).await;
+                        let out = self.forge.publish_draft(&DraftPr {
+                            repo_dir: repo_path.clone(),
+                            repo_slug: cfg.repo.clone(),
+                            branch: c.branch.clone(),
+                            title,
+                            body,
+                            head_sha,
+                        });
+                        j.completed(
+                            jc,
+                            out.pushed && out.pr_url.is_some(),
+                            json!({ "pushed": out.pushed, "pr": out.pr_url }),
+                        )
+                        .await;
+                        out
+                    }
+                    Err(e) => {
+                        let jc = j
+                            .called(
+                                "git.rev-parse",
+                                json!({ "branch": c.branch, "repo": cfg.repo }),
+                            )
+                            .await;
+                        j.completed(jc, false, json!({ "error": e })).await;
+                        warn!(branch = %c.branch, error = %e, "cannot resolve the verified branch tip — draft PR not published");
+                        PrOutcome {
+                            branch: c.branch.clone(),
+                            pr_url: None,
+                            pushed: false,
+                        }
+                    }
+                };
                 info!(branch = %out.branch, pushed = out.pushed, pr = ?out.pr_url, "verified candidate persisted as draft PR");
                 if out.pr_url.is_none() {
                     warn!(branch = %out.branch, pushed = out.pushed, "verified candidate has no draft PR — raising an alert");
@@ -2196,6 +2222,36 @@ fn finished_result(
     }
 }
 
+/// How long reading a local branch tip may take before it counts as failed.
+const BRANCH_TIP_TIMEOUT: Duration = Duration::from_secs(30);
+
+/// The commit at the tip of local branch `branch` in `repo`, as a full
+/// lowercase hex object name. This is the `head_sha` a draft PR's automerge is
+/// pinned to. An error means the tip could not be established, and the caller
+/// must not publish.
+fn branch_tip(repo: &Path, branch: &str) -> Result<String, String> {
+    let spec = format!("refs/heads/{branch}^{{commit}}");
+    let run = crate::gitcmd::git(
+        repo,
+        &["rev-parse", "--verify", "--quiet", &spec],
+        BRANCH_TIP_TIMEOUT,
+    )?;
+    if !run.success {
+        return Err(format!("git rev-parse {spec} failed: {}", run.message()));
+    }
+    let sha = run.stdout.trim();
+    let hex = sha
+        .bytes()
+        .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b));
+    if hex && matches!(sha.len(), 40 | 64) {
+        Ok(sha.to_string())
+    } else {
+        Err(format!(
+            "git rev-parse {spec} printed {sha:?}, not a commit id"
+        ))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -2206,6 +2262,47 @@ mod tests {
     use dream_gate::gate::VetoClass;
     use dream_gate::outcome::ExecOutcome;
     use std::sync::Mutex;
+
+    fn git_in(dir: &Path, args: &[&str]) -> String {
+        let out = Command::new("git")
+            .arg("-C")
+            .arg(dir)
+            .args(args)
+            .output()
+            .expect("git runs");
+        assert!(
+            out.status.success(),
+            "git {args:?}: {}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+        String::from_utf8_lossy(&out.stdout).trim().to_string()
+    }
+
+    #[test]
+    fn branch_tip_is_the_branch_commit_and_a_missing_branch_is_an_error() {
+        let tmp = tempfile::tempdir().unwrap();
+        let repo = tmp.path();
+        git_in(repo, &["init", "-q", "-b", "main"]);
+        std::fs::write(repo.join("a.txt"), "one\n").unwrap();
+        let id = ["-c", "user.name=t", "-c", "user.email=t@invalid"];
+        git_in(repo, &["add", "a.txt"]);
+        git_in(repo, &[&id[..], &["commit", "-q", "-m", "one"]].concat());
+        git_in(repo, &["branch", "dream/x-2026-11-23"]);
+        std::fs::write(repo.join("a.txt"), "two\n").unwrap();
+        git_in(repo, &[&id[..], &["commit", "-q", "-am", "two"]].concat());
+
+        let tip = branch_tip(repo, "dream/x-2026-11-23").unwrap();
+        assert_eq!(tip, git_in(repo, &["rev-parse", "main~1"]));
+        assert_ne!(
+            tip,
+            git_in(repo, &["rev-parse", "main"]),
+            "the branch, not HEAD"
+        );
+        assert_ne!(tip, git_in(repo, &["rev-parse", "main~1^{tree}"]));
+
+        let err = branch_tip(repo, "dream/missing").unwrap_err();
+        assert!(err.contains("refs/heads/dream/missing"), "{err}");
+    }
 
     /// Collects every notice.
     struct Recording(Mutex<Vec<Notice>>);
