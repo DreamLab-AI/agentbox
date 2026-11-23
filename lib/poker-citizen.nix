@@ -23,18 +23,18 @@
 { lib, pkgs }:
 
 let
-  version = "1.0.0-beta.19";
-  # 6064622 = the 1.0.0-beta.19 kit release (tag v1.0.0-beta.19), the website's
-  # KIT_REF since 2026-11-08: nostr-bbs-core beta.19 on k256 0.14 clears
-  # RUSTSEC-2026-0387 (crypto-bigint 0.5.5), with the deepsec HIGH ports. The
-  # citizen's own crates are unchanged since dd45447; 90 tests pass --locked.
-  rev = "6064622dbb1a7cc1ba2d072109f9e3e8a96157df";
+  version = "1.0.0-beta.21-rc.3-4-g8a0ca41";
+  # 8a0ca41 = forum main after the external-triage fixes (2026-11-23): DW-10.2
+  # buy-in reservation, DW-10.3 persisted hands and idempotent payouts, DW-10.4
+  # client pay bound to the agreed replay; protocol VERSION stays 1 (an old
+  # client drops the new Voided message). Must equal the website's KIT_REF.
+  rev = "8a0ca418b9f129b219431880d9fa5a81603428fc";
 
   src = pkgs.fetchFromGitHub {
     owner = "DreamLab-AI";
     repo  = "nostr-rust-forum";
     inherit rev;
-    hash  = "sha256-paUWTKXS2dFLSN8QUER8RoE/BGN9fm+kgUz4vaXqY2Q=";
+    hash  = "sha256-YD3CijyWD8a8V4zwi0qrCPHqNXKY8bM4n3jPWlBpPOM=";
   };
 
 in
