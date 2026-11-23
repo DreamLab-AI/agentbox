@@ -185,7 +185,7 @@ chain, so a wrong-branch node looks healthy), and when `checkpoint_every > 0` na
 | checkpoints | off (`checkpoint_every = 0`, owner SC5) |
 | liquidity | none at the seal: `pegs: []`, and coins enter only by peg-in (SPEC 2, no subsidy), which needs txbt4 coins the estate does not hold. A claimed peg-in is a coinbase output and waits 100 sidechain blocks |
 
-The table ships `enabled = true` (`agentbox.toml:2044`, live since 2026-10-03), so the three programs are baked; setting it to `false` removes them at the next rebuild.
+The table ships `enabled = true` (`[sidechain.dreamlab-txbt4].enabled` in `agentbox.toml`, live since 2026-10-03), so the three programs are baked; setting it to `false` removes them at the next rebuild.
 
 ## Not yet built (PRD-024 P1)
 

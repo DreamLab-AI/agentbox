@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: ceab43d415f6efd28c0bbf39def9179e07f7fb2c
+verified_commit: 469e55367db33e218051985e9d1c8f7b82d19889
 verified_paths: [services/agentbox-manifest/src/system_one.rs, config/hooks/lib/jev-option.cjs, tests/system-one/consumer-activation.test.mjs]
 owner: operator
 review_trigger: a passing acceptance run per docs/reference/system-one-activation.md on the booted image, memory recall included once its six frozen fixture IDs resolve (activation → live); changes to consumer locality or acceptance thresholds
@@ -73,3 +73,7 @@ are unchanged. Egress-register edits only refresh line citations, not consent
 or destinations. Consumer-test locality follows the explicitly selected vendor.
 Focused message tests and the sessions, System One and plugin regressions were
 run; deployment acceptance remains separate. No status axis is promoted.
+
+## Comment-drift check — 2026-11-23 at `469e55367`
+
+Governed delta: `services/agentbox-manifest/src/system_one.rs` changed only in the comment above `AGENTBOX_LOCAL` (`:535-537`): `[system_one].local_only` is empty when the key is absent, and the shipped manifest lists every consumer with a private route. It is line-count neutral and no executable line changes. No decision, status axis or claim of this record is affected. Run: `git diff 59b1aca1c..469e55367 -- <governed paths>` read in full; the agentbox-manifest crate passes `cargo test` and `cargo clippy --all-targets -- -D warnings`, and `scripts/agentbox-config-validate.sh agentbox.toml` reports the manifest valid.

@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: fc95b38774814f9bc83ddfac28649d12cd74fe12
+verified_commit: 469e55367db33e218051985e9d1c8f7b82d19889
 verified_paths: [config/role-accounts.json, services/agentbox-manifest/src/role_accounts.rs, services/agentbox-manifest/src/main.rs, lib/agentbox-manifest.nix, config/lib/role-custody.sh, config/entrypoint-unified.sh, flake.nix, docker-compose.yml, agentbox.toml, setup/agentbox.default.toml, schema/agentbox.toml.schema.json, management-api/lib/system-manifest.js, tests/config/role-isolation-supervisor.test.sh, tests/config/role-secrets-delivery.test.sh, tests/config/role-isolation-boot.test.sh, tests/config/fixtures/role-isolation/supervisord.conf, config/custody/env-classes.json, scripts/ci/env-secret-inventory.js, management-api/lib/role-secret.js, services/nostr-pod-bridge/src/role_secret.rs, services/nostr-pod-bridge/src/bootstrap.rs, tests/runtime-contract/RC-X1-06.sh, config/custody/identity-port-acl.json, services/nostr-pod-bridge/src/identity_port/mod.rs, services/nostr-pod-bridge/src/identity_port/server.rs, management-api/lib/pod-signer.js, scripts/activation/role-isolation-rehearsal.sh, scripts/activation/role-isolation-rehearsal.host.sh, tests/config/role-isolation-rehearsal.test.sh, tests/config/role-isolation-class.test.cjs, config/bake-devuser-privilege.sh, tests/runtime-contract/RC-X1-07.sh, tests/security/compose-role-env.test.mjs, docker-compose.override.yml, tests/config/role-custody-migrate.test.sh, config/sidechain/run-producer.sh, config/sidechain/run-faucet.sh, config/sidechain/mirror-sync.sh]
 owner: jjohare
 review_trigger: the role-isolation rehearsal (scripts/activation/role-isolation-rehearsal.sh) passing or failing on a rebuilt image; a new secret-bearing supervisor program; a new [sidechain.<name>] chain; a change to the host docker gid; the identity port's consumer cutover (W3b: JunkieJarvis, the mirror hook, the gateway, dream-engine); a change to config/custody/identity-port-acl.json
@@ -937,3 +937,11 @@ Antigravity consultant, and correct comments and docs. The new name is
 classified non-secret alongside `_AGY_AUTH_MODE`. Role accounts and secret
 delivery are unchanged. No value, authority, boundary or runtime behaviour
 governed by this decision changes. This is source verification, not activation.
+
+## Comment-drift check — 2026-11-23 at `469e55367`
+
+Governed delta: `agentbox.toml` changed only in the comment above `[sidechain.dreamlab-txbt4]` (`:2042-2043`): "Off until the lead starts it" becomes "On since 2026-10-03", which matches `enabled = true` and the baked `autostart=true` producer, mirror and faucet programs. It is line-count neutral, so no `agentbox.toml:NNNN` citation moves, and no key or value changes. No decision, status axis or claim of this record is affected. Run: `git diff 59b1aca1c..469e55367 -- <governed paths>` read in full; the agentbox-manifest crate passes `cargo test` and `cargo clippy --all-targets -- -D warnings`, and `scripts/agentbox-config-validate.sh agentbox.toml` reports the manifest valid.
+
+## Class-count note — 2026-11-23
+
+The counts in the Decision's class list ("ROLE (11)", "DEVUSER_CLASS (35)") are as of the 2026-10-03 record and are historical; the list is not rewritten. At `469e55367` the registry `config/custody/env-classes.json` classifies **38** DEVUSER_CLASS names and **12** ROLE names (the twelfth is `DREAM_GOVERNANCE_PRIVKEY_HEX`, the ER-6 agent-governance signer). `node scripts/ci/env-secret-inventory.js --check` prints `PASS: 743 names read; ROLE 12, DEVUSER_CLASS 37, NON_SECRET 694`. Its DEVUSER_CLASS figure is 37, not 38, because it counts names that a scanned source reads: `SUBQ_API_KEY` is classified but no file in the registry's `sources` reads it. Check both numbers with `node -e 'const c=require("./config/custody/env-classes.json").classes;console.log(Object.keys(c.ROLE).length,Object.keys(c.DEVUSER_CLASS).length)'` (registry) and the `--check` line above (names read). A classification count does not prove a value is set in a running environment.

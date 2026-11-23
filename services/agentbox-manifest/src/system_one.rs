@@ -532,9 +532,9 @@ fn consumer_exports(manifest: &Value, p: &Projection, warn: &mut dyn FnMut(Strin
     ));
 
     // `[system_one].local_only` lists the consumers whose questions must stay on the
-    // keyless LAN route (private data). Empty by default: every consumer takes the
-    // proxy, i.e. the selected backend. A listed consumer with no usable local
-    // backend is switched off, never sent to the cloud.
+    // keyless LAN route (private data). An absent key means empty (every consumer takes
+    // the selected backend); the shipped agentbox.toml lists every consumer with a private
+    // route (AGENTBOX_LOCAL + EXTERNAL). One with no usable local backend is off, never cloud.
     const AGENTBOX_LOCAL: [(&str, &str); 13] = [
         ("failure_taxonomy", "FAILURE"),
         ("manifest_plan", "MANIFEST"),
