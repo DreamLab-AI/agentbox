@@ -197,7 +197,8 @@ outright.
 ## The generator
 
 `scripts/diagram-index-gen.cjs` — zero dependencies, Node ≥ 18; `--render` needs no install
-(Pele is vendored in `scripts/vendor/pele` with `scripts/lib/pele-static.cjs`).
+(Pele is vendored in `scripts/vendor/pele` with `scripts/lib/pele-static.cjs`; the repair convention
+lives in `scripts/lib/diagram-convention.cjs`, so `scripts/lib/` travels whole).
 Copy it **with those two directories** to `<corpus>/tools/` (or a repo `scripts/`) so the corpus is
 self-checking without this skill present.
 
@@ -213,6 +214,10 @@ node $G docs/diagrams --report out/diagrams.json     # JSON for another consumer
 node $G docs/diagrams                                # regenerate the indexes
 ```
 
+`--update-resolved-baseline` prunes `<corpus>/resolved-ratchet.json` (creates it from the corpus when
+absent; otherwise it only removes stale entries, never adds). The successor-only repair convention,
+its gates and panel-ID aliases are in [references/topic-contract.md](references/topic-contract.md#repair-convention-and-panel-aliases).
+
 `--only <substr>` restricts any run to matching topic files (and suppresses index
 writes). `--jobs N` sets render concurrency, default 6. Exit codes: 0 ok, 1
 validation/render error, 2 usage.
@@ -220,7 +225,8 @@ validation/render error, 2 usage.
 `--report` writes one JSON document describing the whole corpus — per topic the
 id, file, area, title, `verified_commit`, `worktree`, sources, governing docs,
 ADRs, each diagram with its kind and rendered SVG, the citation result and the
-register counts, plus corpus totals. It works with or without `--cite-check` and
+register counts, plus corpus totals and the repair-convention block (`convention`: aliases, frozen
+panels, RESOLVED ratchet status, size warnings, cross-reference resolution; `warnings`; `errors`). It works with or without `--cite-check` and
 `--render`; the fields those populate are empty when they did not run. This is
 the interface the `explainer` skill's diagrams pack reads.
 

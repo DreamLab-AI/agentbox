@@ -17,6 +17,7 @@ marked as convention.
 | `sources` | yes | list of repo-relative code paths; each must exist; **a citation to a file not in this list is never checked** |
 | `verified_commit` | yes | a 7–40 hex sha, or a `{repo: sha}` map |
 | `worktree` | no | `YYYY-MM-DD`, set only when a source was read from a dirty tree |
+| `aliases` | no | map of an OLD panel ID to the NEW panel ID that holds it (see [Repair convention](#repair-convention-and-panel-aliases)) |
 
 `sources:` is load-bearing twice over: it is the existence check, and it is the
 resolution table for every citation in the file. A citation whose file is absent
@@ -111,6 +112,55 @@ numbering is per-topic and sequential — renumber when you insert.
 - a dark `rect` fill (luminance < 140) — the message text stops being readable
 - an unterminated code fence
 - with `--render`: any Pele parse error, or any render wider than 4500 px
+
+## Repair convention and panel aliases
+
+**Successor only.** When a topic is re-authored because a defect a panel records is gone, do not edit that panel
+to say so. In-place `RESOLVED` retrofits are banned for new work. Freeze the old panel (it keeps its heading and
+body) and describe the current behaviour in a successor panel. The first non-blank line under the frozen panel's
+heading is the banner, exactly:
+
+```
+> **Superseded** by AB-16.15 at 3f66d51.
+```
+
+or, so the frozen panel's anchors stay verifiable after the topic is re-stamped (`at` is the successor's
+revision, `frozen at` the revision this panel was read at; both 7 to 12 lowercase hex):
+
+```
+> **Superseded** by AB-16.15 at 3f66d51 (frozen at 59b1aca).
+```
+
+With `(frozen at ...)`, `--cite-check` / `--strict-citations` read that panel's diagram citations at `59b1aca`
+in the corpus's own repository (other repositories in a `{repo: sha}` map keep the topic's sha). Without it the
+panel is checked at `verified_commit` like any other. Never edit a frozen panel's anchors to chase a newer
+revision.
+
+Gate rules, all enforced by `--check`:
+
+- (a) a panel whose heading or body contains the word `RESOLVED` (case-sensitive) fails unless it is listed in
+  `<corpus>/resolved-ratchet.json` (`{"panels": ["XX-NN.n", ...]}`). The list may only shrink: an entry whose
+  panel no longer exists, is frozen, or no longer contains `RESOLVED` fails as stale. An absent file is an
+  empty baseline. `--update-resolved-baseline` creates the file from the corpus once, then only prunes.
+- (b) a banner must name an existing panel ID or a resolvable alias; a malformed banner, one not directly under
+  the heading, a self-reference and a supersession cycle fail.
+- (c) a frozen panel may not itself carry `RESOLVED`.
+
+**Splitting a large topic.** Move panels to the new topic and map each old ID in the new topic's frontmatter:
+
+```yaml
+aliases:
+  AB-02.17: AB-44.3
+```
+
+An inline `aliases: {AB-02.17: AB-44.3}` also parses. It fails when the target does not exist, when the old ID
+is still a live panel, when an alias chains (point it straight at the live panel) or loops, or when two topics
+alias the same old ID. Aliases are followed by banners, `see XX-NN.n` references, `file.md#anchor` panel
+links, `REGISTER*.md` and `review-ledger.jsonl`. An unresolvable `see` reference or panel link fails; an
+unresolvable bare mention only warns. The generated `README.md` block and `COVERAGE.md` list every alias and
+mark each frozen panel with a link to its successor.
+
+**Size.** A topic over 600 lines or 15 panels draws a warning (console and `--report`), never a failure.
 
 ## Conventions the checker cannot see
 

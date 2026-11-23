@@ -49,10 +49,19 @@
  *                        as illegible.
  *   --jobs N             accepted for compatibility; Pele renders synchronously.
  *   --only S             restrict to topic files whose relative path contains S.
+ *                        Alias and banner targets are still resolved against the
+ *                        whole tree; the ratchet staleness check is skipped (it
+ *                        needs the whole tree).
  *   --report <path>      write a JSON report of the whole corpus (topics,
- *                        diagrams, citation results, register counts, totals).
+ *                        diagrams, citation results, register counts, totals,
+ *                        and the repair-convention block: size warnings,
+ *                        aliases, frozen panels, RESOLVED ratchet status,
+ *                        cross-reference resolution).
  *                        Works with or without --cite-check / --render; the
  *                        fields those populate are empty when they did not run.
+ *   --update-resolved-baseline  prune <corpus>/resolved-ratchet.json: it creates
+ *                        the file from the corpus when absent, otherwise it only
+ *                        REMOVES entries that are stale. It can never add one.
  *
  * Exit codes: 0 ok, 1 validation/render error, 2 usage / IO error.
  *
@@ -89,6 +98,19 @@
  *
  * Every mermaid block must sit under an H2 whose first token is `<topic-id>.<n>`;
  * that token is the diagram id and must be unique across the tree.
+ *
+ * Repair convention and aliases (scripts/lib/diagram-convention.cjs, which must
+ * be copied beside this file; documented in references/topic-contract.md):
+ *   - a frozen panel carries, as the first non-blank line under its heading,
+ *       > **Superseded** by <PANEL-ID> at <short-sha>.
+ *     optionally `... at <short-sha> (frozen at <short-sha>).`: the frozen panel's
+ *     citations are then read at the `frozen at` revision, not verified_commit.
+ *   - a panel containing the word RESOLVED fails unless listed in
+ *     <corpus>/resolved-ratchet.json (shrink-only); a frozen panel may not carry it.
+ *   - topic frontmatter `aliases:` maps an old panel ID to its new one:
+ *       aliases:
+ *         AB-02.17: AB-44.3
+ *   - a topic over 600 lines or 15 panels draws a warning (never a failure).
  * README.md's generated block, COVERAGE.md and REGISTER.md are build artefacts.
  *
  * ---------------------------------------------------------------------------
@@ -121,6 +143,7 @@
 const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
+const conv = require('./lib/diagram-convention.cjs');
 
 const DEFAULT_SKIP_DIRS = ['rendered', 'tools', 'scripts', 'hero', 'archive', 'src', 'assets', 'node_modules'];
 const SKIP_FILES = new Set(['README.md', 'COVERAGE.md', 'REGISTER.md', 'DECISIONS-TIMELINE.md', 'CONTRIBUTING.md']);
@@ -136,7 +159,7 @@ const COVERAGE_SKIP = /(^|\/)(node_modules|dist|target|build|coverage|\.claude-f
 
 function usage(msg) {
   if (msg) console.error(msg);
-  console.error('Usage: node diagram-index-gen.cjs <corpus-dir> [--check] [--render] [--cite-check] [--strict-citations] [--worktree-citations] [--no-source-paths] [--jobs N] [--only S] [--report PATH]');
+  console.error('Usage: node diagram-index-gen.cjs <corpus-dir> [--check] [--render] [--cite-check] [--strict-citations] [--worktree-citations] [--no-source-paths] [--jobs N] [--only S] [--report PATH] [--update-resolved-baseline]');
   process.exit(2);
 }
 
@@ -158,11 +181,13 @@ for (let i = 1; i < argv.length; i++) {
   else if (a === '--jobs') flags.jobs = parseInt(argv[++i], 10) || 6;
   else if (a === '--only') flags.only = argv[++i];
   else if (a === '--report') flags.report = argv[++i];
+  else if (a === '--update-resolved-baseline') flags.updateBaseline = true;
   else usage(`unknown flag ${a}`);
 }
 if (!fs.existsSync(root) || !fs.statSync(root).isDirectory()) usage(`not a directory: ${root}`);
 if (flags.strictCitations && flags.noSourcePaths) usage('--strict-citations requires source paths; do not combine with --no-source-paths');
 if (flags.report !== null && !String(flags.report).trim()) usage('--report needs a path');
+if (flags.updateBaseline && flags.only) usage('--update-resolved-baseline judges the whole tree; do not combine with --only');
 
 // ---------------------------------------------------------------- config
 const CONFIG_PATH = path.join(root, 'diagrams.config.json');
@@ -251,6 +276,8 @@ function parseFrontmatter(text, file, errors) {
     } else if (/^\s*-\s+/.test(raw) && key) {
       if (!Array.isArray(fm[key])) fm[key] = [];
       fm[key].push(parseScalar(raw.replace(/^\s*-\s+/, '').replace(/\s+#.*$/, '')));
+    } else if (key === 'aliases' && /^\s+\S/.test(raw) && conv.addAliasLine(fm, raw)) {
+      // an indented `OLD: NEW` pair under `aliases:`
     } else {
       errors.push(`${file}: unparseable frontmatter line: ${raw}`);
     }
@@ -275,6 +302,7 @@ function parseTopic(file, errors) {
   const { fm, body } = parsed;
   for (const k of REQUIRED) if (!(k in fm)) errors.push(`${rel}: missing frontmatter field '${k}'`);
   for (const k of ['governing', 'adrs', 'sources']) if (k in fm && !Array.isArray(fm[k])) fm[k] = [fm[k]];
+  fm.aliases = conv.normaliseAliases(fm.aliases, rel, errors);
   if (fm.area && !AREAS.has(fm.area)) errors.push(`${rel}: area '${fm.area}' not in ${[...AREAS.keys()].join('|')}`);
   const areaDir = rel.split(path.sep)[0];
   if (fm.area && areaDir !== fm.area) errors.push(`${rel}: area '${fm.area}' does not match directory '${areaDir}'`);
@@ -380,7 +408,11 @@ function parseTopic(file, errors) {
       prose.push({ text: ln, line: firstBodyLine + i, section });
     });
   }
-  return { file, rel, fm, diagrams, register, prose, citeChecked: 0, citeWarnings: [] };
+  const pan = conv.extractPanels(body, fm.id, text.slice(0, text.length - body.length).split('\n').length);
+  for (const pr of pan.problems) errors.push(`${rel}:${pr}`);
+  for (const d of diagrams) { const pp = pan.panels.find((x) => x.id === d.id); if (pp && pp.banner && pp.banner.frozenAt) d.frozenAt = pp.banner.frozenAt; }
+  const lineCount = text.split('\n').length - (text.endsWith('\n') ? 1 : 0);
+  return { file, rel, fm, diagrams, register, prose, citeChecked: 0, citeWarnings: [], panels: pan.panels, headings: pan.headings, lineCount, body };
 }
 
 // ---------------------------------------------------------------- citation check
@@ -412,7 +444,12 @@ function repoOf(p) {
   const top = gitToplevel(path.dirname(abs)) || path.dirname(abs);
   return { key: path.basename(top).toLowerCase(), rel: path.relative(top, abs), abs: top };
 }
+// A frozen panel's citations are read at the revision its banner names (`frozen at`),
+// not at the topic's verified_commit, which has moved on. Set per diagram; applies to
+// the corpus's own repository only (other repositories in a {repo: sha} map keep the topic's sha).
+let FROZEN_SHA = null;
 function shaFor(t, repoKey) {
+  if (FROZEN_SHA && repoKey === DEFAULT_REPO_KEY) return FROZEN_SHA;
   const v = t.fm.verified_commit;
   if (!v) return null;
   if (typeof v === 'string' && v.trim().startsWith('{')) {
@@ -487,6 +524,7 @@ function citeCheck(topics) {
   // A table row or a list item (bullet or numbered) opens a new citation context.
   const PROSE_ITEM_RE = /^\s*(?:\||[-*+]\s|\d+[.)]\s)/;
   for (const t of topics) {
+    FROZEN_SHA = null;
     const linesOf = (p) => revisionLines(t, p);
     const absentNoted = new Set();
     const emit = (d, citation, message, line) => {
@@ -585,6 +623,7 @@ function citeCheck(topics) {
     }
 
     for (const d of t.diagrams) {
+      FROZEN_SHA = d.frozenAt || null;
       const text = d.src.replace(/\\n/g, '\n');
       const partFile = new Map();
       for (const pm of text.matchAll(/^[ \t]*(?:participant|actor)\s+(\w+)(?:\s+as\s+(.+))?$/gm)) {
@@ -632,7 +671,8 @@ function symbolCheck(topics) {
   const warnings = [];
   for (const t of topics) {
     const linesOf = (p) => revisionLines(t, p);
-    for (const m of t.diagrams.map((d) => d.src).join('\n').matchAll(PART_RE)) {
+    for (const [m, dFrozen] of t.diagrams.flatMap((d) => [...d.src.matchAll(PART_RE)].map((x) => [x, d.frozenAt || null]))) {
+      FROZEN_SHA = dFrozen;
       const label = m[1];
       const c = new RegExp(CITE_RE.source).exec(label);
       if (!c) continue;
@@ -720,12 +760,12 @@ function listCoverageSources() {
 
 // ---------------------------------------------------------------- indexes
 function slug(id, title) {
-  return `${id} ${title}`.toLowerCase().replace(/[^a-z0-9\s-]/g, '').trim().replace(/\s+/g, '-');
+  return conv.slug(id, title);
 }
 /* Hops from the corpus root (where README.md and COVERAGE.md are written) back
  * to the repo root, so generated links resolve wherever the corpus sits. */
 const UP = path.relative(root, repoRoot).split(path.sep).join('/') || '.';
-function writeIndexes(topics) {
+function writeIndexes(topics, convention) {
   const byArea = Object.fromEntries([...AREAS.keys()].map((a) => [a, []]));
   for (const t of topics) byArea[t.fm.area].push(t);
   for (const k of Object.keys(byArea)) byArea[k].sort((a, b) => a.fm.id.localeCompare(b.fm.id, undefined, { numeric: true }));
@@ -747,6 +787,7 @@ function writeIndexes(topics) {
       rows.push(`| ${t.fm.id} | [${t.fm.title}](${t.rel}) | ${t.diagrams.length} | ${kinds} | ${gov} | ${t.fm.adrs.join(', ')} |`);
     }
   }
+  rows.push(...conv.indexLines(convention, '', '###'));
   const gen = `${START}\n_${topics.length} topic files, ${total} diagrams. Regenerate with_ \`${GEN_COMMAND}\`.\n${rows.join('\n')}\n${END}`;
   if (text.includes(START) && text.includes(END)) {
     text = text.slice(0, text.indexOf(START)) + gen + text.slice(text.indexOf(END) + END.length);
@@ -781,7 +822,8 @@ function writeIndexes(topics) {
   out.push('## Diagrams\n');
   out.push('| Diagram | Kind | Topic file |');
   out.push('|---------|------|------------|');
-  for (const area of AREAS.keys()) for (const t of byArea[area] || []) for (const d of t.diagrams) out.push(`| [${d.id} ${d.title}](${t.rel}#${slug(d.id, d.title)}) | ${d.kind} | ${t.fm.id} |`);
+  for (const area of AREAS.keys()) for (const t of byArea[area] || []) for (const d of t.diagrams) out.push(`| [${d.id} ${d.title}](${t.rel}#${slug(d.id, d.title)})${conv.frozenMark(convention, d.id, '')} | ${d.kind} | ${t.fm.id} |`);
+  out.push(...conv.indexLines(convention, '', '##'));
   out.push('\n## By ADR\n');
   out.push('| ADR | Topic files |');
   out.push('|-----|-------------|');
@@ -866,7 +908,7 @@ function verifiedCommitValue(v) {
   }
   return v == null ? null : String(v);
 }
-function writeReport(topics, outPath) {
+function writeReport(topics, outPath, convention, errors) {
   const zero = () => Object.fromEntries(REGISTER_KINDS.map((k) => [k.toLowerCase(), 0]));
   const totals = { topics: topics.length, diagrams: 0, citationsChecked: 0, citationWarnings: 0, register: zero() };
   const rows = topics.map((t) => {
@@ -896,15 +938,53 @@ function writeReport(topics, outPath) {
           svg: fs.existsSync(svg) ? path.relative(root, svg).split(path.sep).join('/') : null,
         };
       }),
+      lines: t.lineCount,
+      panels: t.panels.length,
       citations: { checked: t.citeChecked, warnings: t.citeWarnings.slice() },
       register,
     };
   });
-  const report = { generatedAt: new Date().toISOString(), root, head: headSha(), topics: rows, totals };
+  const d = convention.data;
+  Object.assign(totals, { panels: d.panels, aliases: d.aliases.length, frozen: d.frozen.length, resolvedBaseline: d.resolved.baseline.length, sizeWarnings: d.size.warnings.length, errors: errors.length, warnings: convention.warnings.length });
+  const report = { generatedAt: new Date().toISOString(), root, head: headSha(), topics: rows, totals, errors: errors.slice(), warnings: convention.warnings.slice(), convention: d };
   const abs = path.resolve(outPath);
   fs.mkdirSync(path.dirname(abs), { recursive: true });
   fs.writeFileSync(abs, JSON.stringify(report, null, 2) + '\n');
   return report;
+}
+
+// ---------------------------------------------------------------- repair convention
+// Whole-tree facts (aliases, panel IDs, the ratchet) are judged against EVERY topic
+// even under --only, so a banner or alias that targets a panel outside the filter
+// still resolves; only the findings for the selected topics are reported.
+function lightTopic(file) {
+  const rel = path.relative(root, file);
+  const text = fs.readFileSync(file, 'utf8');
+  const parsed = parseFrontmatter(text, rel, []);
+  if (!parsed) return null;
+  const { fm, body } = parsed;
+  fm.aliases = conv.normaliseAliases(fm.aliases, rel, []);
+  const pan = conv.extractPanels(body, fm.id, text.slice(0, text.length - body.length).split('\n').length);
+  return { rel, fm, panels: pan.panels, headings: pan.headings, lineCount: text.split('\n').length - (text.endsWith('\n') ? 1 : 0), body };
+}
+function runConvention(topics, allFiles, errors) {
+  const mine = new Map(topics.map((t) => [t.rel, t]));
+  const registry = allFiles.map((f) => mine.get(path.relative(root, f)) || lightTopic(f)).filter(Boolean);
+  if (flags.updateBaseline) {
+    const w = conv.writeBaseline(root, registry);
+    console.log(w.wrote ? `${conv.BASELINE_FILE}: ${w.before} -> ${w.after} entr${w.after === 1 ? 'y' : 'ies'}` : `${conv.BASELINE_FILE}: nothing to prune (${w.after} entr${w.after === 1 ? 'y' : 'ies'})`);
+  }
+  const baseline = conv.loadBaseline(root, errors);
+  const extraTexts = [];
+  for (const name of fs.readdirSync(root).sort()) {
+    if (/^REGISTER.*\.md$/.test(name) || name === 'review-ledger.jsonl') extraTexts.push({ where: name, text: fs.readFileSync(path.join(root, name), 'utf8'), kind: name });
+  }
+  const result = conv.check({ topics: registry, selected: new Set(topics.map((t) => t.rel)), partial: !!flags.only, baseline, extraTexts });
+  errors.push(...result.errors);
+  const d = result.data;
+  console.log(`convention: ${d.panels} panels, ${d.aliases.length} alias(es), ${d.frozen.length} frozen, ${d.resolved.marked.length} RESOLVED panel(s) vs ${d.resolved.baseline.length} in ${conv.BASELINE_FILE}, ${d.size.warnings.length} oversize topic(s) (warning only), ${d.references.viaAlias.length} reference(s) followed via alias`);
+  for (const w of result.warnings) console.warn(`  ! ${w}`);
+  return result;
 }
 
 // ---------------------------------------------------------------- main
@@ -927,6 +1007,7 @@ function writeReport(topics, outPath) {
   const total = topics.reduce((n, t) => n + t.diagrams.length, 0);
   const regTotal = topics.reduce((n, t) => n + t.register.length, 0);
   console.log(`parsed ${topics.length} topic files, ${total} mermaid diagrams, ${regTotal} register markers`);
+  const convention = runConvention(topics, allFiles, errors);
   if (flags.cite && flags.noSourcePaths) console.warn('note: --cite-check cannot resolve anything under --no-source-paths; skipped');
   if (flags.cite && !flags.noSourcePaths) {
     const w = citeCheck(topics).concat(symbolCheck(topics));
@@ -940,7 +1021,7 @@ function writeReport(topics, outPath) {
     errors.push(...rerr);
   }
   if (flags.report) {
-    const r = writeReport(topics, flags.report);
+    const r = writeReport(topics, flags.report, convention, errors);
     console.log(`wrote report ${path.resolve(flags.report)} (${r.totals.topics} topics, ${r.totals.diagrams} diagrams, ${r.totals.citationWarnings} citation warning(s))`);
   }
   if (errors.length) {
@@ -949,7 +1030,7 @@ function writeReport(topics, outPath) {
     process.exit(1);
   }
   if (!flags.check && !flags.only) {
-    writeIndexes(topics);
+    writeIndexes(topics, convention);
     console.log('wrote README.md index block + COVERAGE.md + REGISTER.md');
   }
 })().catch((e) => { console.error(e); process.exit(2); });
