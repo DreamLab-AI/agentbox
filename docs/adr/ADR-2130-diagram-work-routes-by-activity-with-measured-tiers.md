@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: fc95b38774814f9bc83ddfac28649d12cd74fe12
+verified_commit: 469e55367db33e218051985e9d1c8f7b82d19889
 verified_paths: [services/agentbox-manifest/src/routing.rs, agentbox.toml, schema/agentbox.toml.schema.json]
 owner: jjohare
 review_trigger: the sealmap skill landing (DESIGN §10 step 5) with the four routes and two hosts; a Loom model swap; a change of the GLM model behind [consultants.zai]; a seal review whose author and reviewer share a family; ADR-2079's router consolidating [model_routing.routes]
@@ -221,3 +221,7 @@ to the OAuth-capable providers, export `AGENTBOX_ANTIGRAVITY_AUTH_MODE` to the
 Antigravity consultant, and correct comments and docs. No value, authority,
 boundary or runtime behaviour governed by this decision changes. This is source
 verification, not activation.
+
+## Comment-drift check — 2026-11-23 at `469e55367`
+
+Governed delta: `agentbox.toml` changed only in the comment above `[sidechain.dreamlab-txbt4]` (`:2042-2043`): "Off until the lead starts it" becomes "On since 2026-10-03", which matches `enabled = true` and the baked `autostart=true` producer, mirror and faucet programs. It is line-count neutral, so no `agentbox.toml:NNNN` citation moves, and no key or value changes. No decision, status axis or claim of this record is affected. Run: `git diff 59b1aca1c..469e55367 -- <governed paths>` read in full; the agentbox-manifest crate passes `cargo test` and `cargo clippy --all-targets -- -D warnings`, and `scripts/agentbox-config-validate.sh agentbox.toml` reports the manifest valid.

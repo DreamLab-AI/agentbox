@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: [ADR-2002, ADR-2063, ADR-2079]
 superseded_by: []
-verified_commit: 904a98d93aac3bc30402a7c616d3f3d5f530ffc4
+verified_commit: 469e55367db33e218051985e9d1c8f7b82d19889
 verified_paths: [services/agentbox-sessions, config/session-plane, lib/agentbox-sessions.nix, flake.nix, flake.lock, agentbox.toml, config/entrypoint-unified.sh, config/role-accounts.json, config/custody/session-plane-acl.json, config/tab0-bridge, config/nostr-gateway/gateway.cjs, config/nip98-proxy, config/tmux-autostart.sh, config/hooks/session-state.cjs, config/registered-hooks.txt, scripts/session-provision.mjs, scripts/session-control.cjs, scripts/activation/session-plane-acceptance.mjs, management-api/lib/system-manifest.js, schema/agentbox.toml.schema.json, services/agentbox-manifest/src/stacks.rs, services/agentbox-manifest/src/stacks_env.rs, tests/cli/session-launch-contract.test.mjs, tests/cli/session-control.test.cjs, tests/config/session-plane-notify.test.sh]
 owner: jjohare
 review_trigger: Antigravity signed in and OpenRouter answering the canned round trip (closes §11 acceptance → implementation complete); any AoE consumer found to have been missed
@@ -478,3 +478,7 @@ and opencode templates; the matching Rust and contract assertions follow. The
 resolution rules, the roster, worktrees, blockers, trust and daemon parity are
 unchanged, and the live launch tier still starts every seed unblocked. The §11
 acceptance gaps recorded above are unaffected. Source verification only.
+
+## Comment-drift check — 2026-11-23 at `469e55367`
+
+Governed delta: `agentbox.toml` changed only in the comment above `[sidechain.dreamlab-txbt4]` (`:2042-2043`): "Off until the lead starts it" becomes "On since 2026-10-03", which matches `enabled = true` and the baked `autostart=true` producer, mirror and faucet programs. It is line-count neutral, so no `agentbox.toml:NNNN` citation moves, and no key or value changes. No decision, status axis or claim of this record is affected. Run: `git diff 59b1aca1c..469e55367 -- <governed paths>` read in full; the agentbox-manifest crate passes `cargo test` and `cargo clippy --all-targets -- -D warnings`, and `scripts/agentbox-config-validate.sh agentbox.toml` reports the manifest valid.

@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: fc95b38774814f9bc83ddfac28649d12cd74fe12
+verified_commit: 469e55367db33e218051985e9d1c8f7b82d19889
 verified_paths: [flake.nix, docker-compose.yml, agentbox.toml, scripts/provision-antigravity.cjs, mcp/consultants/antigravity/server.js, config/entrypoint-unified.sh, skills/mcp.json, tests/config/antigravity-provision.test.cjs, tests/config/antigravity-consultant-auth.test.cjs, tests/config/compose-persistence.test.cjs]
 owner: jjohare
 review_trigger: an agy upgrade that moves its token or changes refresh behaviour, a change to the ~/.gemini mount, or a return to API billing
@@ -77,3 +77,7 @@ failed". `--model gemini-4-hydrogen` resolves under OAuth with no custom model e
 - Pending: host `tests/config/compose-persistence.test.cjs`, the rebuild, one
   sign-in, then a container restart with no new login. Check the session `agy`,
   consultant `health`, and that the consultant's process has no `GEMINI_API_KEY`.
+
+## Comment-drift check — 2026-11-23 at `469e55367`
+
+Governed delta: `agentbox.toml` changed only in the comment above `[sidechain.dreamlab-txbt4]` (`:2042-2043`): "Off until the lead starts it" becomes "On since 2026-10-03", which matches `enabled = true` and the baked `autostart=true` producer, mirror and faucet programs. It is line-count neutral, so no `agentbox.toml:NNNN` citation moves, and no key or value changes. No decision, status axis or claim of this record is affected. Run: `git diff 59b1aca1c..469e55367 -- <governed paths>` read in full; the agentbox-manifest crate passes `cargo test` and `cargo clippy --all-targets -- -D warnings`, and `scripts/agentbox-config-validate.sh agentbox.toml` reports the manifest valid.

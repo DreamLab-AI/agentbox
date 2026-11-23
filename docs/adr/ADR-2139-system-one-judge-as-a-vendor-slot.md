@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: fc95b38774814f9bc83ddfac28649d12cd74fe12
+verified_commit: 469e55367db33e218051985e9d1c8f7b82d19889
 verified_paths: [agentbox.toml, schema/agentbox.toml.schema.json, crates/system-one/system-one-proxy/src/config.rs, crates/system-one/system-one-proxy/tests/proxy.rs, tests/config/semantic-rules.test.js, crates/system-one/system-one-proxy/src/server.rs, crates/system-one/system-one-proxy/src/key.rs, services/agentbox-manifest/src/system_one.rs, config/entrypoint-unified.sh, config/hooks/lib/skill-route.cjs, config/seal-bootstrap.sh, lib/system-one-proxy.nix, flake.nix, scripts/agentbox-config-validate.js, agentbox.sh]
 owner: jjohare
 review_trigger: SubQ Snap leaving public preview or changing its price, retention default or the Decisions request shape; a Kev, Clef or pplx-decider release that serves /v1/systemone on a 9B-class checkpoint; a system-one-eval run on the ADR-2089 corpus that moves any backend by more than 5 points; the first compaction replay whose keep-rate is above 5%
@@ -508,3 +508,7 @@ to the OAuth-capable providers, export `AGENTBOX_ANTIGRAVITY_AUTH_MODE` to the
 Antigravity consultant, and correct comments and docs. No value, authority,
 boundary or runtime behaviour governed by this decision changes. This is source
 verification, not activation.
+
+## Comment-drift check — 2026-11-23 at `469e55367`
+
+Governed delta: `agentbox.toml` changed only in the comment above `[sidechain.dreamlab-txbt4]` (`:2042-2043`): "Off until the lead starts it" becomes "On since 2026-10-03", which matches `enabled = true` and the baked `autostart=true` producer, mirror and faucet programs. It is line-count neutral, so no `agentbox.toml:NNNN` citation moves, and no key or value changes. `services/agentbox-manifest/src/system_one.rs` changed only in the comment above `AGENTBOX_LOCAL` (`:535-537`): `[system_one].local_only` is empty when the key is absent, and the shipped manifest lists every consumer with a private route. It is line-count neutral and no executable line changes, so the comment now agrees with this record's 2026-11-17 amendment (eighteen consumers listed). No decision, status axis or claim of this record is affected. Run: `git diff 59b1aca1c..469e55367 -- <governed paths>` read in full; the agentbox-manifest crate passes `cargo test` and `cargo clippy --all-targets -- -D warnings`, and `scripts/agentbox-config-validate.sh agentbox.toml` reports the manifest valid.
