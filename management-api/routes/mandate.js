@@ -71,7 +71,7 @@ function _operatorPubkey() {
  * @returns {Promise<{ urn, record, acl_turtle, signed, signed_event, reused }>}
  */
 async function ensureMandate(args = {}) {
-  return grantMandate({ ...args, issuer: args.issuer || _operatorPubkey(), regrant: false });
+  return grantMandate({ ...args, issuer: args.issuer || _operatorPubkey(), regrant: false, anyContainer: false });
 }
 
 /**
@@ -79,7 +79,7 @@ async function ensureMandate(args = {}) {
  * revoked mandate (the operator has decided to re-grant).
  */
 async function createSignedMandate(args = {}) {
-  return grantMandate({ ...args, issuer: args.issuer || _operatorPubkey(), regrant: true });
+  return grantMandate({ ...args, issuer: args.issuer || _operatorPubkey(), regrant: true, anyContainer: true });
 }
 
 // ── Route plugin ─────────────────────────────────────────────────────────────
@@ -95,12 +95,14 @@ async function mandateRoutes(fastify, options) {
   const lifecycleError = (reply, err) => {
     if (err instanceof SignerUnavailable) {
       logger.warn({ event: 'mandate.signer-unavailable', reason: err.reason }, `mandate: ${err.message} — nothing changed`);
-      return reply.code(503).send(errorBody('signer_unavailable', err.message, { reason: err.reason }));
+      // A revoke that could not reach the pod is already "revoking" locally (denied everywhere).
+      const extra = err.effective_at_pod === false ? { effective_at_pod: false, state: err.state } : {};
+      return reply.code(503).send(errorBody('signer_unavailable', err.message, { reason: err.reason, ...extra }));
     }
     if (err instanceof mandateLib.MandateError) return reply.code(400).send(errorBody('mandate', err.message));
     if (err instanceof MandateRevokedError) return reply.code(409).send(errorBody('mandate_revoked', err.message, { state: err.state }));
     if (err instanceof RevokeError) return reply.code(502).send(errorBody(err.code, err.message, { effective_at_pod: false }));
-    if (err instanceof GrantError) return reply.code(502).send(errorBody(err.code, err.message, { effective_at_pod: false }));
+    if (err instanceof GrantError) return reply.code(err.status || 502).send(errorBody(err.code, err.message, { effective_at_pod: false }));
     if (err instanceof registry.RegistryError) {
       logger.error({ event: 'mandate.registry-error', err: err.message }, 'mandate: registry unavailable');
       return reply.code(503).send(errorBody('registry_unavailable', err.message));

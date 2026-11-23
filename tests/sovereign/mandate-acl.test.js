@@ -7,7 +7,7 @@
 
 const { createMandate } = require('../../management-api/lib/mandate');
 const {
-  renderContainerAcl, sidecarPath, PodAclClient, PodAclError, syncContainerSidecar,
+  renderContainerAcl, sidecarPath, PodAclClient, PodAclError, syncContainerSidecar, MANAGED_MARKER,
 } = require('../../management-api/lib/mandate-acl');
 
 const OWNER = 'a'.repeat(64);
@@ -26,6 +26,11 @@ describe('sidecarPath', () => {
 });
 
 describe('renderContainerAcl', () => {
+  it('tags the sidecar with the managed marker triple (and only a managed sidecar may be overwritten or deleted)', () => {
+    expect(renderContainerAcl(OWNER, CONTAINER, [])).toContain(MANAGED_MARKER);
+    expect(MANAGED_MARKER).toMatch(/^<#managed> a <urn:agentbox:ns#ManagedSidecar> \.$/);
+  });
+
   it('always carries the owner block with Read, Write, Append and Control on the container and its descendants', () => {
     const ttl = renderContainerAcl(OWNER, CONTAINER, []);
     expect(ttl).toContain('@prefix acl: <http://www.w3.org/ns/auth/acl#> .');
@@ -164,7 +169,7 @@ describe('syncContainerSidecar', () => {
     const res = await syncContainerSidecar({ client: client(pod), owner: OWNER, container: CONTAINER, active: [m] });
     expect(res.action).toBe('put');
     expect(pod.files.get(sidecarPath(CONTAINER))).toBe(renderContainerAcl(OWNER, CONTAINER, [m]));
-    expect(pod.calls.map((c) => c.method)).toEqual(['PUT', 'GET']);
+    expect(pod.calls.map((c) => c.method)).toEqual(['GET', 'PUT', 'GET']);
   });
 
   it('removing the last mandate DELETEs the sidecar and confirms it is gone', async () => {
@@ -175,13 +180,14 @@ describe('syncContainerSidecar', () => {
     const res = await syncContainerSidecar({ client: client(pod), owner: OWNER, container: CONTAINER, active: [], absentAgents: [AGENT1] });
     expect(res.action).toBe('delete');
     expect(pod.files.has(sidecarPath(CONTAINER))).toBe(false);
-    expect(pod.calls.map((c) => c.method)).toEqual(['DELETE', 'GET']);
+    expect(pod.calls.map((c) => c.method)).toEqual(['GET', 'DELETE', 'GET']);
   });
 
-  it('a DELETE of an already-absent sidecar is idempotent', async () => {
+  it('removing from an already-absent sidecar is a no-op success (nothing to delete)', async () => {
     const pod = fakePod();
     const res = await syncContainerSidecar({ client: client(pod), owner: OWNER, container: CONTAINER, active: [] });
-    expect(res.action).toBe('delete');
+    expect(res.action).toBe('none');
+    expect(pod.calls.map((c) => c.method)).toEqual(['GET']);
   });
 
   it('fails when the read-back still shows a removed agent (stale cache or a pod that ignored the write)', async () => {
@@ -196,10 +202,10 @@ describe('syncContainerSidecar', () => {
 
   it('fails when the delete did not take effect', async () => {
     const pod = fakePod();
-    pod.files.set(sidecarPath(CONTAINER), 'still here');
+    pod.files.set(sidecarPath(CONTAINER), renderContainerAcl(OWNER, CONTAINER, [mk(AGENT1)]));
     const noop = { ...pod, fetchFn: async (url, init = {}) => ((init.method || '') === 'DELETE' ? new Response(null, { status: 204 }) : pod.fetchFn(url, init)) };
     await expect(
-      syncContainerSidecar({ client: client(noop), owner: OWNER, container: CONTAINER, active: [] }),
+      syncContainerSidecar({ client: client(noop), owner: OWNER, container: CONTAINER, active: [], absentAgents: [AGENT1] }),
     ).rejects.toMatchObject({ phase: 'verify' });
   });
 
@@ -214,6 +220,71 @@ describe('syncContainerSidecar', () => {
 
   it('treats a network error as a write-phase failure', async () => {
     const c = client(fakePod(), { fetchFn: async () => { throw new Error('ECONNREFUSED'); } });
-    await expect(syncContainerSidecar({ client: c, owner: OWNER, container: CONTAINER, active: [mk(AGENT1)] })).rejects.toMatchObject({ phase: 'write' });
+    await expect(syncContainerSidecar({ client: c, owner: OWNER, container: CONTAINER, active: [mk(AGENT1)] })).rejects.toMatchObject({ phase: 'preflight' });
+  });
+});
+
+describe('foreign sidecars are never destroyed (409)', () => {
+  const foreign = '@prefix acl: <http://www.w3.org/ns/auth/acl#> .\n<#friend> a acl:Authorization ; acl:agent <did:nostr:' + 'e'.repeat(64) + '> ; acl:accessTo <' + CONTAINER + '> ; acl:mode acl:Read .\n';
+
+  it('GETs the sidecar before the first PUT and refuses, untouched, when it is not ours', async () => {
+    const pod = fakePod();
+    pod.files.set(sidecarPath(CONTAINER), foreign);
+    const err = await syncContainerSidecar({ client: client(pod), owner: OWNER, container: CONTAINER, active: [mk(AGENT1)] }).catch((e) => e);
+    expect(err).toBeInstanceOf(PodAclError);
+    expect(err).toMatchObject({ code: 'foreign_acl', status: 409, phase: 'preflight' });
+    expect(pod.files.get(sidecarPath(CONTAINER))).toBe(foreign);
+    expect(pod.calls.map((c) => c.method)).toEqual(['GET']);
+  });
+
+  it('overwrites a sidecar that carries the marker, and creates one where none exists', async () => {
+    const pod = fakePod();
+    const m1 = mk(AGENT1); const m2 = mk(AGENT2);
+    await syncContainerSidecar({ client: client(pod), owner: OWNER, container: CONTAINER, active: [m1] });
+    expect(pod.calls.map((c) => c.method)).toEqual(['GET', 'PUT', 'GET']);
+    await syncContainerSidecar({ client: client(pod), owner: OWNER, container: CONTAINER, active: [m1, m2] });
+    expect(pod.files.get(sidecarPath(CONTAINER))).toBe(renderContainerAcl(OWNER, CONTAINER, [m1, m2]));
+  });
+
+  it('DELETEs only a marked sidecar; a foreign one that does not mention the agent is left alone', async () => {
+    const pod = fakePod();
+    pod.files.set(sidecarPath(CONTAINER), foreign);
+    const res = await syncContainerSidecar({ client: client(pod), owner: OWNER, container: CONTAINER, active: [], absentAgents: [AGENT1] });
+    expect(res.action).toBe('none');
+    expect(pod.files.get(sidecarPath(CONTAINER))).toBe(foreign);
+    expect(pod.calls.map((c) => c.method)).toEqual(['GET']);
+  });
+
+  it('a foreign sidecar that DOES grant the agent cannot be revoked by destroying it: 409, nothing deleted', async () => {
+    const pod = fakePod();
+    const f = foreign.replace('e'.repeat(64), AGENT1);
+    pod.files.set(sidecarPath(CONTAINER), f);
+    await expect(syncContainerSidecar({ client: client(pod), owner: OWNER, container: CONTAINER, active: [], absentAgents: [AGENT1] }))
+      .rejects.toMatchObject({ code: 'foreign_acl', status: 409 });
+    expect(pod.files.get(sidecarPath(CONTAINER))).toBe(f);
+  });
+
+  it('a marked sidecar is deleted when the last mandate goes', async () => {
+    const pod = fakePod();
+    pod.files.set(sidecarPath(CONTAINER), renderContainerAcl(OWNER, CONTAINER, [mk(AGENT1)]));
+    const res = await syncContainerSidecar({ client: client(pod), owner: OWNER, container: CONTAINER, active: [], absentAgents: [AGENT1] });
+    expect(res.action).toBe('delete');
+    expect(pod.files.has(sidecarPath(CONTAINER))).toBe(false);
+  });
+
+  it('refuses a container outside the owner pod before any request (even for a delete)', async () => {
+    const pod = fakePod();
+    await expect(syncContainerSidecar({ client: client(pod), owner: OWNER, container: '/x/', active: [] })).rejects.toMatchObject({ name: 'MandateError' });
+    expect(pod.calls).toHaveLength(0);
+  });
+});
+
+describe('PodAclClient transport', () => {
+  const mkc = (connectBase) => () => new PodAclClient({ connectBase, nip98: async () => 'Nostr x', fetchFn: async () => new Response('') });
+  it('refuses a non-loopback http: connect base (a NIP-98 header and an ACL body must not cross a network in clear)', () => {
+    for (const b of ['http://10.0.0.5:8484', 'http://pod.internal:8484', 'http://example.com']) expect(mkc(b)).toThrow(/loopback|https/);
+  });
+  it('accepts loopback http and any https', () => {
+    for (const b of ['http://127.0.0.1:8484', 'http://127.0.0.2:1', 'http://localhost:8484', 'http://[::1]:8484', 'https://pods.example']) expect(mkc(b)).not.toThrow();
   });
 });

@@ -166,4 +166,10 @@ function withLock(dir, fn, opts = {}) {
   }
 }
 
-module.exports = { withLock, LOCK_NAME };
+/**
+ * Lower-level pair for a caller that must hold the lock across an `await`
+ * (`withLock` releases when its callback returns, so it cannot). Same lockfile
+ * format and stale-holder takeover. The wait is synchronous, so callers
+ * serialise in-process first and only ever block against ANOTHER process.
+ */
+module.exports = { withLock, LOCK_NAME, acquire, release };

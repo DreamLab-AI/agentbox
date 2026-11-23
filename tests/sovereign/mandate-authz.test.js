@@ -158,17 +158,33 @@ describe('/v1/mandate — fail-closed signing, tombstone and revoke contract (AB
     await expect(ensureMandate({ agent: AGENT, container: C, manifest: {}, logger, deps: d })).rejects.toMatchObject({ name: 'MandateRevokedError' });
   });
 
-  it('revoke 503 with no signer leaves the mandate active; 404 for an unknown mandate', async () => {
+  it('revoke 503 with no signer: effective_at_pod:false, the mandate is "revoking" (denied) and the pod untouched; 404 for an unknown mandate', async () => {
     await post('/v1/mandate', { agent: AGENT, container: C });
     const saved = d.signer;
     d.signer = null;
+    d.pod.calls.length = 0;
     const rv = await post('/v1/mandate/revoke', { agent: AGENT, container: C });
     expect(rv.statusCode).toBe(503);
-    expect(rv.json().error).toBe('signer_unavailable');
+    expect(rv.json()).toMatchObject({ error: 'signer_unavailable', effective_at_pod: false, state: 'revoking' });
+    expect(d.pod.calls).toHaveLength(0);
     d.signer = saved;
     const list = (await app.inject({ method: 'GET', url: '/v1/mandate', headers: auth('nip98', OPERATOR) })).json();
-    expect(list.mandates[0].state).toBe('active');
+    expect(list.mandates[0].state).toBe('revoking');
     expect((await post('/v1/mandate/revoke', { urn: 'urn:agentbox:mandate:none' })).statusCode).toBe(404);
+  });
+
+  it('409 foreign_acl when the container already carries a sidecar this registry did not write', async () => {
+    d.pod.files.set(`/pods/${OPERATOR}/proj/http.acl`, '@prefix acl: <http://www.w3.org/ns/auth/acl#> .\n<#x> a acl:Authorization .\n');
+    const res = await post('/v1/mandate', { agent: AGENT, container: C });
+    expect(res.statusCode).toBe(409);
+    expect(res.json()).toMatchObject({ error: 'foreign_acl', effective_at_pod: false });
+  });
+
+  it('the explicit operator grant may target a non-proj container; a lazy ensure may not', async () => {
+    const res = await post('/v1/mandate', { agent: AGENT, container: `/pods/${OPERATOR}/kg/` });
+    expect(res.statusCode).toBe(201);
+    const { ensureMandate } = mandateRoutes;
+    await expect(ensureMandate({ agent: AGENT, container: `/pods/${OPERATOR}/private/`, manifest: {}, logger, deps: d })).rejects.toMatchObject({ name: 'MandateError' });
   });
 
   it('revoke 502 effective_at_pod:false on a pod failure; 200 published:false when only the relay is down', async () => {

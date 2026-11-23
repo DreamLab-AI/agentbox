@@ -30,6 +30,7 @@ const mandateLib = require('./mandate');
 const registry = require('./mandate-registry');
 const { runtime, preflight } = require('./mandate-runtime');
 const { renderContainerAcl, syncContainerSidecar, PodAclError } = require('./mandate-acl');
+const { driveRevocation, settlePendingRevokeEvent } = require('./mandate-revocation');
 
 const TOMBSTONE_STATES = ['revoking', 'revoked_unpublished', 'revoked'];
 const ACTION_CREATE = 2;
@@ -47,12 +48,12 @@ class MandateRevokedError extends Error {
 
 /** The grant could not be made effective; nothing is left enforced (HTTP 502). */
 class GrantError extends Error {
-  /** @param {string} message @param {'pod_acl_failed'|'sign_failed'|'publish_failed'} code @param {Error} [cause] */
-  constructor(message, code, cause) {
+  /** @param {string} message @param {'pod_acl_failed'|'foreign_acl'|'revocation_pending'|'sign_failed'|'publish_failed'} code @param {Error} [cause] @param {number} [status] */
+  constructor(message, code, cause, status = 502) {
     super(message);
     this.name = 'GrantError';
     this.code = code;
-    this.status = 502;
+    this.status = status;
     if (cause) this.cause = cause;
   }
 }
@@ -69,6 +70,7 @@ const iso = (sec) => new Date(sec * 1000).toISOString();
  * @param {string[]} [args.modes]
  * @param {number|null} [args.expiresAt]
  * @param {boolean} [args.regrant=false] - replace a tombstone (operator's explicit grant)
+ * @param {boolean} [args.anyContainer=false] - allow a container outside `/pods/<owner>/proj/` (only the operator's explicit POST /v1/mandate sets this)
  * @param {object} [args.manifest]
  * @param {object} [args.logger]
  * @param {object} [args.deps]     - see lib/mandate-runtime
@@ -91,15 +93,18 @@ async function grantMandate(args = {}) {
     issuedAt: now,
   });
   const owner = mandateLib.podOf(record);
+  // Session and lazy grants live under proj/<slug>/ only; the explicit operator grant may go elsewhere.
+  if (!args.anyContainer) mandateLib.assertProjContainer(record.container, owner);
   const issuerHex = mandateLib.normalisePubkey(record.issuer);
   const agentHex = mandateLib.normalisePubkey(record.agent);
   const key = registry.keyFor(agentHex, record.container);
 
   return registry.withContainerLock(record.container, async () => {
-    const existing = registry.load()[key];
+    const regNow = registry.load();
+    const existing = regNow[key];
 
     if (existing && registry.isEnforceable(existing, now)) {
-      const active = registry.activeRecords(registry.load(), record.container, now);
+      const active = registry.activeRecords(regNow, record.container, now);
       return {
         urn: existing.record.urn,
         record: existing.record,
@@ -109,16 +114,41 @@ async function grantMandate(args = {}) {
         reused: true,
       };
     }
-    if (existing && !args.regrant && TOMBSTONE_STATES.includes(existing.state)) {
-      throw new MandateRevokedError(existing.record.urn, existing.state);
+    if (!args.regrant) {
+      // A tombstone governs the agent's access to every container it overlaps: a
+      // mandate on a PARENT of a revoked container would re-admit the agent via
+      // acl:default, and one on a descendant is the revoked scope again.
+      for (const e of Object.values(regNow)) {
+        if (!e || !e.record || !TOMBSTONE_STATES.includes(e.state)) continue;
+        if (mandateLib.normalisePubkey(e.record.agent) !== agentHex) continue;
+        if (mandateLib.containersOverlap(e.record.container, record.container)) {
+          throw new MandateRevokedError(e.record.urn, e.state);
+        }
+      }
     }
 
     // 1. preflight — nothing is written until a pod-owner signer is proven.
     const { signer, client } = await preflight(rt, issuerHex);
 
+    // An explicit regrant never overtakes an unfinished revocation: finish it (pod,
+    // then the relay) first, or refuse. Otherwise the new `active` event could be
+    // superseded by a stale revoke, or the old revoke could stay unpublished.
+    if (existing && (existing.state === 'revoking' || existing.state === 'revoked_unpublished')) {
+      let driven;
+      try {
+        driven = await driveRevocation({ rt, signer, client, key, urn: existing.record.urn, logger });
+      } catch (err) {
+        throw new GrantError(`the earlier revocation is not finished: ${err.message}`, 'revocation_pending', err, 409);
+      }
+      if (driven.state !== 'revoked') {
+        throw new GrantError(`the earlier revocation is not finished: ${driven.publish_error || driven.state}`, 'revocation_pending', undefined, 409);
+      }
+    }
+    const existingNow = registry.load()[key];
+
     // The new event must supersede whatever this slot last carried.
-    const lastEventAt = existing
-      ? Math.max(existing.grant_created_at || 0, existing.revocation_created_at || 0) || undefined
+    const lastEventAt = existingNow
+      ? Math.max(existingNow.grant_created_at || 0, existingNow.revocation_created_at || 0) || undefined
       : undefined;
 
     // 2. record as `granting` (not enforceable) before anything touches the pod.
@@ -145,6 +175,10 @@ async function grantMandate(args = {}) {
         }
       });
       registry.audit({ action: 'grant.failed', urn, agent: agentHex, container: record.container, from: 'granting', to: 'failed', reason: code, error: why }, { now });
+      // If the `active` event was signed, it may have reached a relay: supersede it.
+      try { await settlePendingRevokeEvent({ rt, signer, key, logger }); } catch (err) {
+        warn({ event: 'mandate.grant-revoke-event-failed', urn, err: err.message }, 'mandate: could not publish the superseding revoke');
+      }
     };
 
     // 3. PUT the whole sidecar and read it back.
@@ -152,7 +186,8 @@ async function grantMandate(args = {}) {
       await syncContainerSidecar({ client, owner, container: record.container, active: [...othersActive(), record] });
     } catch (err) {
       if (!(err instanceof PodAclError)) throw err;
-      await rollback(err.message, 'pod_acl_failed');
+      await rollback(err.message, err.code === 'foreign_acl' ? 'foreign_acl' : 'pod_acl_failed');
+      if (err.code === 'foreign_acl') throw new GrantError(err.message, 'foreign_acl', err, 409);
       throw new GrantError(`the pod did not take the ACL: ${err.message}`, 'pod_acl_failed', err);
     }
 
@@ -165,6 +200,12 @@ async function grantMandate(args = {}) {
       throw new GrantError(`the mandate event could not be signed: ${err.message}`, 'sign_failed', err);
     }
 
+    // From here an `active` event exists that a relay may see: record it BEFORE publishing,
+    // so a crash, a failed publish or the reconciler's rollback knows to supersede it.
+    await registry.update((reg) => {
+      Object.assign(reg[key], { grant_created_at: signed.created_at, signed_event_id: signed.id, revoke_event_pending: true });
+    });
+
     // 5. publish — the local relay must answer OK.
     const pub = await rt.publisher.publish(signed);
     if (!pub.ok) {
@@ -176,7 +217,7 @@ async function grantMandate(args = {}) {
     await registry.update((reg) => {
       Object.assign(reg[key], {
         state: 'active', signed: true, signed_event_id: signed.id, grant_created_at: signed.created_at,
-        updated_at: iso(rt.now()), last_error: undefined,
+        updated_at: iso(rt.now()), last_error: undefined, revoke_event_pending: false,
       });
     });
     registry.audit({ action: 'grant.active', urn, agent: agentHex, container: record.container, from: 'granting', to: 'active', event_id: signed.id }, { now });

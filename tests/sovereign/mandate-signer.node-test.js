@@ -223,7 +223,12 @@ function findPortBinary() {
   return candidates.find((c) => { try { fs.accessSync(c, fs.constants.X_OK); return true; } catch { return false; } }) || null;
 }
 
-describe('against the real identity port (serve-identity over its unix socket)', { skip: !findPortBinary() && 'no built nostr-pod-bridge binary' }, () => {
+const PORT_REQUIRED = !!(process.env.CI || process.env.AGENTBOX_REQUIRE_POD_INTEGRATION);
+if (PORT_REQUIRED && !findPortBinary()) {
+  test('nostr-pod-bridge is built (required: CI / AGENTBOX_REQUIRE_POD_INTEGRATION is set)', () => assert.fail('no built nostr-pod-bridge binary; set AGENTBOX_POD_BRIDGE_BIN'));
+}
+
+describe('against the real identity port (serve-identity over its unix socket)', { skip: !findPortBinary() && !PORT_REQUIRED && 'no built nostr-pod-bridge binary' }, () => {
   const BIN = findPortBinary();
   let child; let dir; let env; let core;
   const BASE = 'https://pods.example';
@@ -265,11 +270,12 @@ describe('against the real identity port (serve-identity over its unix socket)',
     const header = await s.nip98('PUT', url, 'ttl');
     assert.equal(NostrBridge.verifyNip98(header, 'PUT', url, 'ttl').valid, true);
 
-    const { record, unsigned } = unsignedMandate(core.pub, 1_800_000_999);
+    const at = Math.floor(Date.now() / 1000);
+    const { record, unsigned } = unsignedMandate(core.pub, at);
     const ev = await s.signEvent(unsigned);
     assert.equal(nostr.verifyEvent(ev), true);
     assert.equal(ev.pubkey, core.pub);
-    assert.equal(ev.created_at, 1_800_000_999);
+    assert.equal(ev.created_at, at);
     assert.equal(ev.tags.find((t) => t[0] === 'd')[1], record.urn);
   });
 
@@ -287,6 +293,14 @@ describe('against the real identity port (serve-identity over its unix socket)',
     for (const tags of [[], [['d', 'app-state'], ['t', 'agent-mandate']], [['d', `urn:agentbox:mandate:${core.pub}:x`]]]) {
       await assert.rejects(() => s.signEvent({ kind: 30078, created_at: 1, tags, content: '{}' }), /refused|unavailable/);
     }
+  });
+
+  test('the port refuses a mandate envelope with a far-future created_at, or content that is not this key\'s envelope', async () => {
+    const s = await resolveMandateSigner(manifest, { env });
+    const { unsigned } = unsignedMandate(core.pub, Math.floor(Date.now() / 1000));
+    await assert.rejects(() => s.signEvent({ ...unsigned, created_at: 4_102_444_800 }), /refused|unavailable/);
+    await assert.rejects(() => s.signEvent({ ...unsigned, content: JSON.stringify({ ...JSON.parse(unsigned.content), issuer: `did:nostr:${'e'.repeat(64)}` }) }), /refused|unavailable/);
+    await assert.rejects(() => s.signEvent({ ...unsigned, content: 'not json' }), /refused|unavailable/);
   });
 
   test('with no base_url in the manifest the port has no allowlist: preflight fails closed rather than guessing an origin', async () => {

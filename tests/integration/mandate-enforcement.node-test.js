@@ -61,6 +61,15 @@ function findServerBinary() {
 }
 
 const BIN = findServerBinary();
+// In CI (or when asked) a missing binary is a FAILURE, never a silent skip: this is the only
+// test that proves a mandate is enforced by a real pod.
+const REQUIRED = !!(process.env.CI || process.env.AGENTBOX_REQUIRE_POD_INTEGRATION);
+
+if (REQUIRED && !BIN) {
+  test('solid-pod-rs-server is available (required: CI / AGENTBOX_REQUIRE_POD_INTEGRATION is set)', () => {
+    assert.fail('no solid-pod-rs-server binary found; set SOLID_POD_RS_SERVER_BIN or put it on PATH');
+  });
+}
 const PUBLIC_ORIGIN = 'https://pods.mandate-test.example';   // what the pod matches NIP-98 against
 
 function freePort() {
@@ -107,7 +116,7 @@ function startRelay(port) {
   });
 }
 
-describe('mandate enforcement against a real solid-pod-rs', { skip: !BIN && 'no solid-pod-rs-server binary found' }, () => {
+describe('mandate enforcement against a real solid-pod-rs', { skip: !BIN && !REQUIRED && 'no solid-pod-rs-server binary found' }, () => {
   let root; let podPort; let proc; let log = '';
   let state; let relayPort; let relay;
   let owner; let ownerPub; let agentA; let agentB;
@@ -283,6 +292,33 @@ describe('mandate enforcement against a real solid-pod-rs', { skip: !BIN && 'no 
     assert.equal(out.revoked, 1);
     assert.equal(registry.load()[registry.keyFor(pubD, CD)].state, 'revoked');
     assert.equal((await as(agentD, 'PUT', `${CD}d2.txt`, 'x')).status, 403);
+  });
+
+  test('a sidecar the registry did not write is refused (409 foreign_acl) and left byte-for-byte intact', async () => {
+    const agentF = nostr.generateSecretKey(); const pubF = nostr.getPublicKey(agentF);
+    const CF = `/pods/${ownerPub}/proj/foreign/`;
+    const foreign = `@prefix acl: <http://www.w3.org/ns/auth/acl#> .\n<#o> a acl:Authorization ; acl:agent <did:nostr:${ownerPub}> ;\n  acl:accessTo <${CF}> ; acl:default <${CF}> ; acl:mode acl:Read, acl:Write, acl:Control .\n`;
+    assert.ok([200, 201, 204].includes((await as(owner, 'PUT', sidecarPath(CF), foreign)).status));
+    await assert.rejects(
+      () => grantMandate({ issuer: ownerPub, agent: pubF, container: CF, manifest: {}, logger, deps: deps() }),
+      { name: 'GrantError', code: 'foreign_acl', status: 409 },
+    );
+    const back = await as(owner, 'GET', sidecarPath(CF));
+    assert.equal(await back.text(), foreign);
+    assert.equal((await as(agentF, 'PUT', `${CF}f.txt`, 'x')).status, 403);
+  });
+
+  test('a parent-container mandate cannot re-admit an agent whose child mandate was revoked (tombstone covers ancestors)', async () => {
+    const { ensureMandate } = require('../../management-api/routes/mandate');
+    const agentG = nostr.generateSecretKey(); const pubG = nostr.getPublicKey(agentG);
+    const child = `/pods/${ownerPub}/proj/tomb/child/`;
+    await grantMandate({ issuer: ownerPub, agent: pubG, container: child, manifest: {}, logger, deps: deps() });
+    await revokeMandate({ agent: pubG, container: child, manifest: {}, logger, deps: deps() });
+    await assert.rejects(
+      () => ensureMandate({ issuer: ownerPub, agent: pubG, container: `/pods/${ownerPub}/proj/tomb/`, manifest: {}, logger, deps: deps() }),
+      { name: 'MandateRevokedError' },
+    );
+    assert.equal((await as(agentG, 'PUT', `/pods/${ownerPub}/proj/tomb/g.txt`, 'x')).status, 403);
   });
 
   test('no pod-owner signer → 503-class, and the agent gains nothing', async () => {

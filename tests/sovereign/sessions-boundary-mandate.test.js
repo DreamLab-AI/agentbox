@@ -43,13 +43,19 @@ describe('sessions-boundary eager mandate (AB-11)', () => {
 
   async function appWith(deps) {
     const app = Fastify();
+    // Stand-in for the global auth hook: x-test-auth carries request.auth.
+    app.addHook('onRequest', async (request) => {
+      const raw = request.headers['x-test-auth'];
+      if (raw) { try { request.auth = JSON.parse(raw); } catch (_) { /* unset */ } }
+    });
     app.decorate('adapters', { beads: null });
     app.register(require('../../management-api/routes/sessions-boundary'), { logger, manifest: {}, mandateDeps: deps });
     await app.ready();
     return app;
   }
-  const create = (app, payload) => app.inject({
-    method: 'POST', url: '/v1/sessions/boundary',
+  const OPERATOR_AUTH = { 'x-test-auth': JSON.stringify({ mode: 'bearer' }) };
+  const create = (app, payload, headers = OPERATOR_AUTH) => app.inject({
+    method: 'POST', url: '/v1/sessions/boundary', headers,
     payload: { phase: 'create', session_id: `s-${Math.random()}`, slug: 'eager', eager_mandate: true, ...payload },
   });
 
@@ -79,22 +85,51 @@ describe('sessions-boundary eager mandate (AB-11)', () => {
     await app.close();
   });
 
-  it('a mandate_container outside the owner pod is refused (a note), not granted', async () => {
+  it('HIGH-1: a non-operator caller (any valid NIP-98 key) gets 403 on the eager path, and nothing is created or granted', async () => {
     const deps = makeDeps();
     const app = await appWith(deps);
-    for (const mandate_container of ['/proj/legacy/', `/pods/${'9'.repeat(64)}/proj/x/`]) {
-      const res = await create(app, { mandate_container });
-      expect(res.statusCode).toBe(201);
-      expect(res.json().mandate_urn).toBeNull();
+    const stranger = { 'x-test-auth': JSON.stringify({ mode: 'nip98', pubkey: '9'.repeat(64) }) };
+    for (const headers of [stranger, {}]) {
+      const res = await create(app, { project_path: '/x/Repo' }, headers);
+      expect(res.statusCode).toBe(403);
+      expect(res.json().error).toBe('forbidden_not_operator');
     }
     expect(deps.pod.calls).toHaveLength(0);
+    expect(registry.load()).toEqual({});
+    // the same caller may still open an ordinary (non-eager) session
+    const plain = await app.inject({ method: 'POST', url: '/v1/sessions/boundary', headers: stranger,
+      payload: { phase: 'create', session_id: 'plain-1', slug: 'plain' } });
+    expect(plain.statusCode).toBe(201);
+    expect(plain.json().mandate_urn).toBeNull();
+    await app.close();
+  });
+
+  it('HIGH-1: the operator NIP-98 key is accepted like the operator bearer', async () => {
+    const deps = makeDeps();
+    const app = await appWith(deps);
+    const res = await create(app, { project_path: '/x/Repo' }, { 'x-test-auth': JSON.stringify({ mode: 'nip98', pubkey: OWNER }) });
+    expect(res.statusCode).toBe(201);
+    expect(res.json().mandate_urn).toMatch(/^urn:agentbox:mandate:/);
+    await app.close();
+  });
+
+  it('HIGH-1: mandate_container is IGNORED: the container is always /pods/<owner>/proj/<slug>/', async () => {
+    const deps = makeDeps();
+    const app = await appWith(deps);
+    for (const mandate_container of [`/pods/${OWNER}/private/`, `/pods/${OWNER}/proj/`, `/pods/${OWNER}/`, '/proj/legacy/', `/pods/${OWNER}/proj/.git/`]) {
+      const res = await create(app, { repo_slug: 'pinned', mandate_container });
+      expect(res.statusCode).toBe(201);
+    }
+    const containers = Object.values(registry.load()).map((e) => e.record.container);
+    expect(new Set(containers)).toEqual(new Set([`/pods/${OWNER}/proj/pinned/`]));
+    for (const p of deps.pod.calls.map((c) => c.path)) expect(p.startsWith(`/pods/${OWNER}/proj/pinned`)).toBe(true);
     await app.close();
   });
 
   it('a hostile slug can never become a dot segment or a sidecar name', async () => {
     const deps = makeDeps();
     const app = await appWith(deps);
-    for (const [slug, want] of [['..', 'workspace'], ['.', 'workspace'], ['x.acl', 'x-acl'], ['y.meta', 'y-meta']]) {
+    for (const [slug, want] of [['..', 'workspace'], ['.', 'workspace'], ['x.acl', 'x-acl'], ['y.meta', 'y-meta'], ['.git', 'git'], ['..-private', 'private'], ['...hidden', 'hidden'], ['.well-known', 'well-known']]) {
       const res = await create(app, { repo_slug: slug });
       expect(res.statusCode).toBe(201);
       expect(Object.values(registry.load()).map((e) => e.record.container)).toContain(`/pods/${OWNER}/proj/${want}/`);

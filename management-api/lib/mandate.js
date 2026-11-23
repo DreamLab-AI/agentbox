@@ -106,8 +106,9 @@ function normaliseContainer(container) {
   }
   const segments = path.split('/').slice(1, -1);
   for (const seg of segments) {
-    if (seg === '' || seg === '.' || seg === '..') {
-      throw new MandateError('container must not contain empty or dot segments');
+    if (seg === '' || seg.startsWith('.')) {
+      // `.`, `..`, and every dot-leading name (.acl, .meta, .well-known, .git, hidden dirs).
+      throw new MandateError('container must not contain empty or dot-leading segments');
     }
     if (/\.(acl|meta)$/i.test(seg)) {
       throw new MandateError('container must not name an .acl or .meta sidecar');
@@ -130,6 +131,30 @@ function containerInPod(container, ownerHex) {
   const prefix = `/pods/${ownerHex}/`;
   if (!path.startsWith(prefix) || path === prefix) {
     throw new MandateError(`container must be inside the issuer's pod (${prefix}<container>/), got "${path}"`);
+  }
+  return path;
+}
+
+/**
+ * Do two containers overlap (equal, or one an ancestor of the other)?
+ * A mandate (or its tombstone) on one governs the other through `acl:default`.
+ */
+function containersOverlap(a, b) {
+  const x = normaliseContainer(a);
+  const y = normaliseContainer(b);
+  return x.startsWith(y) || y.startsWith(x);
+}
+
+/**
+ * The lazy/session mandate scope: strictly below `/pods/<owner>/proj/`
+ * (`proj/<slug>/…`). The `proj/` root itself is a parent of every session
+ * container and is refused. Only the operator's explicit grant may go elsewhere.
+ */
+function assertProjContainer(container, ownerHex) {
+  const path = containerInPod(container, ownerHex);
+  const prefix = `/pods/${ownerHex}/proj/`;
+  if (!path.startsWith(prefix) || path === prefix) {
+    throw new MandateError(`a session mandate must be inside ${prefix}<slug>/, got "${path}"`);
   }
   return path;
 }
@@ -160,6 +185,8 @@ function createMandate({ issuer, agent, container, modes, issuedAt, expiresAt, p
   const agentHex = normalisePubkey(agent);
   if (!agentHex) throw new MandateError(`bad agent identity: ${agent}`);
 
+  // The owner already holds every mode; a mandate naming the owner as its own grantee is meaningless.
+  if (agentHex === issuerHex) throw new MandateError('agent must not be the issuer (the pod owner)');
   // One authority per pod (design decision b): the issuer IS the pod owner.
   if (pod !== undefined && normalisePubkey(pod) !== issuerHex) {
     throw new MandateError('pod must be the issuer (a mandate is issued by the pod owner)');
@@ -318,6 +345,8 @@ module.exports = {
   mandateEventCreatedAt,
   signMandate,
   containerInPod,
+  containersOverlap,
+  assertProjContainer,
   normaliseContainer,
   podOf,
   isMandateActive,

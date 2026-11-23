@@ -617,7 +617,7 @@ impl Port {
     ) -> Result<Admitted, Refused> {
         let kind = d.kind;
         if kind == acl::MANDATE_EVENT_KIND {
-            check_mandate_envelope(op, &name, held, &d.tags)?;
+            check_mandate_envelope(op, &name, held, &d, (self.now)())?;
         }
         if !grant.kinds.contains(&kind) {
             return Err(Refused::new(
@@ -895,57 +895,122 @@ impl Port {
     }
 }
 
-/// Wall-clock seconds since the Unix epoch.
 /// The agent-mandate URN prefix a kind-30078 `d` tag must carry.
 const MANDATE_URN_PREFIX: &str = "urn:agentbox:mandate:";
+
+/// How far a mandate event's `created_at` may sit from the port's clock.
+const MANDATE_SKEW_SECS: u64 = 300;
+
+/// Largest mandate envelope content the port will sign.
+const MANDATE_CONTENT_MAX: usize = 16 * 1024;
 
 /// Refuse a kind-30078 that is not an agent-mandate envelope of this key.
 ///
 /// Kind 30078 is generic app data, so the port signs it on no other terms than
-/// the mandate shape (AB-11): exactly one `d` tag (relays key the addressable
-/// slot on the first, so a second is an ambiguity attack) whose value is
-/// `urn:agentbox:mandate:<this key's x-only hex>:<local>`, and a
-/// `t=agent-mandate` tag. Runs in the shared signing path, so it holds whatever
-/// operation carried the request, and only the `core` key may sign one.
+/// the exact mandate shape (AB-11). The caller (uid 1000) is granted this kind,
+/// so every field it could abuse is pinned here:
+///
+/// - `created_at` within [`MANDATE_SKEW_SECS`] of the port's clock (an addressable
+///   event with a far-future `created_at` could never be superseded);
+/// - exactly one each of `d`, `p`, `t`, `status`, and at most one numeric
+///   `expiration`; no other tag;
+/// - `d` = `urn:agentbox:mandate:<this key's x-only hex>:<local>`, local part
+///   `[A-Za-z0-9_-]+`; `t` = `agent-mandate`; `status` in {active, revoked};
+///   `p` = 64 lowercase hex;
+/// - content is a JSON object of at most [`MANDATE_CONTENT_MAX`] bytes with
+///   `urn == d`, `issuer == did:nostr:<this key>`, `agent == did:nostr:<p>` and a
+///   boolean `revoked` that agrees with `status`.
+///
+/// Runs in the shared signing path, so it holds whatever operation carried the
+/// request, and only the `core` key may sign one.
 fn check_mandate_envelope(
     op: &str,
     key: &str,
     held: &HeldKey,
-    tags: &[Vec<String>],
+    d: &Draft,
+    now: u64,
 ) -> Result<(), Refused> {
     let refuse = |why: &str| Err(Refused::new(op, format!("kind 30078 refused: {why}")));
     if key != DEFAULT_KEY {
         return refuse("only the core key signs an agent mandate");
     }
-    let mut d = tags
-        .iter()
-        .filter(|t| t.first().map(String::as_str) == Some("d"));
-    let (Some(d_tag), None) = (d.next(), d.next()) else {
-        return refuse("needs exactly one d tag");
-    };
-    let Some(urn) = d_tag.get(1) else {
-        return refuse("the d tag carries no value");
+    if d.created_at.abs_diff(now) > MANDATE_SKEW_SECS {
+        return refuse("created_at is not within the allowed skew of now");
+    }
+
+    let mut one = std::collections::BTreeMap::<&str, &str>::new();
+    let mut expiration = false;
+    for t in &d.tags {
+        let [name, value] = t.as_slice() else {
+            return refuse("every tag must be a [name, value] pair");
+        };
+        match name.as_str() {
+            "d" | "p" | "t" | "status" => {
+                if one.insert(name.as_str(), value.as_str()).is_some() {
+                    return refuse("a tag that must appear once appears twice");
+                }
+            }
+            "expiration" => {
+                if expiration || value.is_empty() || !value.bytes().all(|b| b.is_ascii_digit()) {
+                    return refuse("expiration must appear once and be a Unix time");
+                }
+                expiration = true;
+            }
+            _ => return refuse("tag not part of the mandate envelope"),
+        }
+    }
+    let (Some(urn), Some(p), Some(t), Some(status)) =
+        (one.get("d"), one.get("p"), one.get("t"), one.get("status"))
+    else {
+        return refuse("needs exactly one each of d, p, t and status");
     };
     let Some(rest) = urn.strip_prefix(MANDATE_URN_PREFIX) else {
         return refuse("the d tag is not a urn:agentbox:mandate: URN");
     };
-    let owner_ok = rest
+    let local = rest
         .strip_prefix(held.xonly.as_str())
-        .and_then(|r| r.strip_prefix(':'))
-        .is_some_and(|local| !local.is_empty());
-    if !owner_ok {
-        return refuse("the mandate URN is not scoped to the signing key");
-    }
-    let tagged = tags.iter().any(|t| {
-        t.first().map(String::as_str) == Some("t")
-            && t.get(1).map(String::as_str) == Some("agent-mandate")
+        .and_then(|r| r.strip_prefix(':'));
+    let local_ok = local.is_some_and(|l| {
+        !l.is_empty()
+            && l.len() <= 128
+            && l.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'_' || b == b'-')
     });
-    if !tagged {
-        return refuse("missing the t=agent-mandate tag");
+    if !local_ok {
+        return refuse("the mandate URN is not scoped to the signing key, or its local part is not [A-Za-z0-9_-]+");
+    }
+    if *t != "agent-mandate" {
+        return refuse("the t tag must be agent-mandate");
+    }
+    if !matches!(*status, "active" | "revoked") {
+        return refuse("status must be active or revoked");
+    }
+    if p.len() != 64 || !p.bytes().all(|b| matches!(b, b'0'..=b'9' | b'a'..=b'f')) {
+        return refuse("the p tag must be 64 lowercase hex characters");
+    }
+
+    if d.content.len() > MANDATE_CONTENT_MAX {
+        return refuse("content too large");
+    }
+    let Ok(Value::Object(c)) = serde_json::from_str::<Value>(&d.content) else {
+        return refuse("content must be a JSON object");
+    };
+    if c.get("urn").and_then(Value::as_str) != Some(urn) {
+        return refuse("content.urn must equal the d tag");
+    }
+    if c.get("issuer").and_then(Value::as_str) != Some(format!("did:nostr:{}", held.xonly).as_str())
+    {
+        return refuse("content.issuer must be this key");
+    }
+    if c.get("agent").and_then(Value::as_str) != Some(format!("did:nostr:{p}").as_str()) {
+        return refuse("content.agent must match the p tag");
+    }
+    if c.get("revoked").and_then(Value::as_bool) != Some(*status == "revoked") {
+        return refuse("content.revoked must agree with status");
     }
     Ok(())
 }
 
+/// Wall-clock seconds since the Unix epoch.
 fn now_unix() -> u64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)

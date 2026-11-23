@@ -112,12 +112,21 @@ describe('createMandate', () => {
       `/pods/${ISSUER}/kg/x.meta/`,
       `/pods/${ISSUER}/kg/>x/`,                 // Turtle IRI injection
       `/pods/${ISSUER}/kg/ x/`,
+      `/pods/${ISSUER}/.hidden/`,             // dot-leading segments (.acl, .well-known, .git …)
+      `/pods/${ISSUER}/proj/.git/`,
+      `/pods/${ISSUER}/.well-known/x/`,
+      `/pods/${ISSUER}/kg/.acl/`,
       `/pods/${ISSUER}/kg/x#frag`,
       `/pods/${ISSUER}/kg/x?q=1`,
     ];
     for (const container of bad) {
       expect(() => createMandate({ issuer: ISSUER, agent: AGENT, container })).toThrow(MandateError);
     }
+  });
+
+  it('refuses a mandate whose agent is the issuer (the owner already holds every mode)', () => {
+    expect(() => createMandate({ issuer: ISSUER, agent: ISSUER, container: KG })).toThrow(MandateError);
+    expect(() => createMandate({ issuer: ISSUER, agent: `did:nostr:${ISSUER}`, container: KG })).toThrow(/issuer/);
   });
 
   it('records the owner pod, derives it from the issuer for old records, and refuses a pod that is not the issuer', () => {

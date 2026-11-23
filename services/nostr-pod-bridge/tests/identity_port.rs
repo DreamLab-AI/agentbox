@@ -374,53 +374,181 @@ fn acl_with_mandate_kind(uid: u32) -> String {
     acl.to_string()
 }
 
+fn unix_now() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs()
+}
+
+/// A well-formed mandate envelope request for `owner`; each test perturbs one field.
+struct Env {
+    owner: String,
+    urn: String,
+    agent: String,
+    status: &'static str,
+    created_at: u64,
+    content: Option<Value>,
+    tags: Option<Value>,
+}
+
+impl Env {
+    fn new(owner: &str) -> Self {
+        Env {
+            owner: owner.to_string(),
+            urn: format!("urn:agentbox:mandate:{owner}:sha256-12-{}", "c".repeat(12)),
+            agent: "d".repeat(64),
+            status: "active",
+            created_at: unix_now(),
+            content: None,
+            tags: None,
+        }
+    }
+    fn body(&self) -> String {
+        let content = self.content.clone().unwrap_or_else(|| {
+            json!({"urn": self.urn, "issuer": format!("did:nostr:{}", self.owner),
+                   "agent": format!("did:nostr:{}", self.agent),
+                   "revoked": self.status == "revoked"})
+        });
+        let tags = self.tags.clone().unwrap_or_else(|| {
+            json!([["d", self.urn], ["p", self.agent], ["t", "agent-mandate"], ["status", self.status]])
+        });
+        json!({"key":"core","kind":30078,"content":content.to_string(),
+               "created_at":self.created_at,"tags":tags})
+        .to_string()
+    }
+}
+
 #[test]
 fn a_30078_is_signed_only_when_it_is_a_mandate_envelope_of_the_signing_key() {
     let (uid, gid) = own_ids();
     let s = start(&acl_with_mandate_kind(uid), "1", Some(gid));
     let sock = s.sock();
     let owner = core_xonly();
-    let urn = format!("urn:agentbox:mandate:{owner}:{}", "c".repeat(64));
-    let good = |tags: Value| {
-        json!({"key":"core","kind":30078,"content":"{}","created_at":1_700_000_042u64,"tags":tags}).to_string()
-    };
 
-    // The shape the management-api signs: one d (this key's mandate URN), t=agent-mandate.
-    let (rc, v) = call(
-        &sock,
-        "sign_event",
-        &good(json!([["d", urn], ["p", "d".repeat(64)], ["t", "agent-mandate"], ["status", "revoked"]])),
-    );
-    assert_eq!(rc, 0, "{v}");
-    assert_eq!(v["event"]["kind"], 30078);
-    assert_eq!(v["event"]["created_at"], 1_700_000_042u64, "caller-supplied created_at is honoured");
-    assert_eq!(v["event"]["pubkey"], owner);
-    let ev: nostr_bbs_core::NostrEvent = serde_json::from_value(v["event"].clone()).unwrap();
-    assert!(nostr_bbs_core::verify_event(&ev));
+    // The shape the management-api signs, active and revoked.
+    for status in ["active", "revoked"] {
+        let mut e = Env::new(&owner);
+        e.status = status;
+        let (rc, v) = call(&sock, "sign_event", &e.body());
+        assert_eq!(rc, 0, "{status}: {v}");
+        assert_eq!(v["event"]["kind"], 30078);
+        assert_eq!(v["event"]["pubkey"], owner);
+        assert_eq!(v["event"]["created_at"], e.created_at);
+        let ev: nostr_bbs_core::NostrEvent = serde_json::from_value(v["event"].clone()).unwrap();
+        assert!(nostr_bbs_core::verify_event(&ev));
+    }
+    // An expiration tag is part of the envelope.
+    let mut e = Env::new(&owner);
+    e.tags = Some(json!([["d", e.urn], ["p", e.agent], ["t","agent-mandate"], ["status","active"],
+                          ["expiration", (unix_now() + 3600).to_string()]]));
+    assert_eq!(call(&sock, "sign_event", &e.body()).0, 0);
 
-    let refused = |label: &str, tags: Value| {
-        let (rc, v) = call(&sock, "sign_event", &good(tags));
+    let refused = |label: &str, e: Env| {
+        let (rc, v) = call(&sock, "sign_event", &e.body());
         assert_eq!(rc, 1, "{label}: signed a 30078 it must refuse: {v}");
         assert_eq!(v["refused"]["op"], "sign_event", "{label}");
         assert!(v.get("event").is_none(), "{label}");
     };
-    // No d tag at all: a 30078 is a generic app-data kind and may not ride this grant.
-    refused("no d", json!([["t", "agent-mandate"]]));
-    // d without the mandate URN prefix.
-    refused("wrong d prefix", json!([["d", "some-app-state"], ["t", "agent-mandate"]]));
-    refused("near prefix", json!([["d", format!("urn:agentbox:activity:{owner}:x")], ["t", "agent-mandate"]]));
-    // Two d tags: relays key the replaceable slot on the first one.
-    refused("two d", json!([["d", urn], ["d", "urn:agentbox:mandate:x"], ["t", "agent-mandate"]]));
-    // No t=agent-mandate tag.
-    refused("no t", json!([["d", urn]]));
-    refused("wrong t", json!([["d", urn], ["t", "other"]]));
-    // A mandate URN scoped to somebody else's key.
-    refused(
-        "foreign issuer in d",
-        json!([["d", format!("urn:agentbox:mandate:{}:{}", "e".repeat(64), "c".repeat(64))], ["t", "agent-mandate"]]),
-    );
-    // Empty local part.
-    refused("empty local", json!([["d", format!("urn:agentbox:mandate:{owner}:")], ["t", "agent-mandate"]]));
+    let with_tags = |t: Value| { let mut e = Env::new(&owner); e.tags = Some(t); e };
+    let u = Env::new(&owner).urn;
+    let a = Env::new(&owner).agent;
+
+    // d tag shape
+    refused("no d", with_tags(json!([["p", a], ["t","agent-mandate"], ["status","active"]])));
+    refused("wrong d prefix", with_tags(json!([["d","some-app-state"], ["p", a], ["t","agent-mandate"], ["status","active"]])));
+    refused("two d", with_tags(json!([["d", u], ["d","urn:agentbox:mandate:x"], ["p", a], ["t","agent-mandate"], ["status","active"]])));
+    refused("foreign issuer in d", with_tags(json!([["d", format!("urn:agentbox:mandate:{}:sha256-12-abc", "e".repeat(64))], ["p", a], ["t","agent-mandate"], ["status","active"]])));
+    refused("empty local", with_tags(json!([["d", format!("urn:agentbox:mandate:{owner}:")], ["p", a], ["t","agent-mandate"], ["status","active"]])));
+    // local part charset
+    for bad in ["x y", "x/y", "x\ny", "x:y", "x>y", "../x", "x\u{0}"] {
+        let urn = format!("urn:agentbox:mandate:{owner}:{bad}");
+        let mut e = Env::new(&owner);
+        e.urn = urn.clone();
+        refused(&format!("charset {bad:?}"), e);
+    }
+    // t tag: exactly one agent-mandate
+    refused("no t", with_tags(json!([["d", u], ["p", a], ["status","active"]])));
+    refused("wrong t", with_tags(json!([["d", u], ["p", a], ["t","other"], ["status","active"]])));
+    refused("two t", with_tags(json!([["d", u], ["p", a], ["t","agent-mandate"], ["t","agent-mandate"], ["status","active"]])));
+    // status tag: exactly one, active|revoked
+    refused("no status", with_tags(json!([["d", u], ["p", a], ["t","agent-mandate"]])));
+    refused("bad status", with_tags(json!([["d", u], ["p", a], ["t","agent-mandate"], ["status","deleted"]])));
+    refused("two status", with_tags(json!([["d", u], ["p", a], ["t","agent-mandate"], ["status","active"], ["status","revoked"]])));
+    // p tag: exactly one, 64 hex
+    refused("no p", with_tags(json!([["d", u], ["t","agent-mandate"], ["status","active"]])));
+    refused("two p", with_tags(json!([["d", u], ["p", a], ["p", "f".repeat(64)], ["t","agent-mandate"], ["status","active"]])));
+    refused("p not hex", with_tags(json!([["d", u], ["p", "zz"], ["t","agent-mandate"], ["status","active"]])));
+    refused("p uppercase", with_tags(json!([["d", u], ["p", "A".repeat(64)], ["t","agent-mandate"], ["status","active"]])));
+    // no other tags may ride along
+    refused("extra tag", with_tags(json!([["d", u], ["p", a], ["t","agent-mandate"], ["status","active"], ["e", "f".repeat(64)]])));
+    refused("bad expiration", with_tags(json!([["d", u], ["p", a], ["t","agent-mandate"], ["status","active"], ["expiration","soon"]])));
+}
+
+#[test]
+fn a_30078_created_at_is_clamped_to_now_plus_or_minus_a_small_skew() {
+    let (uid, gid) = own_ids();
+    let s = start(&acl_with_mandate_kind(uid), "1", Some(gid));
+    let owner = core_xonly();
+    let now = unix_now();
+    for (label, at, ok) in [
+        ("now", now, true),
+        ("a minute ahead", now + 60, true),
+        ("a minute behind", now - 60, true),
+        ("an hour ahead", now + 3600, false),
+        ("an hour behind", now - 3600, false),
+        ("year 2100", 4_102_444_800, false),
+        ("the epoch", 0, false),
+        ("one", 1, false),
+    ] {
+        let mut e = Env::new(&owner);
+        e.created_at = at;
+        let (rc, v) = call(&s.sock(), "sign_event", &e.body());
+        assert_eq!(rc == 0, ok, "{label}: {v}");
+        if ok {
+            assert_eq!(v["event"]["created_at"], at, "{label}: an accepted created_at is signed as given");
+        }
+    }
+}
+
+#[test]
+fn a_30078_content_must_be_the_json_envelope_that_matches_its_tags() {
+    let (uid, gid) = own_ids();
+    let s = start(&acl_with_mandate_kind(uid), "1", Some(gid));
+    let owner = core_xonly();
+    let base = Env::new(&owner);
+    let good = json!({"urn": base.urn, "issuer": format!("did:nostr:{owner}"),
+                      "agent": format!("did:nostr:{}", base.agent), "revoked": false});
+    let mut check = |label: &str, content: Option<Value>, raw: Option<&str>, status: &'static str, ok: bool| {
+        let mut e = Env::new(&owner);
+        e.status = status;
+        let body = match raw {
+            Some(r) => {
+                let mut v: Value = serde_json::from_str(&e.body()).unwrap();
+                v["content"] = json!(r);
+                v.to_string()
+            }
+            None => { e.content = content; e.body() }
+        };
+        let (rc, v) = call(&s.sock(), "sign_event", &body);
+        assert_eq!(rc == 0, ok, "{label}: {v}");
+    };
+    check("matching envelope", Some(good.clone()), None, "active", true);
+    check("empty content", None, Some(""), "active", false);
+    check("not json", None, Some("hello"), "active", false);
+    check("json but not an object", None, Some("[1,2]"), "active", false);
+    check("urn differs from d", Some({ let mut g = good.clone(); g["urn"] = json!("urn:agentbox:mandate:x"); g }), None, "active", false);
+    check("issuer is somebody else", Some({ let mut g = good.clone(); g["issuer"] = json!(format!("did:nostr:{}", "e".repeat(64))); g }), None, "active", false);
+    check("issuer missing", Some({ let mut g = good.clone(); g.as_object_mut().unwrap().remove("issuer"); g }), None, "active", false);
+    check("agent differs from the p tag", Some({ let mut g = good.clone(); g["agent"] = json!(format!("did:nostr:{}", "e".repeat(64))); g }), None, "active", false);
+    check("revoked:true under status=active", Some({ let mut g = good.clone(); g["revoked"] = json!(true); g }), None, "active", false);
+    check("revoked:false under status=revoked", Some(good.clone()), None, "revoked", false);
+    check("revoked missing", Some({ let mut g = good.clone(); g.as_object_mut().unwrap().remove("revoked"); g }), None, "active", false);
+    check("revoked as a string", Some({ let mut g = good.clone(); g["revoked"] = json!("false"); g }), None, "active", false);
+    let mut rev = good.clone(); rev["revoked"] = json!(true);
+    check("revoked:true under status=revoked", Some(rev), None, "revoked", true);
+    // arbitrary extra payload cannot be smuggled through a 30078 as "content"
+    check("oversize content", Some({ let mut g = good.clone(); g["note"] = json!("x".repeat(70_000)); g }), None, "active", false);
 }
 
 #[test]

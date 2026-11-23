@@ -91,9 +91,27 @@ function withLock(name, fn) {
   return run;
 }
 
-/** The per-container lifecycle lock (see module doc). */
+/** Create `mandates/` at 0700, and tighten one that already exists with looser bits. */
+function ensureDir() {
+  const dir = mandatesDir();
+  fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
+  try { if ((fs.statSync(dir).mode & 0o777) !== 0o700) fs.chmodSync(dir, 0o700); } catch (_) { /* not ours to change */ }
+  return dir;
+}
+
+/**
+ * The per-container lifecycle lock (see module doc): serialised in-process first,
+ * then a cross-process lockfile (journal-lock's O_EXCL + stale-holder takeover)
+ * held across the whole awaited operation, so a CLI or a second process cannot
+ * interleave a sidecar rewrite with ours.
+ */
 function withContainerLock(container, fn) {
-  return withLock(`container:${String(container)}`, fn);
+  const c = String(container);
+  return withLock(`container:${c}`, async () => {
+    const lockPath = path.join(ensureDir(), `.container-${crypto.createHash('sha256').update(c).digest('hex').slice(0, 16)}.lock`);
+    const token = journalLock.acquire(lockPath, 15000);
+    try { return await fn(); } finally { journalLock.release(lockPath, token); }
+  });
 }
 
 // ── migration ────────────────────────────────────────────────────────────────
@@ -114,8 +132,9 @@ function withContainerLock(container, fn) {
  * @returns {object} the same object
  */
 function migrate(raw) {
+  const out = {};
   for (const [key, entry] of Object.entries(raw)) {
-    if (!entry || typeof entry !== 'object' || !entry.record) { delete raw[key]; continue; }
+    if (!entry || typeof entry !== 'object' || !entry.record) continue;
     const rec = entry.record;
     const pod = mandateLib.podOf(rec);
     if (pod && !rec.pod) rec.pod = pod;
@@ -137,10 +156,19 @@ function migrate(raw) {
         entry.last_error = entry.last_error || 'legacy-unenforced: minted before mandates were enforced at the pod';
       }
     }
-    if (newKey !== key) { delete raw[key]; raw[newKey] = entry; }
+    // Two entries can land on one key (a legacy `/proj/x/` and an already-migrated
+    // `/pods/<pod>/proj/x/`). Keep the MORE RESTRICTIVE state, whatever the key order.
+    const rival = out[newKey];
+    if (!rival || RESTRICTIVENESS[entry.state] > RESTRICTIVENESS[rival.state]) out[newKey] = entry;
   }
-  return raw;
+  for (const k of Object.keys(raw)) delete raw[k];
+  return Object.assign(raw, out);
 }
+
+/** Higher = more denying. Used only to resolve a migration key collision. */
+const RESTRICTIVENESS = Object.freeze({
+  active: 1, granting: 2, failed: 3, expired: 3, revoking: 4, revoked_unpublished: 5, revoked: 6,
+});
 
 // ── read / write ─────────────────────────────────────────────────────────────
 
@@ -183,7 +211,7 @@ function save(reg) {
   const finalPath = registryPath();
   const tmpPath = path.join(dir, `.registry.${process.pid}.${crypto.randomBytes(6).toString('hex')}.tmp`);
   try {
-    fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
+    ensureDir();
     const fd = fs.openSync(tmpPath, 'wx', 0o600);
     try {
       fs.writeSync(fd, JSON.stringify(reg, null, 2));
@@ -210,10 +238,14 @@ function save(reg) {
  */
 function update(fn) {
   return withLock('registry', () => {
-    const reg = load();
-    const out = fn(reg);
-    save(reg);
-    return out;
+    ensureDir();
+    // Cross-process exclusion for the read-modify-write (the critical section is synchronous).
+    return journalLock.withLock(mandatesDir(), () => {
+      const reg = load();
+      const out = fn(reg);
+      save(reg);
+      return out;
+    });
   });
 }
 
@@ -266,7 +298,7 @@ function activeRecords(reg, container, nowSec) {
 function audit(fields, opts = {}) {
   try {
     const line = `${JSON.stringify({ ts: new Date((opts.now || Math.floor(Date.now() / 1000)) * 1000).toISOString(), ...fields })}\n`;
-    fs.mkdirSync(mandatesDir(), { recursive: true, mode: 0o700 });
+    ensureDir();
     journalLock.withLock(mandatesDir(), () => journalAppend.appendLine(auditPath(), line));
     return true;
   } catch (_) {
@@ -281,6 +313,7 @@ module.exports = {
   load,
   save,
   update,
+  ensureDir,
   migrate,
   withLock,
   withContainerLock,

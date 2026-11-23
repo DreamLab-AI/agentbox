@@ -39,6 +39,7 @@ const crypto = require('crypto');
 const uris = require('../lib/uris');
 const agentIdentity = require('../lib/agent-identity');
 const { ensureMandate } = require('./mandate');
+const authz = require('../lib/authz');
 const { railConfig } = require('../lib/sidestr-rail');
 
 // ── Session registry (durable, keyed by session id) ─────────────────────────
@@ -120,7 +121,7 @@ function _repoSlug(body) {
     || (body.project_path ? path.basename(String(body.project_path).replace(/\/+$/, '')) : '')
     || body.slug
     || 'workspace';
-  const slug = String(raw).toLowerCase().replace(/[^a-z0-9._-]/g, '-').replace(/^-+|-+$/g, '').slice(0, 64)
+  const slug = String(raw).toLowerCase().replace(/[^a-z0-9._-]/g, '-').replace(/^[-.]+|-+$/g, '').slice(0, 64)
     // A slug becomes a pod path segment: never a dot segment, never a sidecar suffix.
     .replace(/\.(acl|meta)$/, '-$1');
   return /^\.*$/.test(slug) ? 'workspace' : slug;
@@ -185,7 +186,7 @@ async function sessionsBoundaryRoutes(fastify, options) {
           project_path:  { type: 'string' },
           repo_slug:     { type: 'string' },
           eager_mandate: { type: 'boolean' },
-          mandate_container: { type: 'string' },
+          mandate_container: { type: 'string', description: 'ignored (AB-11): the container is always /pods/<owner>/proj/<slug>/' },
           outcome:       { type: 'string' },
           turn_title:    { type: 'string' },
           old_status:    { type: 'string' },
@@ -206,6 +207,14 @@ async function sessionsBoundaryRoutes(fastify, options) {
 
     // ── phase=create ─────────────────────────────────────────────────────
     if (phase === 'create') {
+      // AB-11: an eager mandate makes the pod owner's key grant write access, so it is
+      // an OPERATOR action. The global auth hook admits any valid NIP-98 key; without
+      // this gate any such key could name an existing profile and get a grant. The
+      // session daemon (agentbox-sessions) calls with the operator bearer.
+      if (body.eager_mandate === true) {
+        await authz.requireOperator({ manifest })(request, reply);
+        if (reply.sent) return reply;
+      }
       // Idempotent on the session id (DDD-019 I07): return the existing
       // ManagedSession without opening a duplicate epic.
       const existing = _readRecord(sessionId);
@@ -295,7 +304,9 @@ async function sessionsBoundaryRoutes(fastify, options) {
       let mandateUrn = null;
       if (body.eager_mandate === true) {
         const issuer = _operatorPubkey();
-        const container = body.mandate_container || `/pods/${issuer}/proj/${repoSlug}/`;
+        // Pinned: `mandate_container` is no longer honoured. Only the explicit operator
+        // POST /v1/mandate may grant outside /pods/<owner>/proj/<slug>/.
+        const container = `/pods/${issuer}/proj/${repoSlug}/`;
         if (!issuer) {
           notes.push('eager_mandate requested but no operator pubkey — mandate skipped');
         } else {

@@ -54,9 +54,15 @@ async function preflight(rt, issuerHex) {
   const signer = await rt.resolveSigner(rt.manifest);
   const { connectBase, signedBase } = rt.podEndpoints(rt.manifest);
   await mandateSigner.assertOwnerSigner({ signer, issuerHex, signedBase });
-  const client = new PodAclClient({
-    connectBase, signedBase, nip98: (m, u, b) => signer.nip98(m, u, b), fetchFn: rt.fetchFn, spaceReplays: rt.spaceReplays,
-  });
+  let client;
+  try {
+    client = new PodAclClient({
+      connectBase, signedBase, nip98: (m, u, b) => signer.nip98(m, u, b), fetchFn: rt.fetchFn, spaceReplays: rt.spaceReplays,
+    });
+  } catch (err) {
+    // e.g. a non-loopback http: pod URL: fail closed, nothing is sent.
+    throw new mandateSigner.SignerUnavailable(err.message, { reason: 'insecure_pod_url', cause: err });
+  }
   return { signer, client };
 }
 

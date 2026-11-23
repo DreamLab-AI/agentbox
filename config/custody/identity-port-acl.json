@@ -13,7 +13,7 @@
     "Human governance kinds 31401, 31403-31405 and 38414 remain forbidden. Only an independently marked",
     "agent_governance signer can author panels/cases; auth operations have their own relay/URL checks.",
     "mirror_key returns public identity only in this policy; mirror_wrap signs bounded self-DMs inside custody.",
-    "Kind 30078 (agent mandate, AB-11) is grantable only to sign_event on core; the port signs it only as a mandate envelope: exactly one d tag urn:agentbox:mandate:<core xonly>:<local>, plus t=agent-mandate.",
+    "Kind 30078 (agent mandate, AB-11) is grantable only to sign_event on core; the port signs it only as the exact mandate envelope (created_at within 300 s of now; one each of d urn:agentbox:mandate:<core xonly>:<local>, p, t=agent-mandate, status active|revoked; content JSON whose urn, issuer, agent and revoked agree with the tags).",
     "Optional agent_governance material must be independently provisioned and admitted by the operator before use."
   ],
   "keys": {
