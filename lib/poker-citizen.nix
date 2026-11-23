@@ -23,18 +23,20 @@
 { lib, pkgs }:
 
 let
-  version = "1.0.0-beta.21-rc.3-4-g8a0ca41";
+  version = "1.0.0-beta.21-rc.3-5-gc8b8c4e";
+  # c8b8c4e = forum main: 8a0ca41 plus operator alerts by gift-wrapped DM
+  # (POKER_CITIZEN_ALERT_PUBKEY, projected from [poker_citizen].alert_pubkey).
   # 8a0ca41 = forum main after the external-triage fixes (2026-11-23): DW-10.2
   # buy-in reservation, DW-10.3 persisted hands and idempotent payouts, DW-10.4
   # client pay bound to the agreed replay; protocol VERSION stays 1 (an old
   # client drops the new Voided message). Must equal the website's KIT_REF.
-  rev = "8a0ca418b9f129b219431880d9fa5a81603428fc";
+  rev = "c8b8c4eac328157f2a95c98f91a2b082f41f1535";
 
   src = pkgs.fetchFromGitHub {
     owner = "DreamLab-AI";
     repo  = "nostr-rust-forum";
     inherit rev;
-    hash  = "sha256-YD3CijyWD8a8V4zwi0qrCPHqNXKY8bM4n3jPWlBpPOM=";
+    hash  = "sha256-/XhpfiiJYA+JYJirivXQ+eEIXNFBWgkpYLYi3wAmxSM=";
   };
 
 in
