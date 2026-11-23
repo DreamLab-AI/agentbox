@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 06c2f701130aa94edf24a20f9f86de2131a0bcf4
+verified_commit: 538c223973ee1aa1fb18a7521b5ea91d3e9535ac
 verified_paths: [lib/factrail.nix, lib/lockfiles/factrail-af23eca6.Cargo.lock, lib/claude-code-binary.nix, config/entrypoint-unified.sh, config/claude-plugins/.claude-plugin/marketplace.json, scripts/factrail-store-migrate.mjs, tests/config/factrail-store-migrate.test.mjs, tests/config/factrail-projection.test.sh, schema/agentbox.toml.schema.json, scripts/bake-ruflo-console.sh, scripts/ruflo-console-project.mjs, tests/config/ruflo-console.test.mjs]
 owner: jjohare
 review_trigger: a factrail rev bump in lib/factrail.nix, the end of the post-rebuild residency soak, a Claude Code function-hook API change, or a decision to train a local judge on recorded Jev decisions
@@ -541,3 +541,9 @@ verification, not activation.
 Governed delta since `fc95b3877`: `config/entrypoint-unified.sh`, `schema/agentbox.toml.schema.json`. In `config/entrypoint-unified.sh` the only hunk is in the `[interaction_plane.proxy]` projection (`:2343-2357`): the fallback branch, taken only when `config/lib/nip98-config.sh` is unreadable, now chowns a root-owned workspace `.agentbox` back to devuser first (`:2348-2350`), and a comment records that the fallback leaves the file `1000:1000 0600` so the door stays closed under role isolation (`:2353-2354`). Five lines added, so lines after `:2347` sit five lower than at `8db362bc5`. `schema/agentbox.toml.schema.json` gains the optional `adapters.connect_timeout_ms` property (ADR-2035: one integer, or a table of per-slot integers, each at least 1) at `:101-145`. It is additive, 45 lines, so lines after `:99` sit 45 lower than at `8db362bc5`; no existing property is changed or tightened. The factrail projection and `[features.jev_compaction]` schema are untouched.
 
 Judged from `git diff fc95b3877..06c2f7011 -- config/entrypoint-unified.sh schema/agentbox.toml.schema.json`, read in full against this record's claims; `node scripts/adr-index-gen.js docs/adr --check`. The Decision and status axes are unchanged and no claim of this record is falsified. Citations in this record to lines after the points above are as of their own commit and are not renumbered.
+
+## Re-verification — 2026-11-23 (2) at `538c223973ee1aa1fb18a7521b5ea91d3e9535ac`
+
+Governed delta since `06c2f7011`: `schema/agentbox.toml.schema.json`. The delta is the poker house seat's optional operator alert (`e59b51980`), plus the seat binary pin (`538c22397`, `lib/poker-citizen.nix`, not a path this record governs). `schema/agentbox.toml.schema.json` declares an optional `alert_pubkey` string (pattern `^([0-9a-fA-F]{64}|npub1[0-9a-z]+)?$`) on `[poker_citizen]` (`:4281`) and on `[poker_citizen.<name>]` (`:4311`); the per-seat object keeps `additionalProperties: false`; lines after `:4277` sit five lower and after `:4302` ten lower. Every hunk is additive: one optional key under `[poker_citizen]` and `[poker_citizen.<name>]` and one environment projection; the seat opens no listener and adds no program, port, mount, volume or manifest gate. Nothing this record decides (Implement Jev compaction with factrail — fact rails in Rust, baked at a pinned commit) reads `alert_pubkey` or `POKER_CITIZEN_ALERT_PUBKEY`. Review trigger: not fired.
+
+Judged from `git diff 06c2f7011..538c22397 -- schema/agentbox.toml.schema.json`, the hunks read in full against this record's claims; `node scripts/adr-index-gen.js docs/adr --check`. The Decision and status axes are unchanged and no claim of this record is falsified. Citations in this record to lines after the points above are as of their own commit and are not renumbered.

@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 06c2f701130aa94edf24a20f9f86de2131a0bcf4
+verified_commit: 538c223973ee1aa1fb18a7521b5ea91d3e9535ac
 verified_paths: [config/instructions, services/agentbox-manifest/src/instructions.rs, services/agentbox-manifest/src/cred_sync.rs, config/entrypoint-unified.sh, agentbox.sh, flake.nix, docker-compose.yml, docker-compose.override.yml, tests/config/claude-home-migration.test.sh, tests/config/compose-persistence.test.cjs]
 owner: jjohare
 review_trigger: Claude Code starts reading AGENTS.md natively (drop the @AGENTS.md wrappers and the embed); or a Claude Code release changes where credentials live
@@ -447,3 +447,9 @@ verification, not activation.
 Governed delta since `fc95b3877`: `agentbox.sh`, `config/entrypoint-unified.sh`. In `config/entrypoint-unified.sh` the only hunk is in the `[interaction_plane.proxy]` projection (`:2343-2357`): the fallback branch, taken only when `config/lib/nip98-config.sh` is unreadable, now chowns a root-owned workspace `.agentbox` back to devuser first (`:2348-2350`), and a comment records that the fallback leaves the file `1000:1000 0600` so the door stays closed under role isolation (`:2353-2354`). Five lines added, so lines after `:2347` sit five lower than at `8db362bc5`. `agentbox.sh` adds `config` to the usage text (`:62`) and to the subcommand allowlist (`:2055`). The `config)` dispatch to `cmd_config` already existed (`:2900`, `cmd_config` at `:2448`), so an existing verb is exposed and nothing else changes; lines after `:61` sit one lower than at `8db362bc5`. The instruction-tier projection, `@AGENTS.md` wrappers and Claude-home migration are outside both hunks.
 
 Judged from `git diff fc95b3877..06c2f7011 -- agentbox.sh config/entrypoint-unified.sh`, read in full against this record's claims; `node scripts/adr-index-gen.js docs/adr --check`. The Decision and status axes are unchanged and no claim of this record is falsified. Citations in this record to lines after the points above are as of their own commit and are not renumbered.
+
+## Re-verification — 2026-11-23 (2) at `538c223973ee1aa1fb18a7521b5ea91d3e9535ac`
+
+Governed delta since `06c2f7011`: `flake.nix`. The delta is the poker house seat's optional operator alert (`e59b51980`), plus the seat binary pin (`538c22397`, `lib/poker-citizen.nix`, not a path this record governs). `flake.nix` gains `pokerCitizenAlert` (`:473`) and the per-seat `alertPubkey` (`:489`), each `unplaceheld (… or "")`, and appends `POKER_CITIZEN_ALERT_PUBKEY` to the `[program:poker-citizen]` and `[program:poker-citizen-<name>]` environment lines only when the value is non-empty (`:3434`, `:3449`); lines after `:468` sit three lower and lines after `:486` four lower. Every hunk is additive: one optional key under `[poker_citizen]` and `[poker_citizen.<name>]` and one environment projection; the seat opens no listener and adds no program, port, mount, volume or manifest gate. Nothing this record decides (Own the instruction tiers and the Claude home in the repo) reads `alert_pubkey` or `POKER_CITIZEN_ALERT_PUBKEY`. Review trigger: not fired.
+
+Judged from `git diff 06c2f7011..538c22397 -- flake.nix`, the hunks read in full against this record's claims; `node scripts/adr-index-gen.js docs/adr --check`. The Decision and status axes are unchanged and no claim of this record is falsified. Citations in this record to lines after the points above are as of their own commit and are not renumbered.

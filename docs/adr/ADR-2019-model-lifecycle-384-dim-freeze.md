@@ -7,7 +7,7 @@ implementation_status: none
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: 469e55367db33e218051985e9d1c8f7b82d19889
+verified_commit: 538c223973ee1aa1fb18a7521b5ea91d3e9535ac
 verified_paths: [mcp/servers/lib/aggregate-effectiveness.js, scripts/ruvector-sona-feeder.mjs, agentbox.toml]
 owner: jjohare
 review_trigger: A SONA binary with configurable embedding_dim (384-capable) ships, or a dimension migration is planned
@@ -420,3 +420,9 @@ verification, not activation.
 ## Comment-drift check — 2026-11-23 at `469e55367`
 
 Governed delta: `agentbox.toml` changed only in the comment above `[sidechain.dreamlab-txbt4]` (`:2042-2043`): "Off until the lead starts it" becomes "On since 2026-10-03", which matches `enabled = true` and the baked `autostart=true` producer, mirror and faucet programs. It is line-count neutral, so no `agentbox.toml:NNNN` citation moves, and no key or value changes. No decision, status axis or claim of this record is affected. Run: `git diff 59b1aca1c..469e55367 -- <governed paths>` read in full; the agentbox-manifest crate passes `cargo test` and `cargo clippy --all-targets -- -D warnings`, and `scripts/agentbox-config-validate.sh agentbox.toml` reports the manifest valid.
+
+## Re-verification — 2026-11-23 (2) at `538c223973ee1aa1fb18a7521b5ea91d3e9535ac`
+
+Governed delta since `469e55367`: `agentbox.toml`. The delta is the poker house seat's optional operator alert (`e59b51980`), plus the seat binary pin (`538c22397`, `lib/poker-citizen.nix`, not a path this record governs). `agentbox.toml` gains one commented-out `# alert_pubkey = ""` line under `[poker_citizen]` (`:2098`); no key or value changes, and lines after `:2095` sit one lower (`role_isolation = false` is now `:2616`, was `:2615`). Every hunk is additive: one optional key under `[poker_citizen]` and `[poker_citizen.<name>]` and one environment projection; the seat opens no listener and adds no program, port, mount, volume or manifest gate. Nothing this record decides (Model-lifecycle freeze — 384-dim bge is the active column, SONA and attention-rerank stay off) reads `alert_pubkey` or `POKER_CITIZEN_ALERT_PUBKEY`. Review trigger: not fired.
+
+Judged from `git diff 469e55367..538c22397 -- agentbox.toml`, the hunks read in full against this record's claims; `node scripts/adr-index-gen.js docs/adr --check`. The Decision and status axes are unchanged and no claim of this record is falsified. Citations in this record to lines after the points above are as of their own commit and are not renumbered.

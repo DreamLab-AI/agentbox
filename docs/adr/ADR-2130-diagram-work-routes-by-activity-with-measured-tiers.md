@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: 06c2f701130aa94edf24a20f9f86de2131a0bcf4
+verified_commit: 538c223973ee1aa1fb18a7521b5ea91d3e9535ac
 verified_paths: [services/agentbox-manifest/src/routing.rs, agentbox.toml, schema/agentbox.toml.schema.json]
 owner: jjohare
 review_trigger: the sealmap skill landing (DESIGN §10 step 5) with the four routes and two hosts; a Loom model swap; a change of the GLM model behind [consultants.zai]; a seal review whose author and reviewer share a family; ADR-2079's router consolidating [model_routing.routes]
@@ -231,3 +231,9 @@ Governed delta: `agentbox.toml` changed only in the comment above `[sidechain.dr
 Governed delta since `469e55367`: `schema/agentbox.toml.schema.json`. `schema/agentbox.toml.schema.json` gains the optional `adapters.connect_timeout_ms` property (ADR-2035: one integer, or a table of per-slot integers, each at least 1) at `:101-145`. It is additive, 45 lines, so lines after `:99` sit 45 lower than at `8db362bc5`; no existing property is changed or tightened. The routing table and `model_routing` schema are untouched.
 
 Judged from `git diff 469e55367..06c2f7011 -- schema/agentbox.toml.schema.json`, read in full against this record's claims; `node scripts/adr-index-gen.js docs/adr --check`. The Decision and status axes are unchanged and no claim of this record is falsified. Citations in this record to lines after the points above are as of their own commit and are not renumbered.
+
+## Re-verification — 2026-11-23 (2) at `538c223973ee1aa1fb18a7521b5ea91d3e9535ac`
+
+Governed delta since `06c2f7011`: `agentbox.toml`, `schema/agentbox.toml.schema.json`. The delta is the poker house seat's optional operator alert (`e59b51980`), plus the seat binary pin (`538c22397`, `lib/poker-citizen.nix`, not a path this record governs). `agentbox.toml` gains one commented-out `# alert_pubkey = ""` line under `[poker_citizen]` (`:2098`); no key or value changes, and lines after `:2095` sit one lower (`role_isolation = false` is now `:2616`, was `:2615`); `schema/agentbox.toml.schema.json` declares an optional `alert_pubkey` string (pattern `^([0-9a-fA-F]{64}|npub1[0-9a-z]+)?$`) on `[poker_citizen]` (`:4281`) and on `[poker_citizen.<name>]` (`:4311`); the per-seat object keeps `additionalProperties: false`; lines after `:4277` sit five lower and after `:4302` ten lower. Every hunk is additive: one optional key under `[poker_citizen]` and `[poker_citizen.<name>]` and one environment projection; the seat opens no listener and adds no program, port, mount, volume or manifest gate. Nothing this record decides (Diagram skills route by four model_routing activities on loom and zai hosts, with tiers set by measured descent and seal review always cross-family) reads `alert_pubkey` or `POKER_CITIZEN_ALERT_PUBKEY`. Review trigger: not fired.
+
+Judged from `git diff 06c2f7011..538c22397 -- agentbox.toml schema/agentbox.toml.schema.json`, the hunks read in full against this record's claims; `node scripts/adr-index-gen.js docs/adr --check`. The Decision and status axes are unchanged and no claim of this record is falsified. Citations in this record to lines after the points above are as of their own commit and are not renumbered.

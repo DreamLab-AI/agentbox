@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: inactive
 supersedes: []
 superseded_by: [ADR-2153]
-verified_commit: 06c2f701130aa94edf24a20f9f86de2131a0bcf4
+verified_commit: 538c223973ee1aa1fb18a7521b5ea91d3e9535ac
 verified_paths: [config/nip98-proxy/proxy.mjs, flake.nix]
 owner: jjohare
 review_trigger: next image rebuild (activation), or any new consumer of :9095, or per-process isolation becoming available
@@ -501,3 +501,9 @@ verification, not activation.
 Governed delta since `fc95b3877`: `config/nip98-proxy/proxy.mjs`. `config/nip98-proxy/proxy.mjs` changes in three ways. (1) The boot-config path is chosen by uid through the new `config/nip98-proxy/config-path.mjs` (`proxy.mjs:254`; uid 1000 keeps the workspace file, any other uid reads only `$AGENTBOX_SECRETS_DIR/nip98-proxy-config.json`, and no permitted path means PENDING, `proxy.mjs:274`, `:1126`). (2) The URL it verifies is the raw query minus the proxy's own credential parameters, with one `forwardedProto()` value (`proxy.mjs:532-541`). (3) An inbound `X-Forwarded-Prefix` is dropped and the proxy re-emits its own, taken from the route's stripped prefix (`:891`, `:914`, `:1039`, `:1051`); an inbound `x-forwarded-proto` is likewise dropped on the WebSocket path and re-emitted once (`:1040`). The strip-and-re-inject of `x-agentbox-pubkey` and `x-agentbox-auth-mode` (`:888`, `:915`, `:1032`), route and allow-list parsing, verifier loading and the identity checks are not touched. This record decides the AoE token boundary behind the proxy. Bearer injection and the named-route allow-list are not in the hunks; the new URL and prefix logic concerns the NIP-98 `u` tag only. Review trigger ("next image rebuild", a new `:9095` consumer, per-process isolation) did not fire: nothing here is rebuilt or activated.
 
 Judged from `git diff fc95b3877..06c2f7011 -- config/nip98-proxy/proxy.mjs`, read in full against this record's claims; `node scripts/adr-index-gen.js docs/adr --check`. The Decision and status axes are unchanged and no claim of this record is falsified. Citations in this record to lines after the points above are as of their own commit and are not renumbered.
+
+## Re-verification — 2026-11-23 (2) at `538c223973ee1aa1fb18a7521b5ea91d3e9535ac`
+
+Governed delta since `06c2f7011`: `flake.nix`. The delta is the poker house seat's optional operator alert (`e59b51980`), plus the seat binary pin (`538c22397`, `lib/poker-citizen.nix`, not a path this record governs). `flake.nix` gains `pokerCitizenAlert` (`:473`) and the per-seat `alertPubkey` (`:489`), each `unplaceheld (… or "")`, and appends `POKER_CITIZEN_ALERT_PUBKEY` to the `[program:poker-citizen]` and `[program:poker-citizen-<name>]` environment lines only when the value is non-empty (`:3434`, `:3449`); lines after `:468` sit three lower and lines after `:486` four lower. Every hunk is additive: one optional key under `[poker_citizen]` and `[poker_citizen.<name>]` and one environment projection; the seat opens no listener and adds no program, port, mount, volume or manifest gate. Nothing this record decides (AoE interaction plane requires token auth — loopback is not a boundary) reads `alert_pubkey` or `POKER_CITIZEN_ALERT_PUBKEY`. Review trigger: not fired.
+
+Judged from `git diff 06c2f7011..538c22397 -- flake.nix`, the hunks read in full against this record's claims; `node scripts/adr-index-gen.js docs/adr --check`. The Decision and status axes are unchanged and no claim of this record is falsified. Citations in this record to lines after the points above are as of their own commit and are not renumbered.
