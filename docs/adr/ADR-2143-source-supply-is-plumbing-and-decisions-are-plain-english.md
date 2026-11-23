@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 69d4a8488bc79fe085e6df76e849c660e24d7505
+verified_commit: e31fe2f85faf79b94c1faca393d37902f8ea0db7
 verified_paths: [services/dream-engine/src/wanted.rs, services/dream-engine/src/engine.rs, services/dream-engine/src/inbox.rs, services/dream-engine/src/governance.rs, services/dream-engine/src/prompt/nightly.tmpl, services/dream-engine/Cargo.toml]
 owner: jjohare
 review_trigger: a change to the nightly prompt's Human-action shape, to the wanted store's expiry, to dream-core's requested-source contract (ADR-DE-008), or a governance case that again asks the operator for a file
@@ -71,3 +71,5 @@ Nothing this record decides is changed; its status axes are unchanged. Re-run: `
 Re-verified 2026-11-10 at `062487bec` (PR #43, `dream-review-ledger`; ADR-2190). Governed-path delta since `e2b49adfc`: `governance.rs:195`, where the evidence path in a case moves to `workspace/dream-artefacts`. In `engine.rs`, the review backfill and archive step are added (ADR-2190). The four-field question format, `plain_decision`, the panel rendering and the `wanted.rs` feed are untouched. The decision and status axes are unchanged. Re-run: `git diff e2b49adfc..062487bec -- services/dream-engine/src/engine.rs services/dream-engine/src/governance.rs`.
 
 Re-verified 2026-11-10 at `69d4a8488` (PR #43 review fixes; ADR-2190). Governed-path delta since `062487bec`: `services/dream-engine/src/engine.rs` changes only `backfill_reviews` (`:510`): it now runs `review::backfill_all` on a blocking thread with the configured fallback identity, each fill under its ledger's lock. Source supply and the plain-English decision fields are untouched. The decision and status axes are unchanged. Re-run: `git diff 062487bec..69d4a8488 -- services/dream-engine/src/engine.rs`.
+
+Re-verified 2026-11-23 at `e31fe2f85` (`deps/dream-core-0.5.0`, the dream-core 0.5.0 adoption). Governed-path delta since `69d4a8488`: `Cargo.toml` pins `dream-core = "=0.5.0"`, and in `engine.rs` the draft-PR step (`engine.rs:1868-1907`) sets `DraftPr::head_sha` to the branch tip read by `branch_tip` (`:2232`, `git rev-parse --verify refs/heads/<branch>^{commit}`), and a tip that cannot be read publishes nothing and takes the existing lost-PR alert. Against the published 0.4.1 crate, dream-core 0.5.0 changes only `seams.rs`, `persist.rs` and `testfmt.rs`, so the requested-source contract (`source.rs`, ADR-DE-008) is unchanged. `wanted.rs`, `inbox.rs`, `governance.rs` and `nightly.tmpl` are untouched. The decision and status axes are unchanged. Re-run: `git diff 69d4a8488..e31fe2f85 -- services/dream-engine/Cargo.toml services/dream-engine/src/engine.rs`; `cargo test --locked` in `services/dream-engine` passes 256 + 11 + 3 at `e31fe2f85`.

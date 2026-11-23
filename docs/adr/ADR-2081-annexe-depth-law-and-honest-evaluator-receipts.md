@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 69d4a8488bc79fe085e6df76e849c660e24d7505
+verified_commit: e31fe2f85faf79b94c1faca393d37902f8ea0db7
 verified_paths: [services/dream-engine/src/engine.rs, services/dream-engine/src/runner.rs, services/dream-engine/src/dispatch.rs, services/dream-engine/src/candidate_flow.rs]
 owner: jjohare
 review_trigger: first nightly dream-engine run on the rebuilt image (live supervised binary carries 'bash -o pipefail -c', checked 2026-10-30) whose receipts show the annexe depth layout and a pipefail-graded evaluator — that receipt moves this to live; or any change to annexe layout or receipt classification
@@ -140,3 +140,5 @@ Nothing this record decides is changed; its status axes are unchanged. Re-run: `
 Re-verified 2026-11-10 at `062487bec` (PR #43, `dream-review-ledger`; ADR-2190). Governed-path delta since `c7c2f76b9`: `candidate_flow.rs` is a rustfmt re-wrap of one `apply_repair_prompt` call (`:217-222`, same arguments). In `engine.rs`, the review backfill and the archive step are added (ADR-2190), and the FR6.6 comment on the human columns is rewritten. `annexe_subpath`, the runners' `pipefail`, unproven-ACCEPT grading and `sanitise_finding` are untouched. The decision and status axes are unchanged. Re-run: `git diff c7c2f76b9..062487bec -- services/dream-engine/src/engine.rs services/dream-engine/src/candidate_flow.rs`; `cargo test --offline` passes 236 + 11 + 2 at `062487bec`.
 
 Re-verified 2026-11-10 at `69d4a8488` (PR #43 review fixes; ADR-2190). Governed-path delta since `062487bec`: `services/dream-engine/src/engine.rs` changes only `backfill_reviews` (`:510`): it now runs `review::backfill_all` on a blocking thread with the configured fallback identity, each fill under its ledger's lock. Annexe dispatch, the depth law and the evaluator receipts are untouched. The decision and status axes are unchanged. Re-run: `git diff 062487bec..69d4a8488 -- services/dream-engine/src/engine.rs`.
+
+Re-verified 2026-11-23 at `e31fe2f85` (`deps/dream-core-0.5.0`, the dream-core 0.5.0 adoption). Governed-path delta since `69d4a8488`: `services/dream-engine/src/engine.rs` only: the draft-PR step (`engine.rs:1868-1907`) sets `DraftPr::head_sha` to the branch tip read by `branch_tip` (`:2232`, `git rev-parse --verify refs/heads/<branch>^{commit}`), and a tip that cannot be read publishes nothing and takes the existing lost-PR alert. `annexe_subpath`, the runners' `pipefail`, unproven-ACCEPT grading and `sanitise_finding` are untouched, as are `runner.rs`, `dispatch.rs` and `candidate_flow.rs`. The decision and status axes are unchanged. Re-run: `git diff 69d4a8488..e31fe2f85 -- services/dream-engine/src/engine.rs`; `cargo test --locked` in `services/dream-engine` passes 256 + 11 + 3 at `e31fe2f85`.

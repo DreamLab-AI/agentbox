@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: fc95b38774814f9bc83ddfac28649d12cd74fe12
+verified_commit: e31fe2f85faf79b94c1faca393d37902f8ea0db7
 verified_paths: [services/dream-engine/src/review.rs, services/dream-engine/src/archive.rs, services/dream-engine/src/ledger_io.rs, services/dream-engine/src/gitcmd.rs, services/dream-engine/src/records.rs, services/dream-engine/src/lib.rs, services/dream-engine/src/engine.rs, services/dream-engine/src/main.rs, services/dream-engine/src/config.rs, services/dream-engine/src/estate.rs, services/dream-engine/src/digest.rs, services/dream-engine/src/governance.rs, config/tmux-autostart.sh, schema/agentbox.toml.schema.json, setup/agentbox.default.toml]
 owner: jjohare
 review_trigger: a forge identity that separates agent merges from human merges (a dedicated agent account or signed human approvals), which would reopen merge events as review evidence; a review tool that authenticates its reviewer; any change that prunes, relocates or stops archiving the artefact directory; a dream-core release that changes the ledger row or the witness
@@ -149,3 +149,5 @@ to the OAuth-capable providers, export `AGENTBOX_ANTIGRAVITY_AUTH_MODE` to the
 Antigravity consultant, and correct comments and docs. No value, authority,
 boundary or runtime behaviour governed by this decision changes. This is source
 verification, not activation.
+
+Re-verified 2026-11-23 at `e31fe2f85` (`deps/dream-core-0.5.0`, the dream-core 0.5.0 adoption). Governed-path delta since `fc95b3877`: `services/dream-engine/src/engine.rs` only: the draft-PR step (`engine.rs:1868-1907`) sets `DraftPr::head_sha` to the branch tip read by `branch_tip` (`:2232`, `git rev-parse --verify refs/heads/<branch>^{commit}`), and a tip that cannot be read publishes nothing and takes the existing lost-PR alert. The ledger row and the witness are unchanged, and dream-core 0.5.0 changes neither `ledger.rs` nor the witness, so this record's review trigger is not met. Line references in Verification below `:1868` move by 26: the row with empty human cells is now `engine.rs:1970-1979`. `:190`, `:396`, `:470` and `:510` hold. The decision and status axes are unchanged. Re-run: `git diff fc95b3877..e31fe2f85 -- services/dream-engine/src/engine.rs`; `cargo test --locked` in `services/dream-engine` passes 256 + 11 + 3 at `e31fe2f85`.
