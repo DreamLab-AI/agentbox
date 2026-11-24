@@ -1,0 +1,48 @@
+# Ternary Bonsai 2.5 27B (Uncensored, PTQ1_0) — optional LLM sidecar.
+# OpenAI-compatible API, joined to visionclaw_network so agentbox and the other sidecars
+# reach it as http://bonsai:8086/v1; also published on the host (127.0.0.1 by default) for
+# host-side harnesses such as pi. Model id: ${BONSAI_ALIAS:-ternary-bonsai-2.5-27b-uncensored}
+# Lifecycle: ./agentbox.sh bonsai up|down|logs|status|health|rebuild|shell
+# Docs: bonsai-sidecar/README.md
+services:
+  bonsai:
+    container_name: bonsai
+    hostname: bonsai
+    image: bonsai-prism:b12128
+    build:
+      context: ./bonsai-sidecar
+      dockerfile: Dockerfile
+      args:
+        CUDA_ARCH: ${BONSAI_CUDA_ARCH:-86;89}
+    restart: unless-stopped
+    ports:
+      - "${BONSAI_BIND:-127.0.0.1}:${BONSAI_PORT:-8086}:${BONSAI_PORT:-8086}"
+    networks:
+      - visionclaw
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["${BONSAI_GPU:-0}"]
+              capabilities: [gpu]
+    volumes:
+      - ${BONSAI_MODEL_DIR:-/mnt/mldata/models/bonsai}:/models:ro
+    command: >
+      -m /models/${BONSAI_MODEL_FILE:-Ternary-Bonsai-2.5-27B-Uncensored-PTQ1_0.gguf}
+      -a ${BONSAI_ALIAS:-ternary-bonsai-2.5-27b-uncensored}
+      --host 0.0.0.0 --port ${BONSAI_PORT:-8086}
+      -ngl 99 -fa on -c ${BONSAI_CTX:-131072} -ctk q8_0 -ctv q8_0
+      --parallel 1 --cont-batching --jinja --metrics --slots
+      --temp 1.0 --top-p 0.95 --top-k 20 --min-p 0.0
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:${BONSAI_PORT:-8086}/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 120s
+      retries: 5
+
+networks:
+  visionclaw:
+    external: true
+    name: visionclaw_network

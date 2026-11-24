@@ -58,6 +58,7 @@ Local lifecycle commands:
   ${GREEN}gui-tools${NC}        Manage GPU Blender + QGIS sidecar [up|down|logs|health|status|rebuild|shell|gpu]
   ${GREEN}isaac-sim${NC}        Manage headless Isaac Sim physics sidecar [up|down|logs|health|status|preflight|smoke|rebuild]
   ${GREEN}openmed${NC}          Manage optional clinical-PHI redaction sidecar [up|down|logs|health|status|rebuild|shell]
+  ${GREEN}bonsai${NC}           Manage optional Ternary Bonsai 27B LLM sidecar (OpenAI API, one GPU) [up|down|logs|health|status|rebuild|shell]
   ${GREEN}voice${NC}            Manage/open the operator cockpit + web voice stack [open|up|down|logs|health|status|certs|rebuild|shell]
   ${GREEN}config${NC}           Manifest tools [validate [file]|plan "<request>"] (AB-05-S1-01 plan is read-only, propose-only)
   ${GREEN}systemone${NC}        ADR-2094 Sovereign System One sidecar + ADR-2139 vendor slot [up|down|logs|health|status|eval|models|rebuild|shell|backend|proxy]
@@ -589,6 +590,8 @@ ISAAC_SIM_FILE="${SCRIPT_DIR}/docker-compose.isaac-sim.yml"
 ISAAC_SIM_COMPOSE_ARGS=(--project-name agentbox -f "$ISAAC_SIM_FILE")
 OPENMED_FILE="${SCRIPT_DIR}/docker-compose.openmed.yml"
 OPENMED_COMPOSE_ARGS=(--project-name agentbox -f "$OPENMED_FILE")
+BONSAI_FILE="${SCRIPT_DIR}/docker-compose.bonsai.yml"
+BONSAI_COMPOSE_ARGS=(--project-name agentbox-bonsai -f "$BONSAI_FILE")
 SYSTEMONE_FILE="${SCRIPT_DIR}/docker-compose.system-one.yml"
 SYSTEMONE_COMPOSE_ARGS=(--project-name agentbox -f "$SYSTEMONE_FILE")
 SPEECH_FILE="${SCRIPT_DIR}/docker-compose.speech.yml"
@@ -2052,7 +2055,7 @@ while [[ $# -gt 0 ]]; do
             usage
             exit 0
             ;;
-        ssh|vnc|browser|code|api|all|status|ip|provision|setup|start-browser|backup|restore|up|down|build|prepare|activate|rebuild|update|ruvector|ruvnet-brain|logs|shell|health|browsercontainer|gui-tools|isaac-sim|openmed|voice|config|systemone|model-router|xr-runtime|android|concat|migrate-workspace|migrate-claude-home|preflight|security)
+        ssh|vnc|browser|code|api|all|status|ip|provision|setup|start-browser|backup|restore|up|down|build|prepare|activate|rebuild|update|ruvector|ruvnet-brain|logs|shell|health|browsercontainer|gui-tools|isaac-sim|openmed|bonsai|voice|config|systemone|model-router|xr-runtime|android|concat|migrate-workspace|migrate-claude-home|preflight|security)
             CMD="$1"
             shift
             break
@@ -2304,6 +2307,45 @@ Blender runs here (VirtualGL → GPU EGL) because nix agentbox-main cannot give 
 GPU GL context. agentbox's blender-mcp-proxy / qgis proxy bridge localhost:9876/9877
 to this sidecar. See docs/user/blender.md.
 GT_HELP
+            ;;
+    esac
+}
+
+cmd_bonsai() {
+    local subcmd="${1:-help}"
+    shift 2>/dev/null || true
+    case "$subcmd" in
+        up)
+            echo -e "${CYAN}Building and starting the Ternary Bonsai sidecar (PrismML llama.cpp fork)...${NC}"
+            echo -e "${YELLOW}Note: the GGUF is bind-mounted, not baked in. Default dir: \${BONSAI_MODEL_DIR:-/mnt/mldata/models/bonsai}.${NC}"
+            docker compose "${BONSAI_COMPOSE_ARGS[@]}" up -d --build
+            echo -e "${GREEN}bonsai dispatched.${NC} Check: $0 bonsai health / $0 bonsai logs"
+            ;;
+        down)    docker compose "${BONSAI_COMPOSE_ARGS[@]}" down; echo -e "${GREEN}bonsai stopped.${NC}" ;;
+        logs)    docker compose "${BONSAI_COMPOSE_ARGS[@]}" logs -f --tail 100 ;;
+        status)  docker compose "${BONSAI_COMPOSE_ARGS[@]}" ps ;;
+        health)
+            curl -fsS "http://127.0.0.1:${BONSAI_PORT:-8086}/health" >/dev/null \
+                && echo -e "${GREEN}bonsai healthy${NC}" \
+                || { echo -e "${RED}bonsai unhealthy (still loading? see logs)${NC}"; exit 1; }
+            ;;
+        rebuild) docker compose "${BONSAI_COMPOSE_ARGS[@]}" down; docker compose "${BONSAI_COMPOSE_ARGS[@]}" build --no-cache; cmd_bonsai up ;;
+        shell)   docker exec -it bonsai bash ;;
+        help|*)
+            cat <<BN_HELP
+${CYAN}bonsai — optional Ternary Bonsai 2.5 27B LLM sidecar (OpenAI-compatible, one GPU)${NC}
+
+  $0 bonsai up        Build the PrismML llama.cpp fork image + start
+  $0 bonsai down      Stop it
+  $0 bonsai logs      Follow logs
+  $0 bonsai status    Compose ps
+  $0 bonsai health    GET /health on :\${BONSAI_PORT:-8086}
+  $0 bonsai rebuild   Rebuild --no-cache and restart
+  $0 bonsai shell     Shell into the container
+
+Env: BONSAI_GPU (0), BONSAI_CUDA_ARCH (86;89), BONSAI_MODEL_DIR, BONSAI_PORT (8086), BONSAI_CTX.
+See bonsai-sidecar/README.md.
+BN_HELP
             ;;
     esac
 }
@@ -2896,6 +2938,7 @@ case "${CMD:-}" in
     gui-tools)         cmd_gui_tools "$@" ;;
     isaac-sim)         cmd_isaac_sim "$@" ;;
     openmed)           cmd_openmed "$@" ;;
+    bonsai)            cmd_bonsai "$@" ;;
     voice)             cmd_voice "$@" ;;
     config)            cmd_config "$@" ;;
     systemone)         cmd_systemone "$@" ;;
