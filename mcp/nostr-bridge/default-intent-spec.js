@@ -17,8 +17,6 @@
  *
  * Addressing convention (no new Nostr primitives):
  *   - `['actor', <ref>]`  — explicit agent template/role name (preferred)
- *   - `['p', <pubkey>]`  — the addressed agent's key (the forum kanban
- *     dispatch carries it)
  *   - `['a', <k:pubkey:dtag>]` — NIP-33 addressable coordinate; the `dtag`
  *     component names the target panel/actor. Never used when the coordinate
  *     is a kanban card (kind 30302): the card's own d-tag is not an actor
@@ -49,8 +47,6 @@ function tagValue(event, key) {
 function resolveActorRef(event, context) {
   const explicit = tagValue(event, 'actor');
   if (explicit) return explicit;
-  const recipient = tagValue(event, 'p');
-  if (recipient) return recipient;
   const coord = tagValue(event, 'a');
   if (coord) {
     const parts = String(coord).split(':');

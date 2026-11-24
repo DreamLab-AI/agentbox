@@ -33,10 +33,6 @@ describe('resolveActorRef precedence', () => {
     expect(resolveActorRef(evt([['actor', 'librarian'], ['a', '31400:abc:panelX']]), {})).toBe('librarian');
   });
 
-  it('prefers p over an a coordinate', () => {
-    expect(resolveActorRef(evt([['a', '31400:abc:panelX'], ['p', AGENT]]), {})).toBe(AGENT);
-  });
-
   it('falls back to the dtag of an a (NIP-33) coordinate', () => {
     expect(resolveActorRef(evt([['a', '31400:abc:panelX']]), {})).toBe('panelX');
   });
@@ -48,18 +44,21 @@ describe('resolveActorRef precedence', () => {
 
 // Producer fixtures: every 38000-band intent shape the spec accepts, pinned so a
 // precedence change cannot silently re-route one (AB-INTENT-ACTOR-FROM-CARD-DTAG).
-//   1. nostr-rust-forum create_agent_intent_signer (kanban.rs), from PR "add actor tag"
-//   2. the same producer before that change (no actor tag)
+// relay-consumer I10 only delivers an intent whose `p` tag is a local npub (the
+// pod owner), so every fixture carries `p` = the recipient, as delivered.
+//   1. nostr-rust-forum create_agent_intent_signer (kanban.rs), with `actor`
+//   2. the same producer before the actor tag was added
 //   3. panel-addressed intent, `a` = 31400 panel coordinate (the documented
 //      voice-origin shape, PRD-014 B3; no producer in this repo emits it)
-// agentbox's own voice-intent route emits kind 31402 with a `p` tag, not 38000,
-// so it never reaches this spec.
+// agentbox's own voice-intent route emits kind 31402, not 38000, so it never
+// reaches this spec.
 const AGENT = 'ab'.repeat(32);
 const AUTHOR = 'cd'.repeat(32);
 const CARD_DTAG = 'card-7f3a';
 const CARD_COORD = `30302:${AUTHOR}:${CARD_DTAG}`;
-const FORUM_TAGS = [
-  ['p', AGENT],
+const OWNER = 'npub-owner';
+const KANBAN_TAGS = [
+  ['p', OWNER],
   ['a', CARD_COORD],
   ['board', 'board-1'],
   ['card_d', CARD_DTAG],
@@ -67,25 +66,25 @@ const FORUM_TAGS = [
 
 describe('producer fixtures (38000 intent shapes)', () => {
   it('forum kanban intent with actor tag resolves to the agent key', () => {
-    const e = evt([['p', AGENT], ['actor', AGENT], ...FORUM_TAGS.slice(1)]);
-    expect(resolveActorRef(e, {})).toBe(AGENT);
+    const e = evt([['actor', AGENT], ...KANBAN_TAGS]);
+    expect(resolveActorRef(e, { recipient_npub: OWNER })).toBe(AGENT);
   });
 
-  it('forum kanban intent without actor tag resolves to p, never the card d-tag', () => {
-    const ref = resolveActorRef(evt(FORUM_TAGS), { recipient_npub: 'npub-owner' });
-    expect(ref).toBe(AGENT);
+  it('forum kanban intent without actor tag falls to the recipient, never the card d-tag', () => {
+    const ref = resolveActorRef(evt(KANBAN_TAGS), { recipient_npub: OWNER });
+    expect(ref).toBe(OWNER);
     expect(ref).not.toBe(CARD_DTAG);
   });
 
   it('a kanban card coordinate is never an actor, even with no p or actor', () => {
     const e = evt([['a', CARD_COORD], ['card_d', CARD_DTAG]]);
-    expect(resolveActorRef(e, { recipient_npub: 'npub-owner' })).toBe('npub-owner');
+    expect(resolveActorRef(e, { recipient_npub: OWNER })).toBe(OWNER);
     expect(resolveActorRef(e, {})).toBe('');
   });
 
-  it('a panel coordinate (31400) still names the actor by d-tag', () => {
-    const e = evt([['a', `31400:${AUTHOR}:panelX`]]);
-    expect(resolveActorRef(e, {})).toBe('panelX');
+  it('a 31400 panel intent carrying p = recipient still resolves to the panel d-tag', () => {
+    const e = evt([['p', OWNER], ['a', `31400:${AUTHOR}:panelX`]]);
+    expect(resolveActorRef(e, { recipient_npub: OWNER })).toBe('panelX');
   });
 });
 
