@@ -18,7 +18,9 @@
  * Addressing convention (no new Nostr primitives):
  *   - `['actor', <ref>]`  — explicit agent template/role name (preferred)
  *   - `['a', <k:pubkey:dtag>]` — NIP-33 addressable coordinate; the `dtag`
- *     component names the target panel/actor
+ *     component names the target panel/actor. Never used when the coordinate
+ *     is a kanban card (kind 30302): the card's own d-tag is not an actor
+ *     (AB-INTENT-ACTOR-FROM-CARD-DTAG)
  *   - else the recipient npub (the pod owner) is the actor
  *
  * Fail-safe: when no command is resolvable (`AGENTBOX_INTENT_COMMAND` unset
@@ -29,6 +31,9 @@
  * @see PRD-014 §4.1  @see relay-consumer.js _isAgentIntent
  */
 
+/** NIP-33 kind of a kanban card; its d-tag names a card, never an actor. */
+const KANBAN_CARD_KIND = '30302';
+
 function tagValue(event, key) {
   const tags = Array.isArray(event && event.tags) ? event.tags : [];
   const tag = tags.find((t) => Array.isArray(t) && t[0] === key);
@@ -37,7 +42,7 @@ function tagValue(event, key) {
 
 /**
  * Resolve the addressed actor reference from the event, in precedence order.
- * @returns {string} actor ref (never empty — falls back to recipient npub)
+ * @returns {string} actor ref (falls back to the recipient npub, '' if none)
  */
 function resolveActorRef(event, context) {
   const explicit = tagValue(event, 'actor');
@@ -45,9 +50,12 @@ function resolveActorRef(event, context) {
   const coord = tagValue(event, 'a');
   if (coord) {
     const parts = String(coord).split(':');
-    // NIP-33 coordinate is <kind>:<pubkey>:<dtag>; the dtag names the actor.
-    if (parts.length >= 3 && parts[2]) return parts[2];
-    return coord;
+    // A kanban card coordinate never names an actor: skip it entirely.
+    if (parts[0] !== KANBAN_CARD_KIND) {
+      // NIP-33 coordinate is <kind>:<pubkey>:<dtag>; the dtag names the actor.
+      if (parts.length >= 3 && parts[2]) return parts[2];
+      return coord;
+    }
   }
   return (context && context.recipient_npub) || '';
 }
