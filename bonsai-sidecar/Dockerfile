@@ -14,9 +14,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 ARG PRISM_TAG=prism-b12128-d7b2896
 ARG CUDA_ARCH=75
 RUN git clone --depth 1 --branch ${PRISM_TAG} https://github.com/PrismML-Eng/llama.cpp /src
+# The fork expects a UI bundle layout that the "latest" prebuilt download no longer matches;
+# this sidecar is API-only, so build without the embedded web UI.
 RUN cmake -S /src -B /src/build -G Ninja -DCMAKE_BUILD_TYPE=Release \
         -DGGML_CUDA=ON "-DCMAKE_CUDA_ARCHITECTURES=${CUDA_ARCH}" -DGGML_NATIVE=OFF \
-        -DBUILD_SHARED_LIBS=OFF \
+        -DBUILD_SHARED_LIBS=OFF -DLLAMA_USE_PREBUILT_UI=OFF \
     && cmake --build /src/build --target llama-server llama-cli -j
 
 FROM nvidia/cuda:${CUDA_VERSION}-runtime-ubuntu24.04

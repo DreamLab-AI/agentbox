@@ -1,10 +1,11 @@
 ---
 title: Agentbox Container Baseline
 doc_id: AB-BASELINE
-version: 0.5.20
+version: 0.5.21
 status: draft-for-ratification
 verified_commit: 
 changelog:
+  - "0.5.21 (2026-11-24): ADR-2216 (proposed, partial, inactive). Upstream SystemScape adds two-row campus layout with parent-district subagent anchoring, lifted bounded collector caps (2,048 files / 25,000 records) plus Antigravity transcript discovery and model/token stats, telemetry.jsonl warm-start and 6h/24h/7d windows, time-slice scrubbing, auto-range, ridge spotlighting, and multi-host compare. No new port, mount, adapter, secret, or supervised program; inactive in Agentbox until lib/systemscape.nix is bumped and rebuilt."
   - "0.5.20 (2026-11-20): ADR-2208 adds pinned offline artex-defense to the existing MetaHarness rebuild gate. Ruflo already includes aidefence; no second gateway, interception hook, listener or state adapter is enabled. Local learned-memory injection remains disabled and new retention features default off."
   - "0.5.19 (2026-11-20): ADR-2207 (accepted, complete, inactive until the sidecar rebuild). browsercontainer is one Chrome on one fixed 16:9 display (BROWSER_DISPLAY_SIZE, openbox); the gui-tools-exchange volume (pinned name agentbox_gui-tools-exchange) is also mounted in agentbox at /home/devuser/exchange, the sidecar's path, with /home/devuser/gui-tools kept; DevTools answers by name on 9223 behind a Host allow-list; the bridge gains /display and /record (POSTs refuse any Origin) and /health returns 503 when Chrome is down; the boot-time browser-gpu registration accepts 200 or 503. No new published port or supervised agentbox program."
   - "0.5.18 (2026-11-18): ADR-2203 (proposed, partial, staged). New read-only mount ./config/systemscape:/etc/agentbox/systemscape (tracked example + gitignored local/hosts.toml); the entrypoint links local/hosts.toml to ~/.config/systemscape/hosts.toml when present. New invariant below. Inert until the SystemScape pin moves to 0.4.0; no new port, adapter, gate or supervised program."

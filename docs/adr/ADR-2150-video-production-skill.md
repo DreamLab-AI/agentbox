@@ -66,7 +66,8 @@ production's clock, geometry and node IDs. Services and models behind `visioncla
    or a compose profile as the stacks evolve, but only when a measured comparison against the retained baseline on
    the actual brief shows the change is better. Each change is recorded in the production record. Image and
    sidecar builds run from the host shell only. Discovery never implies a download, an external upload or a paid call.
-8. **Acceptance requires build-with-quality's cross-vendor evidence auditor.** A same-family audit is recorded as
+8. **Acceptance requires VisionCraft's cross-vendor evidence auditor** (VisionCraft replaced build-with-quality,
+   ADR-2165). A same-family audit is recorded as
    `degraded_same_family` and cannot back an acceptance decision. Without that auditor, a release is at most a
    labelled provisional review.
 9. **Free disk:** Isaac jobs use ADR-2149's per-sidecar floor. The skill runs its own free-space preflight

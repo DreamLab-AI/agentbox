@@ -28,7 +28,7 @@ hf download AtomicChat/Ternary-Bonsai-2.5-27B-Uncensored-GGUF \
 
 ## Connect pi
 
-`~/.pi/agent/models.json` provider `hp-bonsai`, `baseUrl` `http://127.0.0.1:8086/v1` (on this host),
+`~/.pi/agent/models.json` provider `local-bonsai`, `baseUrl` `http://127.0.0.1:8086/v1` (on this host),
 `thinkingFormat: qwen-chat-template`, model id as `BONSAI_ALIAS`.
 
 ## Notes
