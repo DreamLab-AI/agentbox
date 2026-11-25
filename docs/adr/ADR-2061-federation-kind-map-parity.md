@@ -41,6 +41,15 @@ disagreement. The content-address halves *are* proven equal — the golden fixtu
 pins both languages to `sha256-12-8c3913fd05a9` for identical canonical input —
 so the hash is not the divergence; the kind list is.
 
+> **Update 2026-11-25 (estate-temporal-v2).** The golden cited above is the v1
+> three-key payload. Under v2 the assertion-version id also hashes the recorded
+> time; the pins are now `sha256-12-780226eb577e` and `sha256-12-3573bd19c54a`
+> in `crates/visionclaw-adapters/src/provenance_writer.rs`, with the JS side in
+> `tests/contract/linked-data/uris-temporal-v2-golden.contract.spec.js`. v2 is on
+> VisionClaw branch `feat/temporal-contract-v2` and is not merged; until it is,
+> VisionClaw `main` still holds the `8c3913fd05a9` pin. See
+> `docs/PROTOCOL-registry.md`. The kind-map decision is unaffected.
+
 ## Decision
 
 The supported-kind list is a **single versioned artefact shared by both

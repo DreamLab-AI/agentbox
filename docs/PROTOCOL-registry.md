@@ -19,10 +19,21 @@ Status: proposed governing surface, 2026-09-04. Owner: agentbox maintainers with
   crossing (matching the JS bridge, since agentbox beads are already
   content-addressed to VisionClaw's `<pubkey>:<sha256-12>` shape), and defines a
   four-part acceptance test. The content-address row is **not** affected: the
-  golden fixture `entity_urn_matches_uris_js_golden`
-  (`src/services/provenance_writer.rs:623`) already pins both languages to
-  `sha256-12-8c3913fd05a9` for identical canonical input, so the hash halves are
-  proven equal and only the kind list diverges. Exposed by diagrams ES-03.4,
+  golden fixtures `entity_urn_matches_uris_js_golden`
+  and `closure_urns_match_uris_js_golden`
+  (`crates/visionclaw-adapters/src/provenance_writer.rs`) already pin both
+  languages for identical canonical input, so the hash halves are proven equal
+  and only the kind list diverges. Under estate-temporal-v2 the assertion-version
+  id hashes `{subject, predicate, object, validFrom, generatedAt}`: the pin is
+  `sha256-12-780226eb577e` (recorded time equal to `validFrom`) and
+  `sha256-12-3573bd19c54a` (recorded 2026-08-09T12:30:00Z). The earlier
+  `sha256-12-8c3913fd05a9` was the three-key payload without the recorded time
+  and is retired. Closure ids hash `{version, clocks, recordedAt, validUntil?}`
+  (`b999491bd647`, `98f594ab78f7`, `42138e4aae82`). The JS side is pinned by
+  `tests/contract/linked-data/uris-temporal-v2-golden.contract.spec.js`.
+  **Status: v2 is on the VisionClaw branch `feat/temporal-contract-v2`, not
+  merged; until it merges, VisionClaw `main` still pins `8c3913fd05a9` at
+  `src/services/provenance_writer.rs:623`.** Exposed by diagrams ES-03.4,
   ES-03.5 and ES-03.6. Cross-lead: the Rust arm is vc-knowledge's
   (`src/uri/mod.rs`), the JS map ab-identity-governance's
   (`management-api/lib/bc20-provenance-bridge.js`); both have the evidence.
