@@ -134,35 +134,91 @@ fn now_rfc3339() -> String {
     chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Secs, true)
 }
 
-/// Write one reject's working page and report it. Returns false on a failed
-/// write.
-fn land_working_page(working_dir: &Path, data: &serde_json::Value, adopt_unmarked: bool) -> bool {
+/// What landing one reject's working page came to.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Landed {
+    /// The page was written.
+    Written,
+    /// The page already said the same thing.
+    Unchanged,
+    /// The page was left as it was: edited by a person, unmarked, or not this
+    /// stage's. The reason was printed.
+    Left,
+    /// The write failed.
+    Failed,
+}
+
+/// Counts of [`Landed`] over a run.
+#[derive(Debug, Default, PartialEq, Eq)]
+struct Tally {
+    written: usize,
+    unchanged: usize,
+    left: usize,
+    failed: usize,
+}
+
+impl Tally {
+    fn add(&mut self, landed: Landed) {
+        match landed {
+            Landed::Written => self.written += 1,
+            Landed::Unchanged => self.unchanged += 1,
+            Landed::Left => self.left += 1,
+            Landed::Failed => self.failed += 1,
+        }
+    }
+
+    /// The closing line. Pages left untouched are counted apart from pages
+    /// written, so a run that refreshed nothing does not read as a refresh.
+    fn summary(&self) -> String {
+        format!(
+            "refreshed {} working page(s), {} unchanged, {} left untouched (edited, no body marker, or not this stage's), {} failure(s).",
+            self.written, self.unchanged, self.left, self.failed
+        )
+    }
+}
+
+/// Write one reject's working page and report it.
+fn land_working_page(working_dir: &Path, data: &serde_json::Value, adopt_unmarked: bool) -> Landed {
     let tools = Tools {
         normalise: &ontomark_normalise,
         pin: &ontomark_pin,
         adopt_unmarked,
     };
     match write_working_page_using(working_dir, data, &now_rfc3339(), &tools) {
-        WorkingPage::Edited(p) => println!(
-            "  news page NOT refreshed: {} was edited since this stage wrote it (its generated text no longer matches the marker); left untouched",
-            p.display()
-        ),
-        WorkingPage::Unmarked(p) => println!(
-            "  news page NOT refreshed: {} has no body marker, so it cannot be proved unedited; left untouched (--adopt-unmarked-pages regenerates it once)",
-            p.display()
-        ),
-        WorkingPage::Written(p) => println!("  news page -> {}", p.display()),
-        WorkingPage::Unchanged(p) => println!("  news page unchanged: {}", p.display()),
-        WorkingPage::Foreign(p) => println!(
-            "  news page NOT written: {} exists and is not a promotion-stage page",
-            p.display()
-        ),
+        WorkingPage::Edited(p) => {
+            println!(
+                "  news page NOT refreshed: {} was edited since this stage wrote it (its generated text no longer matches the marker); left untouched",
+                p.display()
+            );
+            Landed::Left
+        }
+        WorkingPage::Unmarked(p) => {
+            println!(
+                "  news page NOT refreshed: {} has no body marker, so it cannot be proved unedited; left untouched (--adopt-unmarked-pages regenerates it once)",
+                p.display()
+            );
+            Landed::Left
+        }
+        WorkingPage::Written(p) => {
+            println!("  news page -> {}", p.display());
+            Landed::Written
+        }
+        WorkingPage::Unchanged(p) => {
+            println!("  news page unchanged: {}", p.display());
+            Landed::Unchanged
+        }
+        WorkingPage::Foreign(p) => {
+            println!(
+                "  news page NOT written: {} exists and is not a promotion-stage page",
+                p.display()
+            );
+            Landed::Left
+        }
         WorkingPage::Failed(p, e) => {
             eprintln!("  news page FAILED: {}: {e}", p.display());
-            return false;
+            Landed::Failed
         }
     }
-    true
 }
 
 /// `--refresh-working-pages`: rewrite every terminal reject's working page
@@ -177,27 +233,23 @@ pub fn refresh_working_pages(rejects_dir: &Path, working_dir: &Path, adopt_unmar
         })
         .unwrap_or_default();
     names.sort();
-    let (mut written, mut failed) = (0usize, 0usize);
+    let mut tally = Tally::default();
     for path in names {
         let Some(data) = std::fs::read_to_string(&path)
             .ok()
             .and_then(|t| serde_json::from_str::<serde_json::Value>(&t).ok())
         else {
             eprintln!("  unreadable dossier: {}", path.display());
-            failed += 1;
+            tally.add(Landed::Failed);
             continue;
         };
         if data.get("status").and_then(|v| v.as_str()) != Some("candidate_rejected") {
             continue;
         }
-        if land_working_page(working_dir, &data, adopt_unmarked) {
-            written += 1;
-        } else {
-            failed += 1;
-        }
+        tally.add(land_working_page(working_dir, &data, adopt_unmarked));
     }
-    println!("refreshed {written} working page(s), {failed} failure(s).");
-    i32::from(failed > 0)
+    println!("{}", tally.summary());
+    i32::from(tally.failed > 0)
 }
 
 /// Port of `run(args)`. Returns the process exit code.
@@ -567,7 +619,7 @@ pub async fn run(args: &Args) -> i32 {
                 out_dir.join(format!("{slug}.json")).display()
             );
             if let Some(wg_dir) = &args.working_graph_dir {
-                if !land_working_page(wg_dir, &data, args.adopt_unmarked_pages) {
+                if land_working_page(wg_dir, &data, args.adopt_unmarked_pages) == Landed::Failed {
                     write_failures += 1;
                 }
             }
@@ -734,6 +786,37 @@ mod tests {
         assert_eq!(
             std::fs::read_to_string(work.path().join("Gamma.md")).unwrap(),
             "---\ntype: Note\n---\nMine.\n"
+        );
+    }
+
+    #[test]
+    fn the_summary_counts_untouched_pages_apart_from_written_ones() {
+        let mut t = Tally::default();
+        for l in [
+            Landed::Written,
+            Landed::Left,
+            Landed::Left,
+            Landed::Unchanged,
+            Landed::Failed,
+        ] {
+            t.add(l);
+        }
+        assert_eq!(
+            t.summary(),
+            "refreshed 1 working page(s), 1 unchanged, 2 left untouched (edited, no body marker, or not this stage's), 1 failure(s)."
+        );
+    }
+
+    #[test]
+    fn landing_an_unmarked_page_leaves_it_and_reports_left() {
+        let work = tempdir().unwrap();
+        let page = "---\ntype: Episode\ntitle: Alpha\npublic: false\nstatus: stable\ngenerated:\n  by: process:vault-migrate/1.0\n  at: 2026-09-22T12:41:58Z\npromotion-status: candidate_rejected\n---\n# Alpha — processed news\n\nold\n";
+        std::fs::write(work.path().join("Alpha.md"), page).unwrap();
+        let data = serde_json::json!({"topic": "Alpha", "status": "candidate_rejected", "episodes": [], "n_assertions": 0, "draft": {"ok": false}, "assertions": []});
+        assert_eq!(land_working_page(work.path(), &data, false), Landed::Left);
+        assert_eq!(
+            std::fs::read_to_string(work.path().join("Alpha.md")).unwrap(),
+            page
         );
     }
 }

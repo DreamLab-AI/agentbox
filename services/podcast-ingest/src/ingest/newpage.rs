@@ -563,6 +563,24 @@ mod tests {
         );
         assert_eq!(n, 2);
 
+        // A migrated, approved ledger, if the vault has one, gets a claim
+        // appended: this is the first contact with real migrated YAML.
+        if working
+            .join("podcast-evidence/bezos-is-back-to-build-ai.md")
+            .is_file()
+        {
+            let (n, _) = write_assertion_ledger(
+                "bezos-is-back-to-build-ai.md",
+                &[tagged("An appended claim.")],
+                &working,
+                None,
+                &mut state,
+                "2026-11-25",
+                None,
+            );
+            assert_eq!(n, 1);
+        }
+
         let dossier = serde_json::json!({
             "topic": "Sample Topic", "status": "candidate_rejected",
             "episodes": ["ep-one"], "n_assertions": 2,
