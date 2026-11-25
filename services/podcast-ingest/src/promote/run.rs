@@ -184,7 +184,13 @@ fn land_working_page(working_dir: &Path, data: &serde_json::Value, adopt_unmarke
         pin: &ontomark_pin,
         adopt_unmarked,
     };
-    match write_working_page_using(working_dir, data, &now_rfc3339(), &tools) {
+    land_working_page_using(working_dir, data, &tools)
+}
+
+/// [`land_working_page`] with the tools given, so a test can stand in for the
+/// `ontomark` binary, which a build sandbox does not have.
+fn land_working_page_using(working_dir: &Path, data: &serde_json::Value, tools: &Tools) -> Landed {
+    match write_working_page_using(working_dir, data, &now_rfc3339(), tools) {
         WorkingPage::Edited(p) => {
             println!(
                 "  news page NOT refreshed: {} was edited since this stage wrote it (its generated text no longer matches the marker); left untouched",
@@ -224,6 +230,16 @@ fn land_working_page(working_dir: &Path, data: &serde_json::Value, adopt_unmarke
 /// `--refresh-working-pages`: rewrite every terminal reject's working page
 /// from the dossier already on disk. Returns the process exit code.
 pub fn refresh_working_pages(rejects_dir: &Path, working_dir: &Path, adopt_unmarked: bool) -> i32 {
+    let tools = Tools {
+        normalise: &ontomark_normalise,
+        pin: &ontomark_pin,
+        adopt_unmarked,
+    };
+    refresh_working_pages_using(rejects_dir, working_dir, &tools)
+}
+
+/// [`refresh_working_pages`] with the tools given.
+fn refresh_working_pages_using(rejects_dir: &Path, working_dir: &Path, tools: &Tools) -> i32 {
     let mut names: Vec<PathBuf> = std::fs::read_dir(rejects_dir)
         .map(|rd| {
             rd.filter_map(|e| e.ok())
@@ -246,7 +262,7 @@ pub fn refresh_working_pages(rejects_dir: &Path, working_dir: &Path, adopt_unmar
         if data.get("status").and_then(|v| v.as_str()) != Some("candidate_rejected") {
             continue;
         }
-        tally.add(land_working_page(working_dir, &data, adopt_unmarked));
+        tally.add(land_working_page_using(working_dir, &data, tools));
     }
     println!("{}", tally.summary());
     i32::from(tally.failed > 0)
@@ -774,7 +790,18 @@ mod tests {
         )
         .unwrap();
 
-        assert_eq!(refresh_working_pages(rejects.path(), work.path(), false), 0);
+        // The real normaliser shells out to `ontomark`, which a build sandbox
+        // lacks; the body here needs no normalising, so identity stands in.
+        let identity = |body: &str| -> Result<String, String> { Ok(body.to_string()) };
+        let tools = Tools {
+            normalise: &identity,
+            pin: &ontomark_pin,
+            adopt_unmarked: false,
+        };
+        assert_eq!(
+            refresh_working_pages_using(rejects.path(), work.path(), &tools),
+            0
+        );
         let alpha = std::fs::read_to_string(work.path().join("Alpha.md")).unwrap();
         assert!(
             alpha.contains("type: Note") && alpha.contains("promotion-status: candidate_rejected")
