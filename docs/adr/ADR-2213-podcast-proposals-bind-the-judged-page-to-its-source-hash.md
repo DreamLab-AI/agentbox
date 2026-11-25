@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 8482214befe8ee2f40cd35e422ac43c78e392a7c
+verified_commit: 595ba82e1dfbc324b64aee0f4dad783eaa74f0b3
 verified_paths: [services/podcast-ingest/src/promote, skills/podcast-knowledge-ingest/submit-proposals.mjs, skills/podcast-knowledge-ingest/run-promote.sh, skills/podcast-knowledge-ingest/tests/submit-proposals.test.mjs]
 owner: operator
 review_trigger: dossier freshness, page splicing, working-note ownership or proposal transport changes
