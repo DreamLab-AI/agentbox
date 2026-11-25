@@ -40,3 +40,7 @@ visionGraph vocabulary 3 (ADR-VG-010 to -013) changes every page header the week
 
 ## Verification
 `cargo test --offline -- --include-ignored` in `services/podcast-ingest` (226 passed); `cargo fmt --check`; `cargo clippy --all-targets -- -D warnings`. `PODCAST_SAMPLE_VAULT=<root> cargo test --lib -- --ignored sample_vault` writes one page of each kind, then `ontomark validate --vault all` and `repair bodies --vault all --check` on the root. The hash of the first code commit is `06de5a044`.
+
+## Note — 2026-11-25: the vocabulary-3 ontomark pin has landed in source
+
+The Consequences line "the image must bake a vocabulary-3 capable release" is met in source: `lib/ontomark.nix` pins Ontomark 0.10.0 (`baad4cdc1`). The release binary digest was checked against the release's `.sha256` asset. The image has not been rebuilt from it, so a running container may still carry 0.9.0, and `run-promote.sh` refuses an older `podcast-promote` independently. ADR-2136 carries the pin's verification state. This record's `verified_paths` (`services/podcast-ingest/src`) are unchanged, so `verified_commit` stays.

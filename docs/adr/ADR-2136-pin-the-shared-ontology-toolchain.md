@@ -147,3 +147,20 @@ Persistent mounts are unchanged and readiness settles without degradation.
 This verifies adoption of the pinned CLI, not a corpus migration, provenance
 write or the broader proposed cross-estate extraction. The record's proposed,
 partial and inactive status axes therefore remain unchanged.
+
+## Pin moved to Ontomark 0.10.0 — 2026-11-25 (source checked in part; `verified_commit` left at `b1640d820`)
+
+`baad4cdc1` moves `lib/ontomark.nix` from 0.9.0 to **0.10.0**. 0.10.0 reads vocabulary 3 and is the binary the podcast writers call (ADR-2222). Where the 2026-11-15 sections say "Ontomark 0.9.0 is pinned", the pin is now 0.10.0. The release binary SRI is `sha256-lmXBpeWMXrok4H5m/uf28CUPDOAPGJUlleQPcJvRPKU=`. The Jev source build uses `fetchFromGitHub` rev `fa173a183e65a29944becb6eb4d55b52b9ba6b06`, hash `sha256-pGo/N4RcMc7uy2J8npidgMOxJ3204bPVRWEEfnU4FLA=`, and lock file `lib/lockfiles/ontomark-fa173a18.Cargo.lock`, which replaces `ontomark-f9ba200b.Cargo.lock`.
+
+Checked from the repository and the release on 2026-11-25:
+- The release's `ontomark-x86_64-unknown-linux-gnu.sha256` asset is `9665c1a5e58c5eba24e07e66fee7f6f0250f0ce00f18952595e40f709bd13ca5`. In SRI form that is exactly the pinned `hash`.
+- Tag `v0.10.0` of DreamLab-AI/ontomark resolves to commit `fa173a18…`, the pinned `rev`.
+- The lock file's `ontomark` package is at version 0.10.0.
+
+Not checked, so the record is **not** re-pinned:
+- The Jev source `hash`. The repin commit says it was computed outside Nix, and that the image build is its first run.
+- Nix evaluation of the file.
+- Whether the binary runs.
+- Image activation. The 2026-11-15 host activation evidence covers 0.9.0, not 0.10.0.
+
+These depend on a host image build that this pass cannot run. Re-pin after a host build of the source including `baad4cdc1` passes the Ontomark derivation and `ontomark --version` reports 0.10.0. Status axes unchanged: proposed, partial, inactive.
