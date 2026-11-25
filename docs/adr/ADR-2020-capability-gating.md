@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 538c223973ee1aa1fb18a7521b5ea91d3e9535ac
+verified_commit: baad4cdc100777f84f09edce22698fb9573858b9
 verified_paths: [agentbox.toml, skills/tree-search-coder/SKILL.md, services/agentbox-ops/src/bin/tree-search-cap.rs]
 owner: jjohare
 review_trigger: any new optional skill/feature block added to agentbox.toml, or any change to the tree-search-coder spend/route posture
@@ -437,3 +437,11 @@ Governed delta: `agentbox.toml` changed only in the comment above `[sidechain.dr
 Governed delta since `469e55367`: `agentbox.toml`. The delta is the poker house seat's optional operator alert (`e59b51980`), plus the seat binary pin (`538c22397`, `lib/poker-citizen.nix`, not a path this record governs). `agentbox.toml` gains one commented-out `# alert_pubkey = ""` line under `[poker_citizen]` (`:2098`); no key or value changes, and lines after `:2095` sit one lower (`role_isolation = false` is now `:2616`, was `:2615`). Every hunk is additive: one optional key under `[poker_citizen]` and `[poker_citizen.<name>]` and one environment projection; the seat opens no listener and adds no program, port, mount, volume or manifest gate. Nothing this record decides (Optional capabilities are manifest-gated and byte-identical-when-off; execution-gated tools are spend-capped and never auto-routed) reads `alert_pubkey` or `POKER_CITIZEN_ALERT_PUBKEY`. The record's byte-identical-when-off rule holds for the new key: the binding is evaluated from `pokerCitizenCfg`/`c.alert_pubkey or ""` and used only inside `lib.optionalString (… != "")` within the seat programs, which are themselves gated by `pokerCitizenEnabled` (`flake.nix:3426`) or the enabled-seat filter, and the shipped manifests carry the key commented out, so with the gate off or the key unset the supervisor text is unchanged. Review trigger: not fired.
 
 Judged from `git diff 469e55367..538c22397 -- agentbox.toml`, the hunks read in full against this record's claims; `node scripts/adr-index-gen.js docs/adr --check`. The Decision and status axes are unchanged and no claim of this record is falsified. Citations in this record to lines after the points above are as of their own commit and are not renumbered.
+
+## Re-verification — 2026-11-25 at `baad4cdc100777f84f09edce22698fb9573858b9`
+
+Governed delta since `538c22397`: `agentbox.toml` only, one line. `d6b019afb` sets `[features.jev_compaction].cache_warm` from `"compact"` to `"off"` (`agentbox.toml:809`): an idle session near prompt-cache expiry is no longer compacted; threshold compaction (`compact_at_percent`, `compact_at_tokens`) and `enabled = true` (`:802`) are unchanged. The hunk is line-count neutral, so no `agentbox.toml:NNNN` citation moves.
+
+This record makes optional capabilities manifest-gated and byte-identical when off. It names `[features.jev_compaction]` as such a gate; the gate is `enabled` (`:802`, still `true`), and `cache_warm` is a policy value inside the enabled feature, not a gate, so neither the off path nor the plugin's install/uninstall projection changes. Claim still true.
+
+Checked with `git diff 538c22397..baad4cdc1 -- <verified_paths>` (the one hunk above), a search of this record for `cache_warm`, cache-warm, prompt-cache and idle-compaction claims (none), `scripts/agentbox-config-validate.sh agentbox.toml` (valid, 6 advisory warnings) and `node scripts/adr-index-gen.js docs/adr --check`. Decision and status axes unchanged.
