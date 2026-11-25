@@ -508,4 +508,102 @@ mod tests {
         assert_eq!(got[0].slug, "ep-one");
         assert_eq!(got[0].fingerprints, ["aa11", "bb22"]);
     }
+
+    /// Writes one page of each kind this stage emits into the vault named by
+    /// `PODCAST_SAMPLE_VAULT`, with the real `ontomark` for pins and bodies, so
+    /// the vault's own validator can be run on the output:
+    /// `PODCAST_SAMPLE_VAULT=<root> cargo test -- --ignored sample_vault`.
+    /// The root must hold `ontology/` and a `working/` directory.
+    #[test]
+    #[ignore = "writes into the vault named by PODCAST_SAMPLE_VAULT (does nothing without it)"]
+    fn sample_vault_for_validator() {
+        use crate::ingest::ledger::write_assertion_ledger;
+        use crate::promote::working_page::{
+            ontomark_normalise, ontomark_pin, write_working_page_using, Tools, WorkingPage,
+        };
+        let Ok(root) = std::env::var("PODCAST_SAMPLE_VAULT") else {
+            eprintln!("PODCAST_SAMPLE_VAULT is not set; nothing to write");
+            return;
+        };
+        let root = std::path::PathBuf::from(root);
+        let working = root.join("working");
+        std::fs::create_dir_all(root.join("transcripts")).unwrap();
+        let transcript = root.join("transcripts/ep-one.md");
+        std::fs::write(
+            &transcript,
+            "# Episode One\n\n**YouTube**: https://www.youtube.com/watch?v=abc123\n**Date**: 2026-03-10\n\nText.\n",
+        )
+        .unwrap();
+        let tagged = |claim: &str| {
+            let mut a = Assertion::new();
+            for (k, v) in [
+                ("claim", Value::String(claim.into())),
+                ("tier", Value::from(1)),
+                ("confidence", Value::from(0.9)),
+                ("source", Value::String("Host".into())),
+                ("ontology_terms", Value::Array(vec![])),
+                (
+                    "_episode_path",
+                    Value::String(transcript.to_string_lossy().into()),
+                ),
+            ] {
+                a.insert(k.into(), v);
+            }
+            a
+        };
+        let mut state = indexmap::IndexMap::new();
+        let (n, unmatched) = write_assertion_ledger(
+            "ep-one.md",
+            &[tagged("First claim."), tagged("Second claim.")],
+            &working,
+            None,
+            &mut state,
+            "2026-11-25",
+            None,
+        );
+        assert_eq!(n, 2);
+
+        let dossier = serde_json::json!({
+            "topic": "Sample Topic", "status": "candidate_rejected",
+            "episodes": ["ep-one"], "n_assertions": 2,
+            "draft": {"ok": true, "edit": {"content": "- ## Recent Developments\n- Something happened."}},
+            "assertions": [{"claim": "First claim.", "source": "Host", "episode": "ep-one", "confidence": "0.9", "claim_date": "2026-03-10"}]
+        });
+        let tools = Tools {
+            normalise: &ontomark_normalise,
+            pin: &ontomark_pin,
+            adopt_unmarked: false,
+        };
+        let r = write_working_page_using(&working, &dossier, "2026-11-25T10:00:00Z", &tools);
+        assert!(matches!(r, WorkingPage::Written(_)), "{r:?}");
+
+        let refs: Vec<&Assertion> = unmatched.iter().collect();
+        let page = match VaultShape::detect(&working).unwrap() {
+            VaultShape::V3(v3) => {
+                let evidence = evidence_for(&working, &refs);
+                assert!(!evidence.is_empty());
+                new_proposal_content(
+                    &v3,
+                    "Sample Concept",
+                    "A definition.",
+                    "Artificial Intelligence",
+                    &["Baz".to_string()],
+                    "2026-11-25T10:00:00Z",
+                    "ep-one.md",
+                    "- First claim.",
+                    &evidence,
+                )
+            }
+            VaultShape::V2 => new_page_content(
+                "Sample Concept",
+                "A definition.",
+                "Artificial Intelligence",
+                &["Baz".to_string()],
+                "2026-11-25",
+                "ep-one.md",
+                "- First claim.",
+            ),
+        };
+        std::fs::write(working.join("Sample Concept.md"), page).unwrap();
+    }
 }

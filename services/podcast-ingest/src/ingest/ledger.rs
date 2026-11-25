@@ -555,21 +555,21 @@ pub fn write_assertion_ledger(
     }
 
     let content = match (&prepared, existing_content.is_empty()) {
-        (Some(Ok(head)), true) => format!("{head}{}", new_bullets.join("\n")),
+        (Some(Ok(head)), true) => format!("{head}{}", new_bullets.concat()),
         (Some(Ok(updated)), false) => format!(
             "{}\n{}",
             updated.trim_end_matches('\n'),
-            new_bullets.join("\n")
+            new_bullets.concat()
         ),
         (_, false) => format!(
             "{}\n{}",
             existing_content.trim_end_matches('\n'),
-            new_bullets.join("\n")
+            new_bullets.concat()
         ),
         (_, true) => format!(
             "{}{}",
             build_ledger_header(&meta, today, &now),
-            new_bullets.join("\n")
+            new_bullets.concat()
         ),
     };
 
@@ -994,5 +994,35 @@ mod tests {
             "{page}"
         );
         assert!(!page.contains("page_resource"), "{page}");
+    }
+
+    /// `ontomark repair bodies --check` rejects a loose list, so bullets sit on
+    /// consecutive lines, in both header shapes and on append.
+    #[test]
+    fn ledger_bullets_form_a_tight_list() {
+        for version in [2, 3] {
+            let (root, working) = vault(version);
+            let ep = episode_file(root.path(), "ep-one", true);
+            let mut state = IndexMap::new();
+            for claims in [
+                vec![tagged("First.", &ep), tagged("Second.", &ep)],
+                vec![tagged("Third.", &ep)],
+            ] {
+                write_assertion_ledger(
+                    "ep-one.md",
+                    &claims,
+                    &working,
+                    None,
+                    &mut state,
+                    "2026-11-25",
+                    None,
+                );
+            }
+            let page = std::fs::read_to_string(working.join("podcast-evidence/ep-one.md")).unwrap();
+            let body = &page[page.find("- First.").unwrap()..];
+            let body = format!("\n{body}");
+            assert_eq!(body.matches("\n- ").count(), 3, "{page}");
+            assert!(!body.contains("\n\n- "), "v{version}: {page}");
+        }
     }
 }
