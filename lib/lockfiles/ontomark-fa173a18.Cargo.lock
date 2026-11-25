@@ -109,6 +109,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "72b3254f16251a8381aa12e40e3c4d2f0199f8c6508fbecb9d91f575e0fbb8c6"
 
 [[package]]
+name = "bech32"
+version = "0.11.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "32637268377fc7b10a8c6d51de3e7fba1ce5dd371a96e342b34e6078db558e7f"
+
+[[package]]
 name = "bitflags"
 version = "2.13.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -979,7 +985,7 @@ checksum = "384b8ab6d37215f3c5301a95a4accb5d64aa607f1fcb26a11b5303878451b4fe"
 
 [[package]]
 name = "ontomark"
-version = "0.9.0"
+version = "0.10.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -990,6 +996,7 @@ dependencies = [
  "ontomark-parse",
  "ontomark-profile-estate",
  "ontomark-source",
+ "ontomark-write",
  "serde_json",
  "tempfile",
  "ureq",
@@ -997,9 +1004,10 @@ dependencies = [
 
 [[package]]
 name = "ontomark-compile"
-version = "0.9.0"
+version = "0.10.0"
 dependencies = [
  "anyhow",
+ "bech32",
  "hex",
  "indexmap 2.14.2",
  "ontomark-model",
@@ -1027,7 +1035,7 @@ dependencies = [
 
 [[package]]
 name = "ontomark-ingest"
-version = "0.2.2"
+version = "0.2.3"
 dependencies = [
  "criterion",
  "indexmap 2.14.2",
@@ -1082,7 +1090,7 @@ version = "0.1.0"
 
 [[package]]
 name = "ontomark-parse"
-version = "0.1.4"
+version = "0.1.5"
 dependencies = [
  "indexmap 2.14.2",
  "serde",
@@ -1093,7 +1101,7 @@ dependencies = [
 
 [[package]]
 name = "ontomark-profile-estate"
-version = "0.9.0"
+version = "0.10.0"
 dependencies = [
  "ontomark-compile",
 ]
@@ -1126,7 +1134,7 @@ dependencies = [
 
 [[package]]
 name = "ontomark-wasm"
-version = "0.9.0"
+version = "0.10.0"
 dependencies = [
  "getrandom 0.3.4",
  "ontomark-ingest",
@@ -1143,6 +1151,22 @@ dependencies = [
  "spargebra",
  "thiserror 2.0.21",
  "wasm-bindgen",
+]
+
+[[package]]
+name = "ontomark-write"
+version = "0.1.0"
+dependencies = [
+ "getrandom 0.3.4",
+ "hex",
+ "indexmap 2.14.2",
+ "ontomark-compile",
+ "ontomark-parse",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.21",
+ "time",
 ]
 
 [[package]]

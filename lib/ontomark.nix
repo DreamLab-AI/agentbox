@@ -39,16 +39,21 @@
 #
 # 0.9.0 adds content-bound review freshness and separate build provenance.
 #
+# 0.10.0 reads vocabulary 3 (principal and instrument stamps, typed sources,
+# visibility, the review lifecycle), adds `ontomark migrate` m0002 and the
+# `ontomark memory` write commands (ADR-OM-014). A vocabulary 2 vault validates
+# as it did under 0.9.0. The podcast writers (ADR-2222) call this binary.
+#
 # Repinning
 # ---------
 # Change `version`, `sha256` (from the release's .sha256 asset) and nothing else.
 # The asset name keeps the `-linux-gnu` suffix the first release used; the
 # binary itself is static-pie and runs on glibc and Nix hosts alike.
 
-{ lib, pkgs, jev ? false, version ? "0.9.0"
-, hash ? "sha256-vKitw+FDj3DcnNyhVmGm/VUy8Q8tXwd2xwmSIsNMn10=" }:
+{ lib, pkgs, jev ? false, version ? "0.10.0"
+, hash ? "sha256-lmXBpeWMXrok4H5m/uf28CUPDOAPGJUlleQPcJvRPKU=" }:
 
-# The release binary is built without the Jev feature. Build the same v0.9.0 source
+# The release binary is built without the Jev feature. Build the same v0.10.0 source
 # with `jev` only for the enabled suggestion consumer; off retains the release bytes.
 if jev then pkgs.rustPlatform.buildRustPackage {
   pname = "ontomark";
@@ -56,10 +61,10 @@ if jev then pkgs.rustPlatform.buildRustPackage {
   src = pkgs.fetchFromGitHub {
     owner = "DreamLab-AI";
     repo = "ontomark";
-    rev = "f9ba200b8051dc3a1f5e26ff2e001d5fc2905426"; # v0.9.0
-    hash = "sha256-Ze3BuW4fQyIuZN+IT9rsKj0yZE2m600hb5pPXWtz+j0=";
+    rev = "fa173a183e65a29944becb6eb4d55b52b9ba6b06"; # v0.10.0
+    hash = "sha256-pGo/N4RcMc7uy2J8npidgMOxJ3204bPVRWEEfnU4FLA=";
   };
-  cargoLock.lockFile = ./lockfiles/ontomark-f9ba200b.Cargo.lock;
+  cargoLock.lockFile = ./lockfiles/ontomark-fa173a18.Cargo.lock;
   buildAndTestSubdir = "crates/ontomark-cli";
   buildFeatures = [ "jev" ];
   nativeBuildInputs = [ pkgs.pkg-config ];
