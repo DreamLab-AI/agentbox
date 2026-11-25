@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 039a68b32603516d44b8ac470e203c576543dce5
+verified_commit: 68fe21d612c14edbee7cc2b53e10e7241badf50c
 verified_paths: [ontology/decision-layer.ttl, ontology/decision-layer.ofn, ontology/test_decision_layer.py]
 owner: jjohare
 review_trigger: a change to the estate temporal contract, to memory-ontology's clock IRIs, or a loader that reads ontology/decision-layer.ttl at runtime
