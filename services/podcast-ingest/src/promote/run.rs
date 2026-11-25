@@ -129,6 +129,7 @@ fn now_rfc3339() -> String {
 fn land_working_page(working_dir: &Path, data: &serde_json::Value) -> bool {
     match write_working_page(working_dir, data, &now_rfc3339()) {
         WorkingPage::Written(p) => println!("  news page -> {}", p.display()),
+        WorkingPage::Unchanged(p) => println!("  news page unchanged: {}", p.display()),
         WorkingPage::Foreign(p) => println!(
             "  news page NOT written: {} exists and is not a promotion-stage page",
             p.display()

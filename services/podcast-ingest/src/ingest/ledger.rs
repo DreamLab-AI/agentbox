@@ -241,7 +241,6 @@ pub fn build_ledger_header(meta: &EpisodeMeta, today: &str, generated_at: &str) 
         ),
         ("public".to_string(), "false".to_string()),
         ("status".to_string(), "stable".to_string()),
-        ("source".to_string(), yaml_scalar("AI Daily Brief")),
     ];
     if !meta.url.is_empty() {
         props.push(("episode-url".to_string(), yaml_scalar(&meta.url)));
@@ -250,6 +249,8 @@ pub fn build_ledger_header(meta: &EpisodeMeta, today: &str, generated_at: &str) 
         props.push(("episode-date".to_string(), yaml_scalar(&meta.episode_date)));
     }
     props.push(("ingest-date".to_string(), yaml_scalar(today)));
+    // The typed form of "where this came from": the episode itself, replacing
+    // the retired free-text `source: AI Daily Brief`.
 
     let mut lines: Vec<String> = vec!["---".to_string()];
     lines.extend(props.iter().map(|(k, v)| format!("{k}: {v}")));
@@ -259,6 +260,11 @@ pub fn build_ledger_header(meta: &EpisodeMeta, today: &str, generated_at: &str) 
         env!("CARGO_PKG_VERSION")
     ));
     lines.push(format!("  at: {generated_at}"));
+    if !meta.url.is_empty() {
+        lines.push("sources:".to_string());
+        lines.push("- id: origin".to_string());
+        lines.push(format!("  resource: {}", yaml_scalar(&meta.url)));
+    }
     lines.push("---".to_string());
     lines.push(String::new());
     lines.push(format!("# AI Daily Brief — {}", meta.title));
@@ -600,7 +606,14 @@ mod tests {
         assert!(header.contains("episode-url: \"https://youtu.be/x\"\n"));
         assert!(header.contains("episode-date: \"2026-01-01\"\n"));
         assert!(header.contains("generated:\n  by: process:podcast-ingest/"));
-        assert!(header.contains("\n  at: 2026-01-02T03:04:05Z\n---\n"));
+        // No free-text `source:`; the episode is a typed `origin` source.
+        assert!(
+            !header.lines().any(|l| l.starts_with("source:")),
+            "{header}"
+        );
+        assert!(header.contains(
+            "\n  at: 2026-01-02T03:04:05Z\nsources:\n- id: origin\n  resource: \"https://youtu.be/x\"\n---\n"
+        ));
         assert!(header.ends_with("# AI Daily Brief — Episode Title\n\n"));
     }
 

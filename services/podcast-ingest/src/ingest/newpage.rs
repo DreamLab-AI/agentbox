@@ -51,71 +51,21 @@ Only set worth_adding=true if the topic is:
 Return a JSON array. Unmatched assertions:
 ";
 
-fn json_escape_string(s: &str) -> String {
-    let mut out = String::from("\"");
-    for c in s.chars() {
-        match c {
-            '"' => out.push_str("\\\""),
-            '\\' => out.push_str("\\\\"),
-            '\n' => out.push_str("\\n"),
-            '\r' => out.push_str("\\r"),
-            '\t' => out.push_str("\\t"),
-            c if (c as u32) < 0x20 => out.push_str(&format!("\\u{:04x}", c as u32)),
-            c if (c as u32) < 128 => out.push(c),
-            c => {
-                let cp = c as u32;
-                if cp > 0xFFFF {
-                    let v = cp - 0x10000;
-                    let high = 0xD800 + (v >> 10);
-                    let low = 0xDC00 + (v & 0x3FF);
-                    out.push_str(&format!("\\u{high:04x}\\u{low:04x}"));
-                } else {
-                    out.push_str(&format!("\\u{cp:04x}"));
-                }
-            }
-        }
-    }
-    out.push('"');
-    out
-}
-
-/// `json.dumps(list_of_strings)` — compact, `', '`-separated (Python's
-/// default separators when `indent` is not given).
-fn json_string_array_compact(items: &[String]) -> String {
-    let parts: Vec<String> = items.iter().map(|s| json_escape_string(s)).collect();
-    format!("[{}]", parts.join(", "))
-}
-
-/// `json.dumps([{"@id": ..., "label": ...}, ...])` — compact.
-fn json_related_array_compact(items: &[(String, String)]) -> String {
-    let parts: Vec<String> = items
-        .iter()
-        .map(|(id, label)| {
-            format!(
-                "{{\"@id\": {}, \"label\": {}}}",
-                json_escape_string(id),
-                json_escape_string(label)
-            )
-        })
-        .collect();
-    format!("[{}]", parts.join(", "))
-}
-
-/// Port of `NEW_PAGE_TEMPLATE.format(...)`.
-#[allow(clippy::too_many_arguments)]
+/// The body and header of a proposed page, as Obsidian markdown: headings,
+/// not outline bullets, and no `json-ld` fences (both fail `ontomark
+/// validate` / `repair bodies --check`; the page's identity and edges come from
+/// its frontmatter and wikilinks).
 fn new_page_content(
     title: &str,
-    slug: &str,
-    wikilinks_json: &str,
     definition: &str,
-    domain: &str,
-    parent_slug: &str,
     parent_label: &str,
-    related_json: &str,
+    related: &[String],
     date: &str,
     episode_source: &str,
     evidence_block: &str,
 ) -> String {
+    let mut relationships = vec![format!("- Parent: [[{parent_label}]]")];
+    relationships.extend(related.iter().map(|t| format!("- Related: [[{t}]]")));
     format!(
         "---\n\
 type: Draft Concept\n\
@@ -128,46 +78,22 @@ generated:\n\
 ---\n\
 \n\
 # {title}\n\
-```json-ld\n\
-{{\n\
-  \"@context\": \"https://narrativegoldmine.com/context/v1.jsonld\",\n\
-  \"@id\": \"urn:visionflow:page:{slug}\",\n\
-  \"@type\": \"Page\",\n\
-  \"vc:slug\": \"{slug}\",\n\
-  \"title\": \"{title}\",\n\
-  \"vc:public\": false,\n\
-  \"vc:outboundWikilinks\": {wikilinks_json},\n\
-  \"vc:schemaVersion\": 2\n\
-}}\n\
-```\n\
 \n\
-```json-ld\n\
-{{\n\
-  \"@context\": \"https://narrativegoldmine.com/ns/v2.jsonld\",\n\
-  \"@id\": \"urn:ngm:class:{slug}\",\n\
-  \"@type\": \"Class\",\n\
-  \"label\": \"{title}\",\n\
-  \"definition\": \"{definition}\",\n\
-  \"domain\": \"{domain}\",\n\
-  \"maturity\": \"draft\",\n\
-  \"quality\": 0.35,\n\
-  \"subClassOf\": [{{\"@id\": \"urn:ngm:class:{parent_slug}\", \"label\": \"{parent_label}\"}}],\n\
-  \"relations\": {{\n\
-    \"relatedTo\": {related_json}\n\
-  }},\n\
-  \"provenance\": {{\n\
-    \"source\": \"podcast-knowledge-ingest\",\n\
-    \"created\": \"{date}\",\n\
-    \"episode\": \"{episode_source}\"\n\
-  }}\n\
-}}\n\
-```\n\
+{definition}\n\
 \n\
-- ### Overview\n\
+## Overview\n\
+\n\
 {evidence_block}\n\
-- ### Relationships\n\
-- ### Provenance\n",
-        version = env!("CARGO_PKG_VERSION")
+\n\
+## Relationships\n\
+\n\
+{relationships}\n\
+\n\
+## Provenance\n\
+\n\
+- Episode: {episode_source}\n",
+        version = env!("CARGO_PKG_VERSION"),
+        relationships = relationships.join("\n")
     )
 }
 
@@ -287,7 +213,6 @@ pub async fn propose_new_pages(
         }
 
         let mut evidence_lines: Vec<String> = Vec::new();
-        let mut wikilinks: std::collections::BTreeSet<String> = std::collections::BTreeSet::new();
         for a in &page_assertions {
             let tier = get_tier(a, "tier", 1);
             let label = tier_label(tier);
@@ -299,49 +224,27 @@ pub async fn propose_new_pages(
             let claim = get_str(a, "claim", "");
             let source = get_str(a, "source", "unknown");
             evidence_lines.push(format!(
-                "  - {prefix}{claim} *(Source: {source}, via AI Daily Brief, {today})*"
+                "- {prefix}{claim} *(Source: {source}, via AI Daily Brief, {today})*"
             ));
-            for term in get_str_vec(a, "ontology_terms") {
-                if term.to_lowercase() != title_lower {
-                    wikilinks.insert(term);
-                }
-            }
         }
 
-        let related: Vec<(String, String)> = prop
+        let related: Vec<String> = prop
             .get("related_terms")
             .and_then(|v| v.as_array())
             .map(|arr| {
                 arr.iter()
                     .filter_map(|v| v.as_str())
                     .take(5)
-                    .map(|t| {
-                        (
-                            format!("urn:ngm:class:{}", slugify_default(t)),
-                            t.to_string(),
-                        )
-                    })
+                    .map(str::to_string)
                     .collect()
             })
             .unwrap_or_default();
-        let related_json = json_related_array_compact(&related);
-
-        let wikilinks_list: Vec<String> = wikilinks.into_iter().take(8).collect();
-        let wikilinks_json = json_string_array_compact(&wikilinks_list);
 
         let definition = prop
             .get("definition")
             .and_then(|v| v.as_str())
             .map(|s| s.to_string())
             .unwrap_or_else(|| format!("{title} as discussed in AI industry analysis."));
-        let domain = prop
-            .get("domain")
-            .and_then(|v| v.as_str())
-            .unwrap_or("artificial-intelligence");
-        let parent_slug = prop
-            .get("parent_slug")
-            .and_then(|v| v.as_str())
-            .unwrap_or("artificial-intelligence");
         let parent_label = prop
             .get("parent_label")
             .and_then(|v| v.as_str())
@@ -353,13 +256,9 @@ pub async fn propose_new_pages(
 
         let page_content = new_page_content(
             &title,
-            &slug,
-            &wikilinks_json,
             &definition,
-            domain,
-            parent_slug,
             parent_label,
-            &related_json,
+            &related,
             today,
             &episode_source,
             &evidence_lines.join("\n"),
@@ -391,49 +290,28 @@ mod tests {
     use super::*;
 
     #[test]
-    fn compact_string_array_matches_python_separators() {
-        let items = vec!["Foo".to_string(), "Bar Baz".to_string()];
-        assert_eq!(json_string_array_compact(&items), "[\"Foo\", \"Bar Baz\"]");
-    }
-
-    #[test]
-    fn compact_string_array_empty() {
-        let items: Vec<String> = vec![];
-        assert_eq!(json_string_array_compact(&items), "[]");
-    }
-
-    #[test]
-    fn related_array_compact_shape() {
-        let items = vec![("urn:ngm:class:foo".to_string(), "Foo".to_string())];
-        assert_eq!(
-            json_related_array_compact(&items),
-            "[{\"@id\": \"urn:ngm:class:foo\", \"label\": \"Foo\"}]"
-        );
-    }
-
-    #[test]
-    fn new_page_content_has_expected_shape() {
+    fn new_page_content_is_obsidian_markdown_that_passes_validation() {
         let content = new_page_content(
             "Foo Bar",
-            "foo-bar",
-            "[]",
             "A definition.",
-            "artificial-intelligence",
-            "artificial-intelligence",
             "Artificial Intelligence",
-            "[]",
+            &["Baz".to_string()],
             "2026-01-01",
             "ep.md",
-            "  - a claim",
+            "- a claim",
         );
         assert!(content.starts_with(
             "---\ntype: Draft Concept\ntitle: Foo Bar\npublic: false\nstatus: draft\n"
         ));
         assert!(content.contains("\n  at: 2026-01-01\n---\n\n# Foo Bar\n"));
         assert!(!content.contains("public: true"));
-        assert!(content.contains("\"vc:public\": false"));
-        assert!(content.contains("\"@id\": \"urn:visionflow:page:foo-bar\""));
-        assert!(content
-            .contains("- ### Overview\n  - a claim\n- ### Relationships\n- ### Provenance\n"));
+        // `ontomark validate` rejects json-ld fences; `repair bodies --check`
+        // rejects heading bullets.
+        assert!(!content.contains("```"), "{content}");
+        assert!(
+            !content.lines().any(|l| l.trim_start().starts_with("- #")),
+            "{content}"
+        );
+        assert!(content.contains("\n## Overview\n\n- a claim\n\n## Relationships\n\n- Parent: [[Artificial Intelligence]]\n- Related: [[Baz]]\n\n## Provenance\n\n- Episode: ep.md\n"));
     }
 }

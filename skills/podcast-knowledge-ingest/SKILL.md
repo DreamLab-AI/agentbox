@@ -98,14 +98,13 @@ public: false                      # ALWAYS. Owner, 2026-09-22 14:00:
                                    # read it, so the review that justified
                                    # publishing no longer covers the page.
 status: draft
-source: AI Daily Brief             # the podcast, not the per-claim publisher
 episode-url: https://www.youtube.com/watch?v=…
 episode-date: '2026-09-15'
 ingest-date: '2026-09-22'
 tier: 1                            # best (lowest) tier on the page
 confidence: 0.95                   # highest assertion confidence on the page
 generated: { by: process:podcast-ingest/2.0.0, at: 2026-09-22T06:17:00Z }
-sources: [{ id: episode, resource: "https://www.youtube.com/watch?v=…" }]
+sources: [{ id: origin, resource: "https://www.youtube.com/watch?v=…" }]   # typed; no free-text `source:`
 assertions: [ { fingerprint, claim, topics, tier, confidence, source,
                 claim-date, evidence } … ]    # machine-readable twin of the body
 ---
@@ -287,9 +286,17 @@ terminal reject also writes `<Topic>.md` into the working vault: `type: Note`,
 `public: false`, `status: draft`, a `generated` stamp
 (`process:podcast-promote/<version>`), a `sources` list linking each episode
 ledger, `promotion-status`, then the Loom-drafted section and the evidence
-bullets with `**key:** value` detail. It is overwritten on each dossier refresh.
-A page of the same name that this stage did not write (no `promotion-status`
-key) is left alone and reported. The curated vault is never touched.
+bullets with `**key:** value` detail. A dossier refresh is a merge: it rewrites
+only the keys this stage owns (`title`, `sources`, `topic`, `episodes`,
+`assertions`, `promotion-status`) and the body, keeps the page's first
+`generated` stamp and every other key as written, drops the retired free-text
+`source:`, appends the writer under `contributors:`, and writes nothing when
+nothing changed. The body is normalised with `ontomark repair bodies`
+(`ONTOMARK_BIN` or `ontomark` on `PATH`); if that fails the page is left as it
+was. A page of the same name that this stage did not write is left alone and
+reported: this stage's pages carry `promotion-status` plus either a
+`process:podcast-promote/…` stamp or contributor entry, or the heading
+`# <topic> — processed news`. The curated vault is never touched.
 `podcast-promote --refresh-working-pages` rewrites every reject's page from the
 stored dossiers with no network call, for use after the page format changes.
 
