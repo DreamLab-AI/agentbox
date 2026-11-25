@@ -4,12 +4,14 @@
 
 pub mod episode;
 pub mod fingerprint;
+pub mod frontmatter;
 pub mod http;
 pub mod ingest_status;
 pub mod pyjson;
 pub mod slug;
 pub mod state;
 pub mod transcript_md;
+pub mod vault_shape;
 pub mod yaml_scalar;
 pub mod ytdlp;
 

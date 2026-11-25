@@ -7,7 +7,9 @@ use super::judge::judge_before_after;
 use super::ledger_parse::{load_ledger_dir_assertions, Assertion};
 use super::loom::{assemble_draft, check_loom_reachable, DraftResult};
 use super::splice::page_sha256;
-use super::working_page::{write_working_page, WorkingPage};
+use super::working_page::{
+    ontomark_normalise, ontomark_pin, write_working_page_using, Tools, WorkingPage,
+};
 use super::{completeness, DEFAULT_LOOM_MODEL, DEFAULT_LOOM_URL};
 use crate::ingest::ledger::LEDGER_SUBDIR;
 use clap::Parser;
@@ -86,6 +88,14 @@ pub struct Args {
     #[arg(long)]
     pub refresh_working_pages: bool,
 
+    /// regenerate a working page that carries no body marker (every page this
+    /// stage wrote before the marker existed). Without this such a page is left
+    /// untouched, because its text cannot be proved unedited; with it the page's
+    /// generated text is replaced once and the marker added. Text a person put
+    /// below the marker later is always kept
+    #[arg(long)]
+    pub adopt_unmarked_pages: bool,
+
     /// cap assertions handed to draft/completeness, strongest first; 0 = uncapped
     #[arg(long, default_value_t = 12)]
     pub max_dossier_assertions: usize,
@@ -126,8 +136,21 @@ fn now_rfc3339() -> String {
 
 /// Write one reject's working page and report it. Returns false on a failed
 /// write.
-fn land_working_page(working_dir: &Path, data: &serde_json::Value) -> bool {
-    match write_working_page(working_dir, data, &now_rfc3339()) {
+fn land_working_page(working_dir: &Path, data: &serde_json::Value, adopt_unmarked: bool) -> bool {
+    let tools = Tools {
+        normalise: &ontomark_normalise,
+        pin: &ontomark_pin,
+        adopt_unmarked,
+    };
+    match write_working_page_using(working_dir, data, &now_rfc3339(), &tools) {
+        WorkingPage::Edited(p) => println!(
+            "  news page NOT refreshed: {} was edited since this stage wrote it (its generated text no longer matches the marker); left untouched",
+            p.display()
+        ),
+        WorkingPage::Unmarked(p) => println!(
+            "  news page NOT refreshed: {} has no body marker, so it cannot be proved unedited; left untouched (--adopt-unmarked-pages regenerates it once)",
+            p.display()
+        ),
         WorkingPage::Written(p) => println!("  news page -> {}", p.display()),
         WorkingPage::Unchanged(p) => println!("  news page unchanged: {}", p.display()),
         WorkingPage::Foreign(p) => println!(
@@ -144,7 +167,7 @@ fn land_working_page(working_dir: &Path, data: &serde_json::Value) -> bool {
 
 /// `--refresh-working-pages`: rewrite every terminal reject's working page
 /// from the dossier already on disk. Returns the process exit code.
-pub fn refresh_working_pages(rejects_dir: &Path, working_dir: &Path) -> i32 {
+pub fn refresh_working_pages(rejects_dir: &Path, working_dir: &Path, adopt_unmarked: bool) -> i32 {
     let mut names: Vec<PathBuf> = std::fs::read_dir(rejects_dir)
         .map(|rd| {
             rd.filter_map(|e| e.ok())
@@ -167,7 +190,7 @@ pub fn refresh_working_pages(rejects_dir: &Path, working_dir: &Path) -> i32 {
         if data.get("status").and_then(|v| v.as_str()) != Some("candidate_rejected") {
             continue;
         }
-        if land_working_page(working_dir, &data) {
+        if land_working_page(working_dir, &data, adopt_unmarked) {
             written += 1;
         } else {
             failed += 1;
@@ -194,7 +217,7 @@ pub async fn run(args: &Args) -> i32 {
             eprintln!("--refresh-working-pages needs --working-graph-dir");
             return 2;
         };
-        return refresh_working_pages(&rejects_dir, working_dir);
+        return refresh_working_pages(&rejects_dir, working_dir, args.adopt_unmarked_pages);
     }
 
     if !pages_dir.exists() {
@@ -544,7 +567,7 @@ pub async fn run(args: &Args) -> i32 {
                 out_dir.join(format!("{slug}.json")).display()
             );
             if let Some(wg_dir) = &args.working_graph_dir {
-                if !land_working_page(wg_dir, &data) {
+                if !land_working_page(wg_dir, &data, args.adopt_unmarked_pages) {
                     write_failures += 1;
                 }
             }
@@ -699,7 +722,7 @@ mod tests {
         )
         .unwrap();
 
-        assert_eq!(refresh_working_pages(rejects.path(), work.path()), 0);
+        assert_eq!(refresh_working_pages(rejects.path(), work.path(), false), 0);
         let alpha = std::fs::read_to_string(work.path().join("Alpha.md")).unwrap();
         assert!(
             alpha.contains("type: Note") && alpha.contains("promotion-status: candidate_rejected")

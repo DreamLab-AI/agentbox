@@ -8,6 +8,8 @@
 //! `podcast-evidence___<episode-slug>.md` ledger page instead.
 
 use super::pyval::{get_raw_or, get_str, get_str_vec, get_truthy_display, Assertion};
+use crate::common::frontmatter::{join_page, push_contributor, split_page, Block};
+use crate::common::vault_shape::{page_resource, VaultShape, V3};
 use crate::common::{assertion_fingerprint, yaml_scalar};
 use indexmap::IndexMap;
 use regex::Regex;
@@ -249,8 +251,6 @@ pub fn build_ledger_header(meta: &EpisodeMeta, today: &str, generated_at: &str) 
         props.push(("episode-date".to_string(), yaml_scalar(&meta.episode_date)));
     }
     props.push(("ingest-date".to_string(), yaml_scalar(today)));
-    // The typed form of "where this came from": the episode itself, replacing
-    // the retired free-text `source: AI Daily Brief`.
 
     let mut lines: Vec<String> = vec!["---".to_string()];
     lines.extend(props.iter().map(|(k, v)| format!("{k}: {v}")));
@@ -270,6 +270,98 @@ pub fn build_ledger_header(meta: &EpisodeMeta, today: &str, generated_at: &str) 
     lines.push(format!("# AI Daily Brief — {}", meta.title));
     lines.push(String::new());
     lines.join("\n") + "\n"
+}
+
+/// The instrument this stage stamps vocabulary-3 ledgers with.
+fn ledger_actor() -> String {
+    format!("process:podcast-ingest/{}", env!("CARGO_PKG_VERSION"))
+}
+
+/// The vocabulary-3 header of a new ledger (ADR-VG-010 §5-§6, ADR-VG-011,
+/// ADR-VG-012, ADR-VG-013): an `Episode`, `status: draft` (creating a memory
+/// as `approved` is an approval, which a writer never makes), `visibility:
+/// shared`, a `page_resource` derived from the ledger's id, the stamp with the
+/// operator's principal as `by` and this process as `via`, the one
+/// `contributors` entry for this write, `content-updated`, and the typed
+/// `rel: origin` source (the recording). `id` is the ledger's path under the
+/// working vault without `.md`.
+///
+/// Fails when the recording URL or date is missing: an Episode requires
+/// `episode-url`, `episode-date` and an origin source, and a page without them
+/// would turn the vault's gate red.
+pub fn build_ledger_header_v3(
+    v3: &V3,
+    meta: &EpisodeMeta,
+    id: &str,
+    generated_at: &str,
+) -> Result<String, String> {
+    if meta.url.is_empty() || meta.episode_date.is_empty() {
+        return Err(format!(
+            "episode `{id}` has no recording URL or date; a vocabulary-3 Episode needs episode-url, episode-date and an origin source"
+        ));
+    }
+    let title = format!("AI Daily Brief — {}", meta.title);
+    let by = &v3.principal;
+    let via = ledger_actor();
+    Ok(format!(
+        "---\ntype: Episode\ntitle: {title}\nstatus: draft\npage_resource: {resource}\nvisibility: shared\ngenerated:\n  by: {by}\n  via: {via}\n  at: {generated_at}\ncontributors:\n- by: {by}\n  via: {via}\n  at: {generated_at}\ncontent-updated: {generated_at}\nepisode-url: {url}\nepisode-date: {date}\nsources:\n- id: origin\n  rel: origin\n  resource: {url}\n---\n\n# {heading}\n\n",
+        title = yaml_scalar(&title),
+        resource = page_resource(id),
+        url = yaml_scalar(&meta.url),
+        date = yaml_scalar(&meta.episode_date),
+        heading = title,
+    ))
+}
+
+/// Statuses from which a memory page never returns (ADR-VG-013 §1).
+const TERMINAL: [&str; 3] = ["superseded", "invalidated", "archived"];
+
+/// The existing ledger with its header updated for one more write under
+/// vocabulary 3: the status falls back to `draft` if it was `approved` (a
+/// content edit by a writer that may not approve, ADR-VG-013 §1), `contributors`
+/// gains this write, and `content-updated` moves (§7). Everything else,
+/// including the first `generated` stamp, is kept as it was. Refuses a page
+/// that is not a v3 Episode yet, and one whose status is terminal.
+fn update_ledger_header_v3(existing: &str, v3: &V3, now: &str) -> Result<String, String> {
+    let (mut blocks, body) = split_page(existing);
+    let scalar = |blocks: &[Block], k: &str| {
+        blocks
+            .iter()
+            .find(|b| b.key == k)
+            .map(|b| b.scalar().to_string())
+    };
+    if scalar(&blocks, "type").as_deref() != Some("Episode")
+        || scalar(&blocks, "page_resource").is_none()
+        || scalar(&blocks, "visibility").is_none()
+    {
+        return Err(
+            "the ledger predates vocabulary 3 (it is not an Episode with page_resource and visibility); run the vault's page migration first"
+                .to_string(),
+        );
+    }
+    let status = scalar(&blocks, "status").unwrap_or_default();
+    if TERMINAL.contains(&status.as_str()) {
+        return Err(format!(
+            "the ledger is `{status}`, which is terminal; a claim that comes back is a new page"
+        ));
+    }
+    if status == "approved" {
+        if let Some(b) = blocks.iter_mut().find(|b| b.key == "status") {
+            b.text = "status: draft\n".to_string();
+        }
+    }
+    let entry = format!(
+        "- by: {}\n  via: {}\n  at: {now}\n",
+        v3.principal,
+        ledger_actor()
+    );
+    push_contributor(&mut blocks, &entry)?;
+    let updated = format!("content-updated: {now}\n");
+    match blocks.iter_mut().find(|b| b.key == "content-updated") {
+        Some(b) => b.text = updated,
+        None => blocks.push(Block::new("content-updated", updated)),
+    }
+    Ok(join_page(&blocks, body))
 }
 
 /// Port of `_build_ledger_bullet`. Returns `(bullet_text, resolved_topic_titles)`.
@@ -381,6 +473,30 @@ pub fn write_assertion_ledger(
 
     let ledger_path = ledger_page_path(working_dir, &episode_slug);
     let existing_content = std::fs::read_to_string(&ledger_path).unwrap_or_default();
+
+    // The vault decides the header shape. Anything that would make the page
+    // fail the vault's gate is refused here, before any state is recorded, so
+    // a later run can retry.
+    let shape = match VaultShape::detect(working_dir) {
+        Ok(s) => s,
+        Err(e) => {
+            eprintln!("    Ledger for {episode_filename} NOT written: {e}");
+            return (0, Vec::new());
+        }
+    };
+    let ledger_id = format!("{LEDGER_SUBDIR}/{episode_slug}");
+    let now = generated_at();
+    let prepared: Option<Result<String, String>> = match &shape {
+        VaultShape::V2 => None,
+        VaultShape::V3(v3) if existing_content.is_empty() => {
+            Some(build_ledger_header_v3(v3, &meta, &ledger_id, &now))
+        }
+        VaultShape::V3(v3) => Some(update_ledger_header_v3(&existing_content, v3, &now)),
+    };
+    if let Some(Err(e)) = &prepared {
+        eprintln!("    Ledger for {episode_filename} NOT written: {e}");
+        return (0, Vec::new());
+    }
     let existing_fps: HashSet<String> = re_ledger_fp()
         .captures_iter(&existing_content)
         .map(|c| c[1].to_string())
@@ -438,18 +554,23 @@ pub fn write_assertion_ledger(
         return (0, unmatched);
     }
 
-    let content = if !existing_content.is_empty() {
-        format!(
+    let content = match (&prepared, existing_content.is_empty()) {
+        (Some(Ok(head)), true) => format!("{head}{}", new_bullets.join("\n")),
+        (Some(Ok(updated)), false) => format!(
+            "{}\n{}",
+            updated.trim_end_matches('\n'),
+            new_bullets.join("\n")
+        ),
+        (_, false) => format!(
             "{}\n{}",
             existing_content.trim_end_matches('\n'),
             new_bullets.join("\n")
-        )
-    } else {
-        format!(
+        ),
+        (_, true) => format!(
             "{}{}",
-            build_ledger_header(&meta, today, &generated_at()),
+            build_ledger_header(&meta, today, &now),
             new_bullets.join("\n")
-        )
+        ),
     };
 
     let final_content = format!("{}\n", content.trim_end_matches('\n'));
@@ -671,5 +792,207 @@ mod tests {
             n2, 0,
             "second run with an already-ledgered fingerprint must add nothing"
         );
+    }
+
+    // ---- vocabulary 3 -----------------------------------------------------
+
+    const PRINCIPAL: &str =
+        "did:nostr:b41654017f6850b13857d19d8ae0e3f88f1365600cab0321e8101c9e92682f7a";
+    const SWARM: &str =
+        "did:nostr:94773a699927da1ef879b90843890b1fe0e671ae898163f4337dcbe5f96992c0";
+
+    /// A vault root at vocabulary `version`; returns it and its `working/`.
+    fn vault(version: u32) -> (tempfile::TempDir, PathBuf) {
+        let root = tempdir().unwrap();
+        std::fs::create_dir_all(root.path().join("ontology")).unwrap();
+        std::fs::write(
+            root.path().join("ontology/vocabulary.yaml"),
+            format!("version: {version}\n"),
+        )
+        .unwrap();
+        std::fs::write(
+            root.path().join("ontology/attribution.yaml"),
+            format!("generators:\n  - did: {SWARM}\n    kind: process\n    principal: {PRINCIPAL}\nprincipals:\n  - did: {PRINCIPAL}\n    kind: human\n"),
+        )
+        .unwrap();
+        let working = root.path().join("working");
+        std::fs::create_dir_all(&working).unwrap();
+        (root, working)
+    }
+
+    /// An episode transcript with a URL and a date, as `extract_episode_meta` reads.
+    fn episode_file(dir: &Path, name: &str, with_meta: bool) -> String {
+        let path = dir.join(format!("{name}.md"));
+        let text = if with_meta {
+            "# Episode Title\n\n**YouTube**: https://www.youtube.com/watch?v=abc\n**Date**: 2026-03-10\n\nText.\n"
+        } else {
+            "# Episode Title\n\nText.\n"
+        };
+        std::fs::write(&path, text).unwrap();
+        path.to_string_lossy().to_string()
+    }
+
+    fn tagged(claim: &str, path: &str) -> Assertion {
+        assertion(json!({
+            "claim": claim, "tier": 1, "confidence": 0.9, "source": "Host",
+            "ontology_terms": [], "_episode_path": path
+        }))
+    }
+
+    fn run(working: &Path, name: &str, a: Assertion) -> usize {
+        let mut state = IndexMap::new();
+        write_assertion_ledger(
+            &format!("{name}.md"),
+            &[a],
+            working,
+            None,
+            &mut state,
+            "2026-11-25",
+            None,
+        )
+        .0
+    }
+
+    #[test]
+    fn a_v3_ledger_is_a_draft_episode_with_a_typed_origin_and_a_principal_stamp() {
+        let (root, working) = vault(3);
+        let ep = episode_file(root.path(), "ep-one", true);
+        assert_eq!(run(&working, "ep-one", tagged("A claim.", &ep)), 1);
+        let page = std::fs::read_to_string(working.join("podcast-evidence/ep-one.md")).unwrap();
+        let version = env!("CARGO_PKG_VERSION");
+        let (blocks, body) = split_page(&page);
+        let keys: Vec<&str> = blocks.iter().map(|b| b.key.as_str()).collect();
+        assert_eq!(
+            keys,
+            [
+                "type",
+                "title",
+                "status",
+                "page_resource",
+                "visibility",
+                "generated",
+                "contributors",
+                "content-updated",
+                "episode-url",
+                "episode-date",
+                "sources"
+            ]
+        );
+        assert!(
+            page.contains("type: Episode\n") && page.contains("status: draft\n"),
+            "{page}"
+        );
+        assert!(page.contains("visibility: shared\n"), "{page}");
+        assert!(page.contains(&format!(
+            "page_resource: {}\n",
+            page_resource("podcast-evidence/ep-one")
+        )));
+        assert!(page.contains(&format!(
+            "generated:\n  by: {PRINCIPAL}\n  via: process:podcast-ingest/{version}\n"
+        )));
+        assert!(page.contains(&format!(
+            "contributors:\n- by: {PRINCIPAL}\n  via: process:podcast-ingest/{version}\n"
+        )));
+        assert!(page.contains(
+            "sources:\n- id: origin\n  rel: origin\n  resource: \"https://www.youtube.com/watch?v=abc\"\n---\n"
+        ), "{page}");
+        for gone in ["public:", "ingest-date:", "source:"] {
+            assert!(!page.lines().any(|l| l.starts_with(gone)), "{gone}: {page}");
+        }
+        for word in ["verified", "approved", "last-reviewed", SWARM] {
+            assert!(!page.contains(word), "{word}: {page}");
+        }
+        assert!(
+            body.contains("<!-- assertion-fp: "),
+            "claim fingerprints kept"
+        );
+    }
+
+    #[test]
+    fn a_v3_append_keeps_the_first_stamp_adds_one_contributor_and_drops_approval() {
+        let (root, working) = vault(3);
+        let ep = episode_file(root.path(), "ep-one", true);
+        run(&working, "ep-one", tagged("First claim.", &ep));
+        let path = working.join("podcast-evidence/ep-one.md");
+        let first = std::fs::read_to_string(&path).unwrap();
+        // a reviewer approved it, and wrote a note
+        let approved = first.replace("status: draft", "status: approved").replace(
+            "content-updated:",
+            "last-reviewed: 2026-11-26T00:00:00Z\ncontent-updated:",
+        );
+        std::fs::write(&path, &approved).unwrap();
+        run(&working, "ep-one", tagged("Second claim.", &ep));
+        let second = std::fs::read_to_string(&path).unwrap();
+        assert!(
+            second.contains("status: draft\n") && !second.contains("approved"),
+            "{second}"
+        );
+        // the first stamp and everything before `contributors` are as they were,
+        // save the status, which fell back from approved to draft
+        let head = |p: &str| p.split("contributors:").next().unwrap().to_string();
+        assert_eq!(
+            head(&second),
+            head(&approved)
+                .replace("status: approved", "status: draft")
+                .replace("last-reviewed: 2026-11-26T00:00:00Z\n", "")
+        );
+        assert_eq!(second.matches("- by: ").count(), 2, "{second}");
+        assert!(second.contains("First claim.") && second.contains("Second claim."));
+        assert_eq!(second.matches("page_resource:").count(), 1);
+    }
+
+    #[test]
+    fn a_v3_ledger_that_is_terminal_or_unmigrated_is_not_appended_to() {
+        let (root, working) = vault(3);
+        let ep = episode_file(root.path(), "ep-one", true);
+        run(&working, "ep-one", tagged("First claim.", &ep));
+        let path = working.join("podcast-evidence/ep-one.md");
+        let page = std::fs::read_to_string(&path).unwrap();
+        for (label, edited) in [
+            (
+                "terminal",
+                page.replace("status: draft", "status: invalidated"),
+            ),
+            ("unmigrated", page.replace("type: Episode", "type: Note")),
+        ] {
+            std::fs::write(&path, &edited).unwrap();
+            assert_eq!(
+                run(&working, "ep-one", tagged("Another.", &ep)),
+                0,
+                "{label}"
+            );
+            assert_eq!(std::fs::read_to_string(&path).unwrap(), edited, "{label}");
+        }
+    }
+
+    #[test]
+    fn a_v3_ledger_without_a_recording_url_is_refused_and_records_nothing() {
+        let (root, working) = vault(3);
+        let ep = episode_file(root.path(), "ep-two", false);
+        let mut state = IndexMap::new();
+        let (n, unmatched) = write_assertion_ledger(
+            "ep-two.md",
+            &[tagged("A claim.", &ep)],
+            &working,
+            None,
+            &mut state,
+            "2026-11-25",
+            None,
+        );
+        assert_eq!((n, unmatched.len(), state.len()), (0, 0, 0));
+        assert!(!working.join("podcast-evidence/ep-two.md").exists());
+    }
+
+    #[test]
+    fn a_v2_vault_keeps_the_v2_ledger_even_without_a_url() {
+        let (root, working) = vault(2);
+        let ep = episode_file(root.path(), "ep-two", false);
+        assert_eq!(run(&working, "ep-two", tagged("A claim.", &ep)), 1);
+        let page = std::fs::read_to_string(working.join("podcast-evidence/ep-two.md")).unwrap();
+        assert!(
+            page.contains("public: false\n") && page.contains("status: stable\n"),
+            "{page}"
+        );
+        assert!(!page.contains("page_resource"), "{page}");
     }
 }

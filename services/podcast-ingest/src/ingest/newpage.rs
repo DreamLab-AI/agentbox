@@ -5,11 +5,12 @@
 //! new ontology page.
 
 use super::config::Settings;
-use super::ledger::tier_label;
+use super::ledger::{tier_label, LEDGER_SUBDIR};
 use super::loom::{call_loom, resolve_loom_url};
 use super::pyval::{get_str, get_str_vec, get_tier, Assertion};
 use crate::common::state::{CreatedPageRecord, IngestState};
-use crate::common::{slugify_default, to_json_pretty_ascii};
+use crate::common::vault_shape::{page_resource, VaultShape, V3};
+use crate::common::{slugify_default, to_json_pretty_ascii, yaml_scalar};
 use regex::Regex;
 use serde_json::Value;
 use std::path::Path;
@@ -51,10 +52,27 @@ Only set worth_adding=true if the topic is:
 Return a JSON array. Unmatched assertions:
 ";
 
-/// The body and header of a proposed page, as Obsidian markdown: headings,
-/// not outline bullets, and no `json-ld` fences (both fail `ontomark
-/// validate` / `repair bodies --check`; the page's identity and edges come from
-/// its frontmatter and wikilinks).
+/// The body of a proposed page, as Obsidian markdown: headings, not outline
+/// bullets, and no `json-ld` fences (both fail `ontomark validate` / `repair
+/// bodies --check`; the page's identity and edges come from its frontmatter and
+/// wikilinks).
+fn new_page_body(
+    title: &str,
+    definition: &str,
+    parent_label: &str,
+    related: &[String],
+    episode_source: &str,
+    evidence_block: &str,
+) -> String {
+    let mut relationships = vec![format!("- Parent: [[{parent_label}]]")];
+    relationships.extend(related.iter().map(|t| format!("- Related: [[{t}]]")));
+    format!(
+        "# {title}\n\n{definition}\n\n## Overview\n\n{evidence_block}\n\n## Relationships\n\n{}\n\n## Provenance\n\n- Episode: {episode_source}\n",
+        relationships.join("\n")
+    )
+}
+
+/// A proposed page in the vocabulary-2 shape: a `Draft Concept`.
 fn new_page_content(
     title: &str,
     definition: &str,
@@ -64,36 +82,109 @@ fn new_page_content(
     episode_source: &str,
     evidence_block: &str,
 ) -> String {
-    let mut relationships = vec![format!("- Parent: [[{parent_label}]]")];
-    relationships.extend(related.iter().map(|t| format!("- Related: [[{t}]]")));
     format!(
-        "---\n\
-type: Draft Concept\n\
-title: {title}\n\
-public: false\n\
-status: draft\n\
-generated:\n\
-\x20 by: process:podcast-ingest/{version}\n\
-\x20 at: {date}\n\
----\n\
-\n\
-# {title}\n\
-\n\
-{definition}\n\
-\n\
-## Overview\n\
-\n\
-{evidence_block}\n\
-\n\
-## Relationships\n\
-\n\
-{relationships}\n\
-\n\
-## Provenance\n\
-\n\
-- Episode: {episode_source}\n",
+        "---\ntype: Draft Concept\ntitle: {title}\npublic: false\nstatus: draft\ngenerated:\n  by: process:podcast-ingest/{version}\n  at: {date}\n---\n\n{body}",
         version = env!("CARGO_PKG_VERSION"),
-        relationships = relationships.join("\n")
+        body = new_page_body(
+            title,
+            definition,
+            parent_label,
+            related,
+            episode_source,
+            evidence_block
+        )
+    )
+}
+
+/// One ledger cited as evidence: its slug and the claim fingerprints cited.
+struct Evidence {
+    slug: String,
+    fingerprints: Vec<String>,
+}
+
+/// Group the assertions by the ledger they landed on, keeping only claims the
+/// ledger really carries (`<!-- assertion-fp: <fp> -->`): a citation to a
+/// fingerprint the ledger lacks is a validation error (`DANGLING_LOCATOR`).
+fn evidence_for(working_dir: &Path, assertions: &[&Assertion]) -> Vec<Evidence> {
+    let mut out: Vec<Evidence> = Vec::new();
+    for a in assertions {
+        let file = get_str(a, "_source_file", "");
+        let slug = Path::new(&file)
+            .file_stem()
+            .map(|s| s.to_string_lossy().to_string())
+            .unwrap_or_default();
+        let fp = get_str(a, "fingerprint", "");
+        if slug.is_empty() || fp.is_empty() {
+            continue;
+        }
+        let ledger = working_dir.join(LEDGER_SUBDIR).join(format!("{slug}.md"));
+        let carries = std::fs::read_to_string(&ledger)
+            .map(|text| text.contains(&format!("<!-- assertion-fp: {fp} -->")))
+            .unwrap_or(false);
+        if !carries {
+            continue;
+        }
+        match out.iter_mut().find(|e| e.slug == slug) {
+            Some(e) if !e.fingerprints.contains(&fp) => e.fingerprints.push(fp),
+            Some(_) => {}
+            None => out.push(Evidence {
+                slug,
+                fingerprints: vec![fp],
+            }),
+        }
+    }
+    out
+}
+
+/// A proposed page in the vocabulary-3 shape (ADR-VG-010 §6): a `Proposal`,
+/// `status: draft`, `promotion-status: candidate`, `visibility: shared`, with
+/// `rel: evidence` sources that cite the ledgers directly, each with the
+/// `fp:` locators of the claims relied on. The stamp's `by` is the operator's
+/// principal and `via` is this process (ADR-VG-011 §1, ADR-VG-012 §6); the
+/// first `contributors` entry is this write. The title is the file name, so no
+/// `title` key (vault.toml).
+#[allow(clippy::too_many_arguments)]
+fn new_proposal_content(
+    v3: &V3,
+    title: &str,
+    definition: &str,
+    parent_label: &str,
+    related: &[String],
+    at: &str,
+    episode_source: &str,
+    evidence_block: &str,
+    evidence: &[Evidence],
+) -> String {
+    let via = format!("process:podcast-ingest/{}", env!("CARGO_PKG_VERSION"));
+    let by = &v3.principal;
+    let sources: String = evidence
+        .iter()
+        .map(|e| {
+            let locator = e
+                .fingerprints
+                .iter()
+                .map(|f| format!("fp:{f}"))
+                .collect::<Vec<_>>()
+                .join(",");
+            format!(
+                "- id: {}\n  rel: evidence\n  resource: '[[{LEDGER_SUBDIR}/{}]]'\n  locator: {locator}\n",
+                yaml_scalar(&e.slug),
+                e.slug
+            )
+        })
+        .collect();
+    format!(
+        "---\ntype: Proposal\nstatus: draft\npage_resource: {resource}\nvisibility: shared\ngenerated:\n  by: {by}\n  via: {via}\n  at: {at}\ncontributors:\n- by: {by}\n  via: {via}\n  at: {at}\nproposes: {name}\ntopic: {name}\npromotion-status: candidate\nsources:\n{sources}---\n\n{body}",
+        resource = page_resource(title),
+        name = yaml_scalar(title),
+        body = new_page_body(
+            title,
+            definition,
+            parent_label,
+            related,
+            episode_source,
+            evidence_block
+        )
     )
 }
 
@@ -111,6 +202,13 @@ pub async fn propose_new_pages(
     state: &mut IngestState,
     today: &str,
 ) {
+    let shape = match VaultShape::detect(working_dir) {
+        Ok(s) => s,
+        Err(e) => {
+            eprintln!("  New page proposals NOT written: {e}");
+            return;
+        }
+    };
     println!(
         "\n  Assessing {} unmatched assertions for new page proposals...",
         unmatched.len()
@@ -254,15 +352,36 @@ pub async fn propose_new_pages(
             .map(|a| get_str(a, "_source_file", "unknown"))
             .unwrap_or_else(|| "unknown".to_string());
 
-        let page_content = new_page_content(
-            &title,
-            &definition,
-            parent_label,
-            &related,
-            today,
-            &episode_source,
-            &evidence_lines.join("\n"),
-        );
+        let page_content = match &shape {
+            VaultShape::V2 => new_page_content(
+                &title,
+                &definition,
+                parent_label,
+                &related,
+                today,
+                &episode_source,
+                &evidence_lines.join("\n"),
+            ),
+            VaultShape::V3(v3) => {
+                let evidence = evidence_for(working_dir, &page_assertions);
+                if evidence.is_empty() {
+                    println!("    SKIP: {title} — no ledger carries its evidence yet");
+                    continue;
+                }
+                let now = chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Secs, true);
+                new_proposal_content(
+                    v3,
+                    &title,
+                    &definition,
+                    parent_label,
+                    &related,
+                    &now,
+                    &episode_source,
+                    &evidence_lines.join("\n"),
+                    &evidence,
+                )
+            }
+        };
 
         let _ = std::fs::write(&page_path, page_content);
         created += 1;
@@ -313,5 +432,80 @@ mod tests {
             "{content}"
         );
         assert!(content.contains("\n## Overview\n\n- a claim\n\n## Relationships\n\n- Parent: [[Artificial Intelligence]]\n- Related: [[Baz]]\n\n## Provenance\n\n- Episode: ep.md\n"));
+    }
+
+    const PRINCIPAL: &str =
+        "did:nostr:b41654017f6850b13857d19d8ae0e3f88f1365600cab0321e8101c9e92682f7a";
+
+    fn v3() -> V3 {
+        V3 {
+            root: std::path::PathBuf::from("/vault"),
+            principal: PRINCIPAL.to_string(),
+            promotion_statuses: None,
+        }
+    }
+
+    fn ledgered(dir: &Path, slug: &str, fps: &[&str]) {
+        let d = dir.join(LEDGER_SUBDIR);
+        std::fs::create_dir_all(&d).unwrap();
+        let body: String = fps
+            .iter()
+            .map(|f| format!("- claim\n  <!-- assertion-fp: {f} -->\n"))
+            .collect();
+        std::fs::write(d.join(format!("{slug}.md")), body).unwrap();
+    }
+
+    fn unmatched(file: &str, fp: &str) -> Assertion {
+        let mut a = Assertion::new();
+        a.insert("_source_file".into(), Value::String(file.into()));
+        a.insert("fingerprint".into(), Value::String(fp.into()));
+        a
+    }
+
+    #[test]
+    fn a_v3_proposal_cites_its_ledgers_as_located_evidence() {
+        let evidence = vec![
+            Evidence {
+                slug: "ep-one".into(),
+                fingerprints: vec!["aa11".into(), "bb22".into()],
+            },
+            Evidence {
+                slug: "ep-two".into(),
+                fingerprints: vec!["cc33".into()],
+            },
+        ];
+        let content = new_proposal_content(
+            &v3(),
+            "Foo Bar",
+            "A definition.",
+            "Artificial Intelligence",
+            &["Baz".to_string()],
+            "2026-11-25T10:00:00Z",
+            "ep-one.md",
+            "- a claim",
+            &evidence,
+        );
+        let version = env!("CARGO_PKG_VERSION");
+        let expected = format!(
+            "---\ntype: Proposal\nstatus: draft\npage_resource: {}\nvisibility: shared\ngenerated:\n  by: {PRINCIPAL}\n  via: process:podcast-ingest/{version}\n  at: 2026-11-25T10:00:00Z\ncontributors:\n- by: {PRINCIPAL}\n  via: process:podcast-ingest/{version}\n  at: 2026-11-25T10:00:00Z\nproposes: Foo Bar\ntopic: Foo Bar\npromotion-status: candidate\nsources:\n- id: ep-one\n  rel: evidence\n  resource: '[[podcast-evidence/ep-one]]'\n  locator: fp:aa11,fp:bb22\n- id: ep-two\n  rel: evidence\n  resource: '[[podcast-evidence/ep-two]]'\n  locator: fp:cc33\n---\n\n# Foo Bar\n",
+            page_resource("Foo Bar")
+        );
+        assert!(content.starts_with(&expected), "{content}");
+        assert!(!content.contains("Draft Concept") && !content.contains("public:"));
+        assert!(!content.contains("verified"));
+    }
+
+    #[test]
+    fn evidence_keeps_only_claims_the_ledger_carries() {
+        let dir = tempfile::tempdir().unwrap();
+        ledgered(dir.path(), "ep-one", &["aa11", "bb22"]);
+        let a1 = unmatched("ep-one.md", "aa11");
+        let a2 = unmatched("ep-one.md", "zz99"); // not in the ledger
+        let a3 = unmatched("ep-missing.md", "aa11"); // no such ledger
+        let a4 = unmatched("ep-one.md", "bb22");
+        let got = evidence_for(dir.path(), &[&a1, &a2, &a3, &a4]);
+        assert_eq!(got.len(), 1);
+        assert_eq!(got[0].slug, "ep-one");
+        assert_eq!(got[0].fingerprints, ["aa11", "bb22"]);
     }
 }
