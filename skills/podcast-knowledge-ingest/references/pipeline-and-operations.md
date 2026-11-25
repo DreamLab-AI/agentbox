@@ -16,8 +16,7 @@ heading. The json-ld fence the v1 template carried is GONE — a fence is a
 rejected construct (contract C1 `validation.rejected_constructs`), and the
 JSON-LD context is a build output, not page content (PRD Q4).
 
-Assertion-ledger page (`build_ledger_header` in `ingest/ledger.rs`;
-`write_assertion_ledger` in `visionGraph/transcripts/weekly_ingest.py`) is a
+Assertion-ledger page (`build_ledger_header` in `ingest/ledger.rs`) is a
 `type: Episode` page at:
 
 ```
