@@ -163,4 +163,4 @@ Not checked, so the record is **not** re-pinned:
 - Whether the binary runs.
 - Image activation. The 2026-11-15 host activation evidence covers 0.9.0, not 0.10.0.
 
-These depend on a host image build that this pass cannot run. Re-pin after a host build of the source including `baad4cdc1` passes the Ontomark derivation and `ontomark --version` reports 0.10.0. Status axes unchanged: proposed, partial, inactive.
+These depend on a host image build that this pass cannot run. Re-pin after a host build of the source including `baad4cdc1` builds the Ontomark derivation and `ontomark --version` reports 0.10.0. The shipped manifest makes that derivation the Jev source build, not the release fetch: `[system_one].enabled = true` and `[system_one.consumers].ontomark_suggestions = true` (`agentbox.toml:912`, `:975`) set `jev = true` at `flake.nix:1082`. So a passing host build does exercise the unverified source hash. No NAR serialiser is available in this container to check it beforehand. Status axes unchanged: proposed, partial, inactive.
