@@ -62,6 +62,40 @@ Draft Concept`, `status: draft`, and
 `generated: { by: process:podcast-ingest/<version>, at: <ISO8601> }`. That last
 key is how a reader tells machine output from authored work.
 
+### Which header shape (vocabulary 2 or 3)
+
+The writers read the target vault's `ontology/vocabulary.yaml` `version` at run
+time: 3 or higher gives the vocabulary-3 shape below, anything lower (or a
+directory with no vocabulary file) the vocabulary-2 shape documented in the rest
+of this section. There is no flag or environment variable; a vocabulary file
+that cannot be read, or a v3 vault whose `ontology/attribution.yaml` lacks
+exactly one `principals:` entry of `kind: human`, makes the write fail, never
+fall back. ADR-2222 records the rules.
+
+| Page | Vocabulary 3 |
+|---|---|
+| Ledger (`podcast-evidence/<slug>.md`) | `type: Episode`, `status: draft`, `visibility: shared`, `page_resource`, `episode-url`, `episode-date`, one `rel: origin` source (the recording URL), `contributors`, `content-updated`; no `public`, no `ingest-date`. A ledger with no recording URL or date is not written. |
+| Topic page (`<Topic>.md`) | `type: Brief`, `scope: topic`, `status: draft`, `visibility: shared`, `page_resource`, `topic`, `promotion-status` (inside the vocabulary's enum), `derived-from` sources each pinned `locator: sha256-v1:<digest of the ledger>`; no `episodes`/`assertions`/`public`. A Brief is never cited as evidence. |
+| New-page proposal (`<Title>.md`) | `type: Proposal`, `status: draft`, `promotion-status: candidate`, `proposes`, `topic`, `rel: evidence` sources to the ledgers with `locator: fp:<fp>,fp:<fp>`; only claims the ledger carries are cited. Replaces `Draft Concept`. |
+
+Stamps: `generated.by` is the operator's principal (the one `kind: human` entry
+under `principals:`), `generated.via` is the process
+(`process:podcast-ingest/<v>` or `process:podcast-promote/<v>`), `at` is UTC to the
+second. A swarm key is never written as `by`, and the writers never write
+`verified`, an approval or a confirmation. The first `generated` stamp is kept;
+every later write appends one `contributors` entry. Appending claims to a ledger
+that was `approved` returns it to `draft` (a content edit by a writer that may not
+approve, ADR-VG-013 §1); a terminal ledger (`superseded`, `invalidated`,
+`archived`) is not appended to; a page the vault migration has not reached is
+left for the migration.
+
+`page_resource` for a new page is `urn:visionflow:page:` plus the SHA-256 of
+`visionflow:page:working:<id>`, `<id>` being the page's path under `working/`
+without `.md` (the rule `ontomark migrate m0002` uses and `ontomark memory
+resource` prints). It derives from the item's stable identity (the episode slug,
+the topic's file name), so a re-run mints nothing new, and an existing page keeps
+its own.
+
 ### Evidence ledger pages (PRD Q16)
 
 The per-episode evidence ledger — the audit trail for every machine-extracted
@@ -282,8 +316,8 @@ podcast-promote --loom-url "$LOOM_BASE_URL" --pages-dir "$VAULT_PAGES" \
 ```
 
 Rejected-from-ontology is not discarded: with `--working-graph-dir`, every
-terminal reject also writes `<Topic>.md` into the working vault: `type: Note`,
-`public: false`, `status: draft`, a `generated` stamp
+terminal reject also writes `<Topic>.md` into the working vault (vocabulary 2: `type: Note`,
+`public: false`, `status: draft`; vocabulary 3: a `Brief`, see above), a `generated` stamp
 (`process:podcast-promote/<version>`), a `sources` list linking each episode
 ledger, `promotion-status`, then the Loom-drafted section and the evidence
 bullets with `**key:** value` detail. A dossier refresh is a merge: it rewrites
@@ -297,6 +331,15 @@ was. A page of the same name that this stage did not write is left alone and
 reported: this stage's pages carry `promotion-status` plus either a
 `process:podcast-promote/…` stamp or contributor entry, or the heading
 `# <topic> — processed news`. The curated vault is never touched.
+
+A refresh never destroys a human edit. The generated body ends with a marker
+line `<!-- podcast-promote: body sha256:<hex> -->` over everything above it. Text
+below the marker is the reader's and is always kept; text above it is
+regenerated only while it still matches the digest. If it does not, the page is
+left untouched and the run says so (`news page NOT refreshed … was edited`). A
+page with no marker (every page written before the marker existed) cannot be
+proved unedited and is also left untouched, with a message, unless the run is
+given `--adopt-unmarked-pages`, which regenerates it once and adds the marker.
 `podcast-promote --refresh-working-pages` rewrites every reject's page from the
 stored dossiers with no network call, for use after the page format changes.
 

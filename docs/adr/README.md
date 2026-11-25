@@ -59,7 +59,7 @@ detect changes to files it already lists — it is structurally blind to **addit
 is exactly how a new crate landed unlicensed under ADR-2030 while the record still read as
 verified and its `review_trigger` ("any new crate under `services/`") sat unactioned.
 
-_173 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
+_174 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
 
 | ID | Title | Domain | Date | Decision | Impl | Activation | Supersedes | Superseded by | Owner | Repo |
 |----|-------|--------|------|----------|------|------------|------------|---------------|-------|------|
@@ -236,3 +236,4 @@ _173 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
 | [ADR-2216](ADR-2216-mandates-are-enforced-at-the-pod-and-signing-fails-closed.md) | Mandates are enforced at the pod, and mandate signing fails closed | INGRESS-identity | 2026-11-23 | accepted | complete | staged | — | — | jjohare | agentbox |
 | [ADR-2217](ADR-2217-decision-records-may-name-the-tests-that-guard-them.md) | Decision records may name the tests that guard them | — | 2026-11-23 | accepted | complete | staged | — | — | jjohare | agentbox |
 | [ADR-2220](ADR-2220-decision-layer-vocabulary-version-2-closure-records.md) | The dl vocabulary models closure records and drops the conflicting domains | — | 2026-11-25 | accepted | complete | staged | — | — | jjohare | agentbox |
+| [ADR-2222](ADR-2222-podcast-writers-emit-the-vault-s-vocabulary-shape-and-keep-human-edits.md) | The podcast writers emit the vault's vocabulary shape and keep human edits | — | 2026-11-25 | accepted | complete | staged | — | — | jjohare | agentbox |

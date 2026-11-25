@@ -30,7 +30,13 @@ SHA-256. The submitter proposes the exact page the judge scored through
 dossiers are redrafted instead of banked as permanent anchor failures.
 Frontmatter is preserved; private rejected-candidate notes use the working
 vault's typed format. `podcast-promote --refresh-working-pages` is an explicit
-derived-note rewrite, not part of an image build. See ADR-2213 and the skill's
+derived-note rewrite, not part of an image build. The page header follows the
+target vault's vocabulary: the writers read `ontology/vocabulary.yaml` and emit
+the vocabulary-3 shape (Episode ledgers, topic Briefs, Proposals) at version 3
+or higher, the vocabulary-2 shape below it (ADR-2222). A refresh keeps a
+person's edits: the generated body carries a digest marker, text below it is kept,
+and a page whose generated text was edited, or that has no marker yet, is left
+untouched (`--adopt-unmarked-pages` regenerates unmarked pages once). See ADR-2213 and the skill's
 `references/promotion.md` for the contract and acceptance limits.
 
 ## Licence

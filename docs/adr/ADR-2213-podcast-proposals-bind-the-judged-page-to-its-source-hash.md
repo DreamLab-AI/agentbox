@@ -46,3 +46,6 @@ necessary. Working-note marker ownership is not a cross-process write lock.
 No new corpus path authority, listener, durable adapter or model policy is
 introduced. Tests use fixtures/tempdirs; no live Loom/Gemini call, proposal,
 working-vault refresh or corpus migration was run during preparation.
+
+## Amendment — 2026-11-25
+Working-note format is now chosen by the target vault's vocabulary version, and a refresh keeps a person's edits: see ADR-2222. Where this record says private notes use `type: Note` and `public: false`, that is the vocabulary-2 shape; vocabulary 3 writes a `Brief`. The scheduled wrapper also refuses a binary without `--adopt-unmarked-pages`. Re-verified at the pinned commit with `cargo test --offline -- --include-ignored` (224 passed).

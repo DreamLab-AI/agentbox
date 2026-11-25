@@ -19,10 +19,17 @@ fi
 # `ontomark validate` (`type: podcast-news`, `key:: value` lines) and dossiers
 # the submitter can no longer use. Stand down until the image is rebuilt
 # instead of re-breaking the vault every Monday. `PODCAST_PROMOTE_BIN` names a
-# newer build for a manual run.
+# newer build for a manual run. A build before 2026-11-25 (no
+# --adopt-unmarked-pages) also writes the vocabulary-2 header into a
+# vocabulary-3 vault and overwrites a person's edits on a refresh (ADR-2222).
 BIN="${PODCAST_PROMOTE_BIN:-$BIN}"
-if ! "$BIN" --help 2>/dev/null | grep -q -- '--refresh-working-pages'; then
+HELP="$("$BIN" --help 2>/dev/null || true)"
+if ! printf '%s\n' "$HELP" | grep -q -- '--refresh-working-pages'; then
     echo "run-promote.sh: ${BIN} predates the valid-page writer (no --refresh-working-pages); rebuild the image. Aborting." >&2
+    exit 1
+fi
+if ! printf '%s\n' "$HELP" | grep -q -- '--adopt-unmarked-pages'; then
+    echo "run-promote.sh: ${BIN} predates the vocabulary-aware, edit-keeping writer (no --adopt-unmarked-pages); rebuild the image. Aborting." >&2
     exit 1
 fi
 
