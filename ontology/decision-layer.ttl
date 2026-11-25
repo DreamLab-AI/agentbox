@@ -19,6 +19,7 @@
 @prefix owl:   <http://www.w3.org/2002/07/owl#> .
 @prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .
+@prefix memory: <http://nova.dev/memory#> .
 
 # ---------------------------------------------------------------------------
 # Ontology declaration
@@ -26,7 +27,10 @@
 
 <https://narrativegoldmine.com/ns/dl>
     a owl:Ontology ;
+    owl:versionIRI <https://narrativegoldmine.com/ns/dl/2> ;
+    owl:versionInfo "2" ;
     rdfs:label "Decision Layer and Temporal Provenance Ontology" ;
+    rdfs:seeAlso <http://nova.dev/memory#> , <http://nova.dev/temporal#> ;
     rdfs:comment """
         OWL 2 EL vocabulary for recording agent decisions as PROV-O activities,
         their causal and precedent relationships, the inputs and governing
@@ -34,6 +38,15 @@
         is valid. Related: ADR-047 (EL-profile safety), ADR-048 (decision
         layer), ADR-049 (temporal validity). Deliberately EL: no inverse,
         functional, or inverse-functional axioms are asserted anywhere below.
+
+        Version 2 (estate-temporal-v2): an assertion-version carries a start
+        (dl:validFrom) and never an end. An end lives on a dl:Closure record
+        that names the version it closes (dl:closesVersion), the clock or
+        clocks it closes (dl:closes) and, for valid time, the end itself
+        (dl:validUntil). The two clock individuals are memory:ValidTime and
+        memory:RecordedTime from the Agent Memory Ontology
+        (http://nova.dev/memory#, eljeffeg/memory-ontology, CC BY 4.0). They
+        are referenced by IRI and not redefined here.
     """ .
 
 # ---------------------------------------------------------------------------
@@ -50,7 +63,8 @@ dl:DecisionRecord
         (prov:wasAssociatedWith, prov:used, prov:generated, prov:startedAtTime)
         applies unchanged. Causal, precedent, influence, input, and governance
         relationships are expressed with the dl: object properties below;
-        the temporal validity window is expressed with dl:validFrom/dl:validTo.
+        the temporal validity window is expressed with dl:validFrom and, from
+        version 2, a dl:Closure carrying dl:validUntil.
     """ .
 
 # ---------------------------------------------------------------------------
@@ -123,25 +137,108 @@ dl:governedBy
 
 dl:validFrom
     a owl:DatatypeProperty ;
-    rdfs:domain dl:DecisionRecord ;
     rdfs:range xsd:dateTime ;
     rdfs:label "valid from" ;
     rdfs:comment """
-        Inclusive start of the interval over which the decision is in force.
-        xsd:dateTime. Not declared functional (EL forbids it); if single-valued
-        semantics are required, enforce them at write time in the decision
-        store, not in the ontology.
+        Inclusive start of the valid-time interval of an assertion-version
+        (a prov:Entity carrying rdf:subject / rdf:predicate / rdf:object).
+        xsd:dateTime. Deliberately no rdfs:domain: it is used on versions,
+        which are not dl:DecisionRecord activities, and a domain would entail
+        the wrong type. Not declared functional (EL forbids it); enforce
+        single-valued semantics at write time in the store.
     """ .
 
 dl:validTo
     a owl:DatatypeProperty ;
-    rdfs:domain dl:DecisionRecord ;
+    owl:deprecated true ;
     rdfs:range xsd:dateTime ;
     rdfs:label "valid to" ;
     rdfs:comment """
-        Exclusive end of the interval over which the decision is in force. An
-        absent dl:validTo denotes an open-ended (still-current) decision.
-        xsd:dateTime; not declared functional, per EL safety.
+        RETIRED from assertion-versions under estate-temporal-v2: a version
+        never carries an end, and no dl:validTo triple may remain in the
+        provenance graph. An end is recorded on a dl:Closure as
+        dl:validUntil. The term is kept only so that data written under
+        version 1 stays interpretable until it is refitted. Deliberately no
+        rdfs:domain.
+    """ .
+
+# ---------------------------------------------------------------------------
+# Closure records (estate-temporal-v2)
+# ---------------------------------------------------------------------------
+
+dl:Closure
+    a owl:Class ;
+    rdfs:label "Closure" ;
+    rdfs:comment """
+        A record that closes one assertion-version on one or both clocks. It is
+        a separate resource in the provenance graph, with its own
+        prov:generatedAtTime (when the close was recorded),
+        prov:wasGeneratedBy and prov:wasAttributedTo. A closure is not a
+        version: it has no rdf:subject / rdf:predicate / rdf:object, and it is
+        never itself closed. It closes at least one clock; a closure that
+        closes neither is not valid (a cardinality rule, enforced by the
+        writer, not by this EL vocabulary).
+    """ .
+
+dl:closesVersion
+    a owl:ObjectProperty ;
+    rdfs:domain dl:Closure ;
+    rdfs:range prov:Entity ;
+    rdfs:label "closes version" ;
+    rdfs:comment """
+        The assertion-version (a prov:Entity) that this closure closes.
+    """ .
+
+dl:closes
+    a owl:ObjectProperty ;
+    rdfs:domain dl:Closure ;
+    rdfs:range memory:Clock ;
+    rdfs:seeAlso memory:ValidTime , memory:RecordedTime ;
+    rdfs:label "closes" ;
+    rdfs:comment """
+        A clock this closure closes. The values are memory:ValidTime (a world
+        change: the statement stopped holding) and memory:RecordedTime (a
+        correction: the statement was never true). Both may be named on one
+        closure. memory:Clock, memory:ValidTime and memory:RecordedTime are
+        defined by the Agent Memory Ontology (CC BY 4.0) and referenced here by
+        IRI; this vocabulary adds no definition of them.
+    """ .
+
+dl:validUntil
+    a owl:DatatypeProperty ;
+    rdfs:domain dl:Closure ;
+    rdfs:range xsd:dateTime ;
+    rdfs:label "valid until" ;
+    rdfs:comment """
+        Exclusive end of valid time. Present on a closure if and only if it
+        closes memory:ValidTime. xsd:dateTime. Replaces dl:validTo on
+        assertion-versions. Where several closures apply, each excludes the
+        version independently and the effective end is the minimum.
+    """ .
+
+dl:reason
+    a owl:DatatypeProperty ;
+    rdfs:domain dl:Closure ;
+    rdfs:range xsd:string ;
+    rdfs:label "reason" ;
+    rdfs:comment """
+        Optional free-text reason for the closure. Application policy; carries
+        no semantics for state queries.
+    """ .
+
+# ---------------------------------------------------------------------------
+# Writer marker
+# ---------------------------------------------------------------------------
+
+dl:writer
+    a owl:DatatypeProperty ;
+    rdfs:domain prov:Activity ;
+    rdfs:range xsd:string ;
+    rdfs:label "writer" ;
+    rdfs:comment """
+        Names the writer that owns an activity, as a plain string (the corpus
+        sync writes "corpus-sync"). Ownership is recorded as data because a
+        canonical execution id is a content address and cannot be read for it.
     """ .
 
 # ---------------------------------------------------------------------------

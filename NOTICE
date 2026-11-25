@@ -63,6 +63,13 @@ Headline third-party / vendored components
       YuNet (MIT) and SFace (Apache-2.0), fetched at runtime into the ComfyUI
       models volume by the face-identity provisioning profile; not redistributed.
 
+  • Agent Memory Ontology (memory-ontology)     CC BY 4.0
+      Eljeffeg, https://github.com/eljeffeg/memory-ontology (namespace
+      http://nova.dev/memory#). ontology/decision-layer.ttl and .ofn reference
+      its memory:Clock, memory:ValidTime and memory:RecordedTime by IRI as the
+      values of dl:closes; no definitions are copied. Attribution is given
+      under CC BY 4.0, https://creativecommons.org/licenses/by/4.0/ (ADR-2220).
+
   • ComfyUI-SpEdE                               AGPL-3.0-or-later
       Burgstall Labs, https://github.com/Burgstall-labs/ComfyUI-SpEdE, pinned
       to commit 78b2a011ae8c47e702b25759c95d140784da97ce. Installed unmodified
