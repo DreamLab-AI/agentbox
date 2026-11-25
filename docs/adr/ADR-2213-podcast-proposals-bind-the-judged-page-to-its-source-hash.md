@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 595ba82e1dfbc324b64aee0f4dad783eaa74f0b3
+verified_commit: e98d2c69a9ef9fdef4a1b3d9ce4bfd053911f9c0
 verified_paths: [services/podcast-ingest/src/promote, skills/podcast-knowledge-ingest/submit-proposals.mjs, skills/podcast-knowledge-ingest/run-promote.sh, skills/podcast-knowledge-ingest/tests/submit-proposals.test.mjs]
 owner: operator
 review_trigger: dossier freshness, page splicing, working-note ownership or proposal transport changes
@@ -48,4 +48,4 @@ introduced. Tests use fixtures/tempdirs; no live Loom/Gemini call, proposal,
 working-vault refresh or corpus migration was run during preparation.
 
 ## Amendment — 2026-11-25
-Working-note format is now chosen by the target vault's vocabulary version, and a refresh keeps a person's edits: see ADR-2222. Where this record says private notes use `type: Note` and `public: false`, that is the vocabulary-2 shape; vocabulary 3 writes a `Brief`. The scheduled wrapper also refuses a binary without `--adopt-unmarked-pages`. Re-verified at the pinned commit with `cargo test --offline -- --include-ignored` (224 passed).
+Working-note format is now chosen by the target vault's vocabulary version, and a refresh keeps a person's edits: see ADR-2222. Where this record says private notes use `type: Note` and `public: false`, that is the vocabulary-2 shape; vocabulary 3 writes a `Brief`. The scheduled wrapper also refuses a binary without `--adopt-unmarked-pages`. Re-verified at the pinned commit with `cargo test --offline -- --include-ignored` (226 passed).

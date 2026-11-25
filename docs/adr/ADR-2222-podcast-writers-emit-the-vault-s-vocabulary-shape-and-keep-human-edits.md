@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 296cea442e639d02787e1a7f6c90ce88bdb0a307
+verified_commit: e98d2c69a9ef9fdef4a1b3d9ce4bfd053911f9c0
 verified_paths: [services/podcast-ingest/src]
 owner: jjohare
 review_trigger: a change to visionGraph ADR-VG-010 to -013, a vocabulary version 4, a second human principal in the roster, or the writers moving onto `ontomark memory create`
@@ -34,7 +34,9 @@ visionGraph vocabulary 3 (ADR-VG-010 to -013) changes every page header the week
 - A ledger with no recording URL or date is not written under vocabulary 3, because an Episode requires both; the assertions stay unrecorded and are retried next run.
 - The pin shells out to the same `ontomark` the body normaliser already needs, so the image must bake a vocabulary-3 capable release; the digest was checked identical under 0.9.0 and the pre-release build.
 - A page the vault migration has not reached is left for the migration, not half-converted.
+- `page_resource` follows the path: a page renamed away keeps its id, and a new page later written at the old path would mint the same id (`DUPLICATE_PAGE_RESOURCE`); rename edge, not handled.
+- A refresh run counts pages left untouched (edited, unmarked, foreign) apart from pages written, so a run that refreshed nothing says so.
 - The ledger writer no longer separates bullets with blank lines (which failed `repair bodies --check` for any ledger with two claims).
 
 ## Verification
-`cargo test --offline -- --include-ignored` in `services/podcast-ingest` (224 passed); `cargo fmt --check`; `cargo clippy --all-targets -- -D warnings`. `PODCAST_SAMPLE_VAULT=<root> cargo test --lib -- --ignored sample_vault` writes one page of each kind, then `ontomark validate --vault all` and `repair bodies --vault all --check` on the root. The hash of the first code commit is `06de5a044`.
+`cargo test --offline -- --include-ignored` in `services/podcast-ingest` (226 passed); `cargo fmt --check`; `cargo clippy --all-targets -- -D warnings`. `PODCAST_SAMPLE_VAULT=<root> cargo test --lib -- --ignored sample_vault` writes one page of each kind, then `ontomark validate --vault all` and `repair bodies --vault all --check` on the root. The hash of the first code commit is `06de5a044`.
