@@ -40,7 +40,8 @@
         functional, or inverse-functional axioms are asserted anywhere below.
 
         Version 2 (estate-temporal-v2): an assertion-version carries a start
-        (dl:validFrom) and never an end. An end lives on a dl:Closure record
+        (temporal:validFrom, with temporal:recordedFrom as its recorded clock;
+        dl:validFrom and dl:validTo are retired from versions) and never an end. An end lives on a dl:Closure record
         that names the version it closes (dl:closesVersion), the clock or
         clocks it closes (dl:closes) and, for valid time, the end itself
         (dl:validUntil). The two clock individuals are memory:ValidTime and
@@ -137,15 +138,18 @@ dl:governedBy
 
 dl:validFrom
     a owl:DatatypeProperty ;
+    owl:deprecated true ;
     rdfs:range xsd:dateTime ;
     rdfs:label "valid from" ;
     rdfs:comment """
-        Inclusive start of the valid-time interval of an assertion-version
-        (a prov:Entity carrying rdf:subject / rdf:predicate / rdf:object).
-        xsd:dateTime. Deliberately no rdfs:domain: it is used on versions,
-        which are not dl:DecisionRecord activities, and a domain would entail
-        the wrong type. Not declared functional (EL forbids it); enforce
-        single-valued semantics at write time in the store.
+        RETIRED from assertion-versions under estate-temporal-v2: a version now
+        carries temporal:validFrom (http://nova.dev/temporal#validFrom) for its
+        start of valid time and temporal:recordedFrom for its recorded clock,
+        both xsd:dateTimeStamp. dl:validFrom remains defined as the inclusive
+        start of the interval over which a decision record is in force
+        (ADR-049); nothing else in this repository writes it. Deliberately no
+        rdfs:domain, so it cannot mis-type a prov:Entity. Not declared
+        functional (EL forbids it).
     """ .
 
 dl:validTo
@@ -157,9 +161,10 @@ dl:validTo
         RETIRED from assertion-versions under estate-temporal-v2: a version
         never carries an end, and no dl:validTo triple may remain in the
         provenance graph. An end is recorded on a dl:Closure as
-        dl:validUntil. The term is kept only so that data written under
-        version 1 stays interpretable until it is refitted. Deliberately no
-        rdfs:domain.
+        dl:validUntil. Remains defined as the exclusive end of the interval
+        over which a decision record is in force (ADR-049), and so that data
+        written under version 1 stays interpretable until it is refitted.
+        Deliberately no rdfs:domain.
     """ .
 
 # ---------------------------------------------------------------------------
@@ -207,11 +212,11 @@ dl:closes
 dl:validUntil
     a owl:DatatypeProperty ;
     rdfs:domain dl:Closure ;
-    rdfs:range xsd:dateTime ;
+    rdfs:range xsd:dateTimeStamp ;
     rdfs:label "valid until" ;
     rdfs:comment """
         Exclusive end of valid time. Present on a closure if and only if it
-        closes memory:ValidTime. xsd:dateTime. Replaces dl:validTo on
+        closes memory:ValidTime. xsd:dateTimeStamp (canonical UTC). Replaces dl:validTo on
         assertion-versions. Where several closures apply, each excludes the
         version independently and the effective end is the minimum.
     """ .

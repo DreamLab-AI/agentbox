@@ -24,7 +24,7 @@ guard: [ontology/test_decision_layer.py]
 
 ## Decision
 `ontology/decision-layer.ttl` and `.ofn` go to version 2 (`owl:versionInfo "2"`):
-- `dl:validFrom` and `dl:validTo` lose their `rdfs:domain`. `dl:validTo` is `owl:deprecated`: retired from assertion-versions, kept only to read version-1 data until it is refitted.
+- `dl:validFrom` and `dl:validTo` lose their `rdfs:domain` and are both `owl:deprecated`: retired from assertion-versions, which carry `temporal:validFrom` and `temporal:recordedFrom` (`http://nova.dev/temporal#`, xsd:dateTimeStamp). They stay defined for decision records (ADR-049) and to read version-1 data; nothing else in this repository writes them. `dl:validUntil` is xsd:dateTimeStamp.
 - New `dl:Closure`, `dl:closesVersion` (range `prov:Entity`), `dl:closes`, `dl:validUntil` and `dl:reason`. `dl:writer` is declared (domain `prov:Activity`, string).
 - `dl:closes` ranges over `memory:Clock`. Its values are `memory:ValidTime` and `memory:RecordedTime` of the Agent Memory Ontology (`http://nova.dev/memory#`, CC BY 4.0), referenced by IRI and not redefined. NOTICE carries the attribution.
 - The vocabulary stays inside OWL 2 EL. "A closure closes at least one clock" is a writer rule and is not expressed here.

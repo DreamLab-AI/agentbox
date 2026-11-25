@@ -75,12 +75,13 @@ for clock in ("ValidTime", "RecordedTime"):
           f"dl:closes points at memory:{clock} (exact memory-ontology IRI)")
     check(f"AnnotationAssertion(rdfs:seeAlso dl:closes memory:{clock})" in OFN.read_text(),
           f"OFN also points dl:closes at memory:{clock}")
-check((DL.validUntil, RDFS.range, XSD.dateTime) in g, "dl:validUntil range is xsd:dateTime")
+check((DL.validUntil, RDFS.range, XSD.dateTimeStamp) in g, "dl:validUntil range is xsd:dateTimeStamp")
 check((DL.writer, RDFS.domain, PROV.Activity) in g, "dl:writer domain is prov:Activity")
 for p in (DL.validFrom, DL.validTo):
     check(not list(g.triples((p, RDFS.domain, None))),
           f"{p.split('#')[1]} carries no rdfs:domain (usable on assertion-versions)")
-check((DL.validTo, OWL.deprecated, None) in g, "dl:validTo is marked owl:deprecated (retired from versions)")
+for p in (DL.validFrom, DL.validTo):
+    check((p, OWL.deprecated, None) in g, f"{p.split('#')[1]} is marked owl:deprecated (retired from versions)")
 check(not list(g.triples((MEMORY.ValidTime, None, None))) and not list(g.triples((MEMORY.Clock, None, None))),
       "memory-ontology terms are referenced, not redefined")
 ver = g.value(URIRef("https://narrativegoldmine.com/ns/dl"), OWL.versionInfo)
