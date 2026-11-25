@@ -806,7 +806,7 @@ taint_skills = "email-search"                                 # Skill loads that
 compact_at_percent = 60          # CEILING: percent of the model window
 compact_at_tokens = 180000       # absolute trigger; effective = min(percent of window, this) (2026-09-25)
 rearm_tokens = 40000             # after any compaction, re-trigger only once context grows this far past the post-compaction size (0 = 25% of trigger)
-cache_warm = "compact"           # idle session near prompt-cache expiry: "compact" | "notify" | "off"
+cache_warm = "off"               # idle session near prompt-cache expiry: "compact" | "notify" | "off"
 cache_warm_floor_tokens = 100000 # never arm the idle nudge below this context size
 cache_ttl_seconds = 0            # 0 = detect (subscription 3600, API key 300); else explicit
 cache_ttl_margin_seconds = 300   # fire this long before expiry (half the TTL when the margin would exceed it)
