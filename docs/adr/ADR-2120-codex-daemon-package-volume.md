@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 538c223973ee1aa1fb18a7521b5ea91d3e9535ac
+verified_commit: baad4cdc100777f84f09edce22698fb9573858b9
 verified_paths: [agentbox.sh, config/entrypoint-unified.sh, flake.nix, docker-compose.yml, scripts/refresh-compose.sh, tests/config/compose-persistence.test.cjs, tests/config/refresh-compose.test.cjs]
 owner: jjohare
 review_trigger: commit verification and rebuild; or change Codex daemon packaging
@@ -420,3 +420,11 @@ Judged from `git diff fc95b3877..06c2f7011 -- agentbox.sh config/entrypoint-unif
 Governed delta since `06c2f7011`: `flake.nix`. The delta is the poker house seat's optional operator alert (`e59b51980`), plus the seat binary pin (`538c22397`, `lib/poker-citizen.nix`, not a path this record governs). `flake.nix` gains `pokerCitizenAlert` (`:473`) and the per-seat `alertPubkey` (`:489`), each `unplaceheld (… or "")`, and appends `POKER_CITIZEN_ALERT_PUBKEY` to the `[program:poker-citizen]` and `[program:poker-citizen-<name>]` environment lines only when the value is non-empty (`:3434`, `:3449`); lines after `:468` sit three lower and lines after `:486` four lower. Every hunk is additive: one optional key under `[poker_citizen]` and `[poker_citizen.<name>]` and one environment projection; the seat opens no listener and adds no program, port, mount, volume or manifest gate. Nothing this record decides (Give Codex daemon packages executable persistent storage) reads `alert_pubkey` or `POKER_CITIZEN_ALERT_PUBKEY`. Review trigger: not fired.
 
 Judged from `git diff 06c2f7011..538c22397 -- flake.nix`, the hunks read in full against this record's claims; `node scripts/adr-index-gen.js docs/adr --check`. The Decision and status axes are unchanged and no claim of this record is falsified. Citations in this record to lines after the points above are as of their own commit and are not renumbered.
+
+## Re-verification — 2026-11-25 at `baad4cdc100777f84f09edce22698fb9573858b9`
+
+Governed delta since `538c22397`: `agentbox.sh`: the optional bonsai LLM sidecar (`adf95e15a`) adds a usage line (`:61`), `BONSAI_FILE`/`BONSAI_COMPOSE_ARGS` (`:593-594`), `bonsai` in the subcommand allowlist (`:2058`), `cmd_bonsai` (`:2314-2351`) and its dispatch (`:2941`). The diff from `538c22397` also shows `config` in the usage text (`:63`) and allowlist, which the 2026-11-23 sections already recorded on the other branch. No existing function body changes. Lines after `:60` sit two lower, after `:592` four lower, after `:2313` 43 lower, and after `:2940` 44 lower.
+
+This record gives Codex daemon packages executable persistent storage, and has `up --build` and `build` refresh the compose file first. `scripts/refresh-compose.sh` is still called from `up --build` (`agentbox.sh:766`, cited `:758`) and `build` (`:940`, cited `:931`), and `rebuild` still delegates to `scripts/runtime-delivery.sh` (`:1090`). `docker-compose.yml`, `scripts/refresh-compose.sh` and both compose tests have no diff. The bonsai sidecar uses its own compose project (`agentbox-bonsai`) and does not touch the Codex package mount. Claim still true.
+
+Checked with `git diff 538c22397..baad4cdc1 -- <verified_paths>` (only `agentbox.sh`) read in full, `grep -n refresh-compose.sh agentbox.sh` and `bash -n agentbox.sh`. Citations in earlier sections are as of their own commit and are not renumbered. `node scripts/adr-index-gen.js docs/adr --check`. Decision and status axes unchanged.

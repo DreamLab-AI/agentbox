@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 538c223973ee1aa1fb18a7521b5ea91d3e9535ac
+verified_commit: baad4cdc100777f84f09edce22698fb9573858b9
 verified_paths: [crates/colloquy/colloquy-nostr/src/kinds.rs, docs/PROTOCOL-registry.md, services/nostr-pod-bridge/src/colloquy_publish.rs, agentbox.toml]
 owner: jjohare
 review_trigger: the next agentbox Nostr kind allocation, or any change to the band table in docs/PROTOCOL-registry.md
@@ -440,3 +440,11 @@ Governed delta: `agentbox.toml` changed only in the comment above `[sidechain.dr
 Governed delta since `469e55367`: `agentbox.toml`. The delta is the poker house seat's optional operator alert (`e59b51980`), plus the seat binary pin (`538c22397`, `lib/poker-citizen.nix`, not a path this record governs). `agentbox.toml` gains one commented-out `# alert_pubkey = ""` line under `[poker_citizen]` (`:2098`); no key or value changes, and lines after `:2095` sit one lower (`role_isolation = false` is now `:2616`, was `:2615`). Every hunk is additive: one optional key under `[poker_citizen]` and `[poker_citizen.<name>]` and one environment projection; the seat opens no listener and adds no program, port, mount, volume or manifest gate. Nothing this record decides (The agentbox 38xxx bands below 38400 are all reserved, so colloquy and settlement move to 38400-38499) reads `alert_pubkey` or `POKER_CITIZEN_ALERT_PUBKEY`. Review trigger: not fired.
 
 Judged from `git diff 469e55367..538c22397 -- agentbox.toml`, the hunks read in full against this record's claims; `node scripts/adr-index-gen.js docs/adr --check`. The Decision and status axes are unchanged and no claim of this record is falsified. Citations in this record to lines after the points above are as of their own commit and are not renumbered.
+
+## Re-verification — 2026-11-25 at `baad4cdc100777f84f09edce22698fb9573858b9`
+
+Governed delta since `538c22397`: `agentbox.toml`: one line, `d6b019afb` sets `[features.jev_compaction].cache_warm` from `"compact"` to `"off"` (`:809`), so an idle session is no longer compacted; threshold compaction and `enabled = true` are unchanged; line-count neutral. `docs/PROTOCOL-registry.md`: `914330958` rewrites the content-address paragraph (`:19-38`) for estate-temporal-v2: new assertion-version and closure golden ids, the retired `8c3913fd05a9`, and a status line saying v2 is not merged on VisionClaw `main`. It adds 11 lines.
+
+This record moves colloquy and settlement into `38400`-`38499`, because every agentbox band below `38400` is reserved. The band table is unchanged row for row and now sits at `docs/PROTOCOL-registry.md:100-104` (cited `:89-92,95-100` as of `218dc12c3`). `kinds.rs` and `colloquy_publish.rs` have no diff. The registry hunk concerns URN hashing, not kind allocation, so the review trigger (a new kind or a change to the band table) has not fired. Claim still true.
+
+Checked with `git diff 538c22397..baad4cdc1 -- docs/PROTOCOL-registry.md agentbox.toml` read in full, and by comparing the band table at `538c22397:docs/PROTOCOL-registry.md:89-93` with HEAD `:100-104` (identical). Citations in earlier sections are as of their own commit and are not renumbered. `node scripts/adr-index-gen.js docs/adr --check`. Decision and status axes unchanged.

@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 538c223973ee1aa1fb18a7521b5ea91d3e9535ac
+verified_commit: baad4cdc100777f84f09edce22698fb9573858b9
 verified_paths: [agentbox.sh, scripts/runtime-delivery.*, scripts/refresh-compose.sh, config/build-registry.json, lib/image-layers.nix, flake.nix, tests/config/runtime-delivery*, .github/workflows/invariants.yml, docs/developer/incremental-builds.md]
 owner: jjohare
 review_trigger: layer grouping, delivery transport, candidate validation or cache retention changes
@@ -359,3 +359,11 @@ Judged from `git diff fc95b3877..06c2f7011 -- agentbox.sh`, read in full against
 Governed delta since `06c2f7011`: `flake.nix`. The delta is the poker house seat's optional operator alert (`e59b51980`), plus the seat binary pin (`538c22397`, `lib/poker-citizen.nix`, not a path this record governs). `flake.nix` gains `pokerCitizenAlert` (`:473`) and the per-seat `alertPubkey` (`:489`), each `unplaceheld (… or "")`, and appends `POKER_CITIZEN_ALERT_PUBKEY` to the `[program:poker-citizen]` and `[program:poker-citizen-<name>]` environment lines only when the value is non-empty (`:3434`, `:3449`); lines after `:468` sit three lower and lines after `:486` four lower. Every hunk is additive: one optional key under `[poker_citizen]` and `[poker_citizen.<name>]` and one environment projection; the seat opens no listener and adds no program, port, mount, volume or manifest gate. Nothing this record decides (Separate non-disruptive image preparation from scoped runtime activation) reads `alert_pubkey` or `POKER_CITIZEN_ALERT_PUBKEY`. Review trigger: not fired.
 
 Judged from `git diff 06c2f7011..538c22397 -- flake.nix`, the hunks read in full against this record's claims; `node scripts/adr-index-gen.js docs/adr --check`. The Decision and status axes are unchanged and no claim of this record is falsified. Citations in this record to lines after the points above are as of their own commit and are not renumbered.
+
+## Re-verification — 2026-11-25 at `baad4cdc100777f84f09edce22698fb9573858b9`
+
+Governed delta since `538c22397`: `agentbox.sh`: the optional bonsai LLM sidecar (`adf95e15a`) adds a usage line (`:61`), `BONSAI_FILE`/`BONSAI_COMPOSE_ARGS` (`:593-594`), `bonsai` in the subcommand allowlist (`:2058`), `cmd_bonsai` (`:2314-2351`) and its dispatch (`:2941`). The diff from `538c22397` also shows `config` in the usage text (`:63`) and allowlist, which the 2026-11-23 sections already recorded on the other branch. No existing function body changes. Lines after `:60` sit two lower, after `:592` four lower, after `:2313` 43 lower, and after `:2940` 44 lower.
+
+This record separates non-disruptive image preparation from scoped runtime activation. `prepare`, `activate` and `rebuild` still route through `scripts/runtime-delivery.sh` (`agentbox.sh:2927-2928` and `:1090`; cited `:1075-1076,2577-2578` as of `6d3d21b05`). `scripts/runtime-delivery.*`, `config/build-registry.json`, `lib/image-layers.nix`, `flake.nix` and the workflow have no diff. `cmd_bonsai up` runs its own `docker compose ... up -d --build` for the sidecar project only and does not touch the agentbox image path. Claim still true. **Count moved:** `tests/config/runtime-delivery.test.cjs` now has 24 tests, all passing; earlier sections say 23.
+
+Checked with `git diff 538c22397..baad4cdc1 -- <verified_paths>` (only `agentbox.sh`) read in full, `node --test tests/config/runtime-delivery.test.cjs` (24 passed) and `bash -n agentbox.sh`. Citations in earlier sections are as of their own commit and are not renumbered. `node scripts/adr-index-gen.js docs/adr --check`. Decision and status axes unchanged.

@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: fc95b38774814f9bc83ddfac28649d12cd74fe12
+verified_commit: baad4cdc100777f84f09edce22698fb9573858b9
 verified_paths: [docs/BASELINE-container.md]
 owner: jjohare
 review_trigger: a change to [privacy_filter].port, to the [program:opf-router] supervisor block, or to the BASELINE-container supervised-program table
@@ -153,3 +153,11 @@ to the OAuth-capable providers, export `AGENTBOX_ANTIGRAVITY_AUTH_MODE` to the
 Antigravity consultant, and correct comments and docs. No value, authority,
 boundary or runtime behaviour governed by this decision changes. This is source
 verification, not activation.
+
+## Re-verification — 2026-11-25 at `baad4cdc100777f84f09edce22698fb9573858b9`
+
+Governed delta since `fc95b3877`: `docs/BASELINE-container.md` goes to 0.5.21 with one changelog entry for ADR-2216's SystemScape upstream changes (`474ea5d47`), which adds no port, mount, adapter, secret or supervised program. The supervised-program table is not edited.
+
+This record requires the baseline to describe `opf-router` as the privacy-filter sidecar on its own port, never as a façade on the Loom's `:8084`. The row is unchanged and now sits at `docs/BASELINE-container.md:133` (was `:132` at `fc95b3877`; the changelog line shifts it): privacy-filter redaction sidecar, gate `[privacy_filter]`, `127.0.0.1:9092`. `:8084` appears only in the changelog lines that record the 0.3.0 correction (`:36`, `:381`). In source, `[privacy_filter].port = 9092` (`agentbox.toml:1878`), and `[program:opf-router]` is at `flake.nix:3005`. Claim still true.
+
+Checked with `git diff fc95b3877..baad4cdc1 -- docs/BASELINE-container.md` read in full and `grep -n 'opf-router\|8084' docs/BASELINE-container.md`. No live listener was checked. Citations in earlier sections are as of their own commit and are not renumbered. `node scripts/adr-index-gen.js docs/adr --check`. Decision and status axes unchanged.

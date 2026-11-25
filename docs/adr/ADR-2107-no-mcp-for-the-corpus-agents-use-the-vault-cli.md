@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 538c223973ee1aa1fb18a7521b5ea91d3e9535ac
+verified_commit: baad4cdc100777f84f09edce22698fb9573858b9
 verified_paths: [skills/ontology-augment, skills/podcast-knowledge-ingest, agents/ontology-curator.md, mcp/mcp.json, agentbox.toml, AGENTS.md]
 owner: jjohare
 review_trigger: a request to register any MCP server that reads or writes visionGraph, the ADR-140 /mcp plane reaching the deployed Loom, or the first `vault` subcommand an agent cannot express
@@ -297,3 +297,11 @@ Governed delta: `agentbox.toml` changed only in the comment above `[sidechain.dr
 Governed delta since `469e55367`: `agentbox.toml`. The delta is the poker house seat's optional operator alert (`e59b51980`), plus the seat binary pin (`538c22397`, `lib/poker-citizen.nix`, not a path this record governs). `agentbox.toml` gains one commented-out `# alert_pubkey = ""` line under `[poker_citizen]` (`:2098`); no key or value changes, and lines after `:2095` sit one lower (`role_isolation = false` is now `:2616`, was `:2615`). Every hunk is additive: one optional key under `[poker_citizen]` and `[poker_citizen.<name>]` and one environment projection; the seat opens no listener and adds no program, port, mount, volume or manifest gate. Nothing this record decides (No MCP inside the estate for the corpus; agents use the vault CLI) reads `alert_pubkey` or `POKER_CITIZEN_ALERT_PUBKEY`. Review trigger: not fired.
 
 Judged from `git diff 469e55367..538c22397 -- agentbox.toml`, the hunks read in full against this record's claims; `node scripts/adr-index-gen.js docs/adr --check`. The Decision and status axes are unchanged and no claim of this record is falsified. Citations in this record to lines after the points above are as of their own commit and are not renumbered.
+
+## Re-verification — 2026-11-25 at `baad4cdc100777f84f09edce22698fb9573858b9`
+
+Governed delta since `538c22397`: `agentbox.toml`: one line, `d6b019afb` sets `[features.jev_compaction].cache_warm` from `"compact"` to `"off"` (`:809`), so an idle session is no longer compacted; threshold compaction and `enabled = true` are unchanged; line-count neutral. `skills/podcast-knowledge-ingest`: `SKILL.md` as described under ADR-2028's 2026-11-25 note; `references/pipeline-and-operations.md` drops the pointer to the deleted `weekly_ingest.py` (`d5cd601ee`); `run-promote.sh` also refuses a `podcast-promote` binary without `--adopt-unmarked-pages` (the edit-keeping writer, ADR-2222).
+
+This record keeps the corpus free of MCP inside the estate: agents use the CLIs (`ontomark` for reads, `vault propose` for governed changes). At HEAD the submitter still looks up classes with `ontomark find` and sends `vault propose` (`submit-proposals.mjs:6`, `:32`, `:125`). The skill adds no `mcp__` tool, no ontology-bridge call and no direct curated-page write; `run-promote.sh` adds only a capability check on the binary. Claim still true.
+
+Checked with `git diff 538c22397..baad4cdc1 -- skills/podcast-knowledge-ingest agentbox.toml` read in full, `grep -rnE 'mcp__|ontology-bridge|vault (find|retrieve|tree)'` over the skill (only the historical comment at `submit-proposals.mjs:8`), `bash -n run-promote.sh`, and the submitter tests (11 passed). Citations in earlier sections are as of their own commit and are not renumbered. `node scripts/adr-index-gen.js docs/adr --check`. Decision and status axes unchanged.
