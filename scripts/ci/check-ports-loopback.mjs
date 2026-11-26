@@ -94,7 +94,7 @@ import { fileURLToPath } from 'node:url';
 // variable moves every sidecar port to a LAN address together. This is the ONLY
 // interpolation the gate accepts, and only in these files and only with that
 // exact loopback default, so an unauditable `${X:-0.0.0.0}` is still rejected.
-const SIDECAR_BIND_FILES = ['docker-compose.browsercontainer.yml', 'docker-compose.gui-tools.yml', 'docker-compose.xr-runtime.yml'];
+const SIDECAR_BIND_FILES = ['docker-compose.browsercontainer.yml', 'docker-compose.gui-tools.yml', 'docker-compose.xr-runtime.yml', 'docker-compose.bonsai.yml'];
 const SIDECAR_BIND_PREFIX = '${AGENTBOX_SIDECAR_BIND:-127.0.0.1}:';
 
 const SANCTIONED = [

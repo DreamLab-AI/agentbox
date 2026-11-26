@@ -16,7 +16,10 @@ services:
         CUDA_ARCH: ${BONSAI_CUDA_ARCH:-86;89}
     restart: unless-stopped
     ports:
-      - "${BONSAI_BIND:-127.0.0.1}:${BONSAI_PORT:-8086}:${BONSAI_PORT:-8086}"
+      # Loopback by default (ADR-2013). AGENTBOX_SIDECAR_BIND is the one
+      # sanctioned knob that moves every sidecar publish to a LAN address; the
+      # port is literal because the ports gate accepts no other interpolation.
+      - "${AGENTBOX_SIDECAR_BIND:-127.0.0.1}:8086:8086"
     networks:
       - visionclaw
     deploy:
@@ -31,12 +34,12 @@ services:
     command: >
       -m /models/${BONSAI_MODEL_FILE:-Ternary-Bonsai-2.5-27B-Uncensored-PTQ1_0.gguf}
       -a ${BONSAI_ALIAS:-ternary-bonsai-2.5-27b-uncensored}
-      --host 0.0.0.0 --port ${BONSAI_PORT:-8086}
+      --host 0.0.0.0 --port 8086
       -ngl 99 -fa on -c ${BONSAI_CTX:-131072} -ctk q8_0 -ctv q8_0
       --parallel 1 --cont-batching --jinja --metrics --slots
       --temp 1.0 --top-p 0.95 --top-k 20 --min-p 0.0
     healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:${BONSAI_PORT:-8086}/health"]
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8086/health"]
       interval: 30s
       timeout: 5s
       start_period: 120s

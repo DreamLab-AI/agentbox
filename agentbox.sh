@@ -2325,7 +2325,7 @@ cmd_bonsai() {
         logs)    docker compose "${BONSAI_COMPOSE_ARGS[@]}" logs -f --tail 100 ;;
         status)  docker compose "${BONSAI_COMPOSE_ARGS[@]}" ps ;;
         health)
-            curl -fsS "http://127.0.0.1:${BONSAI_PORT:-8086}/health" >/dev/null \
+            curl -fsS "http://127.0.0.1:8086/health" >/dev/null \
                 && echo -e "${GREEN}bonsai healthy${NC}" \
                 || { echo -e "${RED}bonsai unhealthy (still loading? see logs)${NC}"; exit 1; }
             ;;
@@ -2339,11 +2339,11 @@ ${CYAN}bonsai — optional Ternary Bonsai 2.5 27B LLM sidecar (OpenAI-compatible
   $0 bonsai down      Stop it
   $0 bonsai logs      Follow logs
   $0 bonsai status    Compose ps
-  $0 bonsai health    GET /health on :\${BONSAI_PORT:-8086}
+  $0 bonsai health    GET /health on :8086
   $0 bonsai rebuild   Rebuild --no-cache and restart
   $0 bonsai shell     Shell into the container
 
-Env: BONSAI_GPU (0), BONSAI_CUDA_ARCH (86;89), BONSAI_MODEL_DIR, BONSAI_PORT (8086), BONSAI_CTX.
+Env: BONSAI_GPU (0), BONSAI_CUDA_ARCH (86;89), BONSAI_MODEL_DIR, BONSAI_CTX. Port 8086, loopback unless AGENTBOX_SIDECAR_BIND is set.
 See bonsai-sidecar/README.md.
 BN_HELP
             ;;
