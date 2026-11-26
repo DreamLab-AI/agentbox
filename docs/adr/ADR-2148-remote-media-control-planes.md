@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 0b8d2b18827ea3198c356528398646b25ab2d379
+verified_commit: 1ea91deb2256249e7b801b6827e8b1a06f34cb20
 verified_paths: [flake.nix, comfyui-sidecar/Dockerfile, docker-compose.comfyui.yml, docker-compose.gui-tools.yml, gui-tools-sidecar, skills/blender/tools, skills/comfyui/mcp-server, skills/comfyui/scripts, skills/comfyui/models/stopmotion-candidates.json]
 owner: jjohare
 review_trigger: media control-plane protocol, sidecar dependencies, workflow state handling or model provisioning changes

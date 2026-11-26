@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 573e0900ffc202580ddf3ae8f630158127fd753e
+verified_commit: 1ea91deb2256249e7b801b6827e8b1a06f34cb20
 verified_paths: [skills/paper-orchestra, services/skill-tools, lib/skill-tools.nix]
 owner: jjohare
 review_trigger: the next image build (confirm `paper-orchestra --help` on PATH and the skill under /opt/agentbox/skills); arXiv changing its TeX submission or metadata rules (skills/paper-orchestra/references/arxiv.md carries the date they were read); a routed turn about compiling LaTeX, a book manuscript or a white paper landing on paper-orchestra in ~/.claude/skill-route.jsonl; an upstream PaperOrchestra release that changes a verbatim prompt
