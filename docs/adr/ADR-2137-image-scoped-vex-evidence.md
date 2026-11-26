@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: c556773556095e0b7a6e5736f28f1c95acf39ce9
+verified_commit: 0b8d2b18827ea3198c356528398646b25ab2d379
 verified_paths: [flake.nix, lib/sbomnix.nix, lib/sbomnix-python.nix, lib/agentbox-vex.nix, lib/vex-evidence.nix, services/agentbox-vex, scripts/security-scan.sh, scripts/runtime-delivery.cjs, agentbox.sh, tests/security, tests/config/runtime-delivery.test.cjs, .github/workflows/build-multi-arch.yml, .github/workflows/image-scan.yml, .github/workflows/release.yml, .github/workflows/security-vex.yml, .github/workflows/flake-check.yml]
 owner: jjohare
 review_trigger: image inventory, VEX predicates, scanner matching or release artefact selection changes; a host preparation bundle that carries raw and VEX-filtered Grype reports, or a release with matching-commit scan artefacts (activation → live)
@@ -17,6 +17,19 @@ domain: BASELINE-container
 
 # ADR-2137 — Image-scoped vulnerability evidence
 
+
+## Scoped pin verification — 2026-11-26
+
+Compared the governed delta since `c556773556095e0b7a6e5736f28f1c95acf39ce9`: `flake.nix`.
+The flake changes only seven npm CLI version/lock/hash tuples; native agent
+CLIs use official per-platform checksums. SystemScape pins the tested upstream
+`7e5e842` source; its vendored Cargo.lock is unchanged byte-for-byte. The baseline
+change only corrects and expands the pending SystemScape changelog entry.
+No supervisor block, published port, mount, adapter, credential, feature gate
+or memory-learning policy changes in this delta. Existing decision and status
+axes are retained. CLI hash derivations, 301 Jest tests, 45 agent reconciliation
+checks, no-mods/memory governance and the loopback gate pass; SystemScape has
+189 passing tests and a passing terminal smoke. Image activation is not claimed.
 
 ## Scoped source verification — 2026-11-20
 

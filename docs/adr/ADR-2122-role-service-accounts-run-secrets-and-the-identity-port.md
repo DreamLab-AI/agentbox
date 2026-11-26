@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: c556773556095e0b7a6e5736f28f1c95acf39ce9
+verified_commit: 0b8d2b18827ea3198c356528398646b25ab2d379
 verified_paths: [config/role-accounts.json, services/agentbox-manifest/src/role_accounts.rs, services/agentbox-manifest/src/main.rs, lib/agentbox-manifest.nix, config/lib/role-custody.sh, config/entrypoint-unified.sh, flake.nix, docker-compose.yml, agentbox.toml, setup/agentbox.default.toml, schema/agentbox.toml.schema.json, management-api/lib/system-manifest.js, tests/config/role-isolation-supervisor.test.sh, tests/config/role-secrets-delivery.test.sh, tests/config/role-isolation-boot.test.sh, tests/config/fixtures/role-isolation/supervisord.conf, config/custody/env-classes.json, scripts/ci/env-secret-inventory.js, management-api/lib/role-secret.js, services/nostr-pod-bridge/src/role_secret.rs, services/nostr-pod-bridge/src/bootstrap.rs, tests/runtime-contract/RC-X1-06.sh, config/custody/identity-port-acl.json, services/nostr-pod-bridge/src/identity_port/mod.rs, services/nostr-pod-bridge/src/identity_port/server.rs, management-api/lib/pod-signer.js, scripts/activation/role-isolation-rehearsal.sh, scripts/activation/role-isolation-rehearsal.host.sh, tests/config/role-isolation-rehearsal.test.sh, tests/config/role-isolation-class.test.cjs, config/bake-devuser-privilege.sh, tests/runtime-contract/RC-X1-07.sh, tests/security/compose-role-env.test.mjs, docker-compose.override.yml, tests/config/role-custody-migrate.test.sh, config/sidechain/run-producer.sh, config/sidechain/run-faucet.sh, config/sidechain/mirror-sync.sh, config/lib/nip98-config.sh, config/nip98-proxy/config-path.mjs]
 owner: jjohare
 review_trigger: the role-isolation rehearsal (scripts/activation/role-isolation-rehearsal.sh) passing or failing on a rebuilt image; a new secret-bearing supervisor program; a new [sidechain.<name>] chain; a change to the host docker gid; the identity port's consumer cutover (W3b: JunkieJarvis, the mirror hook, the gateway, dream-engine); a change to config/custody/identity-port-acl.json
@@ -18,6 +18,19 @@ lineage: ADR-2027 (secret custody; role accounts become its custodians, owner Q3
 
 # ADR-2122 — Role service accounts, /run/secrets, and the identity port
 
+
+## Scoped pin verification — 2026-11-26
+
+Compared the governed delta since `c556773556095e0b7a6e5736f28f1c95acf39ce9`: `flake.nix`.
+The flake changes only seven npm CLI version/lock/hash tuples; native agent
+CLIs use official per-platform checksums. SystemScape pins the tested upstream
+`7e5e842` source; its vendored Cargo.lock is unchanged byte-for-byte. The baseline
+change only corrects and expands the pending SystemScape changelog entry.
+No supervisor block, published port, mount, adapter, credential, feature gate
+or memory-learning policy changes in this delta. Existing decision and status
+axes are retained. CLI hash derivations, 301 Jest tests, 45 agent reconciliation
+checks, no-mods/memory governance and the loopback gate pass; SystemScape has
+189 passing tests and a passing terminal smoke. Image activation is not claimed.
 
 ## Scoped consolidation check — 2026-11-22
 

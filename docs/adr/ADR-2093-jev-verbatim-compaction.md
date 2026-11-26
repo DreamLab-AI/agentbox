@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 06c2f701130aa94edf24a20f9f86de2131a0bcf4
+verified_commit: 0b8d2b18827ea3198c356528398646b25ab2d379
 verified_paths: [lib/factrail.nix, config/entrypoint-unified.sh, lib/claude-code-binary.nix]
 owner: jjohare
 review_trigger: the first measured residency bill that exceeds the summary path's re-read savings, a Claude Code function-hook API change, a request to fence a class other than email, or a change to ADR-2121 (its implementation); `/jev-compact status` answering in a fresh session on a booted image (activation → live)
@@ -16,6 +16,19 @@ repo: agentbox
 
 # ADR-2093 — Compact context by Jev judgement, verbatim, with email fenced out and a switch
 
+
+## Scoped pin verification — 2026-11-26
+
+Compared the governed delta since `06c2f701130aa94edf24a20f9f86de2131a0bcf4`: `lib/claude-code-binary.nix`.
+The flake changes only seven npm CLI version/lock/hash tuples; native agent
+CLIs use official per-platform checksums. SystemScape pins the tested upstream
+`7e5e842` source; its vendored Cargo.lock is unchanged byte-for-byte. The baseline
+change only corrects and expands the pending SystemScape changelog entry.
+No supervisor block, published port, mount, adapter, credential, feature gate
+or memory-learning policy changes in this delta. Existing decision and status
+axes are retained. CLI hash derivations, 301 Jest tests, 45 agent reconciliation
+checks, no-mods/memory governance and the loopback gate pass; SystemScape has
+189 passing tests and a passing terminal smoke. Image activation is not claimed.
 
 ## Scoped source verification — 2026-11-20
 

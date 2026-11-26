@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: baad4cdc100777f84f09edce22698fb9573858b9
+verified_commit: 0b8d2b18827ea3198c356528398646b25ab2d379
 verified_paths: [flake.nix, agentbox.toml, schema/agentbox.toml.schema.json, management-api/lib/system-manifest.js, config/npm-locks/metaharness-artex-defense-0.1.0.package-lock.json, tests/config/offline-defense.test.cjs]
 owner: operator
 review_trigger: ARTEX or its harness dependency changes, a proposal to intercept live traffic or start the aidefence gateway, or a change to the single memory-store boundary
@@ -18,6 +18,19 @@ acceptance_boundary: Standalone Nix package plus five checks covering the image 
 ---
 
 # ADR-2208 — Offline defense tools reuse the MetaHarness gate
+
+## Scoped pin verification — 2026-11-26
+
+Compared the governed delta since `baad4cdc100777f84f09edce22698fb9573858b9`: `flake.nix`.
+The flake changes only seven npm CLI version/lock/hash tuples; native agent
+CLIs use official per-platform checksums. SystemScape pins the tested upstream
+`7e5e842` source; its vendored Cargo.lock is unchanged byte-for-byte. The baseline
+change only corrects and expands the pending SystemScape changelog entry.
+No supervisor block, published port, mount, adapter, credential, feature gate
+or memory-learning policy changes in this delta. Existing decision and status
+axes are retained. CLI hash derivations, 301 Jest tests, 45 agent reconciliation
+checks, no-mods/memory governance and the loopback gate pass; SystemScape has
+189 passing tests and a passing terminal smoke. Image activation is not claimed.
 
 ## Scoped consolidation check — 2026-11-22
 

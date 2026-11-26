@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 538c223973ee1aa1fb18a7521b5ea91d3e9535ac
+verified_commit: 0b8d2b18827ea3198c356528398646b25ab2d379
 verified_paths: [agents/registered-agents.txt, scripts/reconcile-agents.sh, scripts/reconcile-commands.sh, scripts/project-skill-roots.mjs, config/registered-commands.txt, config/entrypoint-unified.sh, flake.nix, tests/config/agent-reconcile.test.sh, scripts/reconcile-skills.sh, skills/registered-skills.txt, skills/codex-registered-skills.txt, tests/config/visioncraft-cutover.test.mjs]
 owner: jjohare
 review_trigger: a new subagent worth always-loading, or evidence the router surfaces baked-but-unregistered skills too slowly; a reconcile audit on the running image showing ~/.claude/agents matches agents/registered-agents.txt (activation → live)
@@ -16,6 +16,19 @@ repo: agentbox
 
 # ADR-2092 — Agents and slash-commands get the same manifest governance skills already have
 
+
+## Scoped pin verification — 2026-11-26
+
+Compared the governed delta since `538c223973ee1aa1fb18a7521b5ea91d3e9535ac`: `flake.nix`.
+The flake changes only seven npm CLI version/lock/hash tuples; native agent
+CLIs use official per-platform checksums. SystemScape pins the tested upstream
+`7e5e842` source; its vendored Cargo.lock is unchanged byte-for-byte. The baseline
+change only corrects and expands the pending SystemScape changelog entry.
+No supervisor block, published port, mount, adapter, credential, feature gate
+or memory-learning policy changes in this delta. Existing decision and status
+axes are retained. CLI hash derivations, 301 Jest tests, 45 agent reconciliation
+checks, no-mods/memory governance and the loopback gate pass; SystemScape has
+189 passing tests and a passing terminal smoke. Image activation is not claimed.
 
 ## Scoped source verification — 2026-11-20
 

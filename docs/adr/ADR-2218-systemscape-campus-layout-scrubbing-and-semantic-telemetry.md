@@ -2,18 +2,18 @@
 id: ADR-2218
 title: SystemScape adds campus layout, telemetry scrubbing, history warm-start, and Antigravity transcript discovery
 date: 2026-11-24
-decision_status: proposed
+decision_status: accepted
 implementation_status: partial
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit:
-verified_paths: []
+verified_commit: 0b8d2b18827ea3198c356528398646b25ab2d379
+verified_paths: [lib/systemscape.nix, lib/systemscape-Cargo.lock]
 owner: operator
-review_trigger: the SystemScape Nix pin in lib/systemscape.nix moves past 0.5.0, or an additional agent harness transcript root is added
+review_trigger: the SystemScape source pin changes, or an additional agent harness transcript root is added
 repo: agentbox
-evidence_class:
-acceptance_boundary:
+evidence_class: source+test
+acceptance_boundary: Upstream 7e5e842 is pushed, passes 189 tests, strict clippy and terminal smoke; the host independently checked the source hash and unchanged Cargo.lock. Image build and activation remain separate gates.
 ---
 
 # ADR-2218 — SystemScape adds campus layout, telemetry scrubbing, history warm-start, and Antigravity transcript discovery
@@ -38,6 +38,7 @@ acceptance_boundary:
 ## Verification
 - Upstream `systemscape` working tree verified with:
   - `cargo clippy --all-targets --locked -- -D warnings` — clean.
-  - `cargo test --locked` — 188 passed, 0 failed, 1 ignored (including new regression tests for parent-district subagent anchoring, 2-row campus layout, `/` search & `n`/`N` jump, `?` coverage coexistence, Claude model/token deduplication, Antigravity transcript parsing, atomic marks-legend truncation, warm-start, multi-window aggregation, scrub crosshair, auto-range, and multi-host compare).
+  - `cargo test --locked` — 189 passed, 0 failed, 1 ignored (including new regression tests for parent-district subagent anchoring, 2-row campus layout, `/` search & `n`/`N` jump, `?` coverage coexistence, Claude model/token deduplication, Antigravity transcript parsing, atomic marks-legend truncation, warm-start, multi-window aggregation, scrub crosshair, auto-range, and multi-host compare).
   - `cargo build --release --locked && python3 scripts/terminal-smoke.py` — PASS.
-- Agentbox container pin (`lib/systemscape.nix`) is not yet bumped; `implementation_status` remains `partial` and `activation_status` remains `inactive` until the upstream commit is pinned and rebuilt.
+- Owner requested alignment on 2026-11-26. Upstream main is now committed and pushed at `7e5e842a071ca8d8058f0d652931e3ff3cb6852c`; Agentbox pins that revision, still carrying upstream's package version 0.5.0. Nix independently returned `sha256-9nVspcROJcP7Swa3DpmTo7Df+xUoMXqQ7rtadhNayc0=`. Upstream and vendored Cargo.lock SHA-256 are both `505739011d0eefb0ecc1de94fa115458e1c0c8cea3d7c8aec78b81659e54107b`.
+- `implementation_status` remains `partial` and `activation_status` remains `inactive` until image preparation and live acceptance finish. The terminal smoke exercises a private fixture, not a claim about the running operator panes.
