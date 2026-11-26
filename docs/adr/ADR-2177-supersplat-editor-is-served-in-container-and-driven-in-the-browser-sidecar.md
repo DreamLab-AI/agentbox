@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: baad4cdc100777f84f09edce22698fb9573858b9
+verified_commit: c556773556095e0b7a6e5736f28f1c95acf39ce9
 verified_paths: [lib/supersplat.nix, lib/splat-transform.package-lock.json, flake.nix, agentbox.toml, scripts/ci/check-ports-loopback.mjs, docker-compose.browsercontainer.yml, skills/supersplat/SKILL.md]
 owner: jjohare
 review_trigger: SuperSplat or splat-transform pin bump; any change to the supersplat listener's bind, root or authentication; the browser sidecar's TREAT_AS_SECURE list; a proposal to serve datasets or anything outside $WORKSPACE/splats/share
@@ -259,3 +259,9 @@ Governed delta since `538c22397`: `agentbox.toml` only, one line. `d6b019afb` se
 This record serves the SuperSplat editor in-container, drives it in the browser sidecar and puts splat-transform on PATH. Its manifest keys are untouched. **Correction to the 2026-11 verification text, line 149:** `scripts/ci/check-ports-loopback.mjs` still reports `[program:supersplat]` as the sanctioned docker-network-only listener (`flake.nix:2586`), but the gate as a whole no longer passes at this revision. It exits 1 on `docker-compose.bonsai.yml:19`, the bonsai sidecar's env-interpolated publish (`adf95e15a`), which is not part of this record; see ADR-2013's 2026-11-25 note. This record's own claim still holds.
 
 Checked with `git diff 538c22397..baad4cdc1 -- <verified_paths>` (the one hunk above), a search of this record for `cache_warm`, cache-warm, prompt-cache and idle-compaction claims (none), `scripts/agentbox-config-validate.sh agentbox.toml` (valid, 6 advisory warnings) and `node scripts/adr-index-gen.js docs/adr --check`. Decision and status axes unchanged.
+
+## Re-verified — 2026-11-26 at `c556773556095e0b7a6e5736f28f1c95acf39ce9`
+
+Governed delta since `baad4cdc1`: `scripts/ci/check-ports-loopback.mjs` adds `docker-compose.bonsai.yml` to `SIDECAR_BIND_FILES` (one line). The correction in the 2026-11-25 section is now out of date in the other direction: the gate passes again at this revision. `docker-compose.bonsai.yml` publishes through `${AGENTBOX_SIDECAR_BIND:-127.0.0.1}` on a literal port, so `node scripts/ci/check-ports-loopback.mjs` exits 0 and still reports `[program:supersplat]` as the sanctioned docker-network-only listener. This record's own claims did not change.
+
+Checked with `git diff baad4cdc1..c55677355 -- scripts/ci/check-ports-loopback.mjs`, the gate itself (exit 0) and `node --test tests/security/ports-gate.test.mjs tests/security/check-listeners.test.mjs` (16 pass). Decision and status axes unchanged.

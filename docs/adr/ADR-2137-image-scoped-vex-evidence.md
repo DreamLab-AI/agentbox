@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: baad4cdc100777f84f09edce22698fb9573858b9
+verified_commit: c556773556095e0b7a6e5736f28f1c95acf39ce9
 verified_paths: [flake.nix, lib/sbomnix.nix, lib/sbomnix-python.nix, lib/agentbox-vex.nix, lib/vex-evidence.nix, services/agentbox-vex, scripts/security-scan.sh, scripts/runtime-delivery.cjs, agentbox.sh, tests/security, tests/config/runtime-delivery.test.cjs, .github/workflows/build-multi-arch.yml, .github/workflows/image-scan.yml, .github/workflows/release.yml, .github/workflows/security-vex.yml, .github/workflows/flake-check.yml]
 owner: jjohare
 review_trigger: image inventory, VEX predicates, scanner matching or release artefact selection changes; a host preparation bundle that carries raw and VEX-filtered Grype reports, or a release with matching-commit scan artefacts (activation → live)
@@ -331,3 +331,7 @@ Governed delta since `538c22397`: `agentbox.sh`: the optional bonsai LLM sidecar
 This record generates image-scoped SBOM and VEX from the shipped Nix payloads. `cmd_up` and `cmd_build` still call `scripts/security-scan.sh report` (`agentbox.sh:769`, `:944`), and `security` still dispatches to the scanner (`:2931`). The Nix VEX libraries, `services/agentbox-vex`, the workflows and `tests/security` have no diff. The bonsai sidecar is a separately built image that is not in the agentbox payload, so it is outside this record's scope. Claim still true. (Observed while verifying, not a claim of this record: `tests/security/ports-gate.test.mjs` fails at this revision on `docker-compose.bonsai.yml:19`; see ADR-2013's 2026-11-25 note.)
 
 Checked with `git diff 538c22397..baad4cdc1 -- <verified_paths>` (only `agentbox.sh`) read in full, `grep -n security-scan agentbox.sh`, `node --test tests/config/runtime-delivery.test.cjs` (24 passed) and `bash -n agentbox.sh`. Citations in earlier sections are as of their own commit and are not renumbered. `node scripts/adr-index-gen.js docs/adr --check`. Decision and status axes unchanged.
+
+## Re-verified — 2026-11-26 at `c556773556095e0b7a6e5736f28f1c95acf39ce9`
+
+Governed delta since `baad4cdc1`: `agentbox.sh`, three lines inside `cmd_bonsai` and its usage text (`c55677355`): the health URL and the help text name port 8086 literally, and the help text no longer lists `BONSAI_PORT`. No line was added or removed, so every line citation in this record stands. The change touches no VEX or image-evidence path. Claim still true. Checked with `git diff baad4cdc1..c55677355 -- agentbox.sh` read in full and `bash -n agentbox.sh`. Decision and status axes unchanged.

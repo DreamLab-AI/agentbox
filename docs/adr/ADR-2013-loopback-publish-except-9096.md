@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 538c223973ee1aa1fb18a7521b5ea91d3e9535ac
+verified_commit: c556773556095e0b7a6e5736f28f1c95acf39ce9
 verified_paths: [scripts/ci/check-ports-loopback.sh, scripts/ci/check-ports-loopback.mjs, tests/security/ports-gate.test.mjs, .github/workflows/invariants.yml, flake.nix, docker-compose*.yml]
 owner: jjohare
 review_trigger: Any new entry on the SANCTIONED list, or a new compose overlay file
@@ -610,3 +610,11 @@ Governed delta since `538c22397`: one new overlay, `docker-compose.bonsai.yml` (
 This record is right and the overlay is wrong: the overlay drifted by accident, and the decision was not deliberately changed. The fix is code, outside this documentation-only pass. Two ways to fix it: publish through `${AGENTBOX_SIDECAR_BIND:-127.0.0.1}` and add the file to `SIDECAR_BIND_FILES`, or publish on a literal `127.0.0.1`. Either needs the gate's own change review. `verified_commit` stays at `538c22397` until that lands and the gate passes, so the index generator keeps reporting this record as stale.
 
 Everything else this record governs is unchanged: the gate scripts, `ports-gate.test.mjs`, the workflow, `flake.nix` and every other `docker-compose*.yml` have no diff, and the gate passes on every other overlay.
+
+## Re-verified — 2026-11-26 at `c556773556095e0b7a6e5736f28f1c95acf39ce9`
+
+The drift recorded on 2026-11-25 is fixed in code (`c55677355`). `docker-compose.bonsai.yml` now publishes `"${AGENTBOX_SIDECAR_BIND:-127.0.0.1}:8086:8086"`, and the file is on `SIDECAR_BIND_FILES` with the other three sidecar overlays. `BONSAI_BIND` and `BONSAI_PORT` are removed: the port is literal because the gate accepts no interpolation after the bind prefix, and the container command and health check name 8086 to match. `node scripts/ci/check-ports-loopback.mjs` and `sh scripts/ci/check-ports-loopback.sh` both exit 0; the sixteen gate tests pass. The Decision is unchanged and holds again across every overlay.
+
+One consequence widens a limit this record already states. Setting `AGENTBOX_SIDECAR_BIND` to a LAN address now also publishes the Bonsai LLM endpoint on 8086, which carries no authentication, alongside the seven sidecar ports counted in the 2026-11-14 section: eight in all. The default remains loopback, and CI still proves the default, not the deployed address. An operator who wants Bonsai on the LAN and the other sidecars on loopback has no knob for that; it would need a sanctioned entry with its own record.
+
+Checked with `git diff 538c22397..c55677355 -- <verified_paths>` read in full, both gate scripts, `tests/security/ports-gate.test.mjs` and `tests/security/check-listeners.test.mjs`. Status axes unchanged.

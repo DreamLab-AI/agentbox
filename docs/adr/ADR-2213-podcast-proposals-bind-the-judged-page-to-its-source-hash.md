@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: e98d2c69a9ef9fdef4a1b3d9ce4bfd053911f9c0
+verified_commit: c556773556095e0b7a6e5736f28f1c95acf39ce9
 verified_paths: [services/podcast-ingest/src/promote, skills/podcast-knowledge-ingest/submit-proposals.mjs, skills/podcast-knowledge-ingest/run-promote.sh, skills/podcast-knowledge-ingest/tests/submit-proposals.test.mjs]
 owner: operator
 review_trigger: dossier freshness, page splicing, working-note ownership or proposal transport changes
@@ -49,3 +49,9 @@ working-vault refresh or corpus migration was run during preparation.
 
 ## Amendment — 2026-11-25
 Working-note format is now chosen by the target vault's vocabulary version, and a refresh keeps a person's edits: see ADR-2222. Where this record says private notes use `type: Note` and `public: false`, that is the vocabulary-2 shape; vocabulary 3 writes a `Brief`. The scheduled wrapper also refuses a binary without `--adopt-unmarked-pages`. Re-verified at the pinned commit with `cargo test --offline -- --include-ignored` (226 passed).
+
+## Re-verified — 2026-11-26 at `c556773556095e0b7a6e5736f28f1c95acf39ce9`
+
+Governed delta since `e98d2c69a`: `services/podcast-ingest/src/promote/run.rs` (`aea14766c`). `refresh_working_pages` and `land_working_page` each gain a `_using` variant that takes the tools (normaliser, pin function, adopt flag); the public functions build the real tools and delegate, so behaviour is unchanged. The refresh test now supplies an identity normaliser, because the real one shells out to `ontomark`, which the Nix build sandbox lacks. No claim of this record is affected.
+
+Checked with `git diff e98d2c69a..c55677355 -- services/podcast-ingest` read in full; `cargo test` for the service passed with `ontomark` made unreachable (224 pass) at `aea14766c`, and the host image build ran the same tests in its sandbox. Decision and status axes unchanged.

@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: baad4cdc100777f84f09edce22698fb9573858b9
+verified_commit: c556773556095e0b7a6e5736f28f1c95acf39ce9
 verified_paths: [config/instructions, services/agentbox-manifest/src/instructions.rs, services/agentbox-manifest/src/cred_sync.rs, config/entrypoint-unified.sh, agentbox.sh, flake.nix, docker-compose.yml, docker-compose.override.yml, tests/config/claude-home-migration.test.sh, tests/config/compose-persistence.test.cjs]
 owner: jjohare
 review_trigger: Claude Code starts reading AGENTS.md natively (drop the @AGENTS.md wrappers and the embed); or a Claude Code release changes where credentials live
@@ -461,3 +461,7 @@ Governed delta since `538c22397`: `agentbox.sh`: the optional bonsai LLM sidecar
 This record owns the instruction tiers and the container-owned `~/.claude` volume, seeded by `./agentbox.sh migrate-claude-home`. `cmd_migrate_claude_home` is unchanged at `agentbox.sh:1781` and dispatched at `:2950`. `config/instructions`, `instructions.rs`, `cred_sync.rs`, the entrypoint and the compose files did not move. The bonsai verbs touch no instruction or Claude-home path. Claim still true.
 
 Checked with `git diff 538c22397..baad4cdc1 -- <verified_paths>` (only `agentbox.sh`) read in full and `bash -n agentbox.sh`. Citations in earlier sections are as of their own commit and are not renumbered. `node scripts/adr-index-gen.js docs/adr --check`. Decision and status axes unchanged.
+
+## Re-verified — 2026-11-26 at `c556773556095e0b7a6e5736f28f1c95acf39ce9`
+
+Governed delta since `baad4cdc1`: `agentbox.sh`, three lines inside `cmd_bonsai` and its usage text (`c55677355`): the health URL and the help text name port 8086 literally, and the help text no longer lists `BONSAI_PORT`. No line was added or removed, so every line citation in this record stands. The change touches no instruction tier or Claude-home path; `cmd_migrate_claude_home` is unchanged. Claim still true. Checked with `git diff baad4cdc1..c55677355 -- agentbox.sh` read in full and `bash -n agentbox.sh`. Decision and status axes unchanged.

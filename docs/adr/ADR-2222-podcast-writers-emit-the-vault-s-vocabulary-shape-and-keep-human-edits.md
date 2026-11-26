@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: e98d2c69a9ef9fdef4a1b3d9ce4bfd053911f9c0
+verified_commit: c556773556095e0b7a6e5736f28f1c95acf39ce9
 verified_paths: [services/podcast-ingest/src]
 owner: jjohare
 review_trigger: a change to visionGraph ADR-VG-010 to -013, a vocabulary version 4, a second human principal in the roster, or the writers moving onto `ontomark memory create`
@@ -44,3 +44,9 @@ visionGraph vocabulary 3 (ADR-VG-010 to -013) changes every page header the week
 ## Note — 2026-11-25: the vocabulary-3 ontomark pin has landed in source
 
 The Consequences line "the image must bake a vocabulary-3 capable release" is met in source: `lib/ontomark.nix` pins Ontomark 0.10.0 (`baad4cdc1`). The release binary digest was checked against the release's `.sha256` asset. The image has not been rebuilt from it, so a running container may still carry 0.9.0, and `run-promote.sh` refuses an older `podcast-promote` independently. ADR-2136 carries the pin's verification state. This record's `verified_paths` (`services/podcast-ingest/src`) are unchanged, so `verified_commit` stays.
+
+## Re-verified — 2026-11-26 at `c556773556095e0b7a6e5736f28f1c95acf39ce9`
+
+Governed delta since `e98d2c69a`: `services/podcast-ingest/src/promote/run.rs` (`aea14766c`). `refresh_working_pages` and `land_working_page` each gain a `_using` variant that takes the tools (normaliser, pin function, adopt flag); the public functions build the real tools and delegate, so behaviour is unchanged. The refresh test now supplies an identity normaliser, because the real one shells out to `ontomark`, which the Nix build sandbox lacks. No claim of this record is affected.
+
+Checked with `git diff e98d2c69a..c55677355 -- services/podcast-ingest` read in full; `cargo test` for the service passed with `ontomark` made unreachable (224 pass) at `aea14766c`, and the host image build ran the same tests in its sandbox. Decision and status axes unchanged.

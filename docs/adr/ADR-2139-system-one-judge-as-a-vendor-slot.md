@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: baad4cdc100777f84f09edce22698fb9573858b9
+verified_commit: c556773556095e0b7a6e5736f28f1c95acf39ce9
 verified_paths: [agentbox.toml, schema/agentbox.toml.schema.json, crates/system-one/system-one-proxy/src/config.rs, crates/system-one/system-one-proxy/tests/proxy.rs, tests/config/semantic-rules.test.js, crates/system-one/system-one-proxy/src/server.rs, crates/system-one/system-one-proxy/src/key.rs, services/agentbox-manifest/src/system_one.rs, config/entrypoint-unified.sh, config/hooks/lib/skill-route.cjs, config/seal-bootstrap.sh, lib/system-one-proxy.nix, flake.nix, scripts/agentbox-config-validate.js, agentbox.sh]
 owner: jjohare
 review_trigger: SubQ Snap leaving public preview or changing its price, retention default or the Decisions request shape; a Kev, Clef or pplx-decider release that serves /v1/systemone on a 9B-class checkpoint; a system-one-eval run on the ADR-2089 corpus that moves any backend by more than 5 points; the first compaction replay whose keep-rate is above 5%
@@ -532,3 +532,7 @@ Governed delta since `538c22397`: `agentbox.toml`: one line, `d6b019afb` sets `[
 This record treats the System One judge as a vendor slot, measured per consumer. `./agentbox.sh systemone backend <name>` is unchanged (`backend)` at `agentbox.sh:2638`). The `[system_one]` keys and consumer comments it cites (`agentbox.toml:823-825`, `:915`, `:918-944`) sit below the changed line and are byte-identical. With `cache_warm` off, factrail sends no idle-time compaction to the judge, but factrail compaction is still a consumer through threshold compaction. The consumer list, backends and proxy are unchanged. `scripts/agentbox-config-validate.sh agentbox.toml` still reports W076 with the active backend `laya` behind the proxy. Claim still true. (Observed while verifying, not a claim of this record: the bonsai sidecar is a separate OpenAI-compatible LLM endpoint and is not a System One backend.)
 
 Checked with `git diff 538c22397..baad4cdc1 -- agentbox.toml agentbox.sh` read in full, `scripts/agentbox-config-validate.sh agentbox.toml` (valid, 6 advisory warnings) and `bash -n agentbox.sh`. Citations in earlier sections are as of their own commit and are not renumbered. `node scripts/adr-index-gen.js docs/adr --check`. Decision and status axes unchanged.
+
+## Re-verified — 2026-11-26 at `c556773556095e0b7a6e5736f28f1c95acf39ce9`
+
+Governed delta since `baad4cdc1`: `agentbox.sh`, three lines inside `cmd_bonsai` and its usage text (`c55677355`): the health URL and the help text name port 8086 literally, and the help text no longer lists `BONSAI_PORT`. No line was added or removed, so every line citation in this record stands. The change touches no System One or judge-slot path. Claim still true. Checked with `git diff baad4cdc1..c55677355 -- agentbox.sh` read in full and `bash -n agentbox.sh`. Decision and status axes unchanged.

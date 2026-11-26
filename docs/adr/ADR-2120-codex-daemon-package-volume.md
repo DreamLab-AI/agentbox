@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: baad4cdc100777f84f09edce22698fb9573858b9
+verified_commit: c556773556095e0b7a6e5736f28f1c95acf39ce9
 verified_paths: [agentbox.sh, config/entrypoint-unified.sh, flake.nix, docker-compose.yml, scripts/refresh-compose.sh, tests/config/compose-persistence.test.cjs, tests/config/refresh-compose.test.cjs]
 owner: jjohare
 review_trigger: commit verification and rebuild; or change Codex daemon packaging
@@ -428,3 +428,7 @@ Governed delta since `538c22397`: `agentbox.sh`: the optional bonsai LLM sidecar
 This record gives Codex daemon packages executable persistent storage, and has `up --build` and `build` refresh the compose file first. `scripts/refresh-compose.sh` is still called from `up --build` (`agentbox.sh:766`, cited `:758`) and `build` (`:940`, cited `:931`), and `rebuild` still delegates to `scripts/runtime-delivery.sh` (`:1090`). `docker-compose.yml`, `scripts/refresh-compose.sh` and both compose tests have no diff. The bonsai sidecar uses its own compose project (`agentbox-bonsai`) and does not touch the Codex package mount. Claim still true.
 
 Checked with `git diff 538c22397..baad4cdc1 -- <verified_paths>` (only `agentbox.sh`) read in full, `grep -n refresh-compose.sh agentbox.sh` and `bash -n agentbox.sh`. Citations in earlier sections are as of their own commit and are not renumbered. `node scripts/adr-index-gen.js docs/adr --check`. Decision and status axes unchanged.
+
+## Re-verified — 2026-11-26 at `c556773556095e0b7a6e5736f28f1c95acf39ce9`
+
+Governed delta since `baad4cdc1`: `agentbox.sh`, three lines inside `cmd_bonsai` and its usage text (`c55677355`): the health URL and the help text name port 8086 literally, and the help text no longer lists `BONSAI_PORT`. No line was added or removed, so every line citation in this record stands. The change touches nothing this record governs about the Codex daemon package or its volume. Claim still true. Checked with `git diff baad4cdc1..c55677355 -- agentbox.sh` read in full and `bash -n agentbox.sh`. Decision and status axes unchanged.

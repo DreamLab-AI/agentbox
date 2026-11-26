@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: baad4cdc100777f84f09edce22698fb9573858b9
+verified_commit: c556773556095e0b7a6e5736f28f1c95acf39ce9
 verified_paths: [agentbox.sh, scripts/runtime-delivery.*, scripts/refresh-compose.sh, config/build-registry.json, lib/image-layers.nix, flake.nix, tests/config/runtime-delivery*, .github/workflows/invariants.yml, docs/developer/incremental-builds.md]
 owner: jjohare
 review_trigger: layer grouping, delivery transport, candidate validation or cache retention changes
@@ -367,3 +367,7 @@ Governed delta since `538c22397`: `agentbox.sh`: the optional bonsai LLM sidecar
 This record separates non-disruptive image preparation from scoped runtime activation. `prepare`, `activate` and `rebuild` still route through `scripts/runtime-delivery.sh` (`agentbox.sh:2927-2928` and `:1090`; cited `:1075-1076,2577-2578` as of `6d3d21b05`). `scripts/runtime-delivery.*`, `config/build-registry.json`, `lib/image-layers.nix`, `flake.nix` and the workflow have no diff. `cmd_bonsai up` runs its own `docker compose ... up -d --build` for the sidecar project only and does not touch the agentbox image path. Claim still true. **Count moved:** `tests/config/runtime-delivery.test.cjs` now has 24 tests, all passing; earlier sections say 23.
 
 Checked with `git diff 538c22397..baad4cdc1 -- <verified_paths>` (only `agentbox.sh`) read in full, `node --test tests/config/runtime-delivery.test.cjs` (24 passed) and `bash -n agentbox.sh`. Citations in earlier sections are as of their own commit and are not renumbered. `node scripts/adr-index-gen.js docs/adr --check`. Decision and status axes unchanged.
+
+## Re-verified — 2026-11-26 at `c556773556095e0b7a6e5736f28f1c95acf39ce9`
+
+Governed delta since `baad4cdc1`: `agentbox.sh`, three lines inside `cmd_bonsai` and its usage text (`c55677355`): the health URL and the help text name port 8086 literally, and the help text no longer lists `BONSAI_PORT`. No line was added or removed, so every line citation in this record stands. `prepare`, `activate` and the delivery script are unchanged; `node --test tests/config/runtime-delivery.test.cjs` passes. Claim still true. Checked with `git diff baad4cdc1..c55677355 -- agentbox.sh` read in full and `bash -n agentbox.sh`. Decision and status axes unchanged.
