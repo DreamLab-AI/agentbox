@@ -22,7 +22,7 @@ hf download AtomicChat/Ternary-Bonsai-2.5-27B-Uncensored-GGUF \
 | `BONSAI_CUDA_ARCH` | `86;89` | Build arch: 75 Turing (HP RTX 6000), 86 Ampere (A6000), 89 Ada. Changing it needs `bonsai rebuild` |
 | `BONSAI_MODEL_DIR` | `/mnt/mldata/models/bonsai` | Host dir holding the GGUF (mounted read-only) |
 | `BONSAI_MODEL_FILE` | `Ternary-Bonsai-2.5-27B-Uncensored-PTQ1_0.gguf` | |
-| `BONSAI_PORT` / `BONSAI_BIND` | `8086` / `127.0.0.1` | Host publish; agentbox containers use `http://bonsai:8086/v1` on `visionclaw_network` |
+| `AGENTBOX_SIDECAR_BIND` | `127.0.0.1` | Host address of the publish on port 8086 (fixed). The shared sidecar knob (ADR-2013): setting it moves every sidecar port to that address. agentbox containers use `http://bonsai:8086/v1` on `visionclaw_network` |
 | `BONSAI_CTX` | `131072` | Context; model supports 262144 |
 | `BONSAI_ALIAS` | `ternary-bonsai-2.5-27b-uncensored` | Model id clients send |
 

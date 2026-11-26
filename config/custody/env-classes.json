@@ -1,7 +1,7 @@
 {
   "$comment": "Custody X-1 step 1, W2 (bypass 3). Every env var NAME the boot path and the role-secret consumers read, in exactly one class. Names only, never values. Checked by scripts/ci/env-secret-inventory.js --check; read by tests/security/env-secret-inventory.node-test.js. The entrypoint's _AB_ROLE_ENV_VARS list must equal the ROLE set (NAME:role).",
   "schema": "agentbox/custody-env-classes/v1",
-  "updated": "2026-11-20",
+  "updated": "2026-11-26",
   "flag": "[security].role_isolation (boot-class, default false)",
   "sources": [
     "config/entrypoint-unified.sh",
@@ -308,6 +308,12 @@
         "AGENTBOX_HOOK_SHIM",
         "AGENTBOX_HOST_WS_URL",
         "AGENTBOX_SIDECAR_BIND",
+        "BONSAI_ALIAS",
+        "BONSAI_CTX",
+        "BONSAI_CUDA_ARCH",
+        "BONSAI_GPU",
+        "BONSAI_MODEL_DIR",
+        "BONSAI_MODEL_FILE",
         "AGENTBOX_IDENTITY_ACL",
         "AGENTBOX_IDENTITY_KEY_DIR",
         "AGENTBOX_IDENTITY_RECEIPT_DIR",

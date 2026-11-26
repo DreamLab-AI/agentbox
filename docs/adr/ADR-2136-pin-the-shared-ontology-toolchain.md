@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: b1640d820ab2d3b3eb3c9db6c4d6b2af3600b24e
+verified_commit: c556773556095e0b7a6e5736f28f1c95acf39ce9
 verified_paths: [lib/ontomark.nix]
 owner: jjohare
 review_trigger: Before shared workspace extraction or any consumer dependency or generation migration
@@ -164,3 +164,11 @@ Not checked, so the record is **not** re-pinned:
 - Image activation. The 2026-11-15 host activation evidence covers 0.9.0, not 0.10.0.
 
 These depend on a host image build that this pass cannot run. Re-pin after a host build of the source including `baad4cdc1` builds the Ontomark derivation and `ontomark --version` reports 0.10.0. The shipped manifest makes that derivation the Jev source build, not the release fetch: `[system_one].enabled = true` and `[system_one.consumers].ontomark_suggestions = true` (`agentbox.toml:912`, `:975`) set `jev = true` at `flake.nix:1082`. So a passing host build does exercise the unverified source hash. No NAR serialiser is available in this container to check it beforehand. Status axes unchanged: proposed, partial, inactive.
+
+## Re-verified — 2026-11-26 at `c556773556095e0b7a6e5736f28f1c95acf39ce9`
+
+A host image build has now exercised the pin. On 2026-11-25 `./agentbox.sh prepare` on the host, from a checkout at `aea14766c` (which contains the `baad4cdc1` pin), built the image and imported it as a candidate without restarting the running container. The shipped manifest selects the Jev source build of Ontomark, so that build fetched the source at `fa173a183e65a29944becb6eb4d55b52b9ba6b06` under the pinned fixed-output hash and ran the CLI's tests in its check phase. A wrong source hash or lock file fails such a build; it passed. The first attempt the same evening failed for an unrelated reason, a podcast-ingest test that shelled out to `ontomark` inside the sandbox (fixed in `aea14766c`).
+
+Not observed, stated plainly: `ontomark --version` was not run inside the built image, and the candidate has not been activated, so no running container carries 0.10.0 yet. The release binary run on its own reports `ontomark 0.10.0`, and the source at that revision declares 0.10.0. The 2026-11-15 activation evidence still covers 0.9.0 only. The pin values this record governs are verified; activation is the operator's step and is not claimed here.
+
+Checked with `git diff b1640d820..c55677355 -- lib/ontomark.nix lib/lockfiles`, the release's `.sha256` asset against the pinned binary hash, and the host build described above. Decision and status axes unchanged.
