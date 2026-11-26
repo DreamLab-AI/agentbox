@@ -577,10 +577,10 @@
         #    nix-prefetch-url https://registry.npmjs.org/ruvector/-/ruvector-0.3.3.tgz
         ruvectorPkg = mkNpmCli {
           pkgName         = "ruvector";
-          version         = "0.3.27";
-          packageLock = ./config/npm-locks/ruvector-0.3.27.package-lock.json;
-          sha256          = "sha256-kgtP6jvG+VdR5cM2gm+WE5P7Szy2tx+HjXPluUo1xac=";
-          nodeModulesHash = "sha256-cT4eANQ8RuE9moATuzMuqJwZtP6Hl0wPlx/H8S83bNA=";
+          version         = "0.3.28";
+          packageLock = ./config/npm-locks/ruvector-0.3.28.package-lock.json;
+          sha256          = "sha256-NIatcpL8/DncfgA45CcFjv4zSbi93qCsKkuDapfWv4Q=";
+          nodeModulesHash = "sha256-5nLECb7XwTgCCPRoW6+oZWpjZeqhLqsDyCvLfrlhHXg=";
           bin             = "ruvector";
         };
 
@@ -624,10 +624,10 @@
         #    (hook-handler.cjs, which registered-hooks.txt prunes, is unchanged).
         rufloPkg = mkNpmCli {
           pkgName         = "ruflo";
-          version         = "3.77.1";
-          packageLock = ./config/npm-locks/ruflo-3.77.1.package-lock.json;
-          sha256          = "sha256-piXqMi8BVKWflF/4s8z340TG0uW8E3mpzoz4egijciQ=";
-          nodeModulesHash = "sha256-jnfGXmtuiP8B+gfHs7Ed2GEhxvQc+N2gMtqaPqGI7x4=";
+          version         = "3.80.1";
+          packageLock = ./config/npm-locks/ruflo-3.80.1.package-lock.json;
+          sha256          = "sha256-iMJnAVJMBVGCFrdewiiK6ll0qFxrZNRmXBKPqeSvjPg=";
+          nodeModulesHash = "sha256-T4KpX0wEJJhqdlxfQBHWJuJ7ChiKZXyIeAZAMHjN6pE=";
           bin             = "ruflo";
           extraBins = {
             "claude-flow"     = "node_modules/@claude-flow/cli/bin/cli.js";
@@ -688,10 +688,10 @@
         #    nix-prefetch-url https://registry.npmjs.org/metaharness/-/metaharness-0.4.17.tgz
         metaharnessPkg = mkNpmCli {
           pkgName         = "metaharness";
-          version         = "0.4.23";
-          packageLock = ./config/npm-locks/metaharness-0.4.23.package-lock.json;
-          sha256          = "sha256-bfj5hHlK6ybbljhaHY/GOcjE6gGZ8DBYozv8CGvujjk=";
-          nodeModulesHash = "sha256-5rR6i4AgwCECLqxgFK2TdWTTvvltHXfzU6+I7iPZNBE=";
+          version         = "0.4.25";
+          packageLock = ./config/npm-locks/metaharness-0.4.25.package-lock.json;
+          sha256          = "sha256-CcOXdk3FQm+YFEkzEldWgy/40u+lOLlP99ofF3q+wNQ=";
+          nodeModulesHash = "sha256-6h2+TqgprJD/sDI1BKtLcDcID7CupWDtGqWIJ1fBO/Q=";
           bin             = "metaharness";
           extraBins = {
             # own-package bin — path is package-root-relative (dependency bins
@@ -702,10 +702,10 @@
         #    nix-prefetch-url https://registry.npmjs.org/%40metaharness/darwin/-/darwin-0.10.3.tgz
         metaharnessDarwinPkg = mkNpmCli {
           pkgName         = "@metaharness/darwin";
-          version         = "0.14.0";
-          packageLock = ./config/npm-locks/metaharness-darwin-0.14.0.package-lock.json;
-          sha256          = "sha256-Oli+mavFSfbnIuWwGa43RDWKrpoiuz7nPB5lRZjNp18=";
-          nodeModulesHash = "sha256-90UEARqJXtXciDiAnkwpoatozqw+385E9UF8w9JTXYM=";
+          version         = "0.16.0";
+          packageLock = ./config/npm-locks/metaharness-darwin-0.16.0.package-lock.json;
+          sha256          = "sha256-g0ttZjuZb6p0gUi3wGMZ5DsEKs4yAoEqM1OwBdTeino=";
+          nodeModulesHash = "sha256-cZ5QW3PlH2sO9xFdjs0bBdtipGn4rk5L7lPIcmDidjg=";
           bin             = "metaharness-darwin";
         };
 
@@ -742,10 +742,10 @@
           # opt-in qe-browser engine) moved from a dependency to an optional
           # peer (^26.8.21), so the closure no longer carries vibium 0.1.8;
           # qe-browser remains outside this adoption; no init/template dump.
-          version         = "3.15.20";
-          packageLock = ./config/npm-locks/agentic-qe-3.15.20.package-lock.json;
-          sha256          = "sha256-4W3iL8Ji5HaqGS1Tk4oIPOTtcXsDzWTH8oc0IAqQe+o=";
-          nodeModulesHash = "sha256-Msb5o1CWOZPuKW9uJ9XzsBZh0uErqo99VW5M2H77B+Y=";
+          version         = "3.15.22";
+          packageLock = ./config/npm-locks/agentic-qe-3.15.22.package-lock.json;
+          sha256          = "sha256-/FRW3Do8T/sTEF1oSwcNz7IfFhVEAsh3ueU0VW8d7dE=";
+          nodeModulesHash = "sha256-lXiDmwqJFVeleGabd/d4SCZaer4vcIOFFjYZVx4+Ujc=";
           bin             = "aqe";
         };
 
@@ -819,10 +819,10 @@
           pkgName         = "wrangler";
           # 4.151.3 (2026-10-20T12:05Z): newest release beyond the 72-hour
           # cool-off on the 23 October estate-wide upgrade.
-          version         = "4.163.0";
-          packageLock = ./config/npm-locks/wrangler-4.163.0.package-lock.json;
-          sha256          = "sha256-z1PD3DrEmeGiSuhBvKDTm2aLkHypSt1R8tWVkoU+q7I=";
-          nodeModulesHash = "sha256-MYC+Quh1nrj7LHarGN4N0/9aPN0KBBje8ASoo71J6s0=";
+          version         = "4.166.0";
+          packageLock = ./config/npm-locks/wrangler-4.166.0.package-lock.json;
+          sha256          = "sha256-MzO9C5SRx2wnF1gvacsNGrLascAU6GqoWbw84E+pHUA=";
+          nodeModulesHash = "sha256-pbJrSmQMhY+QkRzhkiEBJEgaiNRMnyc+aSzu5dlEnmY=";
           bin             = "wrangler";
           # wrangler's devDependencies reference private @cloudflare/*
           # packages not on the public npm registry — strip them so npm
@@ -846,10 +846,10 @@
         #    drive the baked `claude` binary instead of resolving its own copy.
         deepsecPkg = mkNpmCli {
           pkgName         = "deepsec";
-          version         = "2.3.13";
-          packageLock = ./config/npm-locks/deepsec-2.3.13.package-lock.json;
-          sha256          = "sha256-lJL4dAl+9COVG0XnrUukQzFb8DZrN0QsHxDcOcm5J8E=";
-          nodeModulesHash = "sha256-Oc0OPpspH+rWL2G0b9fCYM6wV52noisfKv5Fvf1gAH0=";
+          version         = "2.3.16";
+          packageLock = ./config/npm-locks/deepsec-2.3.16.package-lock.json;
+          sha256          = "sha256-5zpWNrWJWafdHwcXoVBC/av81asDNSayUGJhLpscjlU=";
+          nodeModulesHash = "sha256-P61WgcEIylLm+pWr1oPnWTlj0HkE099hdcyPgAsoN8M=";
           bin             = "deepsec";
           extraEnv        = { CLAUDE_CODE_EXECUTABLE = "claude"; };
           # deepsec's published tarball keeps its own monorepo build-only
