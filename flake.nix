@@ -917,7 +917,7 @@
           # the lockfile root name participates in the FOD hash even though
           # the dependency set is unchanged).
           # Refresh via: nix run nixpkgs#prefetch-npm-deps -- management-api/package-lock.json
-          npmDepsHash = "sha256-eDCHlchkpAOPHjcQzWaaYr/IaIhahUg+ernQZg6XrbY=";
+          npmDepsHash = "sha256-OuVNucp1bvmxlSdX/CYoXVLIVOpKofC5bgquUV1ca78=";
           # Vendor the canonical NostrBridge into lib/ so the in-process
           # JunkieJarvis agent (server.js) can require('./lib/nostr-bridge') and
           # resolve nostr-tools + ws from THIS package's node_modules. A bare
@@ -979,7 +979,7 @@
             tsc --project tsconfig.json
           '';
           # Prefetched 2026-04-24. Refresh: nix run nixpkgs#prefetch-npm-deps -- skills/lazy-fetch/mcp-server/package-lock.json
-          npmDepsHash = "sha256-m0OKM556QKgBbMo6oMAiFFI7AVvvy0Iia0ecqDnuPyQ=";
+          npmDepsHash = "sha256-D/o8dv8QiE284lxSz2YXSyg0ZclICjA/dNRwPMGyJ2Y=";
         };
 
         # 5–6. playwright-mcp and vglrunChromium removed — browser automation
@@ -997,7 +997,7 @@
           # Prefetched 2026-04-25. Refresh:
           #   nix run nixpkgs#prefetch-npm-deps -- mcp/consultants/package-lock.json
           # Prefetched 2026-04-25. Refresh: nix run nixpkgs#prefetch-npm-deps -- mcp/consultants/package-lock.json
-          npmDepsHash = "sha256-vWqVKSZAmlESQJPE36Q00JiEIBe6sNe9765WGOZYBlA=";
+          npmDepsHash = "sha256-gcPsRjEF0RDk0wyV2RDXDrkxE9aIs+pPSEBc5jDYOCw=";
         };
 
         # 6. ComfyUI MCP is needed for either builtin or external ComfyUI.
@@ -1008,7 +1008,7 @@
           entry            = "server.js";
           skipLoadCheck    = false;
           # Prefetched 2026-04-24. Refresh: nix run nixpkgs#prefetch-npm-deps -- skills/comfyui/mcp-server/package-lock.json
-          npmDepsHash = "sha256-OnfEJJUrFNA+yInqKDxVERfYQDhLbOs+qn/uPFrsdmg=";
+          npmDepsHash = "sha256-JIFzWGdh7IgzjAMyy4p1nX+xMiCX5qnSgx0a9TF/nZc=";
         };
 
         # Conditional package lists for allPackages — mirrors the lib.optionals
@@ -1530,7 +1530,7 @@
           # stdio MCP server starts on module load — skip the import check.
           skipLoadCheck = true;
           # Prefetched 2026-07-05. Refresh: nix run nixpkgs#prefetch-npm-deps -- mcp/aci-shell/package-lock.json
-          npmDepsHash   = "sha256-e9HpFuCp8HxzI7po8bRqlDvsHTgssjyAr18w1gUfFOM=";
+          npmDepsHash   = "sha256-eqJYd9Hj6hYWPcOwt89uvcNxj4TO8yhiyDeP8pfQgPY=";
         };
 
         # RuvNet Brain: THIN MCP wrapper over the shared ruvector-postgres
@@ -1548,7 +1548,7 @@
           entry         = "server.js";
           skipLoadCheck = true;
           # Prefetched 2026-07-07. Refresh: nix run nixpkgs#prefetch-npm-deps -- mcp/ruvnet-brain/package-lock.json
-          npmDepsHash   = "sha256-3r+pIf5MwvrxXKp+PVPEnfUtO8FCCToIWL9ueIEyi7A=";
+          npmDepsHash   = "sha256-ScGzpv4nAsIOSEhOYSc3yCbFQTtijmo0wjTmIYTRp6M=";
         };
 
         # MCP bridge servers (precedent-bridge, governance-bridge, harness-bridge,
@@ -1561,7 +1561,7 @@
           src           = ./mcp/servers;
           entry         = "governance-bridge.js";
           skipLoadCheck = true;
-          npmDepsHash   = "sha256-WbYaOKRw7f4DH70wYZk8yHfynNRRKe/0nbZc3HnW1wQ=";
+          npmDepsHash   = "sha256-Qu6BL+FJyPBoPnlbvoAuVGFR3IdyDhg+PsdLcBdPda0=";
         };
 
         # Perplexity MCP: pins @perplexity-ai/mcp-server so the entrypoint
@@ -1573,7 +1573,7 @@
           src           = ./mcp/perplexity;
           entry         = "node_modules/@perplexity-ai/mcp-server/dist/index.js";
           skipLoadCheck = true;
-          npmDepsHash   = "sha256-8L+F/ckEKqtX+e8u2YDRR2e0q+MobilJziNKCYE12/A=";
+          npmDepsHash   = "sha256-zQBqFXT5s7ddTWsZZr5/udUhzdzq/lRu+eMUialPlYM=";
         };
 
         codeHarnessPackages =
