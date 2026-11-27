@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: baad4cdc100777f84f09edce22698fb9573858b9
+verified_commit: b8240a223a8d61a1aecd3df139f0636e3a9f42aa
 verified_paths: [crates/colloquy/colloquy-nostr/src/kinds.rs, docs/PROTOCOL-registry.md, services/nostr-pod-bridge/src/colloquy_publish.rs, agentbox.toml]
 owner: jjohare
 review_trigger: the next agentbox Nostr kind allocation, or any change to the band table in docs/PROTOCOL-registry.md
@@ -448,3 +448,11 @@ Governed delta since `538c22397`: `agentbox.toml`: one line, `d6b019afb` sets `[
 This record moves colloquy and settlement into `38400`-`38499`, because every agentbox band below `38400` is reserved. The band table is unchanged row for row and now sits at `docs/PROTOCOL-registry.md:100-104` (cited `:89-92,95-100` as of `218dc12c3`). `kinds.rs` and `colloquy_publish.rs` have no diff. The registry hunk concerns URN hashing, not kind allocation, so the review trigger (a new kind or a change to the band table) has not fired. Claim still true.
 
 Checked with `git diff 538c22397..baad4cdc1 -- docs/PROTOCOL-registry.md agentbox.toml` read in full, and by comparing the band table at `538c22397:docs/PROTOCOL-registry.md:89-93` with HEAD `:100-104` (identical). Citations in earlier sections are as of their own commit and are not renumbered. `node scripts/adr-index-gen.js docs/adr --check`. Decision and status axes unchanged.
+
+## Re-verification — 2026-11-27 at `b8240a223a8d61a1aecd3df139f0636e3a9f42aa`
+
+Governed delta since `baad4cdc1`: `agentbox.toml` only, one line. `b8240a223` sets `[features.jev_compaction].fallback` from `"rules"` to `"summary"` and extends that line's comment (`agentbox.toml:824`): a compaction that cannot get under the trigger now hands over to Claude Code's built-in summary instead of being installed. The same commit repins factrail to 0.1.3 in `lib/factrail.nix`, which is not a governed path of this record. The hunk is line-count neutral, so no `agentbox.toml:NNNN` citation moves.
+
+This record decides: The agentbox 38xxx bands below 38400 are all reserved, so colloquy and settlement move to 38400-38499. `fallback` under `[features.jev_compaction]` is read only by the factrail projection in `config/entrypoint-unified.sh`; nothing this record decides reads it, and this record makes no claim about the compaction fallback. Claim still true.
+
+Checked with `git diff baad4cdc1..b8240a223 -- <verified_paths>` (the one hunk above), a search of this record for claims about the compaction `fallback` (none), `scripts/agentbox-config-validate.sh agentbox.toml` (valid, 6 advisory warnings) and `node scripts/adr-index-gen.js docs/adr --check`. Decision and status axes unchanged.

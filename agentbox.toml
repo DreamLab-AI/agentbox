@@ -821,7 +821,7 @@ model = "jev-latest"
 # Only if even eviction cannot reach the trigger does `fallback` apply: "rules"
 # installs the best local reduction, "summary" hands over to the built-in.
 egress = "full"                  # "full": tool arguments capped per fitting stage | "metadata": kind, key names, count and length only
-fallback = "rules"               # no key, tainted on a cloud judge, or judge failure: "rules" (local fact rails) | "summary" (built-in)
+fallback = "summary"             # no key, tainted on a cloud judge, judge failure, or a reduction that cannot get under the trigger: "rules" (local fact rails) | "summary" (built-in). "rules" let a session ratchet to the window on near-empty installs (2026-11-27); from factrail 0.1.3 either value ends in the built-in summary above 85% of the window
 compaction_timeout_ms = 15000    # judge deadline; past it the fallback runs
 save_full_outputs = true         # save each reduced result's full output (secrets masked) and point the note at it
 record_decisions = true          # log each judged request and its answers to ~/.local/share/factrail/decisions (never for a tainted session): the dream cycle's training and evaluation data
