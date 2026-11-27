@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: b8240a223a8d61a1aecd3df139f0636e3a9f42aa
+verified_commit: edf9118a73ca6699b4c9888eb2f5efe29729f6dc
 verified_paths: [flake.nix, agentbox.toml, schema/agentbox.toml.schema.json, scripts/agentbox-config-validate.js, management-api/lib/system-manifest.js, scripts/visioncraft-deepsec-gate.sh, services/agentbox-manifest/src/deepsec_gate.rs, skills/visioncraft/references/deepsec.md, .github/workflows/deepsec.yml, lib/visioncraft.nix, config/visioncraft-source.json, lib/lockfiles/visioncraft-0.3.0.Cargo.lock, tests/config/visioncraft-deepsec.test.mjs]
 owner: jjohare
 review_trigger: a deepsec major version, a change to its CLI exit-code contract or model-route schema, any new model route, or the first paid full-repo run
@@ -17,6 +17,15 @@ domain: GOVERNANCE-capabilities
 
 # ADR-2033 — Deepsec is the optional VisionCraft security reviewer
 
+
+## Scoped cache-hash verification — 2026-11-27
+
+The complete governed delta since the previous stamp is eight `npmDepsHash`
+assignments in `flake.nix`, recomputed from the already-committed security
+lockfiles using the pinned nixpkgs prefetch tool. No source, feature gate,
+supervisor command, mount, credential or policy changes in this delta.
+Factrail projection (8), migration/delivery tests (33), and setup/advisor checks
+(26) pass. This verifies source alignment; deployment acceptance is separate.
 
 ## Scoped pin verification — 2026-11-26
 

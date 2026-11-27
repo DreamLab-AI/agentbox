@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: b8240a223a8d61a1aecd3df139f0636e3a9f42aa
+verified_commit: edf9118a73ca6699b4c9888eb2f5efe29729f6dc
 verified_paths: [agentbox.toml, flake.nix, skills/blender/tools/blender-job.js, skills/blender/tools/blender-introspect.js, skills/blender/tools/blender-batch.sh, skills/blender/SKILL.md, skills/uk-solar-planner/SKILL.md, skills/game-dev/tools/engine-check.sh, tests/toolchains/blender-present.sh]
 owner: jjohare
 review_trigger: the image rebuild activates the change, the GPU sidecar (gui-tools-service) or its shared volume changes, a local-Blender consumer is added, or `blender_local` is flipped in the shipped manifest
@@ -16,6 +16,15 @@ repo: agentbox
 
 # ADR-2142 — Blender runs sidecar-first; the in-container binary is optional
 
+
+## Scoped cache-hash verification — 2026-11-27
+
+The complete governed delta since the previous stamp is eight `npmDepsHash`
+assignments in `flake.nix`, recomputed from the already-committed security
+lockfiles using the pinned nixpkgs prefetch tool. No source, feature gate,
+supervisor command, mount, credential or policy changes in this delta.
+Factrail projection (8), migration/delivery tests (33), and setup/advisor checks
+(26) pass. This verifies source alignment; deployment acceptance is separate.
 
 ## Scoped pin verification — 2026-11-26
 

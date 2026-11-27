@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: b8240a223a8d61a1aecd3df139f0636e3a9f42aa
+verified_commit: edf9118a73ca6699b4c9888eb2f5efe29729f6dc
 verified_paths: [agentbox.toml, schema/agentbox.toml.schema.json, crates/system-one/system-one-proxy/src/config.rs, crates/system-one/system-one-proxy/tests/proxy.rs, tests/config/semantic-rules.test.js, crates/system-one/system-one-proxy/src/server.rs, crates/system-one/system-one-proxy/src/key.rs, services/agentbox-manifest/src/system_one.rs, config/entrypoint-unified.sh, config/hooks/lib/skill-route.cjs, config/seal-bootstrap.sh, lib/system-one-proxy.nix, flake.nix, scripts/agentbox-config-validate.js, agentbox.sh]
 owner: jjohare
 review_trigger: SubQ Snap leaving public preview or changing its price, retention default or the Decisions request shape; a Kev, Clef or pplx-decider release that serves /v1/systemone on a 9B-class checkpoint; a system-one-eval run on the ADR-2089 corpus that moves any backend by more than 5 points; the first compaction replay whose keep-rate is above 5%
@@ -18,6 +18,15 @@ acceptance_boundary: cargo system-one-proxy (13 + 7 passed), agentbox-manifest f
 
 # ADR-2139 — Treat the System One judge as a vendor slot, measured per consumer, with SubQ Snap as the first alternative to Jev
 
+
+## Scoped cache-hash verification — 2026-11-27
+
+The complete governed delta since the previous stamp is eight `npmDepsHash`
+assignments in `flake.nix`, recomputed from the already-committed security
+lockfiles using the pinned nixpkgs prefetch tool. No source, feature gate,
+supervisor command, mount, credential or policy changes in this delta.
+Factrail projection (8), migration/delivery tests (33), and setup/advisor checks
+(26) pass. This verifies source alignment; deployment acceptance is separate.
 
 ## Scoped pin verification — 2026-11-26
 

@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: b8240a223a8d61a1aecd3df139f0636e3a9f42aa
+verified_commit: edf9118a73ca6699b4c9888eb2f5efe29729f6dc
 verified_paths: [agentbox.toml, schema/agentbox.toml.schema.json, management-api/lib/system-manifest.js, flake.nix, config/entrypoint-unified.sh, config/claude-plugins/.claude-plugin/marketplace.json, scripts/ci/check-manifest-catalogue.js, tests/config/jev-checkpoints.test.mjs, tests/config/factrail-projection.test.sh, tests/config/ruflo-console.test.mjs]
 owner: jjohare
 review_trigger: the first soak report of injections per hundred turns and USD per session, a measured shadow-log agreement rate for spawn routing (ADR-2110 labels), a change to the advisor checkpoints in ADR-2134, or a Claude Code function-hook API change
@@ -18,6 +18,15 @@ lineage: ADR-2134 (the advisor whose consult timing this judges), ADR-2121 (fact
 
 # ADR-2135 — Use Jev to time the advisor — jev-checkpoints, with spawn routing shadow-only
 
+
+## Scoped cache-hash verification — 2026-11-27
+
+The complete governed delta since the previous stamp is eight `npmDepsHash`
+assignments in `flake.nix`, recomputed from the already-committed security
+lockfiles using the pinned nixpkgs prefetch tool. No source, feature gate,
+supervisor command, mount, credential or policy changes in this delta.
+Factrail projection (8), migration/delivery tests (33), and setup/advisor checks
+(26) pass. This verifies source alignment; deployment acceptance is separate.
 
 ## Scoped pin verification — 2026-11-26
 

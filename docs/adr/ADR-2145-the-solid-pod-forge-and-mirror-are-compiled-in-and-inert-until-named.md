@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: b8240a223a8d61a1aecd3df139f0636e3a9f42aa
+verified_commit: edf9118a73ca6699b4c9888eb2f5efe29729f6dc
 verified_paths: [lib/solid-pod-rs.nix, lib/solid-pod-rs.cargo-lock, flake.nix, agentbox.toml, scripts/ci/check-manifest-catalogue.js]
 owner: jjohare
 review_trigger: the first image rebuilt with this pin; any change to the forge block defaults (open_edit, allow_mainnet, mirror_follow); a solid-pod-rs release that changes the forge feature names; a second operator
@@ -16,6 +16,15 @@ repo: agentbox
 
 # ADR-2145 — The solid-pod forge and mirror are compiled into the native pod and inert until relays and follows are named
 
+
+## Scoped cache-hash verification — 2026-11-27
+
+The complete governed delta since the previous stamp is eight `npmDepsHash`
+assignments in `flake.nix`, recomputed from the already-committed security
+lockfiles using the pinned nixpkgs prefetch tool. No source, feature gate,
+supervisor command, mount, credential or policy changes in this delta.
+Factrail projection (8), migration/delivery tests (33), and setup/advisor checks
+(26) pass. This verifies source alignment; deployment acceptance is separate.
 
 ## Scoped pin verification — 2026-11-26
 

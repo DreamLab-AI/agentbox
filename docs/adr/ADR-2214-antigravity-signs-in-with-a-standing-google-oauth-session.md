@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: b8240a223a8d61a1aecd3df139f0636e3a9f42aa
+verified_commit: edf9118a73ca6699b4c9888eb2f5efe29729f6dc
 verified_paths: [flake.nix, docker-compose.yml, agentbox.toml, scripts/provision-antigravity.cjs, mcp/consultants/antigravity/server.js, config/entrypoint-unified.sh, skills/mcp.json, tests/config/antigravity-provision.test.cjs, tests/config/antigravity-consultant-auth.test.cjs, tests/config/compose-persistence.test.cjs]
 owner: jjohare
 review_trigger: an agy upgrade that moves its token or changes refresh behaviour, a change to the ~/.gemini mount, or a return to API billing
@@ -18,6 +18,15 @@ acceptance_boundary: Offline provisioning and consultant tests pass and agy 1.5.
 ---
 
 # ADR-2214 — Antigravity signs in with a standing Google OAuth session
+
+## Scoped cache-hash verification — 2026-11-27
+
+The complete governed delta since the previous stamp is eight `npmDepsHash`
+assignments in `flake.nix`, recomputed from the already-committed security
+lockfiles using the pinned nixpkgs prefetch tool. No source, feature gate,
+supervisor command, mount, credential or policy changes in this delta.
+Factrail projection (8), migration/delivery tests (33), and setup/advisor checks
+(26) pass. This verifies source alignment; deployment acceptance is separate.
 
 ## Scoped pin verification — 2026-11-26
 

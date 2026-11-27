@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 0b8d2b18827ea3198c356528398646b25ab2d379
+verified_commit: edf9118a73ca6699b4c9888eb2f5efe29729f6dc
 verified_paths: [flake.nix, config/nip98-proxy/proxy.mjs, config/lib/nip98-config.sh, config/entrypoint-unified.sh, services/agentbox-manifest/src/proxy.rs, tests/config/nip98-boot-failclosed.test.mjs, tests/config/nip98-config-projection.test.sh, config/nip98-proxy/config-path.mjs]
 owner: jjohare
 review_trigger: first host rebuild that bakes this change, or any change to where the nip98-config projection runs
@@ -17,6 +17,15 @@ acceptance_boundary: Operator-requested host rollout is active. Eight baked prox
 ---
 
 # ADR-2210 — The NIP-98 door refuses every identity until its boot config file exists
+
+## Scoped cache-hash verification — 2026-11-27
+
+The complete governed delta since the previous stamp is eight `npmDepsHash`
+assignments in `flake.nix`, recomputed from the already-committed security
+lockfiles using the pinned nixpkgs prefetch tool. No source, feature gate,
+supervisor command, mount, credential or policy changes in this delta.
+Factrail projection (8), migration/delivery tests (33), and setup/advisor checks
+(26) pass. This verifies source alignment; deployment acceptance is separate.
 
 ## Scoped pin verification — 2026-11-26
 
