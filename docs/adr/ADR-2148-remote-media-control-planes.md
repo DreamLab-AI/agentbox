@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 1ea91deb2256249e7b801b6827e8b1a06f34cb20
+verified_commit: 2a8a6f8e9f8741f14879e97dc213bbaade73bd9e
 verified_paths: [flake.nix, comfyui-sidecar/Dockerfile, docker-compose.comfyui.yml, docker-compose.gui-tools.yml, gui-tools-sidecar, skills/blender/tools, skills/comfyui/mcp-server, skills/comfyui/scripts, skills/comfyui/models/stopmotion-candidates.json]
 owner: jjohare
 review_trigger: media control-plane protocol, sidecar dependencies, workflow state handling or model provisioning changes
@@ -17,6 +17,13 @@ domain: BASELINE-container
 
 # ADR-2148: Typed remote media control planes alongside existing bridges
 
+
+## Verification ancestry repair — 2026-11-27
+
+The previous stamp named the pre-merge dependency-update commit `1ea91deb2`,
+which is not an ancestor of main. Every declared `verified_paths` file is
+byte-identical between that commit and this main revision (`git diff` is empty).
+Anchor the same source verification to main; no decision or activation claim changes.
 
 ## Scoped pin verification — 2026-11-26
 

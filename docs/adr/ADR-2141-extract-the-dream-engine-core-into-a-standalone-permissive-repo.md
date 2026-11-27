@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 1ea91deb2256249e7b801b6827e8b1a06f34cb20
+verified_commit: 2a8a6f8e9f8741f14879e97dc213bbaade73bd9e
 verified_paths: [services/dream-engine/Cargo.toml, services/dream-engine/Cargo.lock, lib/dream-engine.nix, services/dream-engine/src/engine.rs, services/dream-engine/tests/night_e2e.rs]
 owner: jjohare
 review_trigger: the image rebuild activates the registry-pinned crates, a new release of dream-core or dream-gate is adopted, or any new module is added under services/dream-engine/src that is not estate-specific
@@ -15,6 +15,13 @@ repo: agentbox
 ---
 
 # ADR-2141 — Extract the dream engine core into a standalone permissive repo
+
+## Verification ancestry repair — 2026-11-27
+
+The previous stamp named the pre-merge dependency-update commit `1ea91deb2`,
+which is not an ancestor of main. Every declared `verified_paths` file is
+byte-identical between that commit and this main revision (`git diff` is empty).
+Anchor the same source verification to main; no decision or activation claim changes.
 
 ## Scoped source check — 2026-11-09
 

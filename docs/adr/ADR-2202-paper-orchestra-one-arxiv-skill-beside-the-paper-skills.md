@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 1ea91deb2256249e7b801b6827e8b1a06f34cb20
+verified_commit: 2a8a6f8e9f8741f14879e97dc213bbaade73bd9e
 verified_paths: [skills/paper-orchestra, services/skill-tools, lib/skill-tools.nix]
 owner: jjohare
 review_trigger: the next image build (confirm `paper-orchestra --help` on PATH and the skill under /opt/agentbox/skills); arXiv changing its TeX submission or metadata rules (skills/paper-orchestra/references/arxiv.md carries the date they were read); a routed turn about compiling LaTeX, a book manuscript or a white paper landing on paper-orchestra in ~/.claude/skill-route.jsonl; an upstream PaperOrchestra release that changes a verbatim prompt
@@ -19,6 +19,13 @@ acceptance_boundary: Skill lint, count and routing-table checks pass; the Nix sk
 ---
 
 # ADR-2202 — PaperOrchestra is one arXiv-only skill that sits beside the existing paper skills
+
+## Verification ancestry repair — 2026-11-27
+
+The previous stamp named the pre-merge dependency-update commit `1ea91deb2`,
+which is not an ancestor of main. Every declared `verified_paths` file is
+byte-identical between that commit and this main revision (`git diff` is empty).
+Anchor the same source verification to main; no decision or activation claim changes.
 
 ## Context
 
