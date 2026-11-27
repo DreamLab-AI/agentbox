@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: baad4cdc100777f84f09edce22698fb9573858b9
+verified_commit: b8240a223a8d61a1aecd3df139f0636e3a9f42aa
 verified_paths: [skills/ontology-augment, skills/podcast-knowledge-ingest, agents/ontology-curator.md, mcp/mcp.json, agentbox.toml, AGENTS.md]
 owner: jjohare
 review_trigger: a request to register any MCP server that reads or writes visionGraph, the ADR-140 /mcp plane reaching the deployed Loom, or the first `vault` subcommand an agent cannot express
@@ -305,3 +305,11 @@ Governed delta since `538c22397`: `agentbox.toml`: one line, `d6b019afb` sets `[
 This record keeps the corpus free of MCP inside the estate: agents use the CLIs (`ontomark` for reads, `vault propose` for governed changes). At HEAD the submitter still looks up classes with `ontomark find` and sends `vault propose` (`submit-proposals.mjs:6`, `:32`, `:125`). The skill adds no `mcp__` tool, no ontology-bridge call and no direct curated-page write; `run-promote.sh` adds only a capability check on the binary. Claim still true.
 
 Checked with `git diff 538c22397..baad4cdc1 -- skills/podcast-knowledge-ingest agentbox.toml` read in full, `grep -rnE 'mcp__|ontology-bridge|vault (find|retrieve|tree)'` over the skill (only the historical comment at `submit-proposals.mjs:8`), `bash -n run-promote.sh`, and the submitter tests (11 passed). Citations in earlier sections are as of their own commit and are not renumbered. `node scripts/adr-index-gen.js docs/adr --check`. Decision and status axes unchanged.
+
+## Re-verification — 2026-11-27 at `b8240a223a8d61a1aecd3df139f0636e3a9f42aa`
+
+Governed delta since `baad4cdc1`: `agentbox.toml` only, one line. `b8240a223` sets `[features.jev_compaction].fallback` from `"rules"` to `"summary"` and extends that line's comment (`agentbox.toml:824`): a compaction that cannot get under the trigger now hands over to Claude Code's built-in summary instead of being installed. The same commit repins factrail to 0.1.3 in `lib/factrail.nix`, which is not a governed path of this record. The hunk is line-count neutral, so no `agentbox.toml:NNNN` citation moves.
+
+This record decides: No MCP inside the estate for the corpus; agents use the vault CLI. `fallback` under `[features.jev_compaction]` is read only by the factrail projection in `config/entrypoint-unified.sh`; nothing this record decides reads it, and this record makes no claim about the compaction fallback. Claim still true.
+
+Checked with `git diff baad4cdc1..b8240a223 -- <verified_paths>` (the one hunk above), a search of this record for claims about the compaction `fallback` (none), `scripts/agentbox-config-validate.sh agentbox.toml` (valid, 6 advisory warnings) and `node scripts/adr-index-gen.js docs/adr --check`. Decision and status axes unchanged.

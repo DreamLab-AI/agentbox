@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: baad4cdc100777f84f09edce22698fb9573858b9
+verified_commit: b8240a223a8d61a1aecd3df139f0636e3a9f42aa
 verified_paths: [agentbox.toml, mcp/servers/lib/ontology-retrieval.js]
 owner: jjohare
 review_trigger: model swap behind the Loom, or ADR-051 deferred-distillation MCP tools becoming a discrete server
@@ -503,3 +503,11 @@ Governed delta since `538c22397`: `agentbox.toml` only, one line. `d6b019afb` se
 This record makes the Loom a façade: consumers hold the :8084 door and the model behind it is swappable. The consumers that hold `${LOOM_BASE_URL}` are unchanged: `endpoint = "${LOOM_BASE_URL}"` is now at `agentbox.toml:1174` and `loom_url` at `:2679` (the `:807` and `:2004` citations in the 2026-10 section are as of their own commit). The changed line is two lines below where that section cited `:807` and names no endpoint. Claim still true.
 
 Checked with `git diff 538c22397..baad4cdc1 -- <verified_paths>` (the one hunk above), a search of this record for `cache_warm`, cache-warm, prompt-cache and idle-compaction claims (none), `scripts/agentbox-config-validate.sh agentbox.toml` (valid, 6 advisory warnings) and `node scripts/adr-index-gen.js docs/adr --check`. Decision and status axes unchanged.
+
+## Re-verification — 2026-11-27 at `b8240a223a8d61a1aecd3df139f0636e3a9f42aa`
+
+Governed delta since `baad4cdc1`: `agentbox.toml` only, one line. `b8240a223` sets `[features.jev_compaction].fallback` from `"rules"` to `"summary"` and extends that line's comment (`agentbox.toml:824`): a compaction that cannot get under the trigger now hands over to Claude Code's built-in summary instead of being installed. The same commit repins factrail to 0.1.3 in `lib/factrail.nix`, which is not a governed path of this record. The hunk is line-count neutral, so no `agentbox.toml:NNNN` citation moves.
+
+This record decides: The Loom is a façade — consumers hold the :8084 door and the model is a swappable URL behind it. `fallback` under `[features.jev_compaction]` is read only by the factrail projection in `config/entrypoint-unified.sh`; nothing this record decides reads it, and this record makes no claim about the compaction fallback. Claim still true.
+
+Checked with `git diff baad4cdc1..b8240a223 -- <verified_paths>` (the one hunk above), a search of this record for claims about the compaction `fallback` (none), `scripts/agentbox-config-validate.sh agentbox.toml` (valid, 6 advisory warnings) and `node scripts/adr-index-gen.js docs/adr --check`. Decision and status axes unchanged.

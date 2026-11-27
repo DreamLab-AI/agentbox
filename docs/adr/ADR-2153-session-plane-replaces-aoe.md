@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: [ADR-2002, ADR-2063, ADR-2079]
 superseded_by: []
-verified_commit: 0b8d2b18827ea3198c356528398646b25ab2d379
+verified_commit: b8240a223a8d61a1aecd3df139f0636e3a9f42aa
 verified_paths: [services/agentbox-sessions, config/session-plane, lib/agentbox-sessions.nix, flake.nix, flake.lock, agentbox.toml, config/entrypoint-unified.sh, config/role-accounts.json, config/custody/session-plane-acl.json, config/tab0-bridge, config/nostr-gateway/gateway.cjs, config/nip98-proxy, config/tmux-autostart.sh, config/hooks/session-state.cjs, config/registered-hooks.txt, scripts/session-provision.mjs, scripts/session-control.cjs, scripts/activation/session-plane-acceptance.mjs, management-api/lib/system-manifest.js, schema/agentbox.toml.schema.json, services/agentbox-manifest/src/stacks.rs, services/agentbox-manifest/src/stacks_env.rs, tests/cli/session-launch-contract.test.mjs, tests/cli/session-control.test.cjs, tests/config/session-plane-notify.test.sh]
 owner: jjohare
 review_trigger: Antigravity signed in and OpenRouter answering the canned round trip (closes §11 acceptance → implementation complete); any AoE consumer found to have been missed
@@ -515,3 +515,11 @@ Governed delta since `538c22397`: `agentbox.toml` only, one line. `d6b019afb` se
 This record replaces Agent of Empires with the tmux-backed session plane, which reconciles to `[[sessions]]` in the manifest. The session declarations are untouched. The record's busy/idle wording is session state and unrelated to the cache-warm idle timer. Claim still true. (Observed while verifying, not a claim of this record: at this revision `scripts/ci/check-ports-loopback.mjs` exits 1 on `docker-compose.bonsai.yml:19`; see ADR-2013's 2026-11-25 note.)
 
 Checked with `git diff 538c22397..baad4cdc1 -- <verified_paths>` (the one hunk above), a search of this record for `cache_warm`, cache-warm, prompt-cache and idle-compaction claims (none), `scripts/agentbox-config-validate.sh agentbox.toml` (valid, 6 advisory warnings) and `node scripts/adr-index-gen.js docs/adr --check`. Decision and status axes unchanged.
+
+## Re-verification — 2026-11-27 at `b8240a223a8d61a1aecd3df139f0636e3a9f42aa`
+
+Governed delta since `0b8d2b188`: `agentbox.toml` only, one line. `b8240a223` sets `[features.jev_compaction].fallback` from `"rules"` to `"summary"` and extends that line's comment (`agentbox.toml:824`): a compaction that cannot get under the trigger now hands over to Claude Code's built-in summary instead of being installed. The same commit repins factrail to 0.1.3 in `lib/factrail.nix`, which is not a governed path of this record. The hunk is line-count neutral, so no `agentbox.toml:NNNN` citation moves.
+
+This record decides: Replace Agent of Empires with an owned, tmux-backed session plane that reconciles to the manifest. `fallback` under `[features.jev_compaction]` is read only by the factrail projection in `config/entrypoint-unified.sh`; nothing this record decides reads it, and this record makes no claim about the compaction fallback. Claim still true.
+
+Checked with `git diff 0b8d2b188..b8240a223 -- <verified_paths>` (the one hunk above), a search of this record for claims about the compaction `fallback` (none), `scripts/agentbox-config-validate.sh agentbox.toml` (valid, 6 advisory warnings) and `node scripts/adr-index-gen.js docs/adr --check`. Decision and status axes unchanged.

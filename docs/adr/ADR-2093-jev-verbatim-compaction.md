@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 0b8d2b18827ea3198c356528398646b25ab2d379
+verified_commit: b8240a223a8d61a1aecd3df139f0636e3a9f42aa
 verified_paths: [lib/factrail.nix, config/entrypoint-unified.sh, lib/claude-code-binary.nix]
 owner: jjohare
 review_trigger: the first measured residency bill that exceeds the summary path's re-read savings, a Claude Code function-hook API change, a request to fence a class other than email, or a change to ADR-2121 (its implementation); `/jev-compact status` answering in a fresh session on a booted image (activation → live)
@@ -568,3 +568,5 @@ Judged from `git diff fc95b3877..06c2f7011 -- config/entrypoint-unified.sh`, rea
 ## Amendment — 2026-11-25: the shipped manifest turns cache-warm compaction off
 
 Since `d6b019afb` (operator request), the shipped `agentbox.toml:809` sets `[features.jev_compaction].cache_warm = "off"`. An idle session near prompt-cache expiry is no longer compacted; threshold compaction is unchanged. Where amendment (d) above says `cache_warm = "compact"` is the default, that is still the schema's documented default (`schema/agentbox.toml.schema.json:3598`), but it is not what this repository ships. Where the Configuration paragraph says the plugin's `userConfig` defaults equal the manifest's, that cannot be confirmed here for `cacheWarm`: factrail (ADR-2121) owns the plugin, and its default cannot be read from this repository. If that default is still `compact`, it no longer matches what ships. The entrypoint projects the manifest value (`config/entrypoint-unified.sh:3165`), so a booted container gets `off`. The decision is unchanged. This record's `verified_paths` do not include `agentbox.toml`, so `verified_commit` stays as it was.
+
+Re-verified 2026-11-27 at `b8240a223`: `lib/factrail.nix` moves to factrail 0.1.3 `4a41df38`, and the shipped `agentbox.toml` sets `fallback = "summary"` (was `"rules"`). On 2026-11-27 a session under `"rules"` ratcheted to the window on near-empty installs and died; ADR-2121 carries the account. From 0.1.3 the trigger's re-arm point is capped at 85% of the window, and above it the built-in summary runs whatever `fallback` says, so this record's verbatim compaction now has a bounded exit to the summary. The decision is unchanged. The `config/entrypoint-unified.sh` and `lib/claude-code-binary.nix` paths did not change in this commit.

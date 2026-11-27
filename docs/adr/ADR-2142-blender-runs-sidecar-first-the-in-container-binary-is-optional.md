@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 0b8d2b18827ea3198c356528398646b25ab2d379
+verified_commit: b8240a223a8d61a1aecd3df139f0636e3a9f42aa
 verified_paths: [agentbox.toml, flake.nix, skills/blender/tools/blender-job.js, skills/blender/tools/blender-introspect.js, skills/blender/tools/blender-batch.sh, skills/blender/SKILL.md, skills/uk-solar-planner/SKILL.md, skills/game-dev/tools/engine-check.sh, tests/toolchains/blender-present.sh]
 owner: jjohare
 review_trigger: the image rebuild activates the change, the GPU sidecar (gui-tools-service) or its shared volume changes, a local-Blender consumer is added, or `blender_local` is flipped in the shipped manifest
@@ -327,3 +327,11 @@ Governed delta since `538c22397`: `agentbox.toml` only, one line. `d6b019afb` se
 This record makes Blender sidecar-first, with the in-container binary optional. The Blender toolchain key it cites (`:635`) is untouched. Claim still true.
 
 Checked with `git diff 538c22397..baad4cdc1 -- <verified_paths>` (the one hunk above), a search of this record for `cache_warm`, cache-warm, prompt-cache and idle-compaction claims (none), `scripts/agentbox-config-validate.sh agentbox.toml` (valid, 6 advisory warnings) and `node scripts/adr-index-gen.js docs/adr --check`. Decision and status axes unchanged.
+
+## Re-verification — 2026-11-27 at `b8240a223a8d61a1aecd3df139f0636e3a9f42aa`
+
+Governed delta since `0b8d2b188`: `agentbox.toml` only, one line. `b8240a223` sets `[features.jev_compaction].fallback` from `"rules"` to `"summary"` and extends that line's comment (`agentbox.toml:824`): a compaction that cannot get under the trigger now hands over to Claude Code's built-in summary instead of being installed. The same commit repins factrail to 0.1.3 in `lib/factrail.nix`, which is not a governed path of this record. The hunk is line-count neutral, so no `agentbox.toml:NNNN` citation moves.
+
+This record decides: Blender runs sidecar-first; the in-container binary is optional. `fallback` under `[features.jev_compaction]` is read only by the factrail projection in `config/entrypoint-unified.sh`; nothing this record decides reads it, and this record makes no claim about the compaction fallback. Claim still true.
+
+Checked with `git diff 0b8d2b188..b8240a223 -- <verified_paths>` (the one hunk above), a search of this record for claims about the compaction `fallback` (none), `scripts/agentbox-config-validate.sh agentbox.toml` (valid, 6 advisory warnings) and `node scripts/adr-index-gen.js docs/adr --check`. Decision and status axes unchanged.

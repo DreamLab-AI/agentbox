@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 0b8d2b18827ea3198c356528398646b25ab2d379
+verified_commit: b8240a223a8d61a1aecd3df139f0636e3a9f42aa
 verified_paths: [lib/supersplat.nix, lib/splat-transform.package-lock.json, flake.nix, agentbox.toml, scripts/ci/check-ports-loopback.mjs, docker-compose.browsercontainer.yml, skills/supersplat/SKILL.md]
 owner: jjohare
 review_trigger: SuperSplat or splat-transform pin bump; any change to the supersplat listener's bind, root or authentication; the browser sidecar's TREAT_AS_SECURE list; a proposal to serve datasets or anything outside $WORKSPACE/splats/share
@@ -278,3 +278,11 @@ Checked with `git diff 538c22397..baad4cdc1 -- <verified_paths>` (the one hunk a
 Governed delta since `baad4cdc1`: `scripts/ci/check-ports-loopback.mjs` adds `docker-compose.bonsai.yml` to `SIDECAR_BIND_FILES` (one line). The correction in the 2026-11-25 section is now out of date in the other direction: the gate passes again at this revision. `docker-compose.bonsai.yml` publishes through `${AGENTBOX_SIDECAR_BIND:-127.0.0.1}` on a literal port, so `node scripts/ci/check-ports-loopback.mjs` exits 0 and still reports `[program:supersplat]` as the sanctioned docker-network-only listener. This record's own claims did not change.
 
 Checked with `git diff baad4cdc1..c55677355 -- scripts/ci/check-ports-loopback.mjs`, the gate itself (exit 0) and `node --test tests/security/ports-gate.test.mjs tests/security/check-listeners.test.mjs` (16 pass). Decision and status axes unchanged.
+
+## Re-verification — 2026-11-27 at `b8240a223a8d61a1aecd3df139f0636e3a9f42aa`
+
+Governed delta since `0b8d2b188`: `agentbox.toml` only, one line. `b8240a223` sets `[features.jev_compaction].fallback` from `"rules"` to `"summary"` and extends that line's comment (`agentbox.toml:824`): a compaction that cannot get under the trigger now hands over to Claude Code's built-in summary instead of being installed. The same commit repins factrail to 0.1.3 in `lib/factrail.nix`, which is not a governed path of this record. The hunk is line-count neutral, so no `agentbox.toml:NNNN` citation moves.
+
+This record decides: The SuperSplat editor is served in-container and driven in the browser sidecar; splat-transform is on PATH. `fallback` under `[features.jev_compaction]` is read only by the factrail projection in `config/entrypoint-unified.sh`; nothing this record decides reads it, and this record makes no claim about the compaction fallback. Claim still true.
+
+Checked with `git diff 0b8d2b188..b8240a223 -- <verified_paths>` (the one hunk above), a search of this record for claims about the compaction `fallback` (none), `scripts/agentbox-config-validate.sh agentbox.toml` (valid, 6 advisory warnings) and `node scripts/adr-index-gen.js docs/adr --check`. Decision and status axes unchanged.
